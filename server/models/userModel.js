@@ -47,6 +47,10 @@ const userSchema = new mongoose.Schema(
       type: Boolean,
       default: false,
     },
+    lastExportRequestedAt: {
+      type: Date,
+      default: null,
+    },
   },
   { timestamps: true },
 );
