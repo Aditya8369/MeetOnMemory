@@ -20,8 +20,11 @@ import * as MeetingService from "../services/MeetingService.js";
 import { ValidationError, UnauthorizedError } from "../utils/errors.js";
 import AuditService from "../services/AuditService.js";
 import { sendSuccess } from "../utils/responseHandler.js";
-import { pushMeetingToIntegrations } from "../services/calendarSyncService.js";
 
+const pushMeetingToIntegrations = (...args) =>
+  import("../services/calendarSyncService.js").then((mod) =>
+    mod.pushMeetingToIntegrations(...args),
+  );
 // ═══════════════════════════════════════════════════════════════
 // Zod validation schemas
 // ═══════════════════════════════════════════════════════════════
