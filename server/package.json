@@ -11,7 +11,7 @@
     "server": "nodemon server.js",
     "lint": "eslint .",
     "test": "node --experimental-vm-modules node_modules/jest/bin/jest.js --forceExit",
-    "test:ci": "node --experimental-vm-modules node_modules/jest/bin/jest.js --forceExit --ci --coverage",
+    "test:ci": "node --experimental-vm-modules node_modules/jest/bin/jest.js --forceExit --ci --runInBand --coverage",
     "test:startup": "node tests/testStartup.js",
     "test:unit": "vitest run tests/OrganizationService.test.js tests/InvitationService.test.js tests/organizationController.test.js"
   },

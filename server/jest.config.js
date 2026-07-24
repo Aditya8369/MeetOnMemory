@@ -17,5 +17,7 @@ export default {
     "organizationController.test.js",
     "InvitationService.test.js",
     "OrganizationService.test.js",
+    "knowledgeController.test.js",
+    "transcriptController.test.js",
   ],
 };
