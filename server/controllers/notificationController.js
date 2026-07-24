@@ -52,7 +52,16 @@ export const getNotifications = async (req, res) => {
       query = query.where("isRead").equals(true);
     }
 
-    const notifications = await query.sort({ createdAt: -1 }).limit(100);
+    const page = parseInt(req.query.page, 10) || 1;
+    const limit = Math.min(parseInt(req.query.limit, 10) || 10, 100);
+    const skip = (page - 1) * limit;
+
+    const total = await notificationModel.countDocuments(query.getFilter());
+
+    const notifications = await query
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(limit);
 
     const unreadCount = await notificationModel.countDocuments({
       user: req.user.id,
@@ -62,6 +71,12 @@ export const getNotifications = async (req, res) => {
     sendSuccess(res, {
       notifications: notifications.map(formatNotificationResponse),
       unreadCount,
+      pagination: {
+        total,
+        page,
+        limit,
+        totalPages: Math.ceil(total / limit),
+      },
     });
   } catch (error) {
     console.error("Error in getNotifications:", error);
