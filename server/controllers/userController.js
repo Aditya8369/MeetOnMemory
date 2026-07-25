@@ -33,9 +33,9 @@ export const getUserData = async (req, res) => {
       return sendError(res, 401, "Authentication error, user ID not found.");
     }
 
-    // Now this line is safe to run
+    const userId = String(req.user.id);
     const user = await userModel
-      .findById(req.user.id)
+      .findById(userId)
       .select("-password")
       .populate("organization", "name logo");
 
@@ -78,9 +78,10 @@ export const updateUserProfile = async (req, res) => {
       }
     }
 
+    const userId = String(req.user.id);
     const updatedUser = await userModel
       .findByIdAndUpdate(
-        req.user.id,
+        userId,
         {
           $set: {
             name: name.trim(),
@@ -116,7 +117,8 @@ export const requestDataExport = async (req, res) => {
       return sendError(res, 401, "Authentication error, user ID not found.");
     }
 
-    const user = await userModel.findById(req.user.id);
+    const userId = String(req.user.id);
+    const user = await userModel.findById(userId);
     if (!user) {
       return sendError(res, 404, "User not found.");
     }
@@ -144,7 +146,7 @@ export const requestDataExport = async (req, res) => {
         email: user.email,
       });
 
-      await userModel.findByIdAndUpdate(req.user.id, {
+      await userModel.findByIdAndUpdate(userId, {
         lastExportRequestedAt: new Date(),
       });
 
