@@ -1113,3 +1113,72 @@ export const getOrganizationMembersById = async (userId, id) => {
     organizationName: organization.name,
   };
 };
+
+/**
+ * ✅ Get Organization Leaderboard
+ */
+export const getOrganizationLeaderboard = async (userId, id) => {
+  if (!isValidObjectId(id)) {
+    throw new ValidationError("Invalid organization ID.");
+  }
+
+  const cleanId = new mongoose.Types.ObjectId(String(id));
+
+  const organization = await Organization.findById(cleanId);
+
+  if (!organization) {
+    throw new NotFoundError("Organization not found.");
+  }
+
+  // Check if user is a member
+  const membership = await Membership.findOne({
+    user: userId,
+    organization: cleanId,
+    status: "active",
+  }).lean();
+
+  if (!membership) {
+    throw new ForbiddenError("Not a member of this organization.");
+  }
+
+  // Get active memberships sorted by engagementScore descending
+  const memberships = await Membership.find({
+    organization: cleanId,
+    status: "active",
+  })
+    .populate("user", "name email profilePic isAccountVerified")
+    .sort({ engagementScore: -1 })
+    .limit(10)
+    .lean();
+
+  const topContributors = memberships.map((m) => ({
+    _id: m.user._id,
+    name: m.user.name,
+    email: m.user.email,
+    profilePic: m.user.profilePic,
+    engagementScore: m.engagementScore || 0,
+    role: m.role,
+  }));
+
+  return {
+    success: true,
+    topContributors,
+    organizationName: organization.name,
+  };
+};
+
+/**
+ * ✅ Award Gamification Points
+ */
+export const awardEngagementPoints = async (userId, organizationId, points) => {
+  if (!isValidObjectId(userId) || !isValidObjectId(organizationId)) return;
+
+  try {
+    await Membership.findOneAndUpdate(
+      { user: userId, organization: organizationId, status: "active" },
+      { $inc: { engagementScore: points } },
+    );
+  } catch (error) {
+    console.error("❌ Failed to award engagement points:", error);
+  }
+};

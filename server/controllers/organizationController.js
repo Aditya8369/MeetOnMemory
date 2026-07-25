@@ -398,3 +398,32 @@ export const getOrganizationMembersById = async (req, res) => {
     sendError(res, error.statusCode || 500, error.message || "Server error");
   }
 };
+
+/**
+ * ✅ Get Organization Leaderboard
+ * GET /api/organizations/:id/leaderboard
+ */
+export const getOrganizationLeaderboard = async (req, res) => {
+  try {
+    if (!req.user || !req.user.id) {
+      return sendError(res, 401, "Authentication failed.");
+    }
+
+    const orgId =
+      req.params.id ||
+      (req.user.organization ? req.user.organization.toString() : null);
+    if (!orgId) {
+      return sendError(res, 400, "Organization ID is required.");
+    }
+
+    const result = await OrganizationService.getOrganizationLeaderboard(
+      req.user.id,
+      orgId,
+    );
+
+    sendSuccess(res, result);
+  } catch (error) {
+    console.error("❌ Error fetching organization leaderboard:", error);
+    sendError(res, error.statusCode || 500, error.message || "Server error");
+  }
+};
