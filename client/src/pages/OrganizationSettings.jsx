@@ -173,7 +173,7 @@ const OrganizationSettings = () => {
 
       case "contactEmail":
         if (value && value.trim()) {
-          const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+          const emailPattern = /^[^\s@]+@[^\s@.]+\.[^\s@.]+$/;
           if (!emailPattern.test(value.trim())) {
             newErrors.contactEmail = "Please enter a valid email address.";
           } else {

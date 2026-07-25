@@ -929,7 +929,7 @@ export const updateOrganization = async (
     contactEmail !== ""
   ) {
     const trimmedEmail = String(contactEmail).trim().toLowerCase();
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    const emailRegex = /^[^\s@]+@[^\s@.]+\.[^\s@.]+$/;
     if (!emailRegex.test(trimmedEmail)) {
       throw new ValidationError("Invalid contact email format.");
     }
