@@ -13,6 +13,7 @@ import {
   createOrganization,
   getOrganizations,
   getOrganizationById,
+  getOrganizationSettings,
   updateOrganization,
   deleteOrganization,
   getOrganizationMembersById,
@@ -38,12 +39,7 @@ router.post(
 );
 
 // Member joins by selecting an existing org
-router.post(
-  "/join",
-  userAuth,
-  writeLimiter,
-  joinOrganization,
-);
+router.post("/join", userAuth, writeLimiter, joinOrganization);
 
 // Select organization (for users with multiple orgs)
 router.post("/select", userAuth, selectOrganization);
@@ -114,6 +110,20 @@ router.get(
   requireOrgAccess(Organization),
   requirePermission("audit_logs", "view"),
   downloadAuditLogExport,
+);
+
+// Organization Settings routes
+router.get(
+  "/current/settings",
+  userAuth,
+  requireOrgMembership,
+  getOrganizationSettings,
+);
+router.get(
+  "/settings",
+  userAuth,
+  requireOrgMembership,
+  getOrganizationSettings,
 );
 
 // New CRUD routes (consolidated from organizationRoutesNew.js)

@@ -310,6 +310,29 @@ export const getOrganizationById = async (req, res) => {
 };
 
 /**
+ * ✅ Get Organization Settings
+ * GET /api/organizations/current/settings
+ */
+export const getOrganizationSettings = async (req, res) => {
+  try {
+    if (!req.user || !req.user.id) {
+      return sendError(res, 401, "Authentication failed.");
+    }
+
+    const orgIdOrSlug = req.query.orgId || req.params.id || null;
+    const result = await OrganizationService.getOrganizationSettings(
+      req.user.id,
+      orgIdOrSlug,
+    );
+
+    sendSuccess(res, result);
+  } catch (error) {
+    console.error("❌ Error fetching organization settings:", error);
+    sendError(res, error.statusCode || 500, error.message || "Server error");
+  }
+};
+
+/**
  * ✅ Update Organization
  * PUT /api/organizations/:id
  */
