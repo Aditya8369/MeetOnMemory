@@ -49,7 +49,7 @@ export const getNotifications = async (req, res) => {
         "system",
       ].includes(category)
     ) {
-      filter.category = category;
+      filter.category = String(category);
     }
 
     if (status === "unread") {
