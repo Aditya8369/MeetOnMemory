@@ -70,10 +70,12 @@ const TemplateBuilder = () => {
       return toast.error("Template title is required");
     }
 
-    // eslint-disable-next-line no-unused-vars
-    const blocksToSave = editingTemplate.agendaBlocks.map(
-      ({ id, _id, ...rest }) => rest,
-    );
+    const blocksToSave = editingTemplate.agendaBlocks.map((block) => {
+      const newBlock = { ...block };
+      delete newBlock.id;
+      delete newBlock._id;
+      return newBlock;
+    });
 
     try {
       if (editingTemplate._id === "new") {
