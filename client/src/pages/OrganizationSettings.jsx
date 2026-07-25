@@ -28,7 +28,7 @@ import { organizationApi } from "../services/organizationApi.js";
 
 const OrganizationSettings = () => {
   const navigate = useNavigate();
-  const { userData, getUserData, setUserData } = useContext(AppContent);
+  const { getUserData, setUserData } = useContext(AppContent);
 
   // Loading & state management
   const [loading, setLoading] = useState(true);
