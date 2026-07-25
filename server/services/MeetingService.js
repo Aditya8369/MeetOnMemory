@@ -229,7 +229,7 @@ export const uploadAndTranscribeMeeting = async (
   scheduleIndexMeeting(meeting);
 
   try {
-    fs.unlinkSync(validatePath(filePath));
+    await fs.promises.unlink(validatePath(filePath));
   } catch (e) {
     console.warn("⚠️ Could not delete temp file:", e.message);
   }
@@ -270,7 +270,7 @@ export const uploadAudioForExistingMeeting = async (
   scheduleIndexMeeting(meeting);
 
   try {
-    fs.unlinkSync(validatePath(filePath));
+    await fs.promises.unlink(validatePath(filePath));
   } catch (e) {
     console.warn("⚠️ Could not delete temp file:", e.message);
   }
