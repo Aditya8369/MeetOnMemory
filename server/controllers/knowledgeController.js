@@ -123,9 +123,25 @@ export const getOpenActionItems = async (req, res) => {
       });
     }
 
-    const items = await query
+    const page = parseInt(req.query.page, 10) || 1;
+    const limit = Math.min(parseInt(req.query.limit, 10) || 10, 100);
+    const skip = (page - 1) * limit;
+
+    const total =
+      typeof ActionItem.countDocuments === "function" &&
+      typeof query.getFilter === "function"
+        ? await ActionItem.countDocuments(query.getFilter())
+        : 0;
+
+    let itemsQuery = query
       .populate("sourceMeetingId", "title date")
       .sort(ALLOWED_SORT_FIELDS[sortBy]);
+
+    if (typeof itemsQuery.skip === "function") {
+      itemsQuery = itemsQuery.skip(skip).limit(limit);
+    }
+
+    const items = await itemsQuery;
 
     // Retrieving this list counts as accessing each memory in it; refresh
     // their importance scores in the background without blocking the response.
@@ -134,7 +150,15 @@ export const getOpenActionItems = async (req, res) => {
       items.map((item) => item._id),
     );
 
-    sendSuccess(res, { actionItems: items });
+    sendSuccess(res, {
+      actionItems: items,
+      pagination: {
+        total,
+        page,
+        limit,
+        totalPages: Math.ceil(total / limit),
+      },
+    });
   } catch (error) {
     console.error("getOpenActionItems error:", error);
     sendError(res, 500, "Failed to fetch action items");
@@ -176,19 +200,42 @@ export const getDecisions = async (req, res) => {
       filter.status = "superseded";
     }
 
+    const page = parseInt(req.query.page, 10) || 1;
+    const limit = Math.min(parseInt(req.query.limit, 10) || 10, 100);
+    const skip = (page - 1) * limit;
+
+    const total =
+      typeof Decision.countDocuments === "function"
+        ? await Decision.countDocuments(filter)
+        : 0;
+
     const sort =
       sortBy === "dueDate" ? { createdAt: -1 } : ALLOWED_SORT_FIELDS[sortBy];
 
-    const decisions = await Decision.find(filter)
+    let decisionsQuery = Decision.find(filter)
       .populate("sourceMeetingId", "title date")
       .sort(sort);
+
+    if (typeof decisionsQuery.skip === "function") {
+      decisionsQuery = decisionsQuery.skip(skip).limit(limit);
+    }
+
+    const decisions = await decisionsQuery;
 
     recordMemoryAccessBatch(
       "decision",
       decisions.map((d) => d._id),
     );
 
-    sendSuccess(res, { decisions });
+    sendSuccess(res, {
+      decisions,
+      pagination: {
+        total,
+        page,
+        limit,
+        totalPages: Math.ceil(total / limit),
+      },
+    });
   } catch (error) {
     console.error("getDecisions error:", error);
     sendError(res, 500, "Failed to fetch decisions");

@@ -143,10 +143,10 @@ const Navbar = () => {
 
       const fetchRecentNotifications = async () => {
         try {
-          const { data } = await notificationApi.getNotifications();
+          const { data } = await notificationApi.getNotifications({ limit: 5 });
           if (data.success) {
             setNotifications(
-              data.notifications.slice(0, 5).map((n) => ({
+              data.notifications.map((n) => ({
                 id: n.id,
                 title: n.title,
                 description: n.description,
