@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { jest as vi } from "@jest/globals";
 import mongoose from "mongoose";
 import {
   getDecisions,
@@ -142,7 +142,11 @@ describe("knowledgeController - NoSQL Injection & Query Validation", () => {
     });
 
     it("should ignore unsupported extra query parameters", async () => {
-      req.query = { status: "open", sortBy: "createdAt", $where: "sleep(5000)" };
+      req.query = {
+        status: "open",
+        sortBy: "createdAt",
+        $where: "sleep(5000)",
+      };
 
       const mockPopulate = vi.fn().mockReturnValue({
         sort: vi.fn().mockResolvedValue([{ _id: "dec1" }]),
@@ -292,7 +296,10 @@ describe("knowledgeController - NoSQL Injection & Query Validation", () => {
 
   describe("submitMemoryFeedback", () => {
     it("should reject invalid memory type object parameter", async () => {
-      req.params = { type: { $ne: "decision" }, id: new mongoose.Types.ObjectId().toString() };
+      req.params = {
+        type: { $ne: "decision" },
+        id: new mongoose.Types.ObjectId().toString(),
+      };
       req.body = { rating: 5 };
 
       await submitMemoryFeedback(req, res);
@@ -320,4 +327,3 @@ describe("knowledgeController - NoSQL Injection & Query Validation", () => {
     });
   });
 });
-

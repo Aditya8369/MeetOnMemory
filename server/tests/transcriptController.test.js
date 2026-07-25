@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { jest as vi } from "@jest/globals";
 import { updateSpeakers } from "../controllers/transcriptController.js";
 import Transcript from "../models/transcriptModel.js";
 import { sendSuccess, sendError } from "../utils/responseHandler.js";
