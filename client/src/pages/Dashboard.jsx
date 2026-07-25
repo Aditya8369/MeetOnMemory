@@ -27,6 +27,7 @@ import {
 import "react-grid-layout/css/styles.css";
 import "react-resizable/css/styles.css";
 import { userApi } from "../services/userApi";
+import TopContributorsWidget from "../components/organization/TopContributorsWidget";
 
 /* ─── Role Badge ──────────────────────────────────────────────────────────── */
 const ROLE_STYLES = {
@@ -171,6 +172,7 @@ const Dashboard = () => {
     return () => {
       mounted = false;
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [userData, visibleCards.length]);
 
   const handleLayoutChange = useCallback((layout, allLayouts) => {
@@ -408,6 +410,20 @@ const Dashboard = () => {
               {/* Skeleton or loading state could go here, for now it's just empty string while fetching */}
             </div>
           )}
+        </section>
+
+        {/* ── Gamification ── */}
+        <section
+          aria-label="Organization Engagement"
+          className="mt-8 sm:mt-12 fade-in-up stagger-3"
+        >
+          <div className="max-w-md">
+            <TopContributorsWidget
+              organizationId={
+                userData?.organization?._id || userData?.organization
+              }
+            />
+          </div>
         </section>
       </main>
     </div>

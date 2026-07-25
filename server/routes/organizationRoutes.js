@@ -17,6 +17,7 @@ import {
   updateOrganization,
   deleteOrganization,
   getOrganizationMembersById,
+  getOrganizationLeaderboard,
 } from "../controllers/organizationController.js";
 import userAuth from "../middleware/userAuth.js";
 import { apiLimiter, writeLimiter } from "../middleware/rateLimiter.js";
@@ -133,5 +134,7 @@ router.get("/:idOrSlug", userAuth, getOrganizationById);
 router.put("/:id", userAuth, updateOrganization);
 router.delete("/:id", userAuth, deleteOrganization);
 router.get("/:id/members", userAuth, getOrganizationMembersById);
+router.get("/current/leaderboard", userAuth, getOrganizationLeaderboard);
+router.get("/:id/leaderboard", userAuth, getOrganizationLeaderboard);
 
 export default router;
