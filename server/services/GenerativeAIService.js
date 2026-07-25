@@ -209,7 +209,6 @@ export const normalizeMoM = (structured, title, date) => ({
 
 export const buildHumanReadableMoM = (mom) => {
   let text = "";
-  text += `📘 Overview:\n${mom.summary}\n\n`;
   text += `📅 Title: ${mom.title}\n`;
   text += `Date: ${new Date(mom.date).toLocaleDateString()}\n\n`;
   text += `📝 Summary:\n${mom.summary}\n\n`;
