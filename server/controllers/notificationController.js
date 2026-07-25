@@ -36,7 +36,8 @@ export const getNotifications = async (req, res) => {
     );
     const skip = (page - 1) * limit;
 
-    const filter = { user: req.user.id };
+    const userId = String(req.user.id);
+    const filter = { user: userId };
 
     if (
       [
@@ -65,7 +66,7 @@ export const getNotifications = async (req, res) => {
         .limit(limit),
       notificationModel.countDocuments(filter),
       notificationModel.countDocuments({
-        user: req.user.id,
+        user: userId,
         isRead: false,
       }),
     ]);
