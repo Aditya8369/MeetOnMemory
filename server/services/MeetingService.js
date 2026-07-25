@@ -191,12 +191,6 @@ export const createMeeting = async (uploaderId, orgId, data) => {
     }
   })();
 
-  try {
-    eventBus.emit("meeting.created", meeting);
-  } catch (evtErr) {
-    console.error("⚠️ Failed to emit meeting.created event:", evtErr.message);
-  }
-
   return meeting;
 };
 
