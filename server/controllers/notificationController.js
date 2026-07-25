@@ -30,7 +30,8 @@ export const getNotifications = async (req, res) => {
 
     const { category, status } = req.query;
 
-    let query = notificationModel.find({ user: req.user.id });
+    const userId = String(req.user.id);
+    let query = notificationModel.find({ user: userId });
 
     if (category === "meetings") {
       query = query.where("category").equals("meetings");
@@ -64,7 +65,7 @@ export const getNotifications = async (req, res) => {
       .limit(limit);
 
     const unreadCount = await notificationModel.countDocuments({
-      user: req.user.id,
+      user: userId,
       isRead: false,
     });
 
