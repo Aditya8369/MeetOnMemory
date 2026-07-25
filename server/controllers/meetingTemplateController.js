@@ -74,12 +74,10 @@ export const updateTemplate = async (req, res) => {
     if (
       template.organizationId.toString() !== req.user.organization.toString()
     ) {
-      return res
-        .status(403)
-        .json({
-          success: false,
-          message: "Not authorized to update this template",
-        });
+      return res.status(403).json({
+        success: false,
+        message: "Not authorized to update this template",
+      });
     }
 
     if (title) template.title = title;
@@ -110,12 +108,10 @@ export const deleteTemplate = async (req, res) => {
     if (
       template.organizationId.toString() !== req.user.organization.toString()
     ) {
-      return res
-        .status(403)
-        .json({
-          success: false,
-          message: "Not authorized to delete this template",
-        });
+      return res.status(403).json({
+        success: false,
+        message: "Not authorized to delete this template",
+      });
     }
 
     await template.deleteOne();
