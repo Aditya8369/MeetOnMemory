@@ -9,6 +9,7 @@ import MeetingTranscript from "../components/meeting-details/MeetingTranscript";
 import MeetingParticipants from "../components/meeting-details/MeetingParticipants";
 import MeetingMetadata from "../components/meeting-details/MeetingMetadata";
 import MeetingActions from "../components/meeting-details/MeetingActions";
+import ShareModal from "../components/shared-links/ShareModal";
 import MeetingFollowUpBanner from "../components/meeting-details/MeetingFollowUpBanner";
 
 const MeetingDetails = () => {
@@ -17,6 +18,7 @@ const MeetingDetails = () => {
   const [meeting, setMeeting] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [shareModalOpen, setShareModalOpen] = useState(false);
 
   useEffect(() => {
     const fetchMeetingDetails = async () => {
@@ -154,7 +156,10 @@ const MeetingDetails = () => {
     <div className="min-h-screen bg-gray-50 p-6">
       <div className="max-w-6xl mx-auto">
         <MeetingFollowUpBanner meeting={meeting} />
-        <MeetingHeader meeting={meeting} />
+        <MeetingHeader
+          meeting={meeting}
+          onShare={() => setShareModalOpen(true)}
+        />
         <MeetingSummary meeting={meeting} />
         <MeetingCollaborativeNotes meeting={meeting} />
         <MeetingTranscript meeting={meeting} />
@@ -166,6 +171,14 @@ const MeetingDetails = () => {
           onRename={handleRename}
         />
       </div>
+
+      <ShareModal
+        isOpen={shareModalOpen}
+        onClose={() => setShareModalOpen(false)}
+        resourceId={meeting._id}
+        resourceType="Meeting"
+        title={meeting.title}
+      />
     </div>
   );
 };

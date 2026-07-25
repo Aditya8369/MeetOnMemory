@@ -3,14 +3,14 @@
 // Handles AI Embeddings + Pinecone Vector Search (Offline + Free)
 // ==============================================
 
-import { pipeline } from "@xenova/transformers";
-import { Pinecone } from "@pinecone-database/pinecone";
 import dotenv from "dotenv";
 import Meeting from "../models/meetingModel.js";
 
 dotenv.config();
 
 // ======= 🌐 Global Singletons =======
+// Transformers + Pinecone are loaded on first use so importing this module
+// does not eagerly initialize the AI runtime (Jest ESM linker / cold start).
 let pineconeClient = null;
 let pineconeIndex = null;
 let embedder = null;
@@ -34,6 +34,7 @@ export const initVectorStore = async () => {
 
   try {
     if (!pineconeClient) {
+      const { Pinecone } = await import("@pinecone-database/pinecone");
       pineconeClient = new Pinecone({ apiKey: PINECONE_API_KEY });
       console.log("✅ Pinecone client initialized.");
     }
@@ -51,11 +52,25 @@ export const initVectorStore = async () => {
 };
 
 // ===================================================
+// ⚙️ 1.5️⃣ Pre-warm Pinecone (for workers)
+// ===================================================
+export const preWarmPinecone = async () => {
+  try {
+    await initVectorStore();
+    await getEmbedder();
+    console.log("🔥 Pinecone and Embedder pre-warmed.");
+  } catch (err) {
+    console.error("❌ Failed to pre-warm Pinecone:", err);
+  }
+};
+
+// ===================================================
 // 🧠 2️⃣ Load Local Hugging Face Embedding Model
 // ===================================================
 async function getEmbedder() {
   if (!embedder) {
     console.log("⏳ Loading local Hugging Face model (MiniLM-L6-v2)...");
+    const { pipeline } = await import("@xenova/transformers");
     embedder = await pipeline("feature-extraction", "Xenova/all-MiniLM-L6-v2");
     console.log("✅ Local Hugging Face model loaded");
   }

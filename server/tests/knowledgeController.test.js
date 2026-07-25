@@ -18,8 +18,6 @@ jest.unstable_mockModule("../models/actionItemModel.js", () => ({
 
 jest.unstable_mockModule("../services/knowledgeGraphService.js", () => ({
   getDecisionLineage: jest.fn(),
-  detectResolutions: jest.fn(),
-  processStructuredMoM: jest.fn(),
 }));
 
 jest.unstable_mockModule("../services/importanceScoringService.js", () => ({
