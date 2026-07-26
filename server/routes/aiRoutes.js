@@ -14,7 +14,7 @@ const router = express.Router();
 // Apply rate limiting to all routes
 router.use(apiLimiter);
 
-// POST /api/ai-search
+// POST /api/ai
 router.post(
   "/",
   userAuth,
