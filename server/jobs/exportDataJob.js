@@ -103,8 +103,10 @@ export default async function exportDataJob(job, _app) {
       expiresIn: "24h",
     });
 
-// BASE_URL should be set to the server's public URL in .env for production
-    const baseUrl = process.env.BASE_URL || `http://localhost:${process.env.PORT || 4000}`;    const downloadUrl = `${baseUrl}/api/user/download-export/${downloadToken}`;
+    // BASE_URL should be set to the server's public URL in .env for production
+    const baseUrl =
+      process.env.BASE_URL || `http://localhost:${process.env.PORT || 4000}`;
+    const downloadUrl = `${baseUrl}/api/user/download-export/${downloadToken}`;
 
     // Send Email
     const mailOptions = {
