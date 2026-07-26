@@ -31,7 +31,7 @@ const connectDB = async () => {
 
     const sanitizedUri = dbUri.replace(
       /(mongodb(?:\+srv)?:\/\/[^:]+:)([^@]+)(@)/,
-      "$1****$3"
+      "$1****$3",
     );
 
     // Extract and log the resolved database name
@@ -41,7 +41,7 @@ const connectDB = async () => {
   } catch (error) {
     console.error("MongoDB connection failed:", error.message);
     console.error(
-      "Exiting process because the server cannot run without a database connection."
+      "Exiting process because the server cannot run without a database connection.",
     );
     process.exit(1);
   }
