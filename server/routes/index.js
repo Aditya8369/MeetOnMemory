@@ -21,7 +21,7 @@ import meetingTemplateRoutes from "./meetingTemplateRoutes.js";
 import bookmarkRoutes from "./bookmarkRoutes.js";
 import commentRoutes from "./commentRoutes.js";
 import tagRoutes from "./tagRoutes.js";
-
+import pollRoutes from "./pollRoutes.js";
 const router = express.Router();
 
 // ==========================================
@@ -49,5 +49,6 @@ router.use("/api/templates", meetingTemplateRoutes);
 router.use("/api/bookmarks", bookmarkRoutes);
 router.use("/api/comments", commentRoutes);
 router.use("/api/tags", tagRoutes);
+router.use("/api/polls", pollRoutes);
 
 export default router;

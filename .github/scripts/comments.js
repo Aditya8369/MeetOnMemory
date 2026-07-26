@@ -156,4 +156,29 @@ export const comments = {
       AUTOMATION.overrideMarker,
       `🔧 Maintainer update by @${actor}: assignment state was adjusted for @${target}.`,
     ),
+
+  ciValidationFailed: ({ user, failedRuns }) =>
+    withMarker(
+      AUTOMATION.ciValidationMarker,
+      `### ❌ Automated PR Validation Failed\n\n` +
+        `Hi @${user},\n\n` +
+        `Your Pull Request cannot be reviewed yet because one or more required checks have failed.\n\n` +
+        `**Failed Checks**\n\n` +
+        failedRuns
+          .map(
+            (run) =>
+              `- ❌ [${run.name}](${run.html_url || run.details_url || "#"})`,
+          )
+          .join("\n") +
+        `\n\nPlease review the workflow logs above, resolve the reported issues, and push a new commit. The checks will run again automatically.\n\n` +
+        `Once all required checks pass, the Pull Request will be ready for maintainer review.\n\n` +
+        `Thank you for your contribution! 🚀`,
+    ),
+
+  ciValidationRecovered: ({ user }) =>
+    withMarker(
+      AUTOMATION.ciValidationMarker,
+      `### ✅ Automated PR Validation Passed\n\n` +
+        `Hi @${user}, all required checks are now passing. The earlier automated "Request Changes" review has been dismissed, and this PR is ready for maintainer review. Thanks for the fix! 🎉`,
+    ),
 };

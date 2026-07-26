@@ -13,6 +13,7 @@ export const AUTOMATION = Object.freeze({
   firstWelcomeMarker: "mom:first-contributor-welcome",
   guidanceMarker: "mom:claim-guidance",
   overrideMarker: "mom:maintainer-override",
+  ciValidationMarker: "mom:ci-validation",
 });
 
 export const COMMANDS = Object.freeze({
@@ -62,3 +63,10 @@ export const PR_EVENTS = Object.freeze({
 
 export const EXPECTED_REPOSITORY =
   process.env.AUTOMATION_REPOSITORY || process.env.GITHUB_REPOSITORY || "";
+
+export const REQUIRED_CHECK_NAMES = Object.freeze([
+  "Code Quality",
+  "Backend Validation",
+  "Frontend Validation",
+  "Integration Tests",
+]);
