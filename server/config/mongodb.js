@@ -32,12 +32,10 @@ const connectDB = async () => {
     const resolvedDbName = connectionUri.split("/").pop();
     console.log("Mongo URI:", sanitizedUri);
     console.log("Database:", resolvedDbName);
-  } catch (error) {
+} catch (error) {
     console.error("MongoDB connection failed:", error.message);
-    console.warn(
-      "Server running without database connection. Some features may not work.",
-    );
-  }
-};
+    console.error("Exiting process because the server cannot run without a database connection.");
+    process.exit(1);
+  }};
 
 export default connectDB;
