@@ -1,5 +1,5 @@
 import express from "express";
-import { protect } from "../middleware/authMiddleware.js";
+import userAuth from "../middleware/userAuth.js";
 import {
   createPoll,
   getPollsByMeeting,
@@ -10,7 +10,7 @@ import {
 
 const router = express.Router();
 
-router.use(protect); // All poll routes require authentication
+router.use(userAuth); // All poll routes require authentication
 
 router.post("/", createPoll);
 router.get("/meeting/:meetingId", getPollsByMeeting);
