@@ -14,3 +14,4 @@ export * from "./invitationApi";
 export * from "./webhookApi";
 export * from "./sharedLinkApi";
 export * from "./meetingTemplateApi";
+export * from "./tagApi";
