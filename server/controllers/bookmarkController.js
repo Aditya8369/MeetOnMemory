@@ -15,7 +15,7 @@ export const toggleBookmark = async (req, res) => {
 
     const existingBookmark = await Bookmark.findOne({
       user: userId,
-      meeting: meetingId,
+      meeting: String(meetingId),
     });
 
     if (existingBookmark) {
@@ -33,13 +33,11 @@ export const toggleBookmark = async (req, res) => {
         notes: notes || "",
         color: color || "#3b82f6",
       });
-      return res
-        .status(201)
-        .json({
-          message: "Bookmark added",
-          bookmarked: true,
-          data: newBookmark,
-        });
+      return res.status(201).json({
+        message: "Bookmark added",
+        bookmarked: true,
+        data: newBookmark,
+      });
     }
   } catch (error) {
     console.error("Error in toggleBookmark:", error);
@@ -57,7 +55,7 @@ export const getBookmarks = async (req, res) => {
 
     const query = { user: userId };
     if (collectionName) {
-      query.collectionName = collectionName;
+      query.collectionName = String(collectionName);
     }
 
     const bookmarks = await Bookmark.find(query)
@@ -105,7 +103,7 @@ export const updateBookmark = async (req, res) => {
   try {
     const { collectionName, notes, color } = req.body;
     const bookmark = await Bookmark.findOne({
-      _id: req.params.id,
+      _id: String(req.params.id),
       user: req.user._id,
     });
 
@@ -131,7 +129,7 @@ export const updateBookmark = async (req, res) => {
 export const deleteCollection = async (req, res) => {
   try {
     const userId = req.user._id;
-    const collectionName = req.params.name;
+    const collectionName = String(req.params.name);
 
     await Bookmark.deleteMany({ user: userId, collectionName });
     res.status(200).json({ message: `Collection ${collectionName} deleted` });
