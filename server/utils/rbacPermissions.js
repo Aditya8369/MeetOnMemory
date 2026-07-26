@@ -68,6 +68,8 @@ export const PERMISSIONS = {
   settings: {
     view: ["owner", "admin", "moderator"],
     edit: ["owner", "admin"],
+    self_view: ["owner", "admin", "moderator", "member", "guest"],
+    self_edit: ["owner", "admin", "moderator", "member", "guest"],
   },
   // Reports permissions
   reports: {

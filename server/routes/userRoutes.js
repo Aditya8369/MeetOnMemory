@@ -23,14 +23,14 @@ userRouter.use(apiLimiter);
 userRouter.get(
   "/data",
   userAuth,
-  requirePermission("settings", "view"),
+  requirePermission("settings", "self_view"),
   getUserData,
 );
 userRouter.put(
   "/update",
   userAuth,
   writeLimiter,
-  requirePermission("settings", "edit"),
+  requirePermission("settings", "self_edit"),
   updateUserProfile,
 );
 
