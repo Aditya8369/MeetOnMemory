@@ -61,8 +61,8 @@ export const getOrgActivities = async (orgId, filters = {}) => {
   const skip = (page - 1) * limit;
 
   const query = { organization: orgId };
-  if (action) query.action = action;
-  if (actor) query.actor = actor;
+  if (typeof action === "string") query.action = action;
+  if (typeof actor === "string") query.actor = actor;
 
   const [activities, total] = await Promise.all([
     Activity.find(query)
