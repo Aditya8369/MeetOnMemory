@@ -96,7 +96,7 @@ app.use("/api/user", userRoutes);
 app.use("/api/notifications", notificationRoutes);
 app.use("/api/knowledge", knowledgeRoutes);
 app.use("/api/calendar", calendarRoutes);
-app.use("/api/compliance", policyComplianceRoutes);
+app.use(["/api/policy-compliance", "/api/compliance"], policyComplianceRoutes);
 import { slackWebhookParser } from "./middleware/slackWebhookParser.js";
 
 app.use("/api/sessions", sessionRoutes);
