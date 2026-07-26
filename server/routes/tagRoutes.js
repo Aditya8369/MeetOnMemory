@@ -1,6 +1,9 @@
 import express from "express";
 import userAuth from "../middleware/userAuth.js";
-import { requireAdmin, requireOrgMembership } from "../middleware/rbac.js";
+import {
+  requireAdminOrOwner,
+  requireOrgMembership,
+} from "../middleware/rbac.js";
 import { apiLimiter } from "../middleware/rateLimiter.js";
 import {
   createTag,
@@ -32,15 +35,15 @@ router.get("/stats", requireOrgMembership, getTagStats);
 router.get("/", requireOrgMembership, getOrgTags);
 
 // Create a new tag (admin only)
-router.post("/", requireAdmin, createTag);
+router.post("/", requireAdminOrOwner, createTag);
 
 // Get meetings for a specific tag
 router.get("/:name/meetings", requireOrgMembership, getMeetingsByTag);
 
 // Update a tag (admin only)
-router.put("/:id", requireAdmin, updateTag);
+router.put("/:id", requireAdminOrOwner, updateTag);
 
 // Delete a tag (admin only)
-router.delete("/:id", requireAdmin, deleteTag);
+router.delete("/:id", requireAdminOrOwner, deleteTag);
 
 export default router;

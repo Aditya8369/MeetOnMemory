@@ -20,6 +20,7 @@ import * as MeetingService from "../services/MeetingService.js";
 import { ValidationError, UnauthorizedError } from "../utils/errors.js";
 import AuditService from "../services/AuditService.js";
 import { sendSuccess } from "../utils/responseHandler.js";
+import * as activityService from "../services/activityService.js";
 
 const pushMeetingToIntegrations = (...args) =>
   import("../services/calendarSyncService.js").then((mod) =>
@@ -169,6 +170,19 @@ export const createMeeting = async (req, res, next) => {
       pushMeetingToIntegrations(uploaderId, meeting).catch(console.error);
     }
 
+    if (req.user?.organization) {
+      const io = req.app.get("io");
+      activityService.logActivity(
+        io,
+        req.user.organization,
+        uploaderId,
+        "meeting.created",
+        "Meeting",
+        meeting._id,
+        meeting.title,
+      );
+    }
+
     return sendSuccess(
       res,
       {
@@ -224,6 +238,19 @@ export const uploadMeeting = async (req, res, next) => {
         req.file,
         validated,
       );
+
+    if (req.user?.organization) {
+      const io = req.app.get("io");
+      activityService.logActivity(
+        io,
+        req.user.organization,
+        uploaderId,
+        "meeting.uploaded",
+        "Meeting",
+        meeting._id,
+        meeting.title,
+      );
+    }
 
     return sendSuccess(
       res,
@@ -366,6 +393,17 @@ export const deleteMeeting = async (req, res, next) => {
         organizationId: req.doc.organization,
         details: { title: req.doc.title },
       });
+
+      const io = req.app.get("io");
+      activityService.logActivity(
+        io,
+        req.doc.organization,
+        getUserId(req),
+        "meeting.deleted",
+        "Meeting",
+        req.doc._id,
+        req.doc.title,
+      );
     }
 
     return sendSuccess(res, null, "Meeting deleted successfully");
@@ -409,6 +447,19 @@ export const updateMeeting = async (req, res, next) => {
       validated,
       req.doc || null, // from requireOwner middleware
     );
+
+    if (req.user?.organization) {
+      const io = req.app.get("io");
+      activityService.logActivity(
+        io,
+        req.user.organization,
+        userId,
+        "meeting.updated",
+        "Meeting",
+        meeting._id,
+        meeting.title,
+      );
+    }
 
     return sendSuccess(
       res,
