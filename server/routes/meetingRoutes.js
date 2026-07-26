@@ -5,7 +5,7 @@ import {
   requireOwnerOrAdmin,
   requireOwner,
   requireOrgAccess,
-  requireAdmin,
+  requireAdminOrOwner,
   requirePermission,
   requireOrgMembership,
 } from "../middleware/rbac.js";
@@ -43,7 +43,7 @@ router.use(apiLimiter);
 router.post(
   "/upload",
   userAuth,
-  requireAdmin,
+  requireAdminOrOwner,
   uploadLimiter,
   requireOrgMembership,
   requirePermission("meetings", "create"),
@@ -143,7 +143,7 @@ router.post(
 router.post(
   "/upload-audio",
   userAuth,
-  requireAdmin,
+  requireAdminOrOwner,
   uploadLimiter,
   requireOrgMembership,
   requirePermission("meetings", "create"),
