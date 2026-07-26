@@ -36,6 +36,7 @@ import Settings from "../pages/Settings.jsx";
 import MembershipRequests from "../pages/MembershipRequests.jsx";
 import AdminPanel from "../pages/AdminPanel.jsx";
 import Bookmarks from "../pages/Bookmarks.jsx";
+import ActivityFeed from "../pages/ActivityFeed.jsx";
 
 const ProtectedRoutes = (
   <React.Fragment>
@@ -278,6 +279,14 @@ const ProtectedRoutes = (
       element={
         <ProtectedRoute>
           <Bookmarks />
+        </ProtectedRoute>
+      }
+    />
+    <Route
+      path="/activities"
+      element={
+        <ProtectedRoute>
+          <ActivityFeed />
         </ProtectedRoute>
       }
     />
