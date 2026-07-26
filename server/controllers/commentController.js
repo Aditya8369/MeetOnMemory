@@ -1,6 +1,7 @@
 import Comment from "../models/commentModel.js";
 import Meeting from "../models/meetingModel.js";
 import { hasPermission } from "../utils/rbacPermissions.js";
+import mongoose from "mongoose";
 
 // @desc    Create a new comment
 // @route   POST /api/comments
@@ -8,6 +9,13 @@ import { hasPermission } from "../utils/rbacPermissions.js";
 export const createComment = async (req, res) => {
   try {
     const { meetingId, body, parentComment } = req.body;
+
+    if (!mongoose.isValidObjectId(meetingId)) {
+      return res.status(400).json({ message: "Invalid meeting ID" });
+    }
+    if (parentComment && !mongoose.isValidObjectId(parentComment)) {
+      return res.status(400).json({ message: "Invalid parent comment ID" });
+    }
 
     // RBAC Check
     if (!req.user.role || !hasPermission(req.user.role, "meetings", "view")) {
@@ -60,6 +68,10 @@ export const createComment = async (req, res) => {
 export const getCommentsByMeeting = async (req, res) => {
   try {
     const { meetingId } = req.params;
+
+    if (!mongoose.isValidObjectId(meetingId)) {
+      return res.status(400).json({ message: "Invalid meeting ID" });
+    }
     const page = parseInt(req.query.page) || 1;
     const limit = parseInt(req.query.limit) || 50;
     const skip = (page - 1) * limit;
@@ -133,6 +145,10 @@ export const updateComment = async (req, res) => {
     const { id } = req.params;
     const { body } = req.body;
 
+    if (!mongoose.isValidObjectId(id)) {
+      return res.status(400).json({ message: "Invalid comment ID" });
+    }
+
     const comment = await Comment.findById(id);
     if (!comment) {
       return res.status(404).json({ message: "Comment not found" });
@@ -167,6 +183,10 @@ export const updateComment = async (req, res) => {
 export const deleteComment = async (req, res) => {
   try {
     const { id } = req.params;
+
+    if (!mongoose.isValidObjectId(id)) {
+      return res.status(400).json({ message: "Invalid comment ID" });
+    }
 
     const comment = await Comment.findById(id);
     if (!comment) {
@@ -211,6 +231,10 @@ export const toggleReaction = async (req, res) => {
     const { id } = req.params;
     const { emoji } = req.body;
     const userId = req.user.id;
+
+    if (!mongoose.isValidObjectId(id)) {
+      return res.status(400).json({ message: "Invalid comment ID" });
+    }
 
     const comment = await Comment.findById(id);
     if (!comment) {
