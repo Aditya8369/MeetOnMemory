@@ -38,14 +38,12 @@ export const createPoll = async (req, res) => {
     // RBAC Check (assume organizer/admin or owner)
     // Actually, maybe any member with view/edit access can create a poll, let's enforce based on meeting access.
     if (!req.user.role || !hasPermission(req.user.role, "meetings", "edit")) {
-      return res
-        .status(403)
-        .json({
-          message: "Forbidden: Insufficient permissions to create poll",
-        });
+      return res.status(403).json({
+        message: "Forbidden: Insufficient permissions to create poll",
+      });
     }
 
-    const meeting = await Meeting.findById(meetingId);
+    const meeting = await Meeting.findById(String(meetingId));
     if (!meeting) {
       return res.status(404).json({ message: "Meeting not found" });
     }
@@ -103,7 +101,7 @@ export const getPollsByMeeting = async (req, res) => {
         .json({ message: "Forbidden: Insufficient permissions" });
     }
 
-    const meeting = await Meeting.findById(meetingId);
+    const meeting = await Meeting.findById(String(meetingId));
     if (!meeting) {
       return res.status(404).json({ message: "Meeting not found" });
     }
@@ -114,7 +112,7 @@ export const getPollsByMeeting = async (req, res) => {
         .json({ message: "Forbidden: Not part of organization" });
     }
 
-    const polls = await Poll.find({ meeting: meetingId })
+    const polls = await Poll.find({ meeting: String(meetingId) })
       .populate("createdBy", "name email profilePicture")
       .populate("options.votes", "name email profilePicture")
       .sort({ createdAt: -1 });
@@ -141,7 +139,7 @@ export const castVote = async (req, res) => {
       return res.status(400).json({ message: "Invalid poll ID" });
     }
 
-    const poll = await Poll.findById(id);
+    const poll = await Poll.findById(String(id));
     if (!poll) {
       return res.status(404).json({ message: "Poll not found" });
     }
@@ -219,7 +217,7 @@ export const closePoll = async (req, res) => {
       return res.status(400).json({ message: "Invalid poll ID" });
     }
 
-    const poll = await Poll.findById(id);
+    const poll = await Poll.findById(String(id));
     if (!poll) {
       return res.status(404).json({ message: "Poll not found" });
     }
@@ -265,7 +263,7 @@ export const deletePoll = async (req, res) => {
       return res.status(400).json({ message: "Invalid poll ID" });
     }
 
-    const poll = await Poll.findById(id);
+    const poll = await Poll.findById(String(id));
     if (!poll) {
       return res.status(404).json({ message: "Poll not found" });
     }
@@ -279,7 +277,7 @@ export const deletePoll = async (req, res) => {
         .json({ message: "Forbidden: Only creator or admin can delete poll" });
     }
 
-    await Poll.deleteOne({ _id: id });
+    await Poll.deleteOne({ _id: String(id) });
 
     const io = req.app.get("io");
     if (io) {
