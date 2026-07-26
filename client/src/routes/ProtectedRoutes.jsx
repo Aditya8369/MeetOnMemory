@@ -37,6 +37,7 @@ import MembershipRequests from "../pages/MembershipRequests.jsx";
 import AdminPanel from "../pages/AdminPanel.jsx";
 import Bookmarks from "../pages/Bookmarks.jsx";
 import ActivityFeed from "../pages/ActivityFeed.jsx";
+import TagBrowser from "../pages/TagBrowser.jsx";
 
 const ProtectedRoutes = (
   <React.Fragment>
@@ -290,6 +291,15 @@ const ProtectedRoutes = (
         </ProtectedRoute>
       }
     />
+    <Route
+      path="/tags"
+      element={
+        <ProtectedRoute>
+          <TagBrowser />
+        </ProtectedRoute>
+      }
+    />
+    <Route path="/access-denied" element={<AccessDenied />} />
 
     <Route
       path="/admin-panel"

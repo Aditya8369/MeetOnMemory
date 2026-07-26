@@ -54,6 +54,14 @@ const uploadMeetingSchema = z.object({
   meetingType: z
     .enum(["conference", "policy", "event", "internal", "external", "board"])
     .optional(),
+  tags: z
+    .union([z.string(), z.array(z.string())])
+    .optional()
+    .transform((val) => {
+      if (!val) return [];
+      if (Array.isArray(val)) return val;
+      return [val];
+    }),
 });
 
 const summarizeMeetingSchema = z.object({
