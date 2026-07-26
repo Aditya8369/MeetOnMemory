@@ -13,6 +13,7 @@ import ShareModal from "../components/shared-links/ShareModal";
 import MeetingFollowUpBanner from "../components/meeting-details/MeetingFollowUpBanner";
 import PresentMode from "../components/meeting-details/PresentMode";
 import CommentSection from "../components/meeting-details/CommentSection";
+import PollSection from "../components/meeting-details/PollSection";
 
 const MeetingDetails = () => {
   const { id } = useParams();
@@ -174,6 +175,7 @@ const MeetingDetails = () => {
           onDelete={handleDelete}
           onRename={handleRename}
         />
+        <PollSection meetingId={meeting._id} />
         <CommentSection meetingId={meeting._id} />
       </div>
 

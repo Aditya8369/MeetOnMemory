@@ -47,6 +47,7 @@ import transcriptSocket from "./socket/transcriptSocket.js"; // eslint-disable-l
 import { initRedis, getRedisClient } from "./services/redisService.js"; // eslint-disable-line no-unused-vars
 import { createAdapter } from "@socket.io/redis-adapter"; // eslint-disable-line no-unused-vars
 import { startCalendarSyncJob } from "./jobs/calendarSyncJob.js";
+import startPollExpirationJob from "./jobs/pollExpirationJob.js";
 import { createClient } from "redis"; // eslint-disable-line no-unused-vars
 import {
   initAIWorker, // eslint-disable-line no-unused-vars
@@ -121,7 +122,7 @@ configureErrorHandling(app);
 const server = http.createServer(app);
 
 // SOCKET.IO
-configureSocket(server, app);
+const io = configureSocket(server, app);
 
 // SERVER START (Skipped during Jest test execution)
 if (process.env.NODE_ENV !== "test") {
@@ -138,6 +139,9 @@ if (process.env.NODE_ENV !== "test") {
 
   // Start calendar sync job
   startCalendarSyncJob();
+
+  // Start poll expiration job
+  startPollExpirationJob(io);
 }
 
 // (AI, Data Export, and Webhook workers are initialized inside server.listen callback)
