@@ -50,7 +50,7 @@ const Dashboard = () => {
   const { t } = useTranslation();
   const { userData } = useContext(AppContent);
   const navigate = useNavigate();
-  const [containerWidth, containerRef] = useContainerWidth();
+  const { width: containerWidth, containerRef } = useContainerWidth();
 
   const [layouts, setLayouts] = useState(null);
   const saveTimeoutRef = useRef(null);
