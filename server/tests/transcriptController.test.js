@@ -1,12 +1,19 @@
-import { jest } from "@jest/globals";
+import {
+  describe,
+  it,
+  expect,
+  beforeEach,
+  afterEach,
+  vi as jest,
+} from "vitest";
 
-jest.unstable_mockModule("../models/transcriptModel.js", () => ({
+jest.mock("../models/transcriptModel.js", () => ({
   default: {
     findById: jest.fn(),
   },
 }));
 
-jest.unstable_mockModule("../utils/responseHandler.js", () => ({
+jest.mock("../utils/responseHandler.js", () => ({
   sendSuccess: jest.fn(),
   sendError: jest.fn(),
 }));

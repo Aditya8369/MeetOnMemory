@@ -1,14 +1,21 @@
-import { jest } from "@jest/globals";
+import {
+  describe,
+  it,
+  expect,
+  beforeEach,
+  afterEach,
+  vi as jest,
+} from "vitest";
 import mongoose from "mongoose";
 
-jest.unstable_mockModule("../models/decisionModel.js", () => ({
+jest.mock("../models/decisionModel.js", () => ({
   default: {
     find: jest.fn(),
     findById: jest.fn(),
   },
 }));
 
-jest.unstable_mockModule("../models/actionItemModel.js", () => ({
+jest.mock("../models/actionItemModel.js", () => ({
   default: {
     find: jest.fn(),
     findById: jest.fn(),
@@ -16,13 +23,13 @@ jest.unstable_mockModule("../models/actionItemModel.js", () => ({
   },
 }));
 
-jest.unstable_mockModule("../services/knowledgeGraphService.js", () => ({
+jest.mock("../services/knowledgeGraphService.js", () => ({
   getDecisionLineage: jest.fn(),
   detectResolutions: jest.fn(),
   processStructuredMoM: jest.fn(),
 }));
 
-jest.unstable_mockModule("../services/importanceScoringService.js", () => ({
+jest.mock("../services/importanceScoringService.js", () => ({
   recalculateAllImportanceScores: jest.fn(),
   recordMemoryAccess: jest.fn(),
   recordMemoryAccessBatch: jest.fn(),
