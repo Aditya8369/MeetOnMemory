@@ -135,9 +135,10 @@ export const autocomplete = async (req, res, next) => {
       return sendSuccess(res, []);
     }
 
+    const escapedQ = q.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
     const tags = await Tag.find({
       organization: orgId,
-      name: { $regex: new RegExp(`^${q}`, "i") },
+      name: { $regex: new RegExp(`^${escapedQ}`, "i") },
     })
       .limit(10)
       .sort({ usageCount: -1 });

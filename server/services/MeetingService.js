@@ -226,10 +226,11 @@ export const uploadAndTranscribeMeeting = async (
 
   if (body.tags && Array.isArray(body.tags) && orgId) {
     for (const tagName of body.tags) {
+      const escapedTagName = tagName.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
       await Tag.findOneAndUpdate(
         {
           organization: orgId,
-          name: { $regex: new RegExp(`^${tagName}$`, "i") },
+          name: { $regex: new RegExp(`^${escapedTagName}$`, "i") },
         },
         {
           $setOnInsert: {
