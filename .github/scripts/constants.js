@@ -12,8 +12,9 @@ export const AUTOMATION = Object.freeze({
   mergedMarker: "mom:pr-merged",
   firstWelcomeMarker: "mom:first-contributor-welcome",
   guidanceMarker: "mom:claim-guidance",
-overrideMarker: "mom:maintainer-override",
-  ciValidationMarker: "mom:ci-validation",});
+  overrideMarker: "mom:maintainer-override",
+  ciValidationMarker: "mom:ci-validation",
+});
 
 export const COMMANDS = Object.freeze({
   claim: "/claim",

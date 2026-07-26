@@ -225,7 +225,10 @@ export function isIssueUnavailable(issue, context, core) {
   return false;
 }
 
-export function summarizeRequiredCheckStates(checkRuns = [], requiredNames = []) {
+export function summarizeRequiredCheckStates(
+  checkRuns = [],
+  requiredNames = [],
+) {
   const requiredRuns = checkRuns.filter((c) => requiredNames.includes(c.name));
   const failed = requiredRuns.filter(
     (c) => c.status === "completed" && c.conclusion === "failure",
@@ -241,7 +244,8 @@ export function summarizeRequiredCheckStates(checkRuns = [], requiredNames = [])
   };
 }
 
-export function summarizeCheckStates(checkRuns = []) {  const failed = checkRuns.filter(
+export function summarizeCheckStates(checkRuns = []) {
+  const failed = checkRuns.filter(
     (c) => c.status === "completed" && c.conclusion === "failure",
   );
   const pending = checkRuns.filter((c) => c.status !== "completed");
@@ -268,7 +272,13 @@ export async function listReviews(github, context, core, prNumber) {
   return reviews || [];
 }
 
-export async function findReviewByMarker(github, context, core, prNumber, marker) {
+export async function findReviewByMarker(
+  github,
+  context,
+  core,
+  prNumber,
+  marker,
+) {
   const reviews = await listReviews(github, context, core, prNumber);
   return (
     reviews.find(
@@ -277,7 +287,13 @@ export async function findReviewByMarker(github, context, core, prNumber, marker
   );
 }
 
-export async function requestChangesReview(github, context, core, prNumber, body) {
+export async function requestChangesReview(
+  github,
+  context,
+  core,
+  prNumber,
+  body,
+) {
   return safeCall(
     core,
     "pulls.createReview(REQUEST_CHANGES)",
@@ -293,7 +309,14 @@ export async function requestChangesReview(github, context, core, prNumber, body
   );
 }
 
-export async function dismissReview(github, context, core, prNumber, reviewId, message) {
+export async function dismissReview(
+  github,
+  context,
+  core,
+  prNumber,
+  reviewId,
+  message,
+) {
   return safeCall(
     core,
     "pulls.dismissReview",
