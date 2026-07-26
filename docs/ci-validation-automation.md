@@ -5,7 +5,8 @@ To catch failing checks earlier and reduce repetitive maintainer reviews, this r
 ## How It Works
 
 1. **Trigger Event**:
-   - The workflow is triggered whenever a **Check Suite** completes (`check_suite.completed`), i.e. after the `CI Pipeline` workflow finishes running on a PR's latest commit.
+   - The workflow is triggered whenever a **Check Suite** completes (`check_suite.completed`), i.e. after GitHub Actions check suites finish on a PR's latest commit.
+   - CI jobs are **path-filtered**. Required check names that were skipped (path filter) still appear as completed check runs with conclusion `skipped`; the bot treats those as non-failures and only requests changes when a required check concludes with `failure`.
 
 2. **Required Checks**:
    - Only the following checks are treated as required: `Code Quality`, `Backend Validation`, `Frontend Validation`, `Integration Tests`.
