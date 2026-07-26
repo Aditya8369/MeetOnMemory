@@ -53,12 +53,12 @@ ESLint is **not** duplicated here. Server and client lint run in Backend / Front
 
 **Purpose:** Verify the server lints, passes all tests, and can start without crashes.
 
-| Step                   | What it does                                                                          |
-| ---------------------- | ------------------------------------------------------------------------------------- |
-| `npm ci`               | Clean install of server dependencies                                                  |
-| `npm run lint`         | ESLint checks (`eslint .`)                                                            |
-| `npm run test:ci`      | All Jest suites with `--ci --coverage` (includes `integration.test.js`)               |
-| `npm run test:startup` | Validates module imports, service initialization, and queue wrappers                  |
+| Step                   | What it does                                                            |
+| ---------------------- | ----------------------------------------------------------------------- |
+| `npm ci`               | Clean install of server dependencies                                    |
+| `npm run lint`         | ESLint checks (`eslint .`)                                              |
+| `npm run test:ci`      | All Jest suites with `--ci --coverage` (includes `integration.test.js`) |
+| `npm run test:startup` | Validates module imports, service initialization, and queue wrappers    |
 
 Coverage reports are uploaded as GitHub Actions artifacts (retained for 14 days).  
 Runs when `server/**` (or `.github/workflows/**`) changes.
@@ -102,11 +102,11 @@ Runs when `server/**` (or `.github/workflows/**`) changes.
 
 These workflows run independently from the main CI pipeline:
 
-| Workflow                 | File               | Trigger                                         |
-| ------------------------ | ------------------ | ------------------------------------------------- |
+| Workflow                 | File               | Trigger                                          |
+| ------------------------ | ------------------ | ------------------------------------------------ |
 | CodeQL Security Analysis | `codeql.yml`       | Push to main, path-filtered PRs, weekly schedule |
-| Keep-Alive Health Check  | `health-check.yml` | Every 15 min (cron)                               |
-| PR Validation            | `05-pr-check.yml`  | PR events                                         |
+| Keep-Alive Health Check  | `health-check.yml` | Every 15 min (cron)                              |
+| PR Validation            | `05-pr-check.yml`  | PR events                                        |
 
 ---
 
@@ -211,14 +211,14 @@ cd client && npm audit --audit-level=high || true
 
 ### Common CI Failures
 
-| Issue                              | Fix                                                                |
-| ---------------------------------- | ------------------------------------------------------------------ |
-| Prettier formatting error          | Run `npm run format` from the repo root                            |
-| ESLint error (server)              | Run `npm run lint --prefix server` locally and fix warnings/errors |
-| ESLint error (client)              | Run `npm run lint --prefix client` locally and fix warnings/errors |
-| Test timeout                       | Increase `testTimeout` in `server/jest.config.js` (default: 30s)   |
-| MongoMemoryServer download failure | Check network access; the binary is cached after first download    |
-| Build failure (client)             | Run `npm run build --prefix client` locally to see the exact error |
+| Issue                              | Fix                                                                                                     |
+| ---------------------------------- | ------------------------------------------------------------------------------------------------------- |
+| Prettier formatting error          | Run `npm run format` from the repo root                                                                 |
+| ESLint error (server)              | Run `npm run lint --prefix server` locally and fix warnings/errors                                      |
+| ESLint error (client)              | Run `npm run lint --prefix client` locally and fix warnings/errors                                      |
+| Test timeout                       | Increase `testTimeout` in `server/jest.config.js` (default: 30s)                                        |
+| MongoMemoryServer download failure | Check network access; the binary is cached after first download                                         |
+| Build failure (client)             | Run `npm run build --prefix client` locally to see the exact error                                      |
 | Job skipped unexpectedly           | Path filters skipped it — change `server/**`, `client/**`, or `.github/workflows/**` to force that side |
 
 ### Worker process force-exit warnings
