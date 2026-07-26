@@ -225,8 +225,23 @@ export function isIssueUnavailable(issue, context, core) {
   return false;
 }
 
-export function summarizeCheckStates(checkRuns = []) {
-  const failed = checkRuns.filter(
+export function summarizeRequiredCheckStates(checkRuns = [], requiredNames = []) {
+  const requiredRuns = checkRuns.filter((c) => requiredNames.includes(c.name));
+  const failed = requiredRuns.filter(
+    (c) => c.status === "completed" && c.conclusion === "failure",
+  );
+  const pending = requiredRuns.filter((c) => c.status !== "completed");
+  const allCompleted = requiredRuns.length > 0 && pending.length === 0;
+  return {
+    total: requiredRuns.length,
+    failedCount: failed.length,
+    pendingCount: pending.length,
+    allCompleted,
+    failedRuns: failed,
+  };
+}
+
+export function summarizeCheckStates(checkRuns = []) {  const failed = checkRuns.filter(
     (c) => c.status === "completed" && c.conclusion === "failure",
   );
   const pending = checkRuns.filter((c) => c.status !== "completed");
@@ -235,6 +250,63 @@ export function summarizeCheckStates(checkRuns = []) {
     pendingCount: pending.length,
     failedNames: failed.map((c) => c.name),
   };
+}
+
+export async function listReviews(github, context, core, prNumber) {
+  const reviews = await safeCall(
+    core,
+    "pulls.listReviews",
+    () =>
+      github.paginate(github.rest.pulls.listReviews, {
+        owner: context.repo.owner,
+        repo: context.repo.repo,
+        pull_number: prNumber,
+        per_page: 100,
+      }),
+    [],
+  );
+  return reviews || [];
+}
+
+export async function findReviewByMarker(github, context, core, prNumber, marker) {
+  const reviews = await listReviews(github, context, core, prNumber);
+  return (
+    reviews.find(
+      (review) => review.user?.type === "Bot" && hasMarker(review.body, marker),
+    ) || null
+  );
+}
+
+export async function requestChangesReview(github, context, core, prNumber, body) {
+  return safeCall(
+    core,
+    "pulls.createReview(REQUEST_CHANGES)",
+    () =>
+      github.rest.pulls.createReview({
+        owner: context.repo.owner,
+        repo: context.repo.repo,
+        pull_number: prNumber,
+        event: "REQUEST_CHANGES",
+        body,
+      }),
+    null,
+  );
+}
+
+export async function dismissReview(github, context, core, prNumber, reviewId, message) {
+  return safeCall(
+    core,
+    "pulls.dismissReview",
+    () =>
+      github.rest.pulls.dismissReview({
+        owner: context.repo.owner,
+        repo: context.repo.repo,
+        pull_number: prNumber,
+        review_id: reviewId,
+        message,
+      }),
+    null,
+  );
 }
 
 export { logInfo, logWarning, logError, formatError };
