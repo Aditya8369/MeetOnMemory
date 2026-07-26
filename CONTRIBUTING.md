@@ -183,13 +183,15 @@ To ensure code quality and avoid PR checklist failures, we run quality checks on
 
 ### ⚙️ CI/CD Pipeline Checks
 
-Every Pull Request runs the following status checks:
+Every Pull Request runs the following status checks (path-filtered; not all jobs run on every PR):
 
-- **CI Pipeline / Format**: Verifies file formatting using `npm run format:check`.
-- **CI Pipeline / Lint**: Runs static analysis check via `npm run lint`.
-- **CI Pipeline / Prettier Check**: Checks formatting using Prettier via `npx prettier . --check`.
-- **CI Pipeline / Production Build**: Compiles frontend assets for production using `npm run build`.
-- **CodeQL Security Analysis**: Scans the codebase for security vulnerabilities.
+- **Detect Changes**: Selects which CI jobs to run based on changed paths.
+- **Code Quality**: Prettier check on changed files (`npx prettier --check`).
+- **Backend Validation**: Server ESLint, Jest (`test:ci` with coverage), startup check.
+- **Frontend Validation**: Client ESLint, Vitest (`test:ci`), production Vite build.
+- **Integration Tests**: Dedicated run of `server/tests/integration.test.js` (also covered by Backend `test:ci`).
+- **Security Checks**: Informational `npm audit` (does not fail the workflow).
+- **CodeQL Security Analysis**: Runs on PRs that touch app code, dependencies, `.github/workflows/**`, or `.github/scripts/**`; also on every push to `main` and weekly.
 
 ### 💻 Running Checks Locally
 

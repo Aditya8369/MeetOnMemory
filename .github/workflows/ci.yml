@@ -13,10 +13,56 @@ concurrency:
 
 jobs:
   # ─────────────────────────────────────────────────────────────
-  # 1. CODE QUALITY — Prettier formatting + ESLint (both sides)
+  # 0. CHANGE DETECTION — path filters for mixed / docs-only PRs
+  # ─────────────────────────────────────────────────────────────
+  changes:
+    name: Detect Changes
+    runs-on: ubuntu-latest
+    # dorny/paths-filter lists PR files via the GitHub API.
+    permissions:
+      contents: read
+      pull-requests: read
+    outputs:
+      backend: ${{ steps.filter.outputs.backend }}
+      frontend: ${{ steps.filter.outputs.frontend }}
+      formatting: ${{ steps.filter.outputs.formatting }}
+      security: ${{ steps.filter.outputs.security }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v5
+
+      - name: Detect changed paths
+        uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            backend:
+              - 'server/**'
+              - '.github/workflows/**'
+            frontend:
+              - 'client/**'
+              - '.github/workflows/**'
+            formatting:
+              - '**/*.{js,jsx,ts,tsx,css,html,json,md,yml,yaml}'
+              - '.prettierrc'
+              - '.prettierrc.*'
+              - 'prettier.config.*'
+              - '.github/workflows/**'
+            security:
+              - 'server/package.json'
+              - 'server/package-lock.json'
+              - 'client/package.json'
+              - 'client/package-lock.json'
+              - '.github/workflows/**'
+
+  # ─────────────────────────────────────────────────────────────
+  # 1. CODE QUALITY — Prettier formatting only
+  #    ESLint runs in Backend / Frontend Validation (no duplicate).
   # ─────────────────────────────────────────────────────────────
   code-quality:
     name: Code Quality
+    needs: changes
+    if: needs.changes.outputs.formatting == 'true'
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
@@ -29,19 +75,10 @@ jobs:
         with:
           node-version: "20"
           cache: "npm"
-          cache-dependency-path: |
-            package-lock.json
-            server/package-lock.json
-            client/package-lock.json
+          cache-dependency-path: package-lock.json
 
       - name: Install root dependencies
         run: npm ci
-
-      - name: Install server dependencies
-        run: npm ci --prefix server
-
-      - name: Install client dependencies
-        run: npm ci --prefix client
 
       - name: Prettier — check changed files
         run: |
@@ -54,17 +91,13 @@ jobs:
             echo "No changed files to check."
           fi
 
-      - name: ESLint — server
-        run: npm run lint --prefix server
-
-      - name: ESLint — client
-        run: npm run lint --prefix client
-
   # ─────────────────────────────────────────────────────────────
   # 2. BACKEND VALIDATION — Lint, tests, coverage, startup
   # ─────────────────────────────────────────────────────────────
   backend-validation:
     name: Backend Validation
+    needs: changes
+    if: needs.changes.outputs.backend == 'true'
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
@@ -113,6 +146,8 @@ jobs:
   # ─────────────────────────────────────────────────────────────
   frontend-validation:
     name: Frontend Validation
+    needs: changes
+    if: needs.changes.outputs.frontend == 'true'
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
@@ -138,10 +173,12 @@ jobs:
         run: npm run build --prefix client
 
   # ─────────────────────────────────────────────────────────────
-  # 4. SECURITY — npm audit for high/critical vulnerabilities
+  # 4. SECURITY — npm audit (informational; does not fail the job)
   # ─────────────────────────────────────────────────────────────
   security:
     name: Security Checks
+    needs: changes
+    if: needs.changes.outputs.security == 'true'
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
@@ -151,14 +188,17 @@ jobs:
         uses: actions/setup-node@v5
         with:
           node-version: "20"
+          cache: "npm"
+          cache-dependency-path: |
+            server/package-lock.json
+            client/package-lock.json
 
       - name: Audit server dependencies
         run: |
           cd server
           npm audit --audit-level=high || true
-        # `|| true` prevents job failure on advisory-only findings.
-        # The exit code is non-zero even for moderate issues; we only
-        # want to fail on high/critical which npm audit reports separately.
+        # `|| true` keeps this job informational. npm audit exits non-zero for
+        # many advisory levels; the bot in 11-ci-validation ignores this check.
 
       - name: Audit client dependencies
         run: |
@@ -167,9 +207,13 @@ jobs:
 
   # ─────────────────────────────────────────────────────────────
   # 5. INTEGRATION TESTS — Critical API endpoint verification
+  #    Kept as a dedicated required-check signal (see docs/CI_PIPELINE.md).
+  #    Backend Validation also runs this file via test:ci.
   # ─────────────────────────────────────────────────────────────
   integration-tests:
     name: Integration Tests
+    needs: changes
+    if: needs.changes.outputs.backend == 'true'
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
