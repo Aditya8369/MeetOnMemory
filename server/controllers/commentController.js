@@ -24,7 +24,7 @@ export const createComment = async (req, res) => {
         .json({ message: "Forbidden: Insufficient permissions" });
     }
 
-    const meeting = await Meeting.findById(meetingId);
+    const meeting = await Meeting.findById(String(meetingId));
     if (!meeting) {
       return res.status(404).json({ message: "Meeting not found" });
     }
@@ -76,7 +76,7 @@ export const getCommentsByMeeting = async (req, res) => {
     const limit = parseInt(req.query.limit) || 50;
     const skip = (page - 1) * limit;
 
-    const meeting = await Meeting.findById(meetingId);
+    const meeting = await Meeting.findById(String(meetingId));
     if (!meeting) {
       return res.status(404).json({ message: "Meeting not found" });
     }
@@ -89,7 +89,7 @@ export const getCommentsByMeeting = async (req, res) => {
 
     // Fetch top-level comments
     const topLevelComments = await Comment.find({
-      meeting: meetingId,
+      meeting: String(meetingId),
       parentComment: null,
     })
       .populate("author", "name email profilePicture")
@@ -121,7 +121,7 @@ export const getCommentsByMeeting = async (req, res) => {
     });
 
     const total = await Comment.countDocuments({
-      meeting: meetingId,
+      meeting: String(meetingId),
       parentComment: null,
     });
 
@@ -149,7 +149,7 @@ export const updateComment = async (req, res) => {
       return res.status(400).json({ message: "Invalid comment ID" });
     }
 
-    const comment = await Comment.findById(id);
+    const comment = await Comment.findById(String(id));
     if (!comment) {
       return res.status(404).json({ message: "Comment not found" });
     }
@@ -188,7 +188,7 @@ export const deleteComment = async (req, res) => {
       return res.status(400).json({ message: "Invalid comment ID" });
     }
 
-    const comment = await Comment.findById(id);
+    const comment = await Comment.findById(String(id));
     if (!comment) {
       return res.status(404).json({ message: "Comment not found" });
     }
@@ -203,10 +203,10 @@ export const deleteComment = async (req, res) => {
     }
 
     // Delete comment
-    await Comment.deleteOne({ _id: id });
+    await Comment.deleteOne({ _id: String(id) });
 
     // Cascade delete child replies
-    await Comment.deleteMany({ parentComment: id });
+    await Comment.deleteMany({ parentComment: String(id) });
 
     const io = req.app.get("io");
     if (io) {
@@ -236,7 +236,7 @@ export const toggleReaction = async (req, res) => {
       return res.status(400).json({ message: "Invalid comment ID" });
     }
 
-    const comment = await Comment.findById(id);
+    const comment = await Comment.findById(String(id));
     if (!comment) {
       return res.status(404).json({ message: "Comment not found" });
     }
