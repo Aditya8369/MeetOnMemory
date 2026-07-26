@@ -19,7 +19,7 @@ import transcriptRoutes from "./transcriptRoutes.js";
 import sharedLinkRoutes from "./sharedLinkRoutes.js";
 import meetingTemplateRoutes from "./meetingTemplateRoutes.js";
 import commentRoutes from "./commentRoutes.js";
-
+import pollRoutes from "./pollRoutes.js";
 const router = express.Router();
 
 // ==========================================
@@ -45,5 +45,6 @@ router.use("/api/transcripts", transcriptRoutes);
 router.use("/api/shared-links", sharedLinkRoutes);
 router.use("/api/templates", meetingTemplateRoutes);
 router.use("/api/comments", commentRoutes);
+router.use("/api/polls", pollRoutes);
 
 export default router;
