@@ -151,7 +151,7 @@ export const comments = {
     `Unfortunately, this issue isn't available to claim right now (it may be closed, locked, or archived).\n\n` +
     `No worries — there are plenty of other great issues open. Take a look and find one that suits you!`,
 
-maintainerOverrideNotification: ({ actor, target }) =>
+  maintainerOverrideNotification: ({ actor, target }) =>
     withMarker(
       AUTOMATION.overrideMarker,
       `🔧 Maintainer update by @${actor}: assignment state was adjusted for @${target}.`,
