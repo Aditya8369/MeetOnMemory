@@ -35,6 +35,7 @@ import PolicyCompliance from "../pages/PolicyCompliance.jsx";
 import Settings from "../pages/Settings.jsx";
 import MembershipRequests from "../pages/MembershipRequests.jsx";
 import AdminPanel from "../pages/AdminPanel.jsx";
+import Bookmarks from "../pages/Bookmarks.jsx";
 
 const ProtectedRoutes = (
   <React.Fragment>
@@ -269,6 +270,14 @@ const ProtectedRoutes = (
       element={
         <ProtectedRoute resource="team_members" action="invite">
           <MembershipRequests />
+        </ProtectedRoute>
+      }
+    />
+    <Route
+      path="/bookmarks"
+      element={
+        <ProtectedRoute>
+          <Bookmarks />
         </ProtectedRoute>
       }
     />
