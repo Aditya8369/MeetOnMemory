@@ -9,4 +9,3 @@ export {
 export { processIssueCommentGuidance } from "./issue-comments.js";
 export { processIssueLifecycle } from "./lifecycle.js";
 export { autoLabelEcs } from "./label-ecs.js";
-

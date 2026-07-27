@@ -103,7 +103,7 @@ const MeetingInformationForm = ({
         </div>
       </div>
 
-    {/* Location */}
+      {/* Location */}
       <div className="grid md:grid-cols-2 gap-4 mb-6">
         <div>
           <label className="block mb-2 font-semibold text-gray-700">
