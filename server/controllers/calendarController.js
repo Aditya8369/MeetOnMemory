@@ -304,7 +304,12 @@ export const getFreeBusyAvailability = async (req, res) => {
         .json({ success: false, message: "timeMin and timeMax are required" });
     }
 
-    const freeBusyData = await getFreeBusy(userId, attendeeEmails, timeMin, timeMax);
+    const freeBusyData = await getFreeBusy(
+      userId,
+      attendeeEmails,
+      timeMin,
+      timeMax,
+    );
 
     res.json({ success: true, data: freeBusyData });
   } catch (error) {
