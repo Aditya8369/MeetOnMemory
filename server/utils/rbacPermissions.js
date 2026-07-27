@@ -94,6 +94,10 @@ export const PERMISSIONS = {
     // metadata (status/supersededByMemory) for other users' memories, so
     // it's restricted the same way as consolidate.
     resolve_conflicts: ["owner", "admin", "moderator"],
+    // Running a lifecycle sweep or manually archiving/restoring a memory
+    // mutates lifecycle state in bulk (or for other users' memories), so
+    // it's restricted the same way as consolidate/resolve_conflicts.
+    manage_lifecycle: ["owner", "admin", "moderator"],
   },
   // Notifications permissions
   notifications: {
