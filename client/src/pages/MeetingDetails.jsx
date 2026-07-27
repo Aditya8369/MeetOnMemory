@@ -14,6 +14,7 @@ import MeetingFollowUpBanner from "../components/meeting-details/MeetingFollowUp
 import PresentMode from "../components/meeting-details/PresentMode";
 import CommentSection from "../components/meeting-details/CommentSection";
 import PollSection from "../components/meeting-details/PollSection";
+import AttachmentPanel from "../components/meeting-details/AttachmentPanel";
 
 const MeetingDetails = () => {
   const { id } = useParams();
@@ -175,6 +176,7 @@ const MeetingDetails = () => {
           onDelete={handleDelete}
           onRename={handleRename}
         />
+        <AttachmentPanel meetingId={meeting._id} />
         <PollSection meetingId={meeting._id} />
         <CommentSection meetingId={meeting._id} />
       </div>

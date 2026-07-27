@@ -23,6 +23,7 @@ import commentRoutes from "./commentRoutes.js";
 import activityRoutes from "./activityRoutes.js";
 import tagRoutes from "./tagRoutes.js";
 import pollRoutes from "./pollRoutes.js";
+import attachmentRoutes from "./attachmentRoutes.js";
 const router = express.Router();
 
 // ==========================================
@@ -52,5 +53,6 @@ router.use("/api/comments", commentRoutes);
 router.use("/api/activities", activityRoutes);
 router.use("/api/tags", tagRoutes);
 router.use("/api/polls", pollRoutes);
+router.use("/api/meetings/:meetingId/attachments", attachmentRoutes);
 
 export default router;
