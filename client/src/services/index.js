@@ -16,3 +16,4 @@ export * from "./sharedLinkApi";
 export * from "./meetingTemplateApi";
 export * from "./tagApi";
 export * from "./attachmentApi";
+export * from "./meetingSeriesApi";

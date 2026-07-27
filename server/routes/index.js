@@ -24,6 +24,7 @@ import activityRoutes from "./activityRoutes.js";
 import tagRoutes from "./tagRoutes.js";
 import pollRoutes from "./pollRoutes.js";
 import attachmentRoutes from "./attachmentRoutes.js";
+import meetingSeriesRoutes from "./meetingSeriesRoutes.js";
 const router = express.Router();
 
 // ==========================================
@@ -54,5 +55,6 @@ router.use("/api/activities", activityRoutes);
 router.use("/api/tags", tagRoutes);
 router.use("/api/polls", pollRoutes);
 router.use("/api/meetings/:meetingId/attachments", attachmentRoutes);
+router.use("/api/meeting-series", meetingSeriesRoutes);
 
 export default router;

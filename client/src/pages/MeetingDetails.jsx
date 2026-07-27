@@ -16,6 +16,7 @@ import CommentSection from "../components/meeting-details/CommentSection";
 import PollSection from "../components/meeting-details/PollSection";
 import DigestActions from "../components/meeting-details/DigestActions";
 import AttachmentPanel from "../components/meeting-details/AttachmentPanel";
+import SeriesNavigation from "../components/meeting-details/SeriesNavigation";
 
 const MeetingDetails = () => {
   const { id } = useParams();
@@ -162,6 +163,7 @@ const MeetingDetails = () => {
     <div className="min-h-screen bg-gray-50 p-6">
       <div className="max-w-6xl mx-auto">
         <MeetingFollowUpBanner meeting={meeting} />
+        <SeriesNavigation meeting={meeting} />
         <MeetingHeader
           meeting={meeting}
           onShare={() => setShareModalOpen(true)}
