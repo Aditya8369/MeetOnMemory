@@ -66,12 +66,10 @@ export const createSeries = async (req, res) => {
     const end = parseISO(endDate);
 
     if (start > end) {
-      return res
-        .status(400)
-        .json({
-          success: false,
-          message: "Start date must be before end date",
-        });
+      return res.status(400).json({
+        success: false,
+        message: "Start date must be before end date",
+      });
     }
 
     const series = new MeetingSeries({
@@ -140,12 +138,10 @@ export const createSeries = async (req, res) => {
       return res.status(400).json({ success: false, errors: error.errors });
     }
     console.error("Error creating meeting series:", error);
-    res
-      .status(500)
-      .json({
-        success: false,
-        message: "Server error creating meeting series",
-      });
+    res.status(500).json({
+      success: false,
+      message: "Server error creating meeting series",
+    });
   }
 };
 
@@ -165,12 +161,10 @@ export const getSeriesById = async (req, res) => {
     res.json({ success: true, series });
   } catch (error) {
     console.error("Error fetching meeting series:", error);
-    res
-      .status(500)
-      .json({
-        success: false,
-        message: "Server error fetching meeting series",
-      });
+    res.status(500).json({
+      success: false,
+      message: "Server error fetching meeting series",
+    });
   }
 };
 
@@ -204,12 +198,10 @@ export const getSeriesMeetings = async (req, res) => {
     });
   } catch (error) {
     console.error("Error fetching series meetings:", error);
-    res
-      .status(500)
-      .json({
-        success: false,
-        message: "Server error fetching series meetings",
-      });
+    res.status(500).json({
+      success: false,
+      message: "Server error fetching series meetings",
+    });
   }
 };
 
@@ -241,11 +233,9 @@ export const cancelSeries = async (req, res) => {
     });
   } catch (error) {
     console.error("Error cancelling meeting series:", error);
-    res
-      .status(500)
-      .json({
-        success: false,
-        message: "Server error cancelling meeting series",
-      });
+    res.status(500).json({
+      success: false,
+      message: "Server error cancelling meeting series",
+    });
   }
 };
