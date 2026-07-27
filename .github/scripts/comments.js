@@ -29,8 +29,13 @@ export const comments = {
 
   wrongIssueAuthorClaimAttempt: ({ user, issueAuthor }) =>
     `Hi @${user}, thank you for your interest in this issue! 🙏\n\n` +
-    `This particular issue was opened by @${issueAuthor}, and for contributor-opened issues, automatic claiming is limited to the issue author.\n\n` +
-    `We really appreciate your eagerness to contribute — please feel free to browse our other open issues, there's likely a great fit for you!`,
+    `This particular issue was opened by @${issueAuthor}. Contributor-opened issues have an exclusive **48-hour** claim window for the author.\n\n` +
+    `After that window ends, anyone may claim the issue with \`${COMMANDS.claim}\`. In the meantime, please feel free to browse our other open issues!`,
+
+  manualAssignmentProtected: ({ actor, assignee }) =>
+    `Hi @${actor}, thanks for checking in! 😊\n\n` +
+    `This issue was assigned by a maintainer to @${assignee}. Only a maintainer can release or reassign it.\n\n` +
+    `If you believe this needs attention, please tag a maintainer — thanks!`,
 
   duplicateClaim: ({ user }) =>
     `Hi @${user}, good news — you already have this issue assigned to you! ✅\n\n` +

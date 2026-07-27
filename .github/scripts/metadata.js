@@ -15,6 +15,9 @@ function defaultMetadata() {
     guidance: {},
     processedClaimCommentIds: [],
     processedUnclaimCommentIds: [],
+    // Additive flags — absent/false on legacy bodies is backward compatible.
+    manualAssignment: false,
+    authorPriorityExpiresAt: null,
   };
 }
 
@@ -95,6 +98,7 @@ export function setAssignmentMetadata(metadata, source = "claim") {
   metadata.expiredAt = null;
   metadata.welcomeSentAt = timestamp;
   metadata.welcomeSource = source;
+  metadata.manualAssignment = source === "manual";
   return metadata;
 }
 
@@ -103,7 +107,33 @@ export function clearAssignmentMetadata(metadata) {
   metadata.lastActivityAt = null;
   resetReminderTracking(metadata);
   metadata.expiredAt = null;
+  metadata.manualAssignment = false;
+  metadata.welcomeSource = null;
+  metadata.welcomeSentAt = null;
   return metadata;
+}
+
+/**
+ * Refresh inactivity baseline and clear reminder tracking.
+ * Idempotent when `at` is not newer than the current lastActivityAt.
+ */
+export function touchAssigneeActivity(metadata, at = nowIso()) {
+  const nextAt = at || nowIso();
+  if (
+    metadata.lastActivityAt &&
+    new Date(nextAt) <= new Date(metadata.lastActivityAt)
+  ) {
+    return { metadata, changed: false };
+  }
+  metadata.lastActivityAt = nextAt;
+  resetReminderTracking(metadata);
+  return { metadata, changed: true };
+}
+
+export function isManualAssignment(metadata) {
+  return (
+    Boolean(metadata?.manualAssignment) || metadata?.welcomeSource === "manual"
+  );
 }
 
 export { resetReminderTracking };
