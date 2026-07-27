@@ -103,6 +103,7 @@ export const PERMISSIONS = {
   notifications: {
     view: ["owner", "admin", "moderator", "member", "guest"],
     manage: ["owner", "admin"],
+    self_manage: ["owner", "admin", "moderator", "member", "guest"],
   },
   // Audit Logs permissions
   audit_logs: {
