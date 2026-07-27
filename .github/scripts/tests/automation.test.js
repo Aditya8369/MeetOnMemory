@@ -12,7 +12,6 @@ import { processIssueLifecycle } from "../lifecycle.js";
 import { processClaimExpiration } from "../expiration.js";
 import { autoLabelEcs } from "../label-ecs.js";
 
-
 function createCore() {
   return { info() {}, warning() {}, error() {} };
 }
@@ -453,4 +452,3 @@ test("autoLabelEcs: skips auto-labeling if label is already present", async () =
   await autoLabelEcs({ github, context, core });
   assert.equal(labelsAdded.length, 0);
 });
-

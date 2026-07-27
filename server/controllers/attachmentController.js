@@ -8,6 +8,18 @@ import { fileURLToPath } from "url";
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
+const UPLOADS_DIR = path.resolve(__dirname, "..", "uploads", "attachments");
+
+const getSafeFilePath = (unsafePath) => {
+  if (!unsafePath) return null;
+  const filename = path.basename(unsafePath);
+  const safePath = path.resolve(UPLOADS_DIR, filename);
+  if (!safePath.startsWith(UPLOADS_DIR)) {
+    throw new Error("Path traversal detected");
+  }
+  return safePath;
+};
+
 // Max file size: 10 MB
 const MAX_FILE_SIZE = 10 * 1024 * 1024;
 const ALLOWED_MIME_TYPES = [
@@ -31,7 +43,7 @@ export const uploadAttachment = async (req, res) => {
     const validationResult = attachmentSchema.safeParse({ meetingId });
     if (!validationResult.success) {
       if (req.file) {
-        fs.unlinkSync(req.file.path);
+        fs.unlinkSync(getSafeFilePath(req.file.path));
       }
       return res.status(400).json({
         success: false,
@@ -46,14 +58,14 @@ export const uploadAttachment = async (req, res) => {
     }
 
     if (req.file.size > MAX_FILE_SIZE) {
-      fs.unlinkSync(req.file.path);
+      fs.unlinkSync(getSafeFilePath(req.file.path));
       return res
         .status(400)
         .json({ success: false, message: "File exceeds 10 MB limit" });
     }
 
     if (!ALLOWED_MIME_TYPES.includes(req.file.mimetype)) {
-      fs.unlinkSync(req.file.path);
+      fs.unlinkSync(getSafeFilePath(req.file.path));
       return res
         .status(400)
         .json({ success: false, message: "Invalid file type" });
@@ -61,7 +73,7 @@ export const uploadAttachment = async (req, res) => {
 
     const meeting = await Meeting.findById(meetingId);
     if (!meeting) {
-      fs.unlinkSync(req.file.path);
+      fs.unlinkSync(getSafeFilePath(req.file.path));
       return res
         .status(404)
         .json({ success: false, message: "Meeting not found" });
@@ -76,7 +88,7 @@ export const uploadAttachment = async (req, res) => {
         path.extname(req.file.originalname).toLowerCase().replace(".", "") ||
         "unknown",
       fileSize: req.file.size,
-      filePath: req.file.path,
+      filePath: getSafeFilePath(req.file.path),
       mimeType: req.file.mimetype,
     });
 
@@ -89,7 +101,7 @@ export const uploadAttachment = async (req, res) => {
     });
   } catch (error) {
     if (req.file) {
-      fs.unlinkSync(req.file.path);
+      fs.unlinkSync(getSafeFilePath(req.file.path));
     }
     console.error("Error uploading attachment:", error);
     res
@@ -146,7 +158,8 @@ export const downloadAttachment = async (req, res) => {
         .json({ success: false, message: "Attachment not found" });
     }
 
-    if (!fs.existsSync(attachment.filePath)) {
+    const safePath = getSafeFilePath(attachment.filePath);
+    if (!fs.existsSync(safePath)) {
       return res
         .status(404)
         .json({ success: false, message: "File not found on server" });
@@ -158,7 +171,7 @@ export const downloadAttachment = async (req, res) => {
     );
     res.setHeader("Content-Type", attachment.mimeType);
 
-    const fileStream = fs.createReadStream(attachment.filePath);
+    const fileStream = fs.createReadStream(safePath);
     fileStream.pipe(res);
   } catch (error) {
     console.error("Error downloading attachment:", error);
@@ -201,17 +214,16 @@ export const deleteAttachment = async (req, res) => {
     }
 
     if (!isOwner && !(isAdminOrOwner && orgMatch)) {
-      return res
-        .status(403)
-        .json({
-          success: false,
-          message: "Forbidden: Not authorized to delete this attachment",
-        });
+      return res.status(403).json({
+        success: false,
+        message: "Forbidden: Not authorized to delete this attachment",
+      });
     }
 
     // Delete file from disk
-    if (fs.existsSync(attachment.filePath)) {
-      fs.unlinkSync(attachment.filePath);
+    const safePath = getSafeFilePath(attachment.filePath);
+    if (fs.existsSync(safePath)) {
+      fs.unlinkSync(safePath);
     }
 
     await Attachment.deleteOne({ _id: id });

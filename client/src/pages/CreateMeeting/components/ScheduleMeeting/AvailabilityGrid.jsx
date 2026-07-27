@@ -1,6 +1,13 @@
 import React, { useState, useEffect, useCallback } from "react";
 import axios from "axios";
-import { Calendar, Clock, User, Loader2, CheckCircle2, XCircle } from "lucide-react";
+import {
+  Calendar,
+  Clock,
+  User,
+  Loader2,
+  CheckCircle2,
+  XCircle,
+} from "lucide-react";
 
 const AvailabilityGrid = ({ participants, selectedDate, onSlotSelect }) => {
   const [loading, setLoading] = useState(false);
@@ -25,7 +32,7 @@ const AvailabilityGrid = ({ participants, selectedDate, onSlotSelect }) => {
     try {
       const token = localStorage.getItem("token");
       const attendeeEmails = participants.map((p) => p.email).filter(Boolean);
-      
+
       if (attendeeEmails.length === 0) {
         setAvailabilityData(null);
         setLoading(false);
@@ -35,7 +42,7 @@ const AvailabilityGrid = ({ participants, selectedDate, onSlotSelect }) => {
       // Set time range for the selected date (8 AM to 6 PM)
       const timeMin = new Date(selectedDate);
       timeMin.setHours(8, 0, 0, 0);
-      
+
       const timeMax = new Date(selectedDate);
       timeMax.setHours(18, 0, 0, 0);
 
@@ -48,7 +55,7 @@ const AvailabilityGrid = ({ participants, selectedDate, onSlotSelect }) => {
         },
         {
           headers: { Authorization: `Bearer ${token}` },
-        }
+        },
       );
 
       setAvailabilityData(response.data.data);
@@ -70,11 +77,11 @@ const AvailabilityGrid = ({ participants, selectedDate, onSlotSelect }) => {
 
   const getSlotAvailability = (timeSlot) => {
     if (!availabilityData) return "unknown";
-    
+
     const [hours, minutes] = timeSlot.split(":");
     const slotStart = new Date(selectedDate);
     slotStart.setHours(parseInt(hours), parseInt(minutes), 0, 0);
-    
+
     const slotEnd = new Date(slotStart.getTime() + 30 * 60000);
 
     // Check Google availability
@@ -95,11 +102,16 @@ const AvailabilityGrid = ({ participants, selectedDate, onSlotSelect }) => {
 
     // Check Microsoft availability
     let microsoftAvailable = true;
-    if (availabilityData.microsoft && Array.isArray(availabilityData.microsoft)) {
+    if (
+      availabilityData.microsoft &&
+      Array.isArray(availabilityData.microsoft)
+    ) {
       availabilityData.microsoft.forEach((schedule) => {
         if (schedule.availabilityView) {
-          const slotIndex = Math.floor((slotStart.getHours() - 8) * 2 + (slotStart.getMinutes() / 30));
-          if (schedule.availabilityView[slotIndex] === '1') {
+          const slotIndex = Math.floor(
+            (slotStart.getHours() - 8) * 2 + slotStart.getMinutes() / 30,
+          );
+          if (schedule.availabilityView[slotIndex] === "1") {
             microsoftAvailable = false;
           }
         }
@@ -141,7 +153,9 @@ const AvailabilityGrid = ({ participants, selectedDate, onSlotSelect }) => {
   const getSlotIcon = (availability) => {
     switch (availability) {
       case "available":
-        return <CheckCircle2 className="w-4 h-4 text-green-600 dark:text-green-400" />;
+        return (
+          <CheckCircle2 className="w-4 h-4 text-green-600 dark:text-green-400" />
+        );
       case "busy":
         return <XCircle className="w-4 h-4 text-red-600 dark:text-red-400" />;
       case "unknown":
@@ -195,7 +209,7 @@ const AvailabilityGrid = ({ participants, selectedDate, onSlotSelect }) => {
         {timeSlots.map((timeSlot) => {
           const availability = getSlotAvailability(timeSlot);
           const isSelected = selectedSlot === timeSlot;
-          
+
           return (
             <button
               key={timeSlot}
