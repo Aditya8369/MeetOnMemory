@@ -20,6 +20,7 @@ const formatUserResponse = (user) => {
     profilePic: user.profilePic || "",
     bio: user.bio || "",
     dashboardPreferences: user.dashboardPreferences || null,
+    emailDigestEnabled: user.emailDigestEnabled,
     createdAt: user.createdAt,
   };
 };
@@ -119,7 +120,7 @@ export const updateDashboardPreferences = async (req, res) => {
 // @access  Private
 export const updateUserProfile = async (req, res) => {
   try {
-    const { name, profilePic, bio } = req.body;
+    const { name, profilePic, bio, emailDigestEnabled } = req.body;
 
     if (!req.user || !req.user.id) {
       return sendError(res, 401, "Authentication error, user ID not found.");
@@ -151,6 +152,7 @@ export const updateUserProfile = async (req, res) => {
             name: name.trim(),
             profilePic: profilePic ? profilePic.trim() : "",
             bio: bio ? bio.trim() : "",
+            ...(emailDigestEnabled !== undefined && { emailDigestEnabled }),
           },
         },
         { new: true },

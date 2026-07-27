@@ -55,6 +55,10 @@ const userSchema = new mongoose.Schema(
       type: Date,
       default: null,
     },
+    emailDigestEnabled: {
+      type: Boolean,
+      default: true,
+    },
   },
   { timestamps: true },
 );

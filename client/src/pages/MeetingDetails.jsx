@@ -14,6 +14,7 @@ import MeetingFollowUpBanner from "../components/meeting-details/MeetingFollowUp
 import PresentMode from "../components/meeting-details/PresentMode";
 import CommentSection from "../components/meeting-details/CommentSection";
 import PollSection from "../components/meeting-details/PollSection";
+import DigestActions from "../components/meeting-details/DigestActions";
 import AttachmentPanel from "../components/meeting-details/AttachmentPanel";
 
 const MeetingDetails = () => {
@@ -171,6 +172,9 @@ const MeetingDetails = () => {
         <MeetingTranscript meeting={meeting} />
         <MeetingParticipants meeting={meeting} />
         <MeetingMetadata meeting={meeting} />
+        <div className="mb-6 flex justify-end">
+          <DigestActions meetingId={meeting._id} />
+        </div>
         <MeetingActions
           meeting={meeting}
           onDelete={handleDelete}

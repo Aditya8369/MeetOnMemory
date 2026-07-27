@@ -29,6 +29,10 @@ import {
   restoreMeeting,
   notifyLiveMeeting, // NEW: Notify participants of a live meeting
 } from "../controllers/meetingController.js";
+import {
+  resendDigest,
+  previewDigest,
+} from "../controllers/digestController.js";
 import { exportMeeting } from "../controllers/exportController.js";
 import {
   startRecording,
@@ -257,6 +261,23 @@ router.post(
   writeLimiter,
   requirePermission("meetings", "create"),
   notifyLiveMeeting,
+);
+
+// ✅ Resend Meeting Digest
+router.post(
+  "/:id/digest/resend",
+  userAuth,
+  writeLimiter,
+  requireOwnerOrAdmin(Meeting),
+  resendDigest,
+);
+
+// ✅ Preview Meeting Digest
+router.get(
+  "/:id/digest/preview",
+  userAuth,
+  requireOwnerOrAdmin(Meeting),
+  previewDigest,
 );
 
 export default router;
