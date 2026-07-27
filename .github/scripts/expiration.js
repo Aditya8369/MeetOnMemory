@@ -100,13 +100,19 @@ export async function processClaimExpiration({ github, context, core }) {
           issue.number,
           comments.reminder({ assignee, hours }),
         );
-        await updateIssueMetadata(github, context, core, freshIssue, (draft) => {
-          draft.remindersSentAt = {
-            ...(draft.remindersSentAt || {}),
-            [key]: nowIso(),
-          };
-          return draft;
-        });
+        await updateIssueMetadata(
+          github,
+          context,
+          core,
+          freshIssue,
+          (draft) => {
+            draft.remindersSentAt = {
+              ...(draft.remindersSentAt || {}),
+              [key]: nowIso(),
+            };
+            return draft;
+          },
+        );
         break;
       }
     }
