@@ -1,4 +1,4 @@
-import { TIMERS } from "./constants.js";
+import { TIMERS, reminderMarker } from "./constants.js";
 import { comments } from "./comments.js";
 import {
   createComment,
@@ -10,6 +10,7 @@ import {
 import {
   clearAssignmentMetadata,
   readMetadata,
+  resetReminderTracking,
   updateIssueMetadata,
 } from "./metadata.js";
 import { isActivitySignal } from "./regex.js";
@@ -53,8 +54,7 @@ export async function processClaimExpiration({ github, context, core }) {
       ) {
         await updateIssueMetadata(github, context, core, issue, (draft) => {
           draft.lastActivityAt = signalTime;
-          draft.reminder12SentAt = null;
-          draft.reminder18SentAt = null;
+          resetReminderTracking(draft);
           return draft;
         });
       }
@@ -74,7 +74,7 @@ export async function processClaimExpiration({ github, context, core }) {
         context,
         core,
         issue.number,
-        comments.expiration24h({ assignee }),
+        comments.expiration({ assignee }),
       );
       await updateIssueMetadata(github, context, core, freshIssue, (draft) =>
         clearAssignmentMetadata(draft),
@@ -82,41 +82,33 @@ export async function processClaimExpiration({ github, context, core }) {
       continue;
     }
 
-    if (
-      inactiveHours >= TIMERS.reminder18Hours &&
-      !freshMeta.reminder18SentAt &&
-      !issueComments.some((c) => hasMarker(c.body, "mom:reminder-18h"))
-    ) {
-      await createComment(
-        github,
-        context,
-        core,
-        issue.number,
-        comments.reminder18h({ assignee }),
-      );
-      await updateIssueMetadata(github, context, core, freshIssue, (draft) => {
-        draft.reminder18SentAt = nowIso();
-        return draft;
-      });
-      continue;
-    }
-
-    if (
-      inactiveHours >= TIMERS.reminder12Hours &&
-      !freshMeta.reminder12SentAt &&
-      !issueComments.some((c) => hasMarker(c.body, "mom:reminder-12h"))
-    ) {
-      await createComment(
-        github,
-        context,
-        core,
-        issue.number,
-        comments.reminder12h({ assignee }),
-      );
-      await updateIssueMetadata(github, context, core, freshIssue, (draft) => {
-        draft.reminder12SentAt = nowIso();
-        return draft;
-      });
+    // Highest due reminder first; at most one reminder comment per run.
+    const reminderHoursDesc = [...TIMERS.reminderHours].sort((a, b) => b - a);
+    const remindersSentAt = freshMeta.remindersSentAt || {};
+    for (const hours of reminderHoursDesc) {
+      const key = String(hours);
+      const marker = reminderMarker(hours);
+      if (
+        inactiveHours >= hours &&
+        !remindersSentAt[key] &&
+        !issueComments.some((c) => hasMarker(c.body, marker))
+      ) {
+        await createComment(
+          github,
+          context,
+          core,
+          issue.number,
+          comments.reminder({ assignee, hours }),
+        );
+        await updateIssueMetadata(github, context, core, freshIssue, (draft) => {
+          draft.remindersSentAt = {
+            ...(draft.remindersSentAt || {}),
+            [key]: nowIso(),
+          };
+          return draft;
+        });
+        break;
+      }
     }
   }
 }
