@@ -5,6 +5,8 @@ function defaultMetadata() {
   return {
     assignedAt: null,
     lastActivityAt: null,
+    remindersSentAt: {},
+    // Legacy fields retained for metadata compatibility with older issue bodies.
     reminder12SentAt: null,
     reminder18SentAt: null,
     expiredAt: null,
@@ -78,12 +80,18 @@ export async function updateIssueMetadata(
   }
 }
 
+function resetReminderTracking(metadata) {
+  metadata.remindersSentAt = {};
+  metadata.reminder12SentAt = null;
+  metadata.reminder18SentAt = null;
+  return metadata;
+}
+
 export function setAssignmentMetadata(metadata, source = "claim") {
   const timestamp = nowIso();
   metadata.assignedAt = timestamp;
   metadata.lastActivityAt = timestamp;
-  metadata.reminder12SentAt = null;
-  metadata.reminder18SentAt = null;
+  resetReminderTracking(metadata);
   metadata.expiredAt = null;
   metadata.welcomeSentAt = timestamp;
   metadata.welcomeSource = source;
@@ -93,8 +101,9 @@ export function setAssignmentMetadata(metadata, source = "claim") {
 export function clearAssignmentMetadata(metadata) {
   metadata.assignedAt = null;
   metadata.lastActivityAt = null;
-  metadata.reminder12SentAt = null;
-  metadata.reminder18SentAt = null;
+  resetReminderTracking(metadata);
   metadata.expiredAt = null;
   return metadata;
 }
+
+export { resetReminderTracking };

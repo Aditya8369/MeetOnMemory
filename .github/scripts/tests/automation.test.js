@@ -322,9 +322,9 @@ test("issue lifecycle close clears metadata and preserves assignees", async () =
   assert.equal(github.state.assignees[10], "assigned-user");
 });
 
-test("expiration: reminder and expiration paths", async () => {
+test("expiration: expires after 48 inactive hours", async () => {
   process.env.GITHUB_REPOSITORY = "org/repo";
-  const oldDate = new Date(Date.now() - 25 * 60 * 60 * 1000).toISOString();
+  const oldDate = new Date(Date.now() - 49 * 60 * 60 * 1000).toISOString();
   const github = createGithub((number, state) =>
     issueFactory(number, state, {
       body: `<!-- mom:metadata:start -->\n{"assignedAt":"${oldDate}","lastActivityAt":"${oldDate}"}\n<!-- mom:metadata:end -->`,
@@ -338,6 +338,94 @@ test("expiration: reminder and expiration paths", async () => {
   };
   await processClaimExpiration({ github, context, core: createCore() });
   assert.equal(github.state.assignees[50], undefined);
+  assert.ok(
+    github.state.comments.some((c) => c.body.includes("mom:claim-expired")),
+  );
+  assert.ok(github.state.comments.some((c) => c.body.includes("48-hour")));
+});
+
+test("expiration: does not expire before 48 hours", async () => {
+  process.env.GITHUB_REPOSITORY = "org/repo";
+  const oldDate = new Date(Date.now() - 47 * 60 * 60 * 1000).toISOString();
+  const github = createGithub((number, state) =>
+    issueFactory(number, state, {
+      body: `<!-- mom:metadata:start -->\n{"assignedAt":"${oldDate}","lastActivityAt":"${oldDate}","remindersSentAt":{"8":"${oldDate}","16":"${oldDate}","24":"${oldDate}","32":"${oldDate}","40":"${oldDate}"}}\n<!-- mom:metadata:end -->`,
+    }),
+  );
+  github.state.assignees[51] = "assigned-user";
+  const context = {
+    eventName: "schedule",
+    repo: { owner: "org", repo: "repo" },
+    payload: {},
+  };
+  await processClaimExpiration({ github, context, core: createCore() });
+  assert.equal(github.state.assignees[51], "assigned-user");
+  assert.equal(
+    github.state.comments.filter((c) => c.body.includes("mom:claim-expired"))
+      .length,
+    0,
+  );
+});
+
+test("expiration: posts 8-hour interval reminders without duplicates", async () => {
+  process.env.GITHUB_REPOSITORY = "org/repo";
+  const oldDate = new Date(Date.now() - 9 * 60 * 60 * 1000).toISOString();
+  const github = createGithub((number, state) =>
+    issueFactory(number, state, {
+      body: `<!-- mom:metadata:start -->\n{"assignedAt":"${oldDate}","lastActivityAt":"${oldDate}","remindersSentAt":{}}\n<!-- mom:metadata:end -->`,
+    }),
+  );
+  github.state.assignees[52] = "assigned-user";
+  const context = {
+    eventName: "schedule",
+    repo: { owner: "org", repo: "repo" },
+    payload: {},
+  };
+
+  await processClaimExpiration({ github, context, core: createCore() });
+  await processClaimExpiration({ github, context, core: createCore() });
+
+  const reminderComments = github.state.comments.filter((c) =>
+    c.body.includes("mom:reminder-8h"),
+  );
+  assert.equal(reminderComments.length, 1);
+  assert.ok(reminderComments[0].body.includes("**8 hours**"));
+  assert.equal(github.state.assignees[52], "assigned-user");
+});
+
+test("expiration: sends highest due reminder for 8h cadence", async () => {
+  process.env.GITHUB_REPOSITORY = "org/repo";
+  const oldDate = new Date(Date.now() - 25 * 60 * 60 * 1000).toISOString();
+  const github = createGithub((number, state) =>
+    issueFactory(number, state, {
+      body: `<!-- mom:metadata:start -->\n{"assignedAt":"${oldDate}","lastActivityAt":"${oldDate}","remindersSentAt":{}}\n<!-- mom:metadata:end -->`,
+    }),
+  );
+  github.state.assignees[53] = "assigned-user";
+  const context = {
+    eventName: "schedule",
+    repo: { owner: "org", repo: "repo" },
+    payload: {},
+  };
+
+  await processClaimExpiration({ github, context, core: createCore() });
+
+  assert.equal(
+    github.state.comments.filter((c) => c.body.includes("mom:reminder-24h"))
+      .length,
+    1,
+  );
+  assert.equal(
+    github.state.comments.filter((c) => c.body.includes("mom:reminder-8h"))
+      .length,
+    0,
+  );
+  assert.equal(
+    github.state.comments.filter((c) => c.body.includes("mom:reminder-16h"))
+      .length,
+    0,
+  );
+  assert.equal(github.state.assignees[53], "assigned-user");
 });
 
 test("autoLabelEcs: labels contributor-created issue with ECSoC26", async () => {
