@@ -30,12 +30,92 @@ import {
   notifyLiveMeeting, // NEW: Notify participants of a live meeting
 } from "../controllers/meetingController.js";
 import { exportMeeting } from "../controllers/exportController.js";
+import {
+  startRecording,
+  stopRecording,
+  uploadTranscriptAudio,
+  getTranscript,
+  retryTranscription,
+  uploadTranscriptChunk,
+} from "../controllers/transcriptController.js";
 
 const router = express.Router();
 const upload = multer({ dest: "uploads/" }); // temporary upload directory
+const transcriptUpload = multer({
+  dest: "uploads/transcripts/",
+  limits: { fileSize: 100 * 1024 * 1024 }, // 100MB limit
+});
+const transcriptChunkUpload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 50 * 1024 * 1024 }, // 50MB limit per chunk
+});
 
 // Apply rate limiting to all routes
 router.use(apiLimiter);
+
+// ========== RECORDING / LIVE TRANSCRIPT (Issue #679 contract) ==========
+// Frontend expects these under /api/meetings/:meetingId/...
+
+// POST /api/meetings/:meetingId/recording/start
+router.post(
+  "/:meetingId/recording/start",
+  userAuth,
+  uploadLimiter,
+  requireOrgMembership,
+  requirePermission("meetings", "create"),
+  startRecording,
+);
+
+// POST /api/meetings/:meetingId/recording/stop
+router.post(
+  "/:meetingId/recording/stop",
+  userAuth,
+  uploadLimiter,
+  requireOrgMembership,
+  requirePermission("meetings", "create"),
+  stopRecording,
+);
+
+// POST /api/meetings/:meetingId/transcript/upload
+router.post(
+  "/:meetingId/transcript/upload",
+  userAuth,
+  uploadLimiter,
+  requireOrgMembership,
+  requirePermission("meetings", "create"),
+  transcriptUpload.single("audio"),
+  uploadTranscriptAudio,
+);
+
+// POST /api/meetings/:meetingId/transcript/chunk
+router.post(
+  "/:meetingId/transcript/chunk",
+  userAuth,
+  uploadLimiter,
+  requireOrgMembership,
+  requirePermission("meetings", "create"),
+  transcriptChunkUpload.single("audio"),
+  uploadTranscriptChunk,
+);
+
+// GET /api/meetings/:meetingId/transcript
+router.get(
+  "/:meetingId/transcript",
+  userAuth,
+  requireOrgMembership,
+  requirePermission("meetings", "view"),
+  getTranscript,
+);
+
+// POST /api/meetings/:meetingId/transcript/retry
+router.post(
+  "/:meetingId/transcript/retry",
+  userAuth,
+  uploadLimiter,
+  requireOrgMembership,
+  requirePermission("meetings", "create"),
+  retryTranscription,
+);
 
 // ========== EXISTING ROUTES (Working) ==========
 
