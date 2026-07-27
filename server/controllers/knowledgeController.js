@@ -82,8 +82,11 @@ export const getDecisionLineageController = async (req, res) => {
 
 export const getOpenActionItems = async (req, res) => {
   try {
-    const { status = "open", sortBy = "createdAt", includeArchived } =
-      req.query || {};
+    const {
+      status = "open",
+      sortBy = "createdAt",
+      includeArchived,
+    } = req.query || {};
     const organization = sanitizeOrg(req.user?.organization);
 
     const allowedStatuses = [
@@ -465,8 +468,15 @@ export const updateMemoryLifecycleState = async (req, res) => {
     const { state, reason } = req.body || {};
     const organization = sanitizeOrg(req.user?.organization);
 
-    if (typeof type !== "string" || !["decision", "action-item"].includes(type)) {
-      return sendError(res, 400, "Invalid memory type. Use 'decision' or 'action-item'.");
+    if (
+      typeof type !== "string" ||
+      !["decision", "action-item"].includes(type)
+    ) {
+      return sendError(
+        res,
+        400,
+        "Invalid memory type. Use 'decision' or 'action-item'.",
+      );
     }
 
     if (typeof id !== "string" || !mongoose.Types.ObjectId.isValid(id)) {

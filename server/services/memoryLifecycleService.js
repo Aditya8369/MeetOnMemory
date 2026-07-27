@@ -131,7 +131,8 @@ export async function transitionLifecycleState(
 
   document.lifecycleState = toState;
   document.lifecycleUpdatedAt = new Date();
-  document.archivedAt = toState === "archived" ? new Date() : document.archivedAt;
+  document.archivedAt =
+    toState === "archived" ? new Date() : document.archivedAt;
 
   await document.save();
   return document;
@@ -143,7 +144,11 @@ export async function transitionLifecycleState(
  * as long as the document still exists (hard-deletion is the only
  * irreversible step in this system).
  */
-export async function restoreMemory(type, id, { triggeredBy = "system", reason = "Restored on reference" } = {}) {
+export async function restoreMemory(
+  type,
+  id,
+  { triggeredBy = "system", reason = "Restored on reference" } = {},
+) {
   const Model = resolveModel(type);
   const document = await Model.findById(id);
   if (!document) return null;
@@ -190,7 +195,10 @@ export async function runLifecycleSweep({
 
         const { state, reason } = evaluateLifecycleState(doc, policy);
 
-        if (state === "expired" && (doc.lifecycleState || "active") === "expired") {
+        if (
+          state === "expired" &&
+          (doc.lifecycleState || "active") === "expired"
+        ) {
           if (policy.hardDeleteExpired) {
             await Model.deleteOne({ _id: doc._id });
             summary.deleted += 1;
@@ -199,7 +207,10 @@ export async function runLifecycleSweep({
         }
 
         if (state !== (doc.lifecycleState || "active")) {
-          await transitionLifecycleState(doc, state, { reason, triggeredBy: "system" });
+          await transitionLifecycleState(doc, state, {
+            reason,
+            triggeredBy: "system",
+          });
           if (state === "dormant") summary.transitions.toDormant += 1;
           if (state === "archived") summary.transitions.toArchived += 1;
           if (state === "expired") summary.transitions.toExpired += 1;

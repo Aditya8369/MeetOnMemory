@@ -141,9 +141,9 @@ describe("memoryLifecycleService", () => {
         sourceMeetingId: makeMeetingId(),
       });
 
-      await expect(
-        transitionLifecycleState(item, "on-hold"),
-      ).rejects.toThrow("Unknown lifecycle state");
+      await expect(transitionLifecycleState(item, "on-hold")).rejects.toThrow(
+        "Unknown lifecycle state",
+      );
     });
   });
 
@@ -227,9 +227,7 @@ describe("memoryLifecycleService", () => {
       expect(summary.transitions.toArchived).toBeGreaterThanOrEqual(1);
 
       const refreshedDormant = await Decision.findById(dormantCandidate._id);
-      const refreshedArchived = await Decision.findById(
-        archivedCandidate._id,
-      );
+      const refreshedArchived = await Decision.findById(archivedCandidate._id);
 
       expect(refreshedDormant.lifecycleState).toBe("dormant");
       expect(refreshedArchived.lifecycleState).toBe("archived");

@@ -10,7 +10,10 @@ export default async function memoryLifecycleJob(job) {
     console.log(`✅ Completed background memory lifecycle sweep:`, summary);
     return summary;
   } catch (error) {
-    console.error(`❌ Background memory lifecycle sweep failed:`, error.message);
+    console.error(
+      `❌ Background memory lifecycle sweep failed:`,
+      error.message,
+    );
     throw error;
   }
 }

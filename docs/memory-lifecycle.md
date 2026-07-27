@@ -8,7 +8,7 @@ archived memories come back when they're needed again.
 
 The knowledge graph stores "memories" as `Decision` and `ActionItem`
 documents. As meetings accumulate over months, many memories stop being
-useful day-to-day without ever becoming *wrong* — they're just old. Without
+useful day-to-day without ever becoming _wrong_ — they're just old. Without
 some notion of lifecycle, every memory (an important architectural decision
 from last quarter, or a one-off follow-up nobody ever checks again) is
 retrieved and weighted identically, which both hurts retrieval quality and
@@ -16,7 +16,7 @@ lets storage grow unbounded.
 
 This is deliberately a separate concern from **Dynamic Memory Importance
 Scoring** (`server/services/importanceScoringService.js`, Issue #269).
-Importance scoring answers "how relevant is this memory *right now*, among
+Importance scoring answers "how relevant is this memory _right now_, among
 the ones being shown"; lifecycle management answers "should this memory be
 shown by default at all". The lifecycle engine reuses the importance score
 as one of its signals (see below) rather than duplicating that logic.
@@ -61,14 +61,14 @@ All thresholds live in `server/config/lifecyclePolicy.js` and are
 overridable via environment variables, so retention rules can change
 without a code deploy:
 
-| Env var                          | Default | Meaning                                            |
-| --------------------------------- | ------- | --------------------------------------------------- |
-| `LIFECYCLE_DORMANT_AFTER_DAYS`     | 30      | Days of inactivity before `active` → `dormant`       |
-| `LIFECYCLE_ARCHIVED_AFTER_DAYS`    | 90      | Days of inactivity before → `archived`               |
-| `LIFECYCLE_EXPIRED_AFTER_DAYS`     | 365     | Days an *archived* memory sits untouched before → `expired` |
-| `LIFECYCLE_PROTECT_IMPORTANCE`     | 70      | Importance score at/above which archival/expiry is skipped |
-| `LIFECYCLE_HARD_DELETE_EXPIRED`    | `false` | Whether the sweep may permanently delete `expired` memories |
-| `LIFECYCLE_SWEEP_INTERVAL_MS`      | 86400000 (1 day) | How often the automatic sweep runs             |
+| Env var                         | Default          | Meaning                                                     |
+| ------------------------------- | ---------------- | ----------------------------------------------------------- |
+| `LIFECYCLE_DORMANT_AFTER_DAYS`  | 30               | Days of inactivity before `active` → `dormant`              |
+| `LIFECYCLE_ARCHIVED_AFTER_DAYS` | 90               | Days of inactivity before → `archived`                      |
+| `LIFECYCLE_EXPIRED_AFTER_DAYS`  | 365              | Days an _archived_ memory sits untouched before → `expired` |
+| `LIFECYCLE_PROTECT_IMPORTANCE`  | 70               | Importance score at/above which archival/expiry is skipped  |
+| `LIFECYCLE_HARD_DELETE_EXPIRED` | `false`          | Whether the sweep may permanently delete `expired` memories |
+| `LIFECYCLE_SWEEP_INTERVAL_MS`   | 86400000 (1 day) | How often the automatic sweep runs                          |
 
 "Inactive" is measured from `lastAccessedAt`, falling back to `createdAt`
 for memories that have never been explicitly accessed.
@@ -78,7 +78,7 @@ for memories that have never been explicitly accessed.
 `server/services/memoryLifecycleService.js` exposes:
 
 - `evaluateLifecycleState(memory, policy)` — pure function, no DB access.
-  Given a plain data view of a memory, returns the state it *should* be in.
+  Given a plain data view of a memory, returns the state it _should_ be in.
   This is what's unit-tested in `tests/memoryLifecycleService.test.js`.
 - `transitionLifecycleState(document, toState, { reason, triggeredBy })` —
   persists a transition and appends an entry to the document's
@@ -96,7 +96,7 @@ for memories that have never been explicitly accessed.
 
 - **Automatic**: once `REDIS_URI` is configured, `initMemoryLifecycleWorker`
   (in `server/services/queueService.js`) schedules a recurring BullMQ job
-  (`memory-lifecycle-queue`) that runs `runLifecycleSweep` across *all*
+  (`memory-lifecycle-queue`) that runs `runLifecycleSweep` across _all_
   organizations on the interval set by `LIFECYCLE_SWEEP_INTERVAL_MS`.
 - **Manual**: `POST /api/knowledge/lifecycle/run` triggers a sweep for the
   caller's organization on demand (queued in the background if Redis is
