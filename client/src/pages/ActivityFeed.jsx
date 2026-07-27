@@ -92,7 +92,7 @@ export default function ActivityFeed() {
       });
       if (node) observer.current.observe(node);
     },
-    [loading, hasMore, currentOrganization, loadActivities],
+    [loading, hasMore, loadActivities],
   );
 
   const getIconForAction = (action) => {
