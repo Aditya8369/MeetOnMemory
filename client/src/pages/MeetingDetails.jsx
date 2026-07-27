@@ -16,6 +16,7 @@ import CommentSection from "../components/meeting-details/CommentSection";
 import PollSection from "../components/meeting-details/PollSection";
 import DigestActions from "../components/meeting-details/DigestActions";
 import AttachmentPanel from "../components/meeting-details/AttachmentPanel";
+import ReactionSummaryCard from "../components/meeting-details/ReactionSummaryCard";
 
 const MeetingDetails = () => {
   const { id } = useParams();
@@ -168,6 +169,7 @@ const MeetingDetails = () => {
           onPresent={() => setIsPresentModeOpen(true)}
         />
         <MeetingSummary meeting={meeting} />
+        <ReactionSummaryCard meetingId={meeting._id} />
         <MeetingCollaborativeNotes meeting={meeting} />
         <MeetingTranscript meeting={meeting} />
         <MeetingParticipants meeting={meeting} />

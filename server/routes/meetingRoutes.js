@@ -33,6 +33,10 @@ import {
   resendDigest,
   previewDigest,
 } from "../controllers/digestController.js";
+import {
+  getReactionSummary,
+  getReactionTimeline,
+} from "../controllers/reactionController.js";
 import { exportMeeting } from "../controllers/exportController.js";
 import {
   startRecording,
@@ -278,6 +282,24 @@ router.get(
   userAuth,
   requireOwnerOrAdmin(Meeting),
   previewDigest,
+);
+
+// ✅ Get Reaction Summary
+router.get(
+  "/:id/reactions/summary",
+  userAuth,
+  requireOrgAccess(Meeting),
+  requirePermission("meetings", "view"),
+  getReactionSummary,
+);
+
+// ✅ Get Reaction Timeline
+router.get(
+  "/:id/reactions/timeline",
+  userAuth,
+  requireOrgAccess(Meeting),
+  requirePermission("meetings", "view"),
+  getReactionTimeline,
 );
 
 export default router;
