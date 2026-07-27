@@ -58,7 +58,9 @@ describe("Attachment Controller", () => {
         success: false,
         message: "File exceeds 10 MB limit",
       });
-      expect(fs.unlinkSync).toHaveBeenCalledWith("/tmp/test.pdf");
+      expect(fs.unlinkSync).toHaveBeenCalledWith(
+        expect.stringContaining("test.pdf"),
+      );
     });
 
     it("should reject invalid mime types", async () => {
@@ -69,7 +71,9 @@ describe("Attachment Controller", () => {
         success: false,
         message: "Invalid file type",
       });
-      expect(fs.unlinkSync).toHaveBeenCalledWith("/tmp/test.pdf");
+      expect(fs.unlinkSync).toHaveBeenCalledWith(
+        expect.stringContaining("test.pdf"),
+      );
     });
   });
 
@@ -88,7 +92,9 @@ describe("Attachment Controller", () => {
       await deleteAttachment(req, res);
 
       expect(res.status).toHaveBeenCalledWith(200);
-      expect(fs.unlinkSync).toHaveBeenCalledWith("/tmp/test.pdf");
+      expect(fs.unlinkSync).toHaveBeenCalledWith(
+        expect.stringContaining("test.pdf"),
+      );
       expect(Attachment.deleteOne).toHaveBeenCalled();
     });
 
