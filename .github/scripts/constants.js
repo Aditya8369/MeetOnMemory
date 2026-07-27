@@ -28,6 +28,8 @@ export const TIMERS = Object.freeze({
   // Reminders every 8 hours until the 48-hour claim window expires.
   reminderHours: Object.freeze([8, 16, 24, 32, 40]),
   expirationHours: 48,
+  // Contributor-authored issues: exclusive claim window for the author.
+  authorPriorityHours: 48,
 });
 
 export function reminderMarker(hours) {

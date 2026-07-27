@@ -1,9 +1,12 @@
-import { MAINTAINER_ASSOCIATIONS } from "./constants.js";
+import { MAINTAINER_ASSOCIATIONS, TIMERS } from "./constants.js";
 import { isExpectedRepository, safeCall } from "./helpers.js";
+import { readMetadata, updateIssueMetadata } from "./metadata.js";
+import { getAuthorPriorityExpiresAt, issueAuthorRole } from "./permissions.js";
 
 /**
  * Automatically applies the 'ECSoC26' label to contributor-created Issues and Pull Requests.
  * Skipping labeling if the author is a maintainer (OWNER, MEMBER, COLLABORATOR).
+ * For contributor-created issues, also stamps authorPriorityExpiresAt (48h exclusive window).
  */
 export async function autoLabelEcs({ github, context, core }) {
   if (!isExpectedRepository(context)) {
@@ -37,6 +40,10 @@ export async function autoLabelEcs({ github, context, core }) {
   core.info(
     `Evaluating creation of #${target.number} by @${author} (association: ${association})`,
   );
+
+  if (isIssue && !MAINTAINER_ASSOCIATIONS.includes(association)) {
+    await ensureAuthorPriorityMetadata(github, context, core, target);
+  }
 
   // Exclude maintainers/collaborators with admin/write access
   if (MAINTAINER_ASSOCIATIONS.includes(association)) {
@@ -79,4 +86,27 @@ export async function autoLabelEcs({ github, context, core }) {
   } else {
     core.setFailed(`Failed to apply 'ECSoC26' label to #${issueNumber}.`);
   }
+}
+
+async function ensureAuthorPriorityMetadata(github, context, core, issue) {
+  const metadata = readMetadata(issue.body);
+  if (metadata.authorPriorityExpiresAt) return;
+  if (
+    ["owner", "maintainer", "collaborator"].includes(issueAuthorRole(issue))
+  ) {
+    return;
+  }
+
+  const expiresAt =
+    getAuthorPriorityExpiresAt(issue, metadata) ||
+    new Date(
+      Date.now() + TIMERS.authorPriorityHours * 60 * 60 * 1000,
+    ).toISOString();
+
+  await updateIssueMetadata(github, context, core, issue, (draft) => {
+    if (!draft.authorPriorityExpiresAt) {
+      draft.authorPriorityExpiresAt = expiresAt;
+    }
+    return draft;
+  });
 }
