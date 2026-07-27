@@ -175,6 +175,33 @@ const Dashboard = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [userData, visibleCards.length]);
 
+  // Resume paused .dash-card.fade-in-up entrance animations once cards enter the viewport.
+  // Matches Features/Hero IntersectionObserver + .visible contract in index.css.
+  useEffect(() => {
+    if (!layouts || typeof IntersectionObserver === "undefined") return;
+
+    const root = containerRef.current;
+    if (!root) return;
+
+    const cards = root.querySelectorAll(".dash-card.fade-in-up");
+    if (cards.length === 0) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting) {
+            entry.target.classList.add("visible");
+            observer.unobserve(entry.target);
+          }
+        });
+      },
+      { threshold: 0.1 },
+    );
+
+    cards.forEach((card) => observer.observe(card));
+    return () => observer.disconnect();
+  }, [layouts, visibleCards.length, containerRef]);
+
   const handleLayoutChange = useCallback((layout, allLayouts) => {
     // Only save if layouts are actually set and changed
     // react-grid-layout triggers on mount, so we compare if needed, or just debounce
