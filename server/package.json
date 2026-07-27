@@ -13,7 +13,7 @@
     "test": "node --experimental-vm-modules node_modules/jest/bin/jest.js --forceExit",
     "test:ci": "node --experimental-vm-modules node_modules/jest/bin/jest.js --forceExit --ci --runInBand --coverage",
     "test:startup": "node tests/testStartup.js",
-    "test:unit": "vitest run tests/OrganizationService.test.js tests/InvitationService.test.js tests/organizationController.test.js tests/knowledgeController.test.js tests/transcriptController.test.js"
+    "test:unit": "vitest run tests/OrganizationService.test.js tests/InvitationService.test.js tests/organizationController.test.js tests/knowledgeController.test.js tests/transcriptController.test.js tests/meetingDigestService.test.js"
   },
   "dependencies": {
     "@azure/identity": "^4.13.1",
