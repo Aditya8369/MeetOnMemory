@@ -84,7 +84,10 @@ configureExpress(app);
 app.use("/api/auth", authRoutes);
 app.use(["/api/organization", "/api/organizations"], organizationRoutes);
 app.use(["/api/membership", "/api/memberships"], membershipRoutes);
-app.use("/api/membership-request", membershipRequestRoutes);
+app.use(
+  ["/api/membership-request", "/api/membership-requests"],
+  membershipRequestRoutes,
+);
 app.use("/api/invitation", invitationRoutes);
 app.use("/api/meetings", meetingRoutes);
 app.use("/api/search", searchRoutes);
@@ -96,7 +99,7 @@ app.use("/api/user", userRoutes);
 app.use("/api/notifications", notificationRoutes);
 app.use("/api/knowledge", knowledgeRoutes);
 app.use("/api/calendar", calendarRoutes);
-app.use("/api/compliance", policyComplianceRoutes);
+app.use(["/api/policy-compliance", "/api/compliance"], policyComplianceRoutes);
 import { slackWebhookParser } from "./middleware/slackWebhookParser.js";
 
 app.use("/api/sessions", sessionRoutes);
