@@ -113,7 +113,8 @@ export const requireOwnerOrAdmin = (Model) => {
         });
       }
 
-      const docId = req.params.id;
+      // Prefer :id (meetings/policies); fall back to :meetingId (transcript routes).
+      const docId = req.params.id || req.params.meetingId;
       if (!docId) {
         return res
           .status(400)
@@ -168,7 +169,8 @@ export const requireOwner = (Model) => {
           .json({ success: false, message: "Unauthorized" });
       }
 
-      const docId = req.params.id;
+      // Prefer :id (meetings/policies); fall back to :meetingId (transcript routes).
+      const docId = req.params.id || req.params.meetingId;
       if (!docId) {
         return res
           .status(400)
@@ -224,7 +226,8 @@ export const requireOrgAccess = (Model) => {
         });
       }
 
-      const docId = req.params.id;
+      // Prefer :id (meetings/policies); fall back to :meetingId (transcript routes).
+      const docId = req.params.id || req.params.meetingId;
       if (!docId) {
         return res
           .status(400)
