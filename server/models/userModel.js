@@ -53,6 +53,18 @@ const userSchema = new mongoose.Schema(
       type: Boolean,
       default: false,
     },
+    dashboardPreferences: {
+      type: mongoose.Schema.Types.Mixed,
+      default: null,
+    },
+    lastExportRequestedAt: {
+      type: Date,
+      default: null,
+    },
+    emailDigestEnabled: {
+      type: Boolean,
+      default: true,
+    },
   },
   { timestamps: true },
 );

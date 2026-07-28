@@ -126,8 +126,9 @@ const Calendar = () => {
           <div className="flex items-center gap-3 w-full md:w-auto">
             <button
               onClick={() => {
-                window.location.href =
-                  "http://localhost:4000/api/auth/google-calendar";
+                const backendUrl =
+                  import.meta.env.VITE_BACKEND_URL || "http://localhost:4000";
+                window.location.href = `${backendUrl}/api/auth/google-calendar`;
               }}
               className="inline-flex items-center gap-2 px-4 py-2 text-xs font-bold text-slate-700 bg-white border border-slate-200 hover:bg-slate-50 active:bg-slate-100 rounded-xl transition-all shadow-sm cursor-pointer w-full md:w-auto justify-center"
             >

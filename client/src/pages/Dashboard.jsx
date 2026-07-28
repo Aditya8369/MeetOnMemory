@@ -1,4 +1,4 @@
-import React, { useContext, useEffect, useRef } from "react";
+import React, { useContext } from "react";
 import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
 import AppContent from "../context/AppContent";
@@ -14,6 +14,7 @@ import {
   Shield,
 } from "lucide-react";
 import Navbar from "../components/Navbar.jsx";
+import TopContributorsWidget from "../components/organization/TopContributorsWidget";
 
 /* ─── Role Badge ──────────────────────────────────────────────────────────── */
 const ROLE_STYLES = {
@@ -22,7 +23,6 @@ const ROLE_STYLES = {
   member: "bg-sky-50 text-sky-700 border-sky-200",
   guest: "bg-slate-100 text-slate-600 border-slate-200",
 };
-
 
 const ROUTE_MAP = {
   "upload-meeting": "/upload-meeting",
@@ -37,7 +37,6 @@ const Dashboard = () => {
   const { t } = useTranslation();
   const { userData } = useContext(AppContent);
   const navigate = useNavigate();
-  const gridRef = useRef(null);
 
   const organizationName =
     userData?.organization?.name?.toUpperCase() || "ORGANIZATION";
@@ -47,28 +46,8 @@ const Dashboard = () => {
     rawRole.charAt(0).toUpperCase() + rawRole.slice(1).toLowerCase();
   const roleStyle = ROLE_STYLES[rawRole.toLowerCase()] || ROLE_STYLES.member;
 
-  useEffect(() => {
-    if (!gridRef.current) return;
-    const cards = gridRef.current.querySelectorAll(".dash-card");
-    const observer = new IntersectionObserver(
-      (entries) => {
-        entries.forEach((entry) => {
-          if (entry.isIntersecting) {
-            entry.target.classList.add("visible");
-            observer.unobserve(entry.target);
-          }
-        });
-      },
-      { threshold: 0.1 },
-    );
-    cards.forEach((card) => observer.observe(card));
-    return () => observer.disconnect();
-  }, []);
-
-  const handleAISearch = () => navigate("/ai-search");
-  const handleCardClick = (id) => navigate(ROUTE_MAP[id]);
-
-  const isAdmin = userData?.role === "admin" || userData?.role === "owner";
+  const isAdmin =
+    rawRole.toLowerCase() === "admin" || rawRole.toLowerCase() === "owner";
 
   const FEATURE_CARDS = [
     {
@@ -131,18 +110,21 @@ const Dashboard = () => {
   ];
 
   const visibleCards = FEATURE_CARDS.filter(
-    (card) => !card.adminOnly || isAdmin
+    (card) => !card.adminOnly || isAdmin,
   );
+
+  const handleAISearch = () => navigate("/ai-search");
+  const handleCardClick = (id) => navigate(ROUTE_MAP[id]);
 
   return (
     <div className="min-h-screen flex flex-col bg-linear-to-b from-slate-50 via-white to-slate-50 dark:from-gray-900 dark:via-gray-900 dark:to-gray-900">
       <Navbar />
 
-      <main className="flex-1 w-full max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 pt-28 pb-16 sm:pb-20">
+      <main className="flex-1 w-full max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 pt-28 pb-12 sm:pb-16">
         {/* ── Hero + AI Search — unified panel ── */}
         <section
           aria-label="Dashboard hero"
-          className="relative mb-10 sm:mb-12 fade-in-up stagger-1"
+          className="relative mb-6 sm:mb-8 fade-in-up stagger-1"
         >
           <div
             aria-hidden="true"
@@ -247,7 +229,7 @@ const Dashboard = () => {
 
         {/* ── Feature Cards ── */}
         <section aria-label="Dashboard features">
-          <header className="mb-6 sm:mb-8 fade-in-up stagger-2">
+          <header className="mb-4 sm:mb-5 fade-in-up stagger-2">
             <p className="text-xs font-semibold uppercase tracking-widest text-slate-400 dark:text-gray-500">
               {t("dashboard.features")}
             </p>
@@ -257,16 +239,14 @@ const Dashboard = () => {
           </header>
 
           <div
-            ref={gridRef}
-            className="grid grid-cols-1 auto-rows-fr gap-4 sm:grid-cols-2 sm:gap-5 lg:grid-cols-3"
+            data-testid="feature-cards-grid"
+            className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3"
           >
-            {visibleCards.map((card, index) => {
+            {visibleCards.map((card) => {
               const Icon = card.icon;
-              const staggerClass = `stagger-${Math.min(index + 1, 6)}`;
               return (
-                <article
+                <div
                   key={card.id}
-                  id={`dashboard-card-${card.id}`}
                   role="button"
                   tabIndex={0}
                   aria-label={`Navigate to ${card.title}`}
@@ -277,11 +257,11 @@ const Dashboard = () => {
                       handleCardClick(card.id);
                     }
                   }}
-                  className={`dash-card fade-in-up ${staggerClass} group relative flex min-h-[220px] cursor-pointer flex-col rounded-xl border border-slate-200/80 dark:border-gray-700 bg-white dark:bg-gray-800 p-5 shadow-sm ring-1 ring-transparent transition-all duration-200 hover:-translate-y-1 hover:border-slate-300/80 dark:hover:border-gray-600 hover:shadow-md focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 sm:p-6 ${card.accentRing}`}
+                  className={`dash-card group relative flex cursor-pointer flex-col rounded-xl border border-slate-200/80 dark:border-gray-700 bg-white dark:bg-gray-800 p-4 shadow-sm ring-1 ring-transparent transition-all duration-200 hover:border-slate-300/80 dark:hover:border-gray-600 hover:shadow-md focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 sm:p-5 ${card.accentRing}`}
                 >
-                  <div className="mb-4 flex items-start justify-between gap-3">
+                  <div className="mb-3 flex items-start justify-between gap-3">
                     <div
-                      className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl ${card.iconBg} transition-transform duration-200 group-hover:scale-105`}
+                      className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${card.iconBg} transition-transform duration-200 group-hover:scale-105`}
                     >
                       <Icon
                         className={`h-5 w-5 ${card.iconColor}`}
@@ -295,26 +275,38 @@ const Dashboard = () => {
                     </span>
                   </div>
 
-                  <div className="flex flex-1 flex-col">
-                    <h3 className="mb-2 text-base font-semibold leading-snug text-slate-900 dark:text-gray-100">
+                  <div className="flex min-h-0 flex-1 flex-col">
+                    <h3 className="mb-1.5 text-base font-semibold leading-snug text-slate-900 dark:text-gray-100">
                       {card.title}
                     </h3>
-                    <p className="flex-1 text-sm leading-relaxed text-slate-500 dark:text-gray-400">
+                    <p className="line-clamp-3 flex-1 text-sm leading-relaxed text-slate-500 dark:text-gray-400">
                       {card.description}
                     </p>
                   </div>
 
-                  <div className="mt-5 flex items-center gap-1.5 border-t border-slate-100 dark:border-gray-700 pt-4 text-xs font-semibold text-slate-400 dark:text-gray-500 transition-colors duration-200 group-hover:text-blue-600 dark:group-hover:text-blue-400">
+                  <div className="mt-3 flex items-center gap-1.5 border-t border-slate-100 dark:border-gray-700 pt-3 text-xs font-semibold text-slate-400 dark:text-gray-500 transition-colors duration-200 group-hover:text-blue-600 dark:group-hover:text-blue-400">
                     <span>{t("dashboard.open")}</span>
                     <ArrowRight
                       className="h-3.5 w-3.5 transition-transform duration-200 group-hover:translate-x-0.5"
                       aria-hidden="true"
                     />
                   </div>
-                </article>
+                </div>
               );
             })}
           </div>
+        </section>
+
+        {/* ── Gamification ── */}
+        <section
+          aria-label="Organization Engagement"
+          className="mt-6 sm:mt-8 fade-in-up stagger-3"
+        >
+          <TopContributorsWidget
+            organizationId={
+              userData?.organization?._id || userData?.organization
+            }
+          />
         </section>
       </main>
     </div>
