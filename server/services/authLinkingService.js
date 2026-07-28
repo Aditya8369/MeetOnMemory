@@ -20,11 +20,9 @@ export const linkUserToClerkId = async (mongoUserId, clerkUserId) => {
   if (!mongoUserId || !clerkUserId) {
     throw new Error("Missing required IDs for linking");
   }
-  return await userModel.findByIdAndUpdate(
-    mongoUserId,
-    { $set: { clerkUserId } },
-    { new: true }
-  ).select("-password");
+  return await userModel
+    .findByIdAndUpdate(mongoUserId, { $set: { clerkUserId } }, { new: true })
+    .select("-password");
 };
 
 /**

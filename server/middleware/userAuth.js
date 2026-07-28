@@ -18,7 +18,6 @@ const userAuth = async (req, res, next) => {
     }
 
     let user = null;
-    let authError = null;
 
     // 1. Try Clerk Authentication (if dual or clerk)
     if (authProvider === "clerk" || authProvider === "dual") {
@@ -36,8 +35,7 @@ const userAuth = async (req, res, next) => {
             });
           }
         }
-      } catch (err) {
-        authError = err;
+      } catch (_err) {
         if (authProvider === "clerk") {
           return res.status(401).json({
             success: false,
@@ -58,8 +56,7 @@ const userAuth = async (req, res, next) => {
             message: "User not found or token invalid.",
           });
         }
-      } catch (err) {
-        authError = err;
+      } catch (_err) {
         if (authProvider === "legacy") {
           return res.status(401).json({
             success: false,
