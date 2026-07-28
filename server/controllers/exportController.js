@@ -1,5 +1,6 @@
 import Meeting from "../models/meetingModel.js";
 import ExportService from "../services/ExportService.js";
+import { sanitizeFilenameForHeader } from "../utils/fileUtils.js";
 
 export const exportMeeting = async (req, res) => {
   try {
@@ -16,14 +17,16 @@ export const exportMeeting = async (req, res) => {
 
     const title =
       meeting.structuredMoM?.title || meeting.title || "Meeting Minutes";
-    const filenameBase = title.replace(/[^a-z0-9]/gi, "_").toLowerCase();
+    const filenameBase = sanitizeFilenameForHeader(
+      title.replace(/[^a-z0-9]/gi, "_").toLowerCase()
+    );
 
     if (format === "pdf") {
       const doc = ExportService.generateMeetingPDF(meeting);
       res.setHeader("Content-Type", "application/pdf");
       res.setHeader(
         "Content-Disposition",
-        `attachment; filename="${filenameBase}_mom.pdf"`,
+        `attachment; filename="${sanitizeFilenameForHeader(filenameBase)}_mom.pdf"`,
       );
       doc.pipe(res);
     } else if (format === "docx") {
@@ -34,7 +37,7 @@ export const exportMeeting = async (req, res) => {
       );
       res.setHeader(
         "Content-Disposition",
-        `attachment; filename="${filenameBase}_mom.docx"`,
+        `attachment; filename="${sanitizeFilenameForHeader(filenameBase)}_mom.docx"`,
       );
       res.send(buffer);
     } else if (format === "md") {
@@ -42,7 +45,7 @@ export const exportMeeting = async (req, res) => {
       res.setHeader("Content-Type", "text/markdown");
       res.setHeader(
         "Content-Disposition",
-        `attachment; filename="${filenameBase}_mom.md"`,
+        `attachment; filename="${sanitizeFilenameForHeader(filenameBase)}_mom.md"`,
       );
       res.send(md);
     } else {

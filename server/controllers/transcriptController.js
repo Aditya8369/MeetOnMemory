@@ -7,6 +7,7 @@ import Transcript from "../models/transcriptModel.js";
 import Meeting from "../models/meetingModel.js";
 import { indexMeeting } from "../utils/embeddingUtils.js";
 import { indexTranscriptChunks } from "../utils/transcriptEmbeddingUtils.js";
+import { sanitizeFilenameForHeader } from "../utils/fileUtils.js";
 
 /**
  * Get transcript by meeting ID
@@ -99,7 +100,7 @@ export const exportTranscriptAsText = async (req, res) => {
       textContent.push("");
     });
 
-    const filename = `transcript-${meetingId}.txt`;
+    const filename = sanitizeFilenameForHeader(`transcript-${meetingId}.txt`);
     res.setHeader("Content-Type", "text/plain");
     res.setHeader("Content-Disposition", `attachment; filename="${filename}"`);
     res.send(textContent.join("\n"));
@@ -132,7 +133,7 @@ export const exportTranscriptAsPDF = async (req, res) => {
     res.setHeader("Content-Type", "application/pdf");
     res.setHeader(
       "Content-Disposition",
-      `attachment; filename="transcript-${meetingId}.pdf"`
+      `attachment; filename="${sanitizeFilenameForHeader(`transcript-${meetingId}`)}.pdf"`
     );
 
     doc.pipe(res);

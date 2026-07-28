@@ -5,6 +5,7 @@ import {
   getSnapshotById,
   diffSnapshots,
 } from "../services/graphSnapshotService.js";
+import { sanitizeFilenameForHeader } from "../utils/fileUtils.js";
 
 const isValidObjectId = (id) => mongoose.Types.ObjectId.isValid(id);
 
@@ -90,7 +91,7 @@ export const exportSnapshot = async (req, res) => {
 
     res.setHeader(
       "Content-Disposition",
-      `attachment; filename="graph-snapshot-${id}.json"`,
+      `attachment; filename="${sanitizeFilenameForHeader(`graph-snapshot-${id}`)}.json"`,
     );
     res.status(200).json({ success: true, snapshot });
   } catch (error) {
