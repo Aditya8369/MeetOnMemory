@@ -63,3 +63,20 @@ export function mockNetworkFailure(axiosInstance, message = "Network Error") {
   axiosInstance.defaults.adapter = async () =>
     Promise.reject(new Error(message));
 }
+
+/**
+ * Reject with a custom / partial Axios-like error shape.
+ * Use for malformed responses that are awkward to express with mockErrorResponse.
+ *
+ * @param {import("axios").AxiosInstance} axiosInstance
+ * @param {object | ((config: import("axios").InternalAxiosRequestConfig) => object)} errorOrFactory
+ */
+export function mockCustomError(axiosInstance, errorOrFactory) {
+  axiosInstance.defaults.adapter = async (config) => {
+    const error =
+      typeof errorOrFactory === "function"
+        ? errorOrFactory(config)
+        : { config, ...errorOrFactory };
+    return Promise.reject(error);
+  };
+}
