@@ -14,12 +14,10 @@ export const compareMeetings = async (req, res) => {
       typeof meetingIdA !== "string" ||
       typeof meetingIdB !== "string"
     ) {
-      return res
-        .status(400)
-        .json({
-          message:
-            "Both meetingIdA and meetingIdB are required and must be strings",
-        });
+      return res.status(400).json({
+        message:
+          "Both meetingIdA and meetingIdB are required and must be strings",
+      });
     }
 
     // Fetch both meetings
