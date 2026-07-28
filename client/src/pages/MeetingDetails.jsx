@@ -18,6 +18,7 @@ import DigestActions from "../components/meeting-details/DigestActions";
 import AttachmentPanel from "../components/meeting-details/AttachmentPanel";
 import ReactionSummaryCard from "../components/meeting-details/ReactionSummaryCard";
 import SeriesNavigation from "../components/meeting-details/SeriesNavigation";
+import CompareButton from "../components/meeting-details/CompareButton";
 
 const MeetingDetails = () => {
   const { id } = useParams();
@@ -176,7 +177,8 @@ const MeetingDetails = () => {
         <MeetingTranscript meeting={meeting} />
         <MeetingParticipants meeting={meeting} />
         <MeetingMetadata meeting={meeting} />
-        <div className="mb-6 flex justify-end">
+        <div className="mb-6 flex justify-end gap-2 items-center">
+          <CompareButton meetingId={meeting._id} />
           <DigestActions meetingId={meeting._id} />
         </div>
         <MeetingActions
