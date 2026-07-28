@@ -16,6 +16,7 @@ import Dashboard from "../pages/Dashboard.jsx";
 // Feature Pages
 import CompareMeetings from "../pages/MeetingComparison";
 import CreateMeeting from "../pages/CreateMeeting.jsx";
+import MeetingTemplates from "../pages/MeetingTemplates.jsx";
 import UploadMeeting from "../pages/UploadMeeting.jsx";
 import Policies from "../pages/Policies.jsx";
 import Summaries from "../pages/Summaries.jsx";
@@ -163,6 +164,14 @@ const ProtectedRoutes = (
       element={
         <ProtectedRoute resource="meetings" action="create">
           <CreateMeeting />
+        </ProtectedRoute>
+      }
+    />
+    <Route
+      path="/meeting-templates"
+      element={
+        <ProtectedRoute resource="meetings" action="view">
+          <MeetingTemplates />
         </ProtectedRoute>
       }
     />
