@@ -39,7 +39,6 @@ const PublicRoutes = (
       path="/organizations/:slug"
       element={<PublicOrganizationProfile />}
     />
-    <Route path="/meeting-room/:roomId" element={<MeetingRoom />} />
     <Route path="/shared/:hash" element={<PublicSharedView />} />
   </React.Fragment>
 );
