@@ -4,10 +4,10 @@ import AppContent from "./AppContent.js";
 import { RBACProvider } from "./RBACContext.jsx";
 import { useNavigate } from "react-router-dom";
 import { authApi, csrfService } from "../services";
+import { getBackendUrl } from "../config/backendConfig.js";
 
 export const AppContextProvider = ({ children }) => {
-  const backendUrl =
-    import.meta.env.VITE_BACKEND_URL || "http://localhost:4000";
+  const backendUrl = getBackendUrl();
 
   const [isLoggedin, setIsLoggedin] = useState(false);
   const [userData, setUserData] = useState(null);
@@ -87,12 +87,12 @@ export const AppContextProvider = ({ children }) => {
 
   const logoutUser = async () => {
     try {
-      toast.success("Logged out successfully");
-      navigate("/");
-
       await authApi.logout();
       clearAuthState();
       csrfService.clearToken();
+
+      toast.success("Logged out successfully");
+      navigate("/");
     } catch {
       toast.error("Failed to logout");
     }

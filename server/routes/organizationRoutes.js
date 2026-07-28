@@ -13,9 +13,11 @@ import {
   createOrganization,
   getOrganizations,
   getOrganizationById,
+  getOrganizationSettings,
   updateOrganization,
   deleteOrganization,
   getOrganizationMembersById,
+  getOrganizationLeaderboard,
 } from "../controllers/organizationController.js";
 import userAuth from "../middleware/userAuth.js";
 import { apiLimiter, writeLimiter } from "../middleware/rateLimiter.js";
@@ -38,12 +40,7 @@ router.post(
 );
 
 // Member joins by selecting an existing org
-router.post(
-  "/join",
-  userAuth,
-  writeLimiter,
-  joinOrganization,
-);
+router.post("/join", userAuth, writeLimiter, joinOrganization);
 
 // Select organization (for users with multiple orgs)
 router.post("/select", userAuth, selectOrganization);
@@ -83,7 +80,11 @@ router.get(
   searchOrganizations,
 );
 
-import { getOrganizationAuditLogs } from "../controllers/auditLogController.js";
+import {
+  downloadAuditLogExport,
+  getAuditLogExport,
+  getOrganizationAuditLogs,
+} from "../controllers/auditLogController.js";
 import Organization from "../models/organizationModel.js";
 import { requireOrgAccess } from "../middleware/rbac.js";
 
@@ -96,6 +97,36 @@ router.get(
   getOrganizationAuditLogs,
 );
 
+router.get(
+  "/:id/audit-log-exports/:exportId",
+  userAuth,
+  requireOrgAccess(Organization),
+  requirePermission("audit_logs", "view"),
+  getAuditLogExport,
+);
+
+router.get(
+  "/:id/audit-log-exports/:exportId/download",
+  userAuth,
+  requireOrgAccess(Organization),
+  requirePermission("audit_logs", "view"),
+  downloadAuditLogExport,
+);
+
+// Organization Settings routes
+router.get(
+  "/current/settings",
+  userAuth,
+  requireOrgMembership,
+  getOrganizationSettings,
+);
+router.get(
+  "/settings",
+  userAuth,
+  requireOrgMembership,
+  getOrganizationSettings,
+);
+
 // New CRUD routes (consolidated from organizationRoutesNew.js)
 router.post("/", userAuth, createOrganization);
 router.get("/paginated", userAuth, getOrganizations);
@@ -103,5 +134,7 @@ router.get("/:idOrSlug", userAuth, getOrganizationById);
 router.put("/:id", userAuth, updateOrganization);
 router.delete("/:id", userAuth, deleteOrganization);
 router.get("/:id/members", userAuth, getOrganizationMembersById);
+router.get("/current/leaderboard", userAuth, getOrganizationLeaderboard);
+router.get("/:id/leaderboard", userAuth, getOrganizationLeaderboard);
 
 export default router;

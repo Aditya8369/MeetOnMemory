@@ -6,8 +6,11 @@ import {
   diffSnapshots,
 } from "../services/graphSnapshotService.js";
 import { sanitizeFilenameForHeader } from "../utils/fileUtils.js";
+import { sendSuccess, sendError } from "../utils/responseHandler.js";
 
 const isValidObjectId = (id) => mongoose.Types.ObjectId.isValid(id);
+const getOrgId = (req) =>
+  req.user?.organization || req.user?.organizationId || null;
 
 /**
  * GET /api/knowledge/graph/snapshots?limit=50&before=<ISO date>
@@ -15,22 +18,18 @@ const isValidObjectId = (id) => mongoose.Types.ObjectId.isValid(id);
  */
 export const getSnapshots = async (req, res) => {
   try {
-    const organization = req.user.organization || null;
+    const organization = getOrgId(req);
     const { limit, before } = req.query;
 
     const snapshots = await listSnapshots(organization, { limit, before });
 
-    res.status(200).json({
-      success: true,
+    sendSuccess(res, {
       count: snapshots.length,
       snapshots,
     });
   } catch (error) {
     console.error("getSnapshots error:", error);
-    res.status(500).json({
-      success: false,
-      message: "Failed to fetch graph snapshots",
-    });
+    sendError(res, 500, "Failed to fetch graph snapshots");
   }
 };
 
@@ -42,27 +41,20 @@ export const getSnapshot = async (req, res) => {
   try {
     const { id } = req.params;
     if (!isValidObjectId(id)) {
-      return res
-        .status(400)
-        .json({ success: false, message: "Invalid snapshot ID" });
+      return sendError(res, 400, "Invalid snapshot ID");
     }
 
-    const organization = req.user.organization || null;
+    const organization = getOrgId(req);
     const snapshot = await getSnapshotById(id, organization);
 
     if (!snapshot) {
-      return res
-        .status(404)
-        .json({ success: false, message: "Snapshot not found" });
+      return sendError(res, 404, "Snapshot not found");
     }
 
-    res.status(200).json({ success: true, snapshot });
+    sendSuccess(res, { snapshot });
   } catch (error) {
     console.error("getSnapshot error:", error);
-    res.status(500).json({
-      success: false,
-      message: "Failed to fetch graph snapshot",
-    });
+    sendError(res, 500, "Failed to fetch graph snapshot");
   }
 };
 
@@ -75,31 +67,24 @@ export const exportSnapshot = async (req, res) => {
   try {
     const { id } = req.params;
     if (!isValidObjectId(id)) {
-      return res
-        .status(400)
-        .json({ success: false, message: "Invalid snapshot ID" });
+      return sendError(res, 400, "Invalid snapshot ID");
     }
 
-    const organization = req.user.organization || null;
+    const organization = getOrgId(req);
     const snapshot = await getSnapshotById(id, organization);
 
     if (!snapshot) {
-      return res
-        .status(404)
-        .json({ success: false, message: "Snapshot not found" });
+      return sendError(res, 404, "Snapshot not found");
     }
 
     res.setHeader(
       "Content-Disposition",
       `attachment; filename="${sanitizeFilenameForHeader(`graph-snapshot-${id}`)}.json"`,
     );
-    res.status(200).json({ success: true, snapshot });
+    sendSuccess(res, { snapshot });
   } catch (error) {
     console.error("exportSnapshot error:", error);
-    res.status(500).json({
-      success: false,
-      message: "Failed to export graph snapshot",
-    });
+    sendError(res, 500, "Failed to export graph snapshot");
   }
 };
 
@@ -112,30 +97,28 @@ export const getSnapshotDiff = async (req, res) => {
     const { from, to } = req.query;
 
     if (!from || !to) {
-      return res.status(400).json({
-        success: false,
-        message: "Both 'from' and 'to' snapshot IDs are required",
-      });
+      return sendError(
+        res,
+        400,
+        "Both 'from' and 'to' snapshot IDs are required",
+      );
     }
     if (!isValidObjectId(from) || !isValidObjectId(to)) {
-      return res
-        .status(400)
-        .json({ success: false, message: "Invalid snapshot ID(s)" });
+      return sendError(res, 400, "Invalid snapshot ID(s)");
     }
 
-    const organization = req.user.organization || null;
+    const organization = getOrgId(req);
     const diff = await diffSnapshots(from, to, organization);
 
-    res.status(200).json({ success: true, diff });
+    sendSuccess(res, { diff });
   } catch (error) {
     console.error("getSnapshotDiff error:", error);
     const notFound = /not found/i.test(error.message);
-    res.status(notFound ? 404 : 500).json({
-      success: false,
-      message: notFound
-        ? error.message
-        : "Failed to compute graph snapshot diff",
-    });
+    sendError(
+      res,
+      notFound ? 404 : 500,
+      notFound ? error.message : "Failed to compute graph snapshot diff",
+    );
   }
 };
 
@@ -147,7 +130,7 @@ export const getSnapshotDiff = async (req, res) => {
  */
 export const createManualSnapshot = async (req, res) => {
   try {
-    const organization = req.user.organization || null;
+    const organization = getOrgId(req);
     const { force = false } = req.body || {};
 
     const result = await captureSnapshot(organization, {
@@ -157,23 +140,21 @@ export const createManualSnapshot = async (req, res) => {
     });
 
     if (result.skipped) {
-      return res.status(200).json({
-        success: true,
-        skipped: true,
-        message: "No graph changes since the last snapshot; nothing captured.",
-      });
+      return sendSuccess(
+        res,
+        { skipped: true },
+        "No graph changes since the last snapshot; nothing captured.",
+      );
     }
 
-    res.status(201).json({
-      success: true,
-      skipped: false,
-      snapshot: result.snapshot,
-    });
+    sendSuccess(
+      res,
+      { skipped: false, snapshot: result.snapshot },
+      "Success",
+      201,
+    );
   } catch (error) {
     console.error("createManualSnapshot error:", error);
-    res.status(500).json({
-      success: false,
-      message: "Failed to create graph snapshot",
-    });
+    sendError(res, 500, "Failed to create graph snapshot");
   }
 };

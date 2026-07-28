@@ -21,7 +21,6 @@ import {
   Calendar,
   CalendarDays,
   Building2,
-  Search,
   Bell,
   User,
   Settings,
@@ -36,6 +35,11 @@ import {
   Plus,
   Compass,
   Check,
+  MessageSquare,
+  Code2,
+  ScanSearch,
+  GitMerge,
+  History,
 } from "lucide-react";
 
 const NAV_LINK_KEYS = [
@@ -142,10 +146,10 @@ const Navbar = () => {
 
       const fetchRecentNotifications = async () => {
         try {
-          const { data } = await notificationApi.getNotifications();
+          const { data } = await notificationApi.getNotifications({ limit: 5 });
           if (data.success) {
             setNotifications(
-              data.notifications.slice(0, 5).map((n) => ({
+              data.notifications.map((n) => ({
                 id: n.id,
                 title: n.title,
                 description: n.description,
@@ -264,6 +268,7 @@ const Navbar = () => {
       if (e.key === "Escape") {
         setMenuOpen(false);
         setNotificationsOpen(false);
+        setOrgDropdownOpen(false);
         setMobileOpen(false);
       }
     };
@@ -327,9 +332,6 @@ const Navbar = () => {
         currentPath === "/join-organization"
       );
     }
-    if (tabPath === "/ai-search") {
-      return currentPath === "/ai-search";
-    }
     return currentPath === tabPath;
   };
 
@@ -358,12 +360,6 @@ const Navbar = () => {
       icon: Building2,
       permission: { resource: "organizations", action: "view" },
     },
-    {
-      label: t("navbar.aiSearch"),
-      href: "/ai-search",
-      icon: Search,
-      permission: { resource: "ai_search", action: "search" },
-    },
   ].filter(
     (link) =>
       !link.permission ||
@@ -371,6 +367,24 @@ const Navbar = () => {
   );
 
   const secondaryLinks = [
+    {
+      label: "Conflict Resolution",
+      href: "/knowledge/conflicts",
+      icon: ScanSearch,
+      permission: { resource: "knowledge", action: "view" },
+    },
+    {
+      label: "Memory Lifecycle",
+      href: "/knowledge/lifecycle",
+      icon: History,
+      permission: { resource: "knowledge", action: "view" },
+    },
+    {
+      label: "Meeting Templates",
+      href: "/meeting-templates",
+      icon: GitMerge,
+      permission: { resource: "meetings", action: "view" },
+    },
     {
       label: t("navbar.compliance"),
       href: "/policy-compliance",
@@ -388,6 +402,11 @@ const Navbar = () => {
       href: "/team-members",
       icon: Users,
       permission: { resource: "team_members", action: "view" },
+    },
+    {
+      label: "Developer Docs",
+      href: "/docs",
+      icon: Code2,
     },
   ].filter(
     (link) =>
@@ -458,7 +477,7 @@ const Navbar = () => {
           {userData ? (
             /* Logged In Desktop App Nav */
             <nav
-              className="hidden md:flex items-center gap-1.5 bg-gray-50 dark:bg-gray-800/50 border border-gray-100 dark:border-gray-700 p-1 rounded-2xl"
+              className="hidden md:flex items-center gap-1 lg:gap-1.5 bg-gray-50 dark:bg-gray-800/50 border border-gray-100 dark:border-gray-700 p-1 rounded-2xl"
               aria-label="Application navigation"
             >
               {primaryLinks.map((link) => {
@@ -466,8 +485,10 @@ const Navbar = () => {
                 return (
                   <button
                     key={link.href}
+                    type="button"
                     onClick={() => navigate(link.href)}
-                    className={`flex items-center px-4 py-2 rounded-xl text-sm font-semibold transition-all duration-200 focus-visible:ring-2 focus-visible:ring-blue-500 cursor-pointer ${
+                    aria-current={active ? "page" : undefined}
+                    className={`flex items-center px-3 lg:px-4 py-2 rounded-xl text-sm font-semibold transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-1 dark:focus-visible:ring-offset-gray-900 cursor-pointer ${
                       active
                         ? "bg-white dark:bg-gray-700 text-blue-600 dark:text-blue-400 shadow-xs border border-gray-100/50 dark:border-gray-600/50"
                         : "text-gray-600 dark:text-gray-300 border border-transparent hover:text-gray-900 dark:hover:text-gray-100 hover:bg-gray-100/60 dark:hover:bg-gray-700/60"
@@ -497,7 +518,7 @@ const Navbar = () => {
           )}
 
           {/* Right Side Controls */}
-          <div className="flex items-center gap-1 sm:gap-3 shrink-0">
+          <div className="flex items-center gap-1.5 sm:gap-2.5 lg:gap-3 shrink-0">
             {/* Language Switcher */}
             <LanguageSwitcher />
 
@@ -619,6 +640,16 @@ const Navbar = () => {
                       </div>
 
                       <div className="p-1.5 border-t border-gray-100 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-800/50">
+                        <button
+                          onClick={() => {
+                            setOrgDropdownOpen(false);
+                            navigate("/organization/settings");
+                          }}
+                          className="w-full flex items-center gap-2 px-3 py-2 text-xs font-semibold text-gray-700 dark:text-gray-200 hover:bg-blue-50 dark:hover:bg-blue-900/30 hover:text-blue-700 dark:hover:text-blue-300 rounded-xl transition-colors text-left cursor-pointer"
+                        >
+                          <Settings className="w-3.5 h-3.5 text-gray-400 dark:text-gray-500" />
+                          Organization Settings
+                        </button>
                         <button
                           onClick={() => {
                             setOrgDropdownOpen(false);
@@ -1032,11 +1063,13 @@ const Navbar = () => {
                 return (
                   <button
                     key={link.href}
+                    type="button"
                     onClick={() => {
                       setMobileOpen(false);
                       navigate(link.href);
                     }}
-                    className={`w-full flex items-center gap-3 px-4 py-3 text-sm font-semibold rounded-xl transition-all cursor-pointer ${
+                    aria-current={active ? "page" : undefined}
+                    className={`w-full flex items-center gap-3 px-4 py-3 text-sm font-semibold rounded-xl transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 cursor-pointer ${
                       active
                         ? "bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400"
                         : "text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-800 hover:text-gray-900 dark:hover:text-gray-100"

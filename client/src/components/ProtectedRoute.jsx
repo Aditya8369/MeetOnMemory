@@ -33,6 +33,7 @@ const ProtectedRoute = ({
     "/organizations",
     "/create-organization",
     "/join-organization",
+    "/browse-organizations",
   ];
   const isOnboardingPage = onboardingPages.includes(location.pathname);
 
@@ -40,7 +41,21 @@ const ProtectedRoute = ({
     return <Navigate to="/organizations" replace />;
   }
 
-  if (userData && userData.hasCompletedOnboarding && isOnboardingPage) {
+  const onboardingOnlyPages = [
+    "/organizations",
+    "/create-organization",
+    "/join-organization",
+  ];
+  const isJoinWithToken =
+    location.pathname === "/join-organization" &&
+    new URLSearchParams(location.search).has("token");
+
+  if (
+    userData &&
+    userData.hasCompletedOnboarding &&
+    onboardingOnlyPages.includes(location.pathname) &&
+    !isJoinWithToken
+  ) {
     return <Navigate to="/dashboard" replace />;
   }
 
