@@ -33,7 +33,7 @@ import Notifications from "../pages/Notifications.jsx";
 import Tasks from "../pages/Tasks.jsx";
 import KnowledgeTimeline from "../pages/KnowledgeTimeline.jsx";
 import MemoryConsolidation from "../pages/MemoryConsolidation.jsx";
-import ConflictResolution from "../pages/ConflictResolution.jsx";
+import MemoryLifecycle from "../pages/MemoryLifecycle.jsx";
 import GraphSnapshots from "../pages/GraphSnapshots.jsx";
 import PolicyCompliance from "../pages/PolicyCompliance.jsx";
 import Settings from "../pages/Settings.jsx";
@@ -78,10 +78,10 @@ const ProtectedRoutes = (
       }
     />
     <Route
-      path="/knowledge/conflicts"
+      path="/knowledge/lifecycle"
       element={
         <ProtectedRoute resource="knowledge" action="view">
-          <ConflictResolution />
+          <MemoryLifecycle />
         </ProtectedRoute>
       }
     />
