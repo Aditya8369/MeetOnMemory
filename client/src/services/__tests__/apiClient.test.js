@@ -360,6 +360,10 @@ describe("apiClient interceptors", () => {
 
         await expect(apiClient.get("/test")).rejects.toMatchObject({
           message: "Server unavailable. Please try again later.",
+          response: {
+            status,
+            data: { message: "Server unavailable. Please try again later." },
+          },
         });
       }
     });
@@ -452,5 +456,90 @@ describe("apiClient interceptors", () => {
         });
       }
     });
+  });
+
+  describe("additional HTTP status codes (#420)", () => {
+    const SERVER_UNAVAILABLE = "Server unavailable. Please try again later.";
+    let originalAdapter;
+
+    beforeEach(() => {
+      originalAdapter = captureAdapter(apiClient);
+    });
+
+    afterEach(() => {
+      restoreAdapter(apiClient, originalAdapter);
+    });
+
+    // Codes that fall through to the interceptor default branch:
+    // prefer backend message when present, otherwise use DEFAULT_MESSAGE.
+    const defaultBranchStatuses = [
+      { status: 400, label: "400 Bad Request" },
+      { status: 408, label: "408 Request Timeout" },
+      { status: 409, label: "409 Conflict" },
+      { status: 422, label: "422 Unprocessable Entity" },
+      { status: 429, label: "429 Too Many Requests" },
+    ];
+
+    it.each(defaultBranchStatuses)(
+      "maps $label without a backend message to the default fallback",
+      async ({ status }) => {
+        mockErrorResponse(apiClient, { status, data: {} });
+
+        await expect(apiClient.get("/test")).rejects.toMatchObject({
+          message: DEFAULT_MESSAGE,
+          response: {
+            status,
+            data: { message: DEFAULT_MESSAGE },
+          },
+        });
+      },
+    );
+
+    it.each(defaultBranchStatuses)(
+      "preserves custom backend messages for $label",
+      async ({ status, label }) => {
+        const backendMessage = `Backend detail for ${label}`;
+        mockErrorResponse(apiClient, {
+          status,
+          data: { message: backendMessage, code: `E_${status}` },
+        });
+
+        await expect(apiClient.get("/test")).rejects.toMatchObject({
+          message: backendMessage,
+          response: {
+            status,
+            data: {
+              message: backendMessage,
+              code: `E_${status}`,
+            },
+          },
+        });
+      },
+    );
+
+    // 502/503/504 are already covered in #422 for the message mapping.
+    // These assertions confirm fixed messaging and response attachment when
+    // a backend message is also present (implementation intentionally ignores it).
+    it.each([
+      { status: 502, label: "502 Bad Gateway" },
+      { status: 503, label: "503 Service Unavailable" },
+      { status: 504, label: "504 Gateway Timeout" },
+    ])(
+      "keeps fixed server-unavailable messaging for $label even with a backend message",
+      async ({ status }) => {
+        mockErrorResponse(apiClient, {
+          status,
+          data: { message: "Upstream provider timed out" },
+        });
+
+        await expect(apiClient.get("/test")).rejects.toMatchObject({
+          message: SERVER_UNAVAILABLE,
+          response: {
+            status,
+            data: { message: SERVER_UNAVAILABLE },
+          },
+        });
+      },
+    );
   });
 });
