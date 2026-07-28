@@ -28,13 +28,13 @@ jobs:
             client/package-lock.json
 
       - name: Install root dependencies
-        run: npm ci
+        run: npm install
 
       - name: Install server dependencies
-        run: npm ci --prefix server
+        run: npm install --prefix server
 
       - name: Install client dependencies
-        run: npm ci --prefix client
+        run: npm install --prefix client
 
       - name: Create minimal .env for tests
         run: |

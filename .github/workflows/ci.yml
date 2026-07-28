@@ -55,7 +55,7 @@ jobs:
           cache-dependency-path: package-lock.json
 
       - name: Install root dependencies
-        run: npm ci
+        run: npm install
 
       - name: Fetch base branch for changed-file checks
         run: git fetch origin ${{ github.base_ref }} --depth=1
@@ -82,7 +82,7 @@ jobs:
           cache-dependency-path: client/package-lock.json
 
       - name: Install client dependencies
-        run: npm ci --prefix client
+        run: npm install --prefix client
 
       - name: Fetch base branch for changed-file checks
         run: git fetch origin ${{ github.base_ref }} --depth=1
@@ -109,7 +109,7 @@ jobs:
           cache-dependency-path: server/package-lock.json
 
       - name: Install server dependencies
-        run: npm ci --prefix server
+        run: npm install --prefix server
 
       - name: Fetch base branch for changed-file checks
         run: git fetch origin ${{ github.base_ref }} --depth=1

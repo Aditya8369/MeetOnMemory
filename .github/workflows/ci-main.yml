@@ -24,7 +24,7 @@ jobs:
           cache-dependency-path: server/package-lock.json
 
       - name: Install server dependencies
-        run: npm ci --prefix server
+        run: npm install --prefix server
 
       - name: Create minimal .env for tests
         run: |
@@ -63,7 +63,7 @@ jobs:
           cache-dependency-path: client/package-lock.json
 
       - name: Install client dependencies
-        run: npm ci --prefix client
+        run: npm install --prefix client
 
       - name: Run full frontend validation
         run: npm run validate:full --prefix client
@@ -83,7 +83,7 @@ jobs:
           cache-dependency-path: server/package-lock.json
 
       - name: Install server dependencies
-        run: npm ci --prefix server
+        run: npm install --prefix server
 
       - name: Create minimal .env for tests
         run: |
@@ -117,7 +117,7 @@ jobs:
             client/package-lock.json
 
       - name: Install root dependencies
-        run: npm ci
+        run: npm install
 
       - name: Run dependency audits
         run: npm run validate:security
