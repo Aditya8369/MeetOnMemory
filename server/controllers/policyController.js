@@ -150,6 +150,11 @@ export const getPolicies = async (req, res, next) => {
       req.user?.organization || null,
     );
 
+    res.setHeader(
+      "Cache-Control",
+      "public, max-age=3600, stale-while-revalidate=86400",
+    );
+
     return sendSuccess(res, { policies });
   } catch (err) {
     next(err);
@@ -163,6 +168,11 @@ export const downloadPolicy = async (req, res, next) => {
   try {
     const { safeFilePath, fileName } =
       await PolicyService.getPolicyDownloadPath(req.params.id);
+
+    res.setHeader(
+      "Cache-Control",
+      "public, max-age=3600, stale-while-revalidate=86400",
+    );
 
     return res.download(safeFilePath, fileName);
   } catch (err) {
