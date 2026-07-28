@@ -1,9 +1,9 @@
+import path from "node:path";
 import {
   FORMAT_REGEX,
   logStep,
-  quoteFiles,
   repoRoot,
-  runNpx,
+  runPrettierCheck,
   selectChangedFiles,
 } from "./changed-files.mjs";
 
@@ -16,17 +16,14 @@ if (!scope) {
 
 const prefix = `${scope}/`;
 const selected = selectChangedFiles(FORMAT_REGEX, prefix);
+const scopedFiles = selected.map((file) => file.slice(prefix.length));
 
-logStep(
-  `format:${scope}`,
-  `Checking ${selected.length} changed ${scope} file(s) with Prettier...`,
-);
-
-if (selected.length === 0) {
+if (scopedFiles.length === 0) {
   logStep(`format:${scope}`, `No changed ${scope} files require formatting checks.`);
   process.exit(0);
 }
 
-runNpx(`prettier --check ${quoteFiles(selected)}`, {
-  cwd: repoRoot,
+runPrettierCheck(scopedFiles, {
+  cwd: path.join(repoRoot, scope),
+  label: `format:${scope}`,
 });
