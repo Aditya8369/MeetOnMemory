@@ -14,11 +14,8 @@ import {
   Shield,
 } from "lucide-react";
 import Navbar from "../components/Navbar.jsx";
-<<<<<<< Updated upstream
-=======
 import TopContributorsWidget from "../components/organization/TopContributorsWidget";
 import DashboardMetricsWidget from "../components/dashboard/DashboardMetricsWidget.jsx";
->>>>>>> Stashed changes
 
 /* ─── Role Badge ──────────────────────────────────────────────────────────── */
 const ROLE_STYLES = {
