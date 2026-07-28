@@ -4,6 +4,7 @@ import { apiLimiter, writeLimiter, dataExportLimiter } from "../middleware/rateL
 import { requirePermission } from "../middleware/rbac.js";
 import {
   getUserData,
+  getCurrentUser,
   updateUserProfile,
   requestDataExport,
   downloadExport,
@@ -20,6 +21,7 @@ userRouter.get(
   requirePermission("settings", "view"),
   getUserData,
 );
+userRouter.get("/me", userAuth, getCurrentUser);
 userRouter.put(
   "/update",
   userAuth,

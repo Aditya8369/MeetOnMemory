@@ -50,6 +50,8 @@ export const getUserData = async (req, res) => {
   }
 };
 
+export const getCurrentUser = getUserData;
+
 // @desc    Update user profile
 // @route   PUT /api/user/update
 // @access  Private
