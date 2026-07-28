@@ -26,6 +26,7 @@ import pollRoutes from "./pollRoutes.js";
 import attachmentRoutes from "./attachmentRoutes.js";
 import meetingSeriesRoutes from "./meetingSeriesRoutes.js";
 import comparisonRoutes from "./comparisonRoutes.js";
+import dashboardRoutes from "./dashboardRoutes.js";
 const router = express.Router();
 
 // ==========================================
@@ -58,5 +59,6 @@ router.use("/api/polls", pollRoutes);
 router.use("/api/meetings/:meetingId/attachments", attachmentRoutes);
 router.use("/api/meeting-series", meetingSeriesRoutes);
 router.use("/api/comparison", comparisonRoutes);
+router.use("/api/dashboard", dashboardRoutes);
 
 export default router;

@@ -14,6 +14,7 @@ import {
 } from "lucide-react";
 import Navbar from "../components/Navbar.jsx";
 import TopContributorsWidget from "../components/organization/TopContributorsWidget";
+import DashboardMetricsWidget from "../components/dashboard/DashboardMetricsWidget.jsx";
 import OrganizationLogo from "../components/organization/OrganizationLogo.jsx";
 import OrganizationBanner from "../components/organization/OrganizationBanner.jsx";
 
@@ -243,6 +244,9 @@ const Dashboard = () => {
             </div>
           </div>
         </section>
+
+        {/* ── Operational Metrics ── */}
+        <DashboardMetricsWidget />
 
         {/* ── Feature Cards ── */}
         <section aria-label="Dashboard features">
