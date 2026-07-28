@@ -195,7 +195,13 @@ Every Pull Request runs the following status checks (path-filtered; not all jobs
 
 ### 💻 Running Checks Locally
 
-You can run the same checks locally from the repository root:
+Before opening a PR, run:
+
+```bash
+npm run validate
+```
+
+You can also run checks individually from the repository root:
 
 1. **Verify Formatting**:
 
@@ -294,6 +300,7 @@ Before opening a Pull Request, ensure:
 
 - [ ] Related Issue is linked.
 - [ ] Issue was assigned before starting work.
+- [ ] Local validation passes (`npm run validate`).
 - [ ] Project builds successfully (`npm run build`).
 - [ ] Code is formatted (`npm run format`).
 - [ ] Code passes lint checks (`npm run lint`).

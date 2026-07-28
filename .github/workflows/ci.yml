@@ -28,9 +28,6 @@ jobs:
       formatting: ${{ steps.filter.outputs.formatting }}
       security: ${{ steps.filter.outputs.security }}
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v5
-
       - name: Detect changed paths
         uses: dorny/paths-filter@v3
         id: filter
@@ -53,7 +50,6 @@ jobs:
               - 'server/package-lock.json'
               - 'client/package.json'
               - 'client/package-lock.json'
-              - '.github/workflows/**'
 
   # ─────────────────────────────────────────────────────────────
   # 1. CODE QUALITY — Prettier formatting only
@@ -128,7 +124,13 @@ jobs:
         run: npm run lint --prefix server
 
       - name: Run tests with coverage
-        run: npm run test:ci --prefix server
+        # Integration suite runs in dedicated "Integration Tests" job below.
+        # Keep this check focused on unit/service/controller coverage.
+        run: |
+          cd server
+          node --experimental-vm-modules node_modules/jest/bin/jest.js \
+            --forceExit --ci --runInBand --coverage \
+            --testPathIgnorePatterns tests/integration.test.js
 
       - name: Startup validation
         run: npm run test:startup --prefix server
@@ -208,7 +210,7 @@ jobs:
   # ─────────────────────────────────────────────────────────────
   # 5. INTEGRATION TESTS — Critical API endpoint verification
   #    Kept as a dedicated required-check signal (see docs/CI_PIPELINE.md).
-  #    Backend Validation also runs this file via test:ci.
+  #    Backend Validation excludes this file to avoid duplicate execution.
   # ─────────────────────────────────────────────────────────────
   integration-tests:
     name: Integration Tests

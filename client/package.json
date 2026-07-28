@@ -10,7 +10,8 @@
     "preview": "vite preview",
     "test": "vitest",
     "test:ci": "vitest run",
-    "test:ui": "vitest --ui"
+    "test:ui": "vitest --ui",
+    "validate": "npm run lint && npm run test:ci && npm run build"
   },
   "dependencies": {
     "@hello-pangea/dnd": "^18.0.1",
