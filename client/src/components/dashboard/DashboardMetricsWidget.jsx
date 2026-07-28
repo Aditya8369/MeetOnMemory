@@ -4,7 +4,6 @@ import { Link } from "react-router-dom";
 import { Clock, Bell, CalendarDays, AlertCircle } from "lucide-react";
 import AppContent from "../../context/AppContent";
 import axios from "axios";
-import { toast } from "react-toastify";
 
 const DashboardMetricsWidget = () => {
   const { t } = useTranslation();
