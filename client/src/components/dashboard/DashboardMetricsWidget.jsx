@@ -47,7 +47,10 @@ const DashboardMetricsWidget = () => {
     return (
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
         {[1, 2, 3].map((i) => (
-          <div key={i} className="animate-pulse bg-slate-200 dark:bg-gray-800 rounded-xl h-24 border border-slate-300 dark:border-gray-700"></div>
+          <div
+            key={i}
+            className="animate-pulse bg-slate-200 dark:bg-gray-800 rounded-xl h-24 border border-slate-300 dark:border-gray-700"
+          ></div>
         ))}
       </div>
     );
@@ -59,9 +62,18 @@ const DashboardMetricsWidget = () => {
       label: t("dashboard.metrics.overdueTasks", "Overdue Action Items"),
       value: metrics.overdueTasks,
       icon: Clock,
-      color: metrics.overdueTasks > 0 ? "text-red-600 dark:text-red-400" : "text-slate-600 dark:text-gray-400",
-      bg: metrics.overdueTasks > 0 ? "bg-red-50 dark:bg-red-900/20" : "bg-slate-50 dark:bg-gray-800",
-      border: metrics.overdueTasks > 0 ? "border-red-200 dark:border-red-800" : "border-slate-200 dark:border-gray-700",
+      color:
+        metrics.overdueTasks > 0
+          ? "text-red-600 dark:text-red-400"
+          : "text-slate-600 dark:text-gray-400",
+      bg:
+        metrics.overdueTasks > 0
+          ? "bg-red-50 dark:bg-red-900/20"
+          : "bg-slate-50 dark:bg-gray-800",
+      border:
+        metrics.overdueTasks > 0
+          ? "border-red-200 dark:border-red-800"
+          : "border-slate-200 dark:border-gray-700",
       link: "/action-items",
     },
     {
@@ -69,9 +81,18 @@ const DashboardMetricsWidget = () => {
       label: t("dashboard.metrics.unreadNotifications", "Unread Notifications"),
       value: metrics.unreadNotifications,
       icon: Bell,
-      color: metrics.unreadNotifications > 0 ? "text-amber-600 dark:text-amber-400" : "text-slate-600 dark:text-gray-400",
-      bg: metrics.unreadNotifications > 0 ? "bg-amber-50 dark:bg-amber-900/20" : "bg-slate-50 dark:bg-gray-800",
-      border: metrics.unreadNotifications > 0 ? "border-amber-200 dark:border-amber-800" : "border-slate-200 dark:border-gray-700",
+      color:
+        metrics.unreadNotifications > 0
+          ? "text-amber-600 dark:text-amber-400"
+          : "text-slate-600 dark:text-gray-400",
+      bg:
+        metrics.unreadNotifications > 0
+          ? "bg-amber-50 dark:bg-amber-900/20"
+          : "bg-slate-50 dark:bg-gray-800",
+      border:
+        metrics.unreadNotifications > 0
+          ? "border-amber-200 dark:border-amber-800"
+          : "border-slate-200 dark:border-gray-700",
       link: "/notifications",
     },
     {
@@ -83,7 +104,7 @@ const DashboardMetricsWidget = () => {
       bg: "bg-blue-50 dark:bg-blue-900/20",
       border: "border-blue-200 dark:border-blue-800",
       link: "/create-meeting",
-    }
+    },
   ];
 
   return (
@@ -96,7 +117,9 @@ const DashboardMetricsWidget = () => {
             key={item.id}
             className={`flex items-center gap-4 p-5 rounded-xl border ${item.border} ${item.bg} hover:shadow-md transition-all duration-200 hover:-translate-y-0.5 group`}
           >
-            <div className={`p-3 rounded-lg bg-white/60 dark:bg-gray-900/50 ${item.color}`}>
+            <div
+              className={`p-3 rounded-lg bg-white/60 dark:bg-gray-900/50 ${item.color}`}
+            >
               <Icon className="w-6 h-6" />
             </div>
             <div>

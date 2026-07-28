@@ -16,32 +16,33 @@ export const getDashboardMetrics = async (req, res) => {
     const now = new Date();
 
     // Fire all three queries concurrently to ensure fast response times
-    const [overdueTasks, unreadNotifications, upcomingMeetings] = await Promise.all([
-      // 1. Overdue action items assigned to the user
-      ActionItem.countDocuments({
-        organization,
-        assignees: userId,
-        status: { $nin: ["resolved", "superseded"] },
-        dueDate: { $lt: now }
-      }),
-      // 2. Unread notifications for the user
-      Notification.countDocuments({
-        recipient: userId,
-        isRead: false
-      }),
-      // 3. Upcoming meetings in the organization
-      Meeting.countDocuments({
-        organizationId: organization,
-        date: { $gte: now }
-      })
-    ]);
+    const [overdueTasks, unreadNotifications, upcomingMeetings] =
+      await Promise.all([
+        // 1. Overdue action items assigned to the user
+        ActionItem.countDocuments({
+          organization,
+          assignees: userId,
+          status: { $nin: ["resolved", "superseded"] },
+          dueDate: { $lt: now },
+        }),
+        // 2. Unread notifications for the user
+        Notification.countDocuments({
+          recipient: userId,
+          isRead: false,
+        }),
+        // 3. Upcoming meetings in the organization
+        Meeting.countDocuments({
+          organizationId: organization,
+          date: { $gte: now },
+        }),
+      ]);
 
     sendSuccess(res, {
       metrics: {
         overdueTasks,
         unreadNotifications,
-        upcomingMeetings
-      }
+        upcomingMeetings,
+      },
     });
   } catch (error) {
     console.error("Error fetching dashboard metrics:", error);
