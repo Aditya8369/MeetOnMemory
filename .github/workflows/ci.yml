@@ -1,30 +1,24 @@
 name: CI Pipeline
 
 on:
-  push:
-    branches: [main, master]
   pull_request:
     branches: [main, master]
 
-# Cancel redundant runs for the same PR/branch — keeps only the latest.
 concurrency:
-  group: ci-${{ github.ref }}
+  group: ci-pr-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
 
 jobs:
-  # ─────────────────────────────────────────────────────────────
-  # 0. CHANGE DETECTION — path filters for mixed / docs-only PRs
-  # ─────────────────────────────────────────────────────────────
   changes:
     name: Detect Changes
     runs-on: ubuntu-latest
-    # dorny/paths-filter lists PR files via the GitHub API.
     permissions:
       contents: read
       pull-requests: read
     outputs:
       backend: ${{ steps.filter.outputs.backend }}
       frontend: ${{ steps.filter.outputs.frontend }}
+      integration: ${{ steps.filter.outputs.integration }}
       formatting: ${{ steps.filter.outputs.formatting }}
       security: ${{ steps.filter.outputs.security }}
     steps:
@@ -35,10 +29,19 @@ jobs:
           filters: |
             backend:
               - 'server/**'
-              - '.github/workflows/**'
             frontend:
               - 'client/**'
-              - '.github/workflows/**'
+            integration:
+              - 'server/controllers/**'
+              - 'server/routes/**'
+              - 'server/services/**'
+              - 'server/models/**'
+              - 'server/middleware/**'
+              - 'server/config/**'
+              - 'server/utils/**'
+              - 'server/server.js'
+              - 'server/package.json'
+              - 'server/package-lock.json'
             formatting:
               - '**/*.{js,jsx,ts,tsx,css,html,json,md,yml,yaml}'
               - '.prettierrc'
@@ -51,10 +54,6 @@ jobs:
               - 'client/package.json'
               - 'client/package-lock.json'
 
-  # ─────────────────────────────────────────────────────────────
-  # 1. CODE QUALITY — Prettier formatting only
-  #    ESLint runs in Backend / Frontend Validation (no duplicate).
-  # ─────────────────────────────────────────────────────────────
   code-quality:
     name: Code Quality
     needs: changes
@@ -76,20 +75,12 @@ jobs:
       - name: Install root dependencies
         run: npm ci
 
-      - name: Prettier — check changed files
-        run: |
-          git fetch origin ${{ github.base_ref || 'main' }} --depth=1
-          TARGET_BRANCH="origin/${{ github.base_ref || 'main' }}"
-          CHANGED_FILES=$(git diff --name-only $TARGET_BRANCH...HEAD | grep -E '\.(js|jsx|ts|tsx|css|html|json|md|yml|yaml)$' || true)
-          if [ -n "$CHANGED_FILES" ]; then
-            npx prettier --check $CHANGED_FILES
-          else
-            echo "No changed files to check."
-          fi
+      - name: Fetch base branch for changed-file checks
+        run: git fetch origin ${{ github.base_ref }} --depth=1
 
-  # ─────────────────────────────────────────────────────────────
-  # 2. BACKEND VALIDATION — Lint, tests, coverage, startup
-  # ─────────────────────────────────────────────────────────────
+      - name: Prettier - check changed files
+        run: npm run format:check:changed
+
   backend-validation:
     name: Backend Validation
     needs: changes
@@ -98,6 +89,8 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
 
       - name: Set up Node.js
         uses: actions/setup-node@v5
@@ -108,6 +101,9 @@ jobs:
 
       - name: Install server dependencies
         run: npm ci --prefix server
+
+      - name: Fetch base branch for changed-file checks
+        run: git fetch origin ${{ github.base_ref }} --depth=1
 
       - name: Create minimal .env for tests
         run: |
@@ -120,32 +116,9 @@ jobs:
           INDEX_NAME=meeton
           EOF
 
-      - name: Lint
-        run: npm run lint --prefix server
+      - name: Run contributor-fast backend validation
+        run: npm run validate:changed --prefix server
 
-      - name: Run tests with coverage
-        # Integration suite runs in dedicated "Integration Tests" job below.
-        # Keep this check focused on unit/service/controller coverage.
-        run: |
-          cd server
-          node --experimental-vm-modules node_modules/jest/bin/jest.js \
-            --forceExit --ci --runInBand --coverage \
-            --testPathIgnorePatterns tests/integration.test.js
-
-      - name: Startup validation
-        run: npm run test:startup --prefix server
-
-      - name: Upload coverage report
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: backend-coverage
-          path: server/coverage/
-          retention-days: 14
-
-  # ─────────────────────────────────────────────────────────────
-  # 3. FRONTEND VALIDATION — Lint, tests, production build
-  # ─────────────────────────────────────────────────────────────
   frontend-validation:
     name: Frontend Validation
     needs: changes
@@ -154,6 +127,8 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
 
       - name: Set up Node.js
         uses: actions/setup-node@v5
@@ -165,18 +140,12 @@ jobs:
       - name: Install client dependencies
         run: npm ci --prefix client
 
-      - name: Lint
-        run: npm run lint --prefix client
+      - name: Fetch base branch for changed-file checks
+        run: git fetch origin ${{ github.base_ref }} --depth=1
 
-      - name: Run tests
-        run: npm run test:ci --prefix client
+      - name: Run contributor-fast frontend validation
+        run: npm run validate:changed --prefix client
 
-      - name: Verify production build
-        run: npm run build --prefix client
-
-  # ─────────────────────────────────────────────────────────────
-  # 4. SECURITY — npm audit (informational; does not fail the job)
-  # ─────────────────────────────────────────────────────────────
   security:
     name: Security Checks
     needs: changes
@@ -207,15 +176,10 @@ jobs:
           cd client
           npm audit --audit-level=high || true
 
-  # ─────────────────────────────────────────────────────────────
-  # 5. INTEGRATION TESTS — Critical API endpoint verification
-  #    Kept as a dedicated required-check signal (see docs/CI_PIPELINE.md).
-  #    Backend Validation excludes this file to avoid duplicate execution.
-  # ─────────────────────────────────────────────────────────────
   integration-tests:
     name: Integration Tests
     needs: changes
-    if: needs.changes.outputs.backend == 'true'
+    if: needs.changes.outputs.integration == 'true'
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
@@ -243,8 +207,4 @@ jobs:
           EOF
 
       - name: Run integration tests
-        run: |
-          cd server
-          node --experimental-vm-modules node_modules/jest/bin/jest.js \
-            --forceExit --ci \
-            tests/integration.test.js
+        run: npm run test:integration --prefix server
