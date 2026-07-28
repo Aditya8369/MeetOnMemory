@@ -7,6 +7,7 @@ import App from "./App.jsx";
 import { BrowserRouter } from "react-router-dom";
 import { AppContextProvider } from "./context/AppContext.jsx";
 import { ThemeProvider } from "./context/ThemeContext.jsx";
+import { AssistantProvider } from "./context/AssistantContext.jsx";
 
 // Prevent FOUC by applying theme class before render
 const savedTheme = localStorage.getItem("theme");
@@ -22,7 +23,9 @@ createRoot(document.getElementById("root")).render(
   <BrowserRouter>
     <ThemeProvider>
       <AppContextProvider>
-        <App />
+        <AssistantProvider>
+          <App />
+        </AssistantProvider>
       </AppContextProvider>
     </ThemeProvider>
   </BrowserRouter>,
