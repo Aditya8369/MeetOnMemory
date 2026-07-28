@@ -42,4 +42,33 @@ export const knowledgeApi = {
     ),
   createGraphSnapshot: (force = false) =>
     apiClient.post(`/api/knowledge/graph/snapshots`, { force }),
+  // AI-Powered Contradiction Detection & Conflict Resolution (#375, #715)
+  scanForConflicts: ({
+    dryRun = false,
+    models,
+    useAI = true,
+    minConfidence,
+  } = {}) =>
+    apiClient.post(`/api/knowledge/conflicts/scan`, {
+      dryRun,
+      ...(models ? { models } : {}),
+      useAI,
+      ...(minConfidence !== undefined ? { minConfidence } : {}),
+    }),
+  getConflicts: ({ model, status = "open", limit = 50 } = {}) =>
+    apiClient.get(
+      `/api/knowledge/conflicts?status=${status}&limit=${limit}${model ? `&model=${model}` : ""}`,
+    ),
+  getConflictDetail: (conflictId) =>
+    apiClient.get(`/api/knowledge/conflicts/${conflictId}`),
+  resolveConflict: (
+    conflictId,
+    { resolutionType, keptMemoryId, customValue, note },
+  ) =>
+    apiClient.post(`/api/knowledge/conflicts/${conflictId}/resolve`, {
+      resolutionType,
+      ...(keptMemoryId ? { keptMemoryId } : {}),
+      ...(customValue ? { customValue } : {}),
+      ...(note ? { note } : {}),
+    }),
 };
