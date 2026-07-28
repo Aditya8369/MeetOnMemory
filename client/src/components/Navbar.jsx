@@ -37,6 +37,9 @@ import {
   Check,
   MessageSquare,
   Code2,
+  ScanSearch,
+  GitMerge,
+  History,
 } from "lucide-react";
 
 const NAV_LINK_KEYS = [
@@ -364,6 +367,24 @@ const Navbar = () => {
   );
 
   const secondaryLinks = [
+    {
+      label: "Conflict Resolution",
+      href: "/knowledge/conflicts",
+      icon: ScanSearch,
+      permission: { resource: "knowledge", action: "view" },
+    },
+    {
+      label: "Memory Lifecycle",
+      href: "/knowledge/lifecycle",
+      icon: History,
+      permission: { resource: "knowledge", action: "view" },
+    },
+    {
+      label: "Meeting Templates",
+      href: "/meeting-templates",
+      icon: GitMerge,
+      permission: { resource: "meetings", action: "view" },
+    },
     {
       label: t("navbar.compliance"),
       href: "/policy-compliance",
