@@ -35,6 +35,8 @@ import {
   Plus,
   Compass,
   Check,
+  MessageSquare,
+  Code2,
 } from "lucide-react";
 
 const NAV_LINK_KEYS = [
@@ -379,6 +381,11 @@ const Navbar = () => {
       href: "/team-members",
       icon: Users,
       permission: { resource: "team_members", action: "view" },
+    },
+    {
+      label: "Developer Docs",
+      href: "/docs",
+      icon: Code2,
     },
   ].filter(
     (link) =>
