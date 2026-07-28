@@ -1,12 +1,11 @@
 import ActionItem from "../models/actionItemModel.js";
 import Notification from "../models/notificationModel.js";
 import Meeting from "../models/meetingModel.js";
-import { sendSuccess, sendError } from "../utils/responseHelper.js";
-import { sanitizeOrg } from "../utils/sanitizers.js";
+import { sendSuccess, sendError } from "../utils/responseHandler.js";
 
 export const getDashboardMetrics = async (req, res) => {
   try {
-    const organization = sanitizeOrg(req.user?.organization);
+    const organization = req.user?.organization;
     const userId = req.user?.id;
 
     if (!organization) {

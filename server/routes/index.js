@@ -27,6 +27,7 @@ import attachmentRoutes from "./attachmentRoutes.js";
 import meetingSeriesRoutes from "./meetingSeriesRoutes.js";
 import comparisonRoutes from "./comparisonRoutes.js";
 import dashboardRoutes from "./dashboardRoutes.js";
+import agendaTimerRoutes from "./agendaTimerRoutes.js";
 const router = express.Router();
 
 // ==========================================
@@ -37,6 +38,7 @@ router.use(["/api/organization", "/api/organizations"], organizationRoutes);
 router.use("/api/membership", membershipRoutes);
 router.use("/api/membership-request", membershipRequestRoutes);
 router.use("/api/invitation", invitationRoutes);
+router.use("/api/meetings/timer", agendaTimerRoutes);
 router.use("/api/meetings", meetingRoutes);
 router.use("/api/search", searchRoutes);
 router.use("/api/ai", aiRoutes);

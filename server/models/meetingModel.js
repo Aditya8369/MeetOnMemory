@@ -57,9 +57,22 @@ const meetingSchema = new mongoose.Schema(
       {
         text: { type: String, required: true },
         description: { type: String, default: "" },
-        duration: { type: Number, default: null },
+        duration: { type: Number, default: null }, // planned duration in minutes
+        actualDuration: { type: Number, default: 0 }, // actual duration in milliseconds
+        startedAt: { type: Date, default: null },
+        completedAt: { type: Date, default: null },
+        status: {
+          type: String,
+          enum: ["pending", "active", "completed", "skipped"],
+          default: "pending",
+        },
       },
     ],
+    agendaProgress: {
+      type: String,
+      enum: ["not_started", "in_progress", "completed"],
+      default: "not_started",
+    },
     policyDetails: {
       // For policy-type meetings
       policyName: { type: String, default: "" },
