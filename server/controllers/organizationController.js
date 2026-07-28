@@ -59,6 +59,18 @@ export const createOrJoinOrganization = async (req, res) => {
         await organization.save();
       }
 
+      // Create Membership record for RBAC (prevent duplicates with upsert)
+      await Membership.findOneAndUpdate(
+        { user: userId, organization: organization._id },
+        {
+          user: userId,
+          organization: organization._id,
+          role: "member",
+          status: "active",
+        },
+        { upsert: true, new: true, setDefaultsOnInsert: true }
+      );
+
       await userModel.findByIdAndUpdate(userId, {
         role: "member",
         organization: organization._id,
@@ -104,6 +116,14 @@ export const createOrJoinOrganization = async (req, res) => {
         owner: userId,
         createdBy: userId,
         members: [userId],
+      });
+
+      // Create admin Membership record for RBAC
+      await Membership.create({
+        user: userId,
+        organization: organization._id,
+        role: "admin",
+        status: "active",
       });
 
       await userModel.findByIdAndUpdate(userId, {
@@ -221,6 +241,18 @@ export const joinOrganization = async (req, res) => {
       organization.members.push(userId);
       await organization.save();
     }
+
+    // Create Membership record for RBAC (prevent duplicates with upsert)
+    await Membership.findOneAndUpdate(
+      { user: userId, organization: organization._id },
+      {
+        user: userId,
+        organization: organization._id,
+        role: "member",
+        status: "active",
+      },
+      { upsert: true, new: true, setDefaultsOnInsert: true }
+    );
 
     // Update user to be a member of this organization
     await userModel.findByIdAndUpdate(userId, {

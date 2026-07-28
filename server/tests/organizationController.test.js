@@ -1,41 +1,53 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
-import { createOrJoinOrganization } from "../controllers/organizationController.js";
+import { describe, it, expect, beforeEach, jest } from "@jest/globals";
+import { createOrJoinOrganization, joinOrganization } from "../controllers/organizationController.js";
 import Organization from "../models/organizationModel.js";
 import userModel from "../models/userModel.js";
 import AuditService from "../services/AuditService.js";
+import Membership from "../models/membershipModel.js";
 
 // Mock dependencies
-vi.mock("../models/organizationModel.js", () => ({
-  default: {
-    findOne: vi.fn(),
-    create: vi.fn(),
-  },
+const OrganizationMock = {
+  findOne: jest.fn(),
+  create: jest.fn(),
+  findById: jest.fn(),
+};
+jest.mock("../models/organizationModel.js", () => ({
+  __esModule: true,
+  default: OrganizationMock,
 }));
 
-vi.mock("../models/userModel.js", () => ({
-  default: {
-    findByIdAndUpdate: vi.fn(),
-    findById: vi.fn(),
-  },
+const userModelMock = {
+  findByIdAndUpdate: jest.fn(),
+  findById: jest.fn(),
+};
+jest.mock("../models/userModel.js", () => ({
+  __esModule: true,
+  default: userModelMock,
 }));
 
-vi.mock("../services/AuditService.js", () => ({
-  default: {
-    logAction: vi.fn(),
-  },
+const AuditServiceMock = {
+  logAction: jest.fn(),
+};
+jest.mock("../services/AuditService.js", () => ({
+  __esModule: true,
+  default: AuditServiceMock,
 }));
 
-vi.mock("../services/notificationService.js", () => ({
-  createAndPushNotification: vi.fn(),
+jest.mock("../services/notificationService.js", () => ({
+  __esModule: true,
+  createAndPushNotification: jest.fn(),
 }));
 
 // Provide a fake mock for membershipModel to avoid import issues from within the controller
-vi.mock("../models/membershipModel.js", () => ({
-  default: {
-    create: vi.fn(),
-    findOne: vi.fn(),
-    find: vi.fn(),
-  }
+const MembershipMock = {
+  create: jest.fn(),
+  findOne: jest.fn(),
+  findOneAndUpdate: jest.fn(),
+  find: jest.fn(),
+};
+jest.mock("../models/membershipModel.js", () => ({
+  __esModule: true,
+  default: MembershipMock,
 }));
 
 describe("organizationController - createOrJoinOrganization", () => {
@@ -43,19 +55,19 @@ describe("organizationController - createOrJoinOrganization", () => {
   let res;
 
   beforeEach(() => {
-    vi.clearAllMocks();
+    jest.clearAllMocks();
 
     req = {
       user: { id: "user123" },
       body: { name: "Test Org" },
       app: {
-        get: vi.fn().mockReturnValue({}), // mock io
+        get: jest.fn().mockReturnValue({}), // mock io
       },
     };
 
     res = {
-      status: vi.fn().mockReturnThis(),
-      json: vi.fn(),
+      status: jest.fn().mockReturnThis(),
+      json: jest.fn(),
     };
   });
 
@@ -85,7 +97,7 @@ describe("organizationController - createOrJoinOrganization", () => {
 
   it("should create a new organization if it does not exist", async () => {
     // Mock that org doesn't exist
-    Organization.findOne.mockResolvedValue(null);
+    OrganizationMock.findOne.mockResolvedValue(null);
 
     // Mock org creation
     const mockCreatedOrg = {
@@ -93,12 +105,15 @@ describe("organizationController - createOrJoinOrganization", () => {
       name: "Test Org",
       members: ["user123"],
     };
-    Organization.create.mockResolvedValue(mockCreatedOrg);
+    OrganizationMock.create.mockResolvedValue(mockCreatedOrg);
+
+    // Mock Membership creation
+    MembershipMock.create.mockResolvedValue({});
 
     // Mock user update & find
-    userModel.findByIdAndUpdate.mockResolvedValue(true);
-    userModel.findById.mockReturnValue({
-      populate: vi.fn().mockResolvedValue({
+    userModelMock.findByIdAndUpdate.mockResolvedValue(true);
+    userModelMock.findById.mockReturnValue({
+      populate: jest.fn().mockResolvedValue({
         _id: "user123",
         role: "admin",
         organization: mockCreatedOrg,
@@ -108,14 +123,20 @@ describe("organizationController - createOrJoinOrganization", () => {
 
     await createOrJoinOrganization(req, res);
 
-    expect(Organization.findOne).toHaveBeenCalled();
-    expect(Organization.create).toHaveBeenCalled();
-    expect(userModel.findByIdAndUpdate).toHaveBeenCalledWith("user123", {
+    expect(OrganizationMock.findOne).toHaveBeenCalled();
+    expect(OrganizationMock.create).toHaveBeenCalled();
+    expect(MembershipMock.create).toHaveBeenCalledWith({
+      user: "user123",
+      organization: "org123",
+      role: "admin",
+      status: "active",
+    });
+    expect(userModelMock.findByIdAndUpdate).toHaveBeenCalledWith("user123", {
       role: "admin",
       organization: "org123",
       hasCompletedOnboarding: true,
     });
-    expect(AuditService.logAction).toHaveBeenCalled();
+    expect(AuditServiceMock.logAction).toHaveBeenCalled();
     
     expect(res.status).toHaveBeenCalledWith(200);
     expect(res.json).toHaveBeenCalledWith(
@@ -124,5 +145,176 @@ describe("organizationController - createOrJoinOrganization", () => {
         message: "Organization created successfully!",
       })
     );
+  });
+
+  it("should join existing organization and create Membership record", async () => {
+    // Mock that org exists
+    const mockExistingOrg = {
+      _id: "org456",
+      name: "Test Org",
+      members: [],
+      createdBy: "admin123",
+    };
+    OrganizationMock.findOne.mockResolvedValue(mockExistingOrg);
+
+    // Mock Membership upsert
+    MembershipMock.findOneAndUpdate.mockResolvedValue({});
+
+    // Mock org save
+    mockExistingOrg.save = jest.fn().mockResolvedValue(mockExistingOrg);
+
+    // Mock user update & find
+    userModelMock.findByIdAndUpdate.mockResolvedValue(true);
+    userModelMock.findById.mockReturnValue({
+      populate: jest.fn().mockResolvedValue({
+        _id: "user123",
+        role: "member",
+        organization: mockExistingOrg,
+        _doc: { name: "Test User" },
+      }),
+    });
+
+    await createOrJoinOrganization(req, res);
+
+    expect(OrganizationMock.findOne).toHaveBeenCalled();
+    expect(MembershipMock.findOneAndUpdate).toHaveBeenCalledWith(
+      { user: "user123", organization: "org456" },
+      {
+        user: "user123",
+        organization: "org456",
+        role: "member",
+        status: "active",
+      },
+      { upsert: true, new: true, setDefaultsOnInsert: true }
+    );
+    expect(userModelMock.findByIdAndUpdate).toHaveBeenCalledWith("user123", {
+      role: "member",
+      organization: "org456",
+      hasCompletedOnboarding: true,
+    });
+    
+    expect(res.status).toHaveBeenCalledWith(200);
+    expect(res.json).toHaveBeenCalledWith(
+      expect.objectContaining({
+        success: true,
+        message: "Joined existing organization successfully.",
+      })
+    );
+  });
+});
+
+describe("organizationController - joinOrganization", () => {
+  let req;
+  let res;
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+
+    req = {
+      user: { id: "user123" },
+      body: { organizationId: "org456" },
+      app: {
+        get: jest.fn().mockReturnValue({}), // mock io
+      },
+    };
+
+    res = {
+      status: jest.fn().mockReturnThis(),
+      json: jest.fn(),
+    };
+  });
+
+  it("should join organization by ID and create Membership record", async () => {
+    // Mock org exists
+    const mockOrg = {
+      _id: "org456",
+      name: "Test Org",
+      members: [],
+      createdBy: "admin123",
+    };
+    OrganizationMock.findById.mockResolvedValue(mockOrg);
+
+    // Mock Membership upsert
+    MembershipMock.findOneAndUpdate.mockResolvedValue({});
+
+    // Mock org save
+    mockOrg.save = jest.fn().mockResolvedValue(mockOrg);
+
+    // Mock user update & find
+    userModelMock.findByIdAndUpdate.mockResolvedValue(true);
+    userModelMock.findById.mockReturnValue({
+      populate: jest.fn().mockResolvedValue({
+        _id: "user123",
+        role: "member",
+        organization: mockOrg,
+      }),
+    });
+
+    await joinOrganization(req, res);
+
+    expect(OrganizationMock.findById).toHaveBeenCalledWith("org456");
+    expect(MembershipMock.findOneAndUpdate).toHaveBeenCalledWith(
+      { user: "user123", organization: "org456" },
+      {
+        user: "user123",
+        organization: "org456",
+        role: "member",
+        status: "active",
+      },
+      { upsert: true, new: true, setDefaultsOnInsert: true }
+    );
+    expect(userModelMock.findByIdAndUpdate).toHaveBeenCalledWith("user123", {
+      role: "member",
+      organization: "org456",
+      hasCompletedOnboarding: true,
+    });
+    
+    expect(res.status).toHaveBeenCalledWith(200);
+    expect(res.json).toHaveBeenCalledWith(
+      expect.objectContaining({
+        success: true,
+        message: "Joined organization successfully.",
+      })
+    );
+  });
+
+  it("should prevent duplicate Membership records when already a member", async () => {
+    // Mock org exists with user already in members
+    const mockOrg = {
+      _id: "org456",
+      name: "Test Org",
+      members: ["user123"],
+      createdBy: "admin123",
+    };
+    OrganizationMock.findById.mockResolvedValue(mockOrg);
+
+    // Mock Membership upsert (should still be called but won't duplicate due to unique index)
+    MembershipMock.findOneAndUpdate.mockResolvedValue({});
+
+    // Mock user update & find
+    userModelMock.findByIdAndUpdate.mockResolvedValue(true);
+    userModelMock.findById.mockReturnValue({
+      populate: jest.fn().mockResolvedValue({
+        _id: "user123",
+        role: "member",
+        organization: mockOrg,
+      }),
+    });
+
+    await joinOrganization(req, res);
+
+    // Membership.findOneAndUpdate should still be called with upsert
+    expect(MembershipMock.findOneAndUpdate).toHaveBeenCalledWith(
+      { user: "user123", organization: "org456" },
+      {
+        user: "user123",
+        organization: "org456",
+        role: "member",
+        status: "active",
+      },
+      { upsert: true, new: true, setDefaultsOnInsert: true }
+    );
+    
+    expect(res.status).toHaveBeenCalledWith(200);
   });
 });
