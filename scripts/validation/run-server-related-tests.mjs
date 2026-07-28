@@ -3,8 +3,13 @@ import {
   logStep,
   quoteFiles,
   repoRoot,
+  run,
   runNpx,
 } from "./changed-files.mjs";
+
+const JEST =
+  "node --experimental-vm-modules node_modules/jest/bin/jest.js --forceExit";
+const serverCwd = `${repoRoot}/server`;
 
 const TEST_FILE_REGEX = /(\.test\.|\.spec\.|__tests__)/;
 const VITEST_TEST_FILES = new Set([
@@ -44,12 +49,12 @@ if (serverFiles.length === 0) {
 }
 
 if (jestTests.length > 0) {
-  runNpx(
-    `jest --runInBand --passWithNoTests ${quoteFiles(
+  run(
+    `${JEST} --runInBand --passWithNoTests ${quoteFiles(
       jestTests.map((file) => file.slice("server/".length)),
     )}`,
     {
-      cwd: `${repoRoot}/server`,
+      cwd: serverCwd,
     },
   );
 }
@@ -60,17 +65,17 @@ if (sourceFiles.length > 0) {
     (pattern) => `--testPathIgnorePatterns="${pattern}"`,
   ).join(" ");
 
-  runNpx(
-    `jest --runInBand --findRelatedTests --passWithNoTests ${ignoreArgs} ${quoteFiles(
+  run(
+    `${JEST} --runInBand --findRelatedTests --passWithNoTests ${ignoreArgs} ${quoteFiles(
       scopedSources,
     )}`,
     {
-      cwd: `${repoRoot}/server`,
+      cwd: serverCwd,
     },
   );
 
   runNpx(`vitest related --passWithNoTests ${quoteFiles(scopedSources)}`, {
-    cwd: `${repoRoot}/server`,
+    cwd: serverCwd,
   });
 }
 
@@ -80,7 +85,7 @@ if (vitestTests.length > 0) {
       vitestTests.map((file) => file.slice("server/".length)),
     )}`,
     {
-    cwd: `${repoRoot}/server`,
+      cwd: serverCwd,
     },
   );
 }
