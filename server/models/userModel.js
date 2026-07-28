@@ -15,7 +15,6 @@ const userSchema = new mongoose.Schema(
     // --- NEW FIELDS ADDED ---
     clerkUserId: {
       type: String,
-      default: null,
       sparse: true,
       unique: true,
     },
