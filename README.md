@@ -329,25 +329,19 @@ npm run server
 
 ---
 
-## Manual Frontend Setup
+## Manual Frontend Setup (Zero-Configuration)
+
+The frontend features automatic backend resolution and works out-of-the-box without manual environment configuration:
 
 ```bash
 cd client
 
 npm install
-```
 
-Create `.env`
-
-```env
-VITE_BACKEND_URL=http://localhost:4000
-```
-
-Run Frontend:
-
-```bash
 npm run dev
 ```
+
+> **Note**: Creating a `.env` file is completely optional. If no `VITE_BACKEND_URL` variable exists, the frontend automatically falls back to `http://localhost:4000`. You only need to set `VITE_BACKEND_URL` if you want to override the target backend URL.
 
 ---
 
