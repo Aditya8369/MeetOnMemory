@@ -18,6 +18,7 @@ import {
   ArrowRight,
   Sparkles,
   Shield,
+  GripVertical,
 } from "lucide-react";
 import Navbar from "../components/Navbar.jsx";
 import {
@@ -45,6 +46,61 @@ const ROUTE_MAP = {
   reports: "/reports",
 };
 
+/* Breakpoint column counts — keep in sync with ResponsiveGridLayout `cols`. */
+const BREAKPOINT_COLS = {
+  lg: 3,
+  md: 2,
+  sm: 2,
+  xs: 1,
+  xxs: 1,
+};
+
+/**
+ * Build a compact wrapping layout for every breakpoint.
+ * Preserves card order while forcing unit height so rows stay visible.
+ */
+function buildLayoutsFromOrder(cardIds) {
+  const layouts = {};
+  for (const [breakpoint, cols] of Object.entries(BREAKPOINT_COLS)) {
+    layouts[breakpoint] = cardIds.map((id, index) => ({
+      i: id,
+      x: index % cols,
+      y: Math.floor(index / cols),
+      w: 1,
+      h: 1,
+      minW: 1,
+      maxW: 1,
+      minH: 1,
+      maxH: 1,
+    }));
+  }
+  return layouts;
+}
+
+/** Prefer saved order from any breakpoint; fall back to default card ids. */
+function extractCardOrder(savedLayouts, fallbackIds) {
+  if (!savedLayouts || typeof savedLayouts !== "object") return fallbackIds;
+
+  const source =
+    (Array.isArray(savedLayouts.lg) && savedLayouts.lg) ||
+    (Array.isArray(savedLayouts.md) && savedLayouts.md) ||
+    (Array.isArray(savedLayouts.sm) && savedLayouts.sm) ||
+    Object.values(savedLayouts).find((value) => Array.isArray(value)) ||
+    [];
+
+  if (source.length === 0) return fallbackIds;
+
+  const ordered = [...source]
+    .sort((a, b) => a.y - b.y || a.x - b.x)
+    .map((item) => item.i)
+    .filter((id) => fallbackIds.includes(id));
+
+  for (const id of fallbackIds) {
+    if (!ordered.includes(id)) ordered.push(id);
+  }
+  return ordered;
+}
+
 /* ─── Dashboard ───────────────────────────────────────────────────────────── */
 const Dashboard = () => {
   const { t } = useTranslation();
@@ -54,6 +110,13 @@ const Dashboard = () => {
 
   const [layouts, setLayouts] = useState(null);
   const saveTimeoutRef = useRef(null);
+  const persistedOrderRef = useRef("");
+
+  useEffect(() => {
+    return () => {
+      if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
+    };
+  }, []);
 
   const organizationName =
     userData?.organization?.name?.toUpperCase() || "ORGANIZATION";
@@ -131,35 +194,28 @@ const Dashboard = () => {
 
   useEffect(() => {
     let mounted = true;
+    const cardIds = visibleCards.map((card) => card.id);
+
     const fetchPreferences = async () => {
       try {
         const res = await userApi.getDashboardPreferences();
-        if (mounted) {
-          if (res.data.success && res.data.dashboardPreferences) {
-            setLayouts(res.data.dashboardPreferences);
-          } else {
-            // Generate default layout
-            const defaultL = visibleCards.map((card, index) => ({
-              i: card.id,
-              x: index % 3,
-              y: Math.floor(index / 3),
-              w: 1,
-              h: 1,
-            }));
-            setLayouts({ lg: defaultL });
-          }
-        }
+        if (!mounted) return;
+
+        // Normalize to unit-height wrapping layouts for all breakpoints.
+        // Preserves saved card order while fixing oversized/stacked grids (#712).
+        const saved =
+          res.data.success && res.data.dashboardPreferences
+            ? res.data.dashboardPreferences
+            : null;
+        const order = extractCardOrder(saved, cardIds);
+        const nextLayouts = buildLayoutsFromOrder(order);
+        persistedOrderRef.current = order.join("|");
+        setLayouts(nextLayouts);
       } catch (err) {
         console.error("Failed to load dashboard preferences", err);
         if (mounted) {
-          const defaultL = visibleCards.map((card, index) => ({
-            i: card.id,
-            x: index % 3,
-            y: Math.floor(index / 3),
-            w: 1,
-            h: 1,
-          }));
-          setLayouts({ lg: defaultL });
+          persistedOrderRef.current = cardIds.join("|");
+          setLayouts(buildLayoutsFromOrder(cardIds));
         }
       }
     };
@@ -202,23 +258,45 @@ const Dashboard = () => {
     return () => observer.disconnect();
   }, [layouts, visibleCards.length, containerRef]);
 
-  const handleLayoutChange = useCallback((layout, allLayouts) => {
-    // Only save if layouts are actually set and changed
-    // react-grid-layout triggers on mount, so we compare if needed, or just debounce
+  // Keep RGL in control during drag — do not rebuild layouts on every tick.
+  const handleLayoutChange = useCallback((_currentLayout, allLayouts) => {
+    if (!allLayouts) return;
     setLayouts(allLayouts);
-
-    if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
-
-    saveTimeoutRef.current = setTimeout(async () => {
-      try {
-        await userApi.updateDashboardPreferences({
-          dashboardPreferences: allLayouts,
-        });
-      } catch (err) {
-        console.error("Failed to save dashboard preferences", err);
-      }
-    }, 1000);
   }, []);
+
+  // Normalize + persist only after drag completes, and only when order changed.
+  const handleDragStop = useCallback(
+    (currentLayout) => {
+      const visibleIds = visibleCards.map((card) => card.id);
+      const order = [...currentLayout]
+        .sort((a, b) => a.y - b.y || a.x - b.x)
+        .map((item) => item.i)
+        .filter((id) => visibleIds.includes(id));
+
+      for (const id of visibleIds) {
+        if (!order.includes(id)) order.push(id);
+      }
+
+      const orderKey = order.join("|");
+      const nextLayouts = buildLayoutsFromOrder(order);
+      setLayouts(nextLayouts);
+
+      if (persistedOrderRef.current === orderKey) return;
+      persistedOrderRef.current = orderKey;
+
+      if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
+      saveTimeoutRef.current = setTimeout(async () => {
+        try {
+          await userApi.updateDashboardPreferences({
+            dashboardPreferences: nextLayouts,
+          });
+        } catch (err) {
+          console.error("Failed to save dashboard preferences", err);
+        }
+      }, 400);
+    },
+    [visibleCards],
+  );
 
   const handleAISearch = () => navigate("/ai-search");
   const handleCardClick = (id) => navigate(ROUTE_MAP[id]);
@@ -227,11 +305,11 @@ const Dashboard = () => {
     <div className="min-h-screen flex flex-col bg-linear-to-b from-slate-50 via-white to-slate-50 dark:from-gray-900 dark:via-gray-900 dark:to-gray-900">
       <Navbar />
 
-      <main className="flex-1 w-full max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 pt-28 pb-16 sm:pb-20">
+      <main className="flex-1 w-full max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 pt-28 pb-12 sm:pb-16">
         {/* ── Hero + AI Search — unified panel ── */}
         <section
           aria-label="Dashboard hero"
-          className="relative mb-10 sm:mb-12 fade-in-up stagger-1"
+          className="relative mb-6 sm:mb-8 fade-in-up stagger-1"
         >
           <div
             aria-hidden="true"
@@ -336,7 +414,7 @@ const Dashboard = () => {
 
         {/* ── Feature Cards ── */}
         <section aria-label="Dashboard features">
-          <header className="mb-6 sm:mb-8 fade-in-up stagger-2">
+          <header className="mb-4 sm:mb-5 fade-in-up stagger-2">
             <p className="text-xs font-semibold uppercase tracking-widest text-slate-400 dark:text-gray-500">
               {t("dashboard.features")}
             </p>
@@ -357,13 +435,15 @@ const Dashboard = () => {
                 className="layout"
                 layouts={layouts}
                 breakpoints={{ lg: 1024, md: 768, sm: 640, xs: 480, xxs: 0 }}
-                cols={{ lg: 3, md: 2, sm: 2, xs: 1, xxs: 1 }}
-                rowHeight={220}
+                cols={BREAKPOINT_COLS}
+                rowHeight={240}
                 onLayoutChange={handleLayoutChange}
+                onDragStop={handleDragStop}
                 isDraggable={true}
-                isResizable={true}
+                isResizable={false}
+                compactType="vertical"
                 containerPadding={[0, 0]}
-                margin={[20, 20]}
+                margin={[16, 16]}
                 draggableHandle=".drag-handle"
               >
                 {visibleCards.map((card, index) => {
@@ -372,13 +452,16 @@ const Dashboard = () => {
                   return (
                     <div
                       key={card.id}
-                      className={`dash-card fade-in-up ${staggerClass} group relative flex cursor-pointer flex-col rounded-xl border border-slate-200/80 dark:border-gray-700 bg-white dark:bg-gray-800 p-5 shadow-sm ring-1 ring-transparent transition-all duration-200 hover:border-slate-300/80 dark:hover:border-gray-600 hover:shadow-md focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 sm:p-6 ${card.accentRing} h-full w-full`}
+                      className={`dash-card fade-in-up ${staggerClass} group relative flex cursor-pointer flex-col rounded-xl border border-slate-200/80 dark:border-gray-700 bg-white dark:bg-gray-800 p-4 shadow-sm ring-1 ring-transparent transition-all duration-200 hover:border-slate-300/80 dark:hover:border-gray-600 hover:shadow-md focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 sm:p-5 ${card.accentRing} h-full w-full`}
                     >
-                      {/* Drag Handle Layer */}
+                      {/* Drag handle: always faintly visible on touch; hover-only on fine pointers */}
                       <div
-                        className="drag-handle absolute top-0 left-0 right-0 h-10 z-10 cursor-move opacity-0 group-hover:opacity-100 transition-opacity bg-gradient-to-b from-slate-100/50 to-transparent dark:from-slate-700/50 rounded-t-xl"
+                        className="drag-handle absolute top-0 left-0 right-0 h-9 z-10 cursor-move flex items-center justify-center opacity-45 [@media(hover:hover)]:opacity-0 [@media(hover:hover)]:group-hover:opacity-100 transition-opacity bg-gradient-to-b from-slate-100/70 to-transparent dark:from-slate-700/60 rounded-t-xl"
                         title="Drag to move"
-                      />
+                        aria-hidden="true"
+                      >
+                        <GripVertical className="h-4 w-4 text-slate-400 dark:text-slate-500" />
+                      </div>
 
                       {/* Content Wrapper */}
                       <div
@@ -394,9 +477,9 @@ const Dashboard = () => {
                           }
                         }}
                       >
-                        <div className="mb-4 flex items-start justify-between gap-3 pointer-events-none">
+                        <div className="mb-3 flex items-start justify-between gap-3 pointer-events-none">
                           <div
-                            className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl ${card.iconBg} transition-transform duration-200 group-hover:scale-105`}
+                            className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${card.iconBg} transition-transform duration-200 group-hover:scale-105`}
                           >
                             <Icon
                               className={`h-5 w-5 ${card.iconColor}`}
@@ -410,16 +493,16 @@ const Dashboard = () => {
                           </span>
                         </div>
 
-                        <div className="flex flex-1 flex-col pointer-events-none">
-                          <h3 className="mb-2 text-base font-semibold leading-snug text-slate-900 dark:text-gray-100">
+                        <div className="flex min-h-0 flex-1 flex-col pointer-events-none">
+                          <h3 className="mb-1.5 text-base font-semibold leading-snug text-slate-900 dark:text-gray-100">
                             {card.title}
                           </h3>
-                          <p className="flex-1 text-sm leading-relaxed text-slate-500 dark:text-gray-400">
+                          <p className="line-clamp-3 flex-1 text-sm leading-relaxed text-slate-500 dark:text-gray-400">
                             {card.description}
                           </p>
                         </div>
 
-                        <div className="mt-5 flex items-center gap-1.5 border-t border-slate-100 dark:border-gray-700 pt-4 text-xs font-semibold text-slate-400 dark:text-gray-500 transition-colors duration-200 group-hover:text-blue-600 dark:group-hover:text-blue-400">
+                        <div className="mt-3 flex items-center gap-1.5 border-t border-slate-100 dark:border-gray-700 pt-3 text-xs font-semibold text-slate-400 dark:text-gray-500 transition-colors duration-200 group-hover:text-blue-600 dark:group-hover:text-blue-400">
                           <span>{t("dashboard.open")}</span>
                           <ArrowRight
                             className="h-3.5 w-3.5 transition-transform duration-200 group-hover:translate-x-0.5"
@@ -433,7 +516,7 @@ const Dashboard = () => {
               </ResponsiveGridLayout>
             </div>
           ) : (
-            <div className="min-h-[220px] flex items-center justify-center">
+            <div className="min-h-[240px] flex items-center justify-center">
               {/* Skeleton or loading state could go here, for now it's just empty string while fetching */}
             </div>
           )}
@@ -442,15 +525,13 @@ const Dashboard = () => {
         {/* ── Gamification ── */}
         <section
           aria-label="Organization Engagement"
-          className="mt-8 sm:mt-12 fade-in-up stagger-3"
+          className="mt-6 sm:mt-8 fade-in-up stagger-3"
         >
-          <div className="max-w-md">
-            <TopContributorsWidget
-              organizationId={
-                userData?.organization?._id || userData?.organization
-              }
-            />
-          </div>
+          <TopContributorsWidget
+            organizationId={
+              userData?.organization?._id || userData?.organization
+            }
+          />
         </section>
       </main>
     </div>

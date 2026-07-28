@@ -154,4 +154,30 @@ describe("Dashboard", () => {
       });
     });
   });
+
+  it("renders all admin feature cards in the drag grid without a narrow contributors rail (#712)", async () => {
+    render(
+      <MemoryRouter>
+        <AppContent.Provider value={{ userData: mockUserData }}>
+          <Dashboard />
+        </AppContent.Provider>
+      </MemoryRouter>,
+    );
+
+    await waitFor(() => {
+      expect(screen.getByTestId("responsive-grid")).toBeInTheDocument();
+    });
+
+    expect(screen.getByText("dashboard.uploadMeetings")).toBeInTheDocument();
+    expect(screen.getByText("dashboard.meetingEventHub")).toBeInTheDocument();
+    expect(screen.getByText("dashboard.aiSummarization")).toBeInTheDocument();
+    expect(
+      screen.getByText("dashboard.policiesRepository"),
+    ).toBeInTheDocument();
+    expect(screen.getByText("dashboard.reportsAnalytics")).toBeInTheDocument();
+    expect(screen.getByTestId("top-contributors")).toBeInTheDocument();
+    expect(
+      screen.getByLabelText("Organization Engagement"),
+    ).toBeInTheDocument();
+  });
 });
