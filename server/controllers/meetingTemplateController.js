@@ -18,12 +18,10 @@ export const createTemplate = async (req, res) => {
 
     const templateName = name || title;
     if (!templateName) {
-      return res
-        .status(400)
-        .json({
-          success: false,
-          message: "Template name or title is required",
-        });
+      return res.status(400).json({
+        success: false,
+        message: "Template name or title is required",
+      });
     }
 
     if (!organizationId) {
