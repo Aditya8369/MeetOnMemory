@@ -29,3 +29,28 @@ export function validateImageUrl(value, fieldLabel = "Image URL") {
 
   return "";
 }
+
+/**
+ * Sanitize potentially untrusted image URLs before rendering in the DOM.
+ * Returns empty string for unsupported or malformed URLs so UI falls back
+ * to placeholders instead of attempting to render unsafe schemes.
+ *
+ * @param {unknown} value
+ * @returns {string}
+ */
+export function sanitizeImageUrl(value) {
+  const trimmed = String(value || "").trim();
+  if (!trimmed) return "";
+  if (trimmed.length > MAX_IMAGE_URL_LENGTH) return "";
+
+  try {
+    const parsed = new URL(trimmed);
+    if (parsed.protocol === "http:" || parsed.protocol === "https:") {
+      return trimmed;
+    }
+  } catch {
+    return "";
+  }
+
+  return "";
+}

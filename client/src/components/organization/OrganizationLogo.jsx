@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { Building2 } from "lucide-react";
+import { sanitizeImageUrl } from "../../utils/imageUrl";
 
 /**
  * Square organization logo with graceful placeholder fallback.
@@ -13,10 +14,11 @@ const OrganizationLogo = ({
   alt,
 }) => {
   const [failed, setFailed] = useState(false);
+  const safeSrc = sanitizeImageUrl(src);
 
   useEffect(() => {
     setFailed(false);
-  }, [src]);
+  }, [safeSrc]);
 
   const sizeClasses = {
     sm: "h-10 w-10 text-sm rounded-lg",
@@ -26,7 +28,7 @@ const OrganizationLogo = ({
   };
 
   const classes = sizeClasses[size] || sizeClasses.md;
-  const showImage = Boolean(src) && !failed;
+  const showImage = Boolean(safeSrc) && !failed;
   const initial = name?.charAt(0)?.toUpperCase() || "O";
 
   return (
@@ -36,7 +38,7 @@ const OrganizationLogo = ({
     >
       {showImage ? (
         <img
-          src={src}
+          src={safeSrc}
           alt={alt || `${name || "Organization"} logo`}
           className="h-full w-full object-cover"
           onError={() => setFailed(true)}

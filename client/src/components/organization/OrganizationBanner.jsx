@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { sanitizeImageUrl } from "../../utils/imageUrl";
 
 /**
  * Wide organization banner with gradient placeholder when unset/broken.
@@ -11,12 +12,13 @@ const OrganizationBanner = ({
   heightClass = "h-40 sm:h-48",
 }) => {
   const [failed, setFailed] = useState(false);
+  const safeSrc = sanitizeImageUrl(src);
 
   useEffect(() => {
     setFailed(false);
-  }, [src]);
+  }, [safeSrc]);
 
-  const showImage = Boolean(src) && !failed;
+  const showImage = Boolean(safeSrc) && !failed;
 
   return (
     <div
@@ -34,7 +36,7 @@ const OrganizationBanner = ({
     >
       {showImage && (
         <img
-          src={src}
+          src={safeSrc}
           alt=""
           className="absolute inset-0 h-full w-full object-cover"
           onError={() => setFailed(true)}
