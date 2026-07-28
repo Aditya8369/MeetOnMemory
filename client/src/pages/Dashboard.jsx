@@ -1,10 +1,4 @@
-import React, {
-  useContext,
-  useEffect,
-  useRef,
-  useState,
-  useCallback,
-} from "react";
+import React, { useContext } from "react";
 import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
 import AppContent from "../context/AppContent";
@@ -18,16 +12,8 @@ import {
   ArrowRight,
   Sparkles,
   Shield,
-  GripVertical,
 } from "lucide-react";
 import Navbar from "../components/Navbar.jsx";
-import {
-  Responsive as ResponsiveGridLayout,
-  useContainerWidth,
-} from "react-grid-layout";
-import "react-grid-layout/css/styles.css";
-import "react-resizable/css/styles.css";
-import { userApi } from "../services/userApi";
 import TopContributorsWidget from "../components/organization/TopContributorsWidget";
 
 /* ─── Role Badge ──────────────────────────────────────────────────────────── */
@@ -46,77 +32,11 @@ const ROUTE_MAP = {
   reports: "/reports",
 };
 
-/* Breakpoint column counts — keep in sync with ResponsiveGridLayout `cols`. */
-const BREAKPOINT_COLS = {
-  lg: 3,
-  md: 2,
-  sm: 2,
-  xs: 1,
-  xxs: 1,
-};
-
-/**
- * Build a compact wrapping layout for every breakpoint.
- * Preserves card order while forcing unit height so rows stay visible.
- */
-function buildLayoutsFromOrder(cardIds) {
-  const layouts = {};
-  for (const [breakpoint, cols] of Object.entries(BREAKPOINT_COLS)) {
-    layouts[breakpoint] = cardIds.map((id, index) => ({
-      i: id,
-      x: index % cols,
-      y: Math.floor(index / cols),
-      w: 1,
-      h: 1,
-      minW: 1,
-      maxW: 1,
-      minH: 1,
-      maxH: 1,
-    }));
-  }
-  return layouts;
-}
-
-/** Prefer saved order from any breakpoint; fall back to default card ids. */
-function extractCardOrder(savedLayouts, fallbackIds) {
-  if (!savedLayouts || typeof savedLayouts !== "object") return fallbackIds;
-
-  const source =
-    (Array.isArray(savedLayouts.lg) && savedLayouts.lg) ||
-    (Array.isArray(savedLayouts.md) && savedLayouts.md) ||
-    (Array.isArray(savedLayouts.sm) && savedLayouts.sm) ||
-    Object.values(savedLayouts).find((value) => Array.isArray(value)) ||
-    [];
-
-  if (source.length === 0) return fallbackIds;
-
-  const ordered = [...source]
-    .sort((a, b) => a.y - b.y || a.x - b.x)
-    .map((item) => item.i)
-    .filter((id) => fallbackIds.includes(id));
-
-  for (const id of fallbackIds) {
-    if (!ordered.includes(id)) ordered.push(id);
-  }
-  return ordered;
-}
-
 /* ─── Dashboard ───────────────────────────────────────────────────────────── */
 const Dashboard = () => {
   const { t } = useTranslation();
   const { userData } = useContext(AppContent);
   const navigate = useNavigate();
-  const { width: containerWidth, containerRef } = useContainerWidth();
-
-  const [layouts, setLayouts] = useState(null);
-  const saveTimeoutRef = useRef(null);
-  const persistedOrderRef = useRef("");
-
-  useEffect(() => {
-    return () => {
-      if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
-    };
-  }, []);
 
   const organizationName =
     userData?.organization?.name?.toUpperCase() || "ORGANIZATION";
@@ -126,7 +46,8 @@ const Dashboard = () => {
     rawRole.charAt(0).toUpperCase() + rawRole.slice(1).toLowerCase();
   const roleStyle = ROLE_STYLES[rawRole.toLowerCase()] || ROLE_STYLES.member;
 
-  const isAdmin = userData?.role === "admin" || userData?.role === "owner";
+  const isAdmin =
+    rawRole.toLowerCase() === "admin" || rawRole.toLowerCase() === "owner";
 
   const FEATURE_CARDS = [
     {
@@ -190,112 +111,6 @@ const Dashboard = () => {
 
   const visibleCards = FEATURE_CARDS.filter(
     (card) => !card.adminOnly || isAdmin,
-  );
-
-  useEffect(() => {
-    let mounted = true;
-    const cardIds = visibleCards.map((card) => card.id);
-
-    const fetchPreferences = async () => {
-      try {
-        const res = await userApi.getDashboardPreferences();
-        if (!mounted) return;
-
-        // Normalize to unit-height wrapping layouts for all breakpoints.
-        // Preserves saved card order while fixing oversized/stacked grids (#712).
-        const saved =
-          res.data.success && res.data.dashboardPreferences
-            ? res.data.dashboardPreferences
-            : null;
-        const order = extractCardOrder(saved, cardIds);
-        const nextLayouts = buildLayoutsFromOrder(order);
-        persistedOrderRef.current = order.join("|");
-        setLayouts(nextLayouts);
-      } catch (err) {
-        console.error("Failed to load dashboard preferences", err);
-        if (mounted) {
-          persistedOrderRef.current = cardIds.join("|");
-          setLayouts(buildLayoutsFromOrder(cardIds));
-        }
-      }
-    };
-
-    // Only fetch if userData is loaded somewhat, to avoid pre-auth calls if any
-    if (userData) {
-      fetchPreferences();
-    }
-
-    return () => {
-      mounted = false;
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [userData, visibleCards.length]);
-
-  // Resume paused .dash-card.fade-in-up entrance animations once cards enter the viewport.
-  // Matches Features/Hero IntersectionObserver + .visible contract in index.css.
-  useEffect(() => {
-    if (!layouts || typeof IntersectionObserver === "undefined") return;
-
-    const root = containerRef.current;
-    if (!root) return;
-
-    const cards = root.querySelectorAll(".dash-card.fade-in-up");
-    if (cards.length === 0) return;
-
-    const observer = new IntersectionObserver(
-      (entries) => {
-        entries.forEach((entry) => {
-          if (entry.isIntersecting) {
-            entry.target.classList.add("visible");
-            observer.unobserve(entry.target);
-          }
-        });
-      },
-      { threshold: 0.1 },
-    );
-
-    cards.forEach((card) => observer.observe(card));
-    return () => observer.disconnect();
-  }, [layouts, visibleCards.length, containerRef]);
-
-  // Keep RGL in control during drag — do not rebuild layouts on every tick.
-  const handleLayoutChange = useCallback((_currentLayout, allLayouts) => {
-    if (!allLayouts) return;
-    setLayouts(allLayouts);
-  }, []);
-
-  // Normalize + persist only after drag completes, and only when order changed.
-  const handleDragStop = useCallback(
-    (currentLayout) => {
-      const visibleIds = visibleCards.map((card) => card.id);
-      const order = [...currentLayout]
-        .sort((a, b) => a.y - b.y || a.x - b.x)
-        .map((item) => item.i)
-        .filter((id) => visibleIds.includes(id));
-
-      for (const id of visibleIds) {
-        if (!order.includes(id)) order.push(id);
-      }
-
-      const orderKey = order.join("|");
-      const nextLayouts = buildLayoutsFromOrder(order);
-      setLayouts(nextLayouts);
-
-      if (persistedOrderRef.current === orderKey) return;
-      persistedOrderRef.current = orderKey;
-
-      if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
-      saveTimeoutRef.current = setTimeout(async () => {
-        try {
-          await userApi.updateDashboardPreferences({
-            dashboardPreferences: nextLayouts,
-          });
-        } catch (err) {
-          console.error("Failed to save dashboard preferences", err);
-        }
-      }, 400);
-    },
-    [visibleCards],
   );
 
   const handleAISearch = () => navigate("/ai-search");
@@ -418,108 +233,68 @@ const Dashboard = () => {
             <p className="text-xs font-semibold uppercase tracking-widest text-slate-400 dark:text-gray-500">
               {t("dashboard.features")}
             </p>
-            <div className="flex items-center justify-between">
-              <h2 className="mt-1 text-xl font-semibold text-slate-900 dark:text-gray-100 sm:text-2xl">
-                {t("dashboard.everythingInOnePlace")}
-              </h2>
-              <span className="text-xs text-slate-400 dark:text-gray-500 hidden sm:inline-block">
-                Drag cards to reorder
-              </span>
-            </div>
+            <h2 className="mt-1 text-xl font-semibold text-slate-900 dark:text-gray-100 sm:text-2xl">
+              {t("dashboard.everythingInOnePlace")}
+            </h2>
           </header>
 
-          {layouts ? (
-            <div ref={containerRef} className="w-full">
-              <ResponsiveGridLayout
-                width={containerWidth}
-                className="layout"
-                layouts={layouts}
-                breakpoints={{ lg: 1024, md: 768, sm: 640, xs: 480, xxs: 0 }}
-                cols={BREAKPOINT_COLS}
-                rowHeight={240}
-                onLayoutChange={handleLayoutChange}
-                onDragStop={handleDragStop}
-                isDraggable={true}
-                isResizable={false}
-                compactType="vertical"
-                containerPadding={[0, 0]}
-                margin={[16, 16]}
-                draggableHandle=".drag-handle"
-              >
-                {visibleCards.map((card, index) => {
-                  const Icon = card.icon;
-                  const staggerClass = `stagger-${Math.min(index + 1, 6)}`;
-                  return (
+          <div
+            data-testid="feature-cards-grid"
+            className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3"
+          >
+            {visibleCards.map((card) => {
+              const Icon = card.icon;
+              return (
+                <div
+                  key={card.id}
+                  role="button"
+                  tabIndex={0}
+                  aria-label={`Navigate to ${card.title}`}
+                  onClick={() => handleCardClick(card.id)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" || e.key === " ") {
+                      e.preventDefault();
+                      handleCardClick(card.id);
+                    }
+                  }}
+                  className={`dash-card group relative flex cursor-pointer flex-col rounded-xl border border-slate-200/80 dark:border-gray-700 bg-white dark:bg-gray-800 p-4 shadow-sm ring-1 ring-transparent transition-all duration-200 hover:border-slate-300/80 dark:hover:border-gray-600 hover:shadow-md focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 sm:p-5 ${card.accentRing}`}
+                >
+                  <div className="mb-3 flex items-start justify-between gap-3">
                     <div
-                      key={card.id}
-                      className={`dash-card fade-in-up ${staggerClass} group relative flex cursor-pointer flex-col rounded-xl border border-slate-200/80 dark:border-gray-700 bg-white dark:bg-gray-800 p-4 shadow-sm ring-1 ring-transparent transition-all duration-200 hover:border-slate-300/80 dark:hover:border-gray-600 hover:shadow-md focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 sm:p-5 ${card.accentRing} h-full w-full`}
+                      className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${card.iconBg} transition-transform duration-200 group-hover:scale-105`}
                     >
-                      {/* Drag handle: always faintly visible on touch; hover-only on fine pointers */}
-                      <div
-                        className="drag-handle absolute top-0 left-0 right-0 h-9 z-10 cursor-move flex items-center justify-center opacity-45 [@media(hover:hover)]:opacity-0 [@media(hover:hover)]:group-hover:opacity-100 transition-opacity bg-gradient-to-b from-slate-100/70 to-transparent dark:from-slate-700/60 rounded-t-xl"
-                        title="Drag to move"
+                      <Icon
+                        className={`h-5 w-5 ${card.iconColor}`}
                         aria-hidden="true"
-                      >
-                        <GripVertical className="h-4 w-4 text-slate-400 dark:text-slate-500" />
-                      </div>
-
-                      {/* Content Wrapper */}
-                      <div
-                        className="flex flex-col h-full flex-1 z-0 relative"
-                        role="button"
-                        tabIndex={0}
-                        aria-label={`Navigate to ${card.title}`}
-                        onClick={() => handleCardClick(card.id)}
-                        onKeyDown={(e) => {
-                          if (e.key === "Enter" || e.key === " ") {
-                            e.preventDefault();
-                            handleCardClick(card.id);
-                          }
-                        }}
-                      >
-                        <div className="mb-3 flex items-start justify-between gap-3 pointer-events-none">
-                          <div
-                            className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${card.iconBg} transition-transform duration-200 group-hover:scale-105`}
-                          >
-                            <Icon
-                              className={`h-5 w-5 ${card.iconColor}`}
-                              aria-hidden="true"
-                            />
-                          </div>
-                          <span
-                            className={`rounded-full border px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide ${card.tagColor}`}
-                          >
-                            {card.tag}
-                          </span>
-                        </div>
-
-                        <div className="flex min-h-0 flex-1 flex-col pointer-events-none">
-                          <h3 className="mb-1.5 text-base font-semibold leading-snug text-slate-900 dark:text-gray-100">
-                            {card.title}
-                          </h3>
-                          <p className="line-clamp-3 flex-1 text-sm leading-relaxed text-slate-500 dark:text-gray-400">
-                            {card.description}
-                          </p>
-                        </div>
-
-                        <div className="mt-3 flex items-center gap-1.5 border-t border-slate-100 dark:border-gray-700 pt-3 text-xs font-semibold text-slate-400 dark:text-gray-500 transition-colors duration-200 group-hover:text-blue-600 dark:group-hover:text-blue-400">
-                          <span>{t("dashboard.open")}</span>
-                          <ArrowRight
-                            className="h-3.5 w-3.5 transition-transform duration-200 group-hover:translate-x-0.5"
-                            aria-hidden="true"
-                          />
-                        </div>
-                      </div>
+                      />
                     </div>
-                  );
-                })}
-              </ResponsiveGridLayout>
-            </div>
-          ) : (
-            <div className="min-h-[240px] flex items-center justify-center">
-              {/* Skeleton or loading state could go here, for now it's just empty string while fetching */}
-            </div>
-          )}
+                    <span
+                      className={`rounded-full border px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide ${card.tagColor}`}
+                    >
+                      {card.tag}
+                    </span>
+                  </div>
+
+                  <div className="flex min-h-0 flex-1 flex-col">
+                    <h3 className="mb-1.5 text-base font-semibold leading-snug text-slate-900 dark:text-gray-100">
+                      {card.title}
+                    </h3>
+                    <p className="line-clamp-3 flex-1 text-sm leading-relaxed text-slate-500 dark:text-gray-400">
+                      {card.description}
+                    </p>
+                  </div>
+
+                  <div className="mt-3 flex items-center gap-1.5 border-t border-slate-100 dark:border-gray-700 pt-3 text-xs font-semibold text-slate-400 dark:text-gray-500 transition-colors duration-200 group-hover:text-blue-600 dark:group-hover:text-blue-400">
+                    <span>{t("dashboard.open")}</span>
+                    <ArrowRight
+                      className="h-3.5 w-3.5 transition-transform duration-200 group-hover:translate-x-0.5"
+                      aria-hidden="true"
+                    />
+                  </div>
+                </div>
+              );
+            })}
+          </div>
         </section>
 
         {/* ── Gamification ── */}
