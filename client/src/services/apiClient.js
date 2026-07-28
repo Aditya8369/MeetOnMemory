@@ -1,7 +1,8 @@
 import axios from "axios";
 import { getCsrfToken, refreshCsrfToken } from "./csrfService.js";
+import { getBackendUrl } from "../config/backendConfig.js";
 
-const backendUrl = import.meta.env.VITE_BACKEND_URL || "http://localhost:4000";
+const backendUrl = getBackendUrl();
 
 const apiClient = axios.create({
   baseURL: backendUrl,
@@ -19,7 +20,11 @@ function isCsrfError(error) {
 function applyFriendlyMessage(error, friendlyMessage) {
   if (!error.response) {
     error.response = { data: { message: friendlyMessage }, status: 0 };
-  } else if (error.response.data) {
+  } else if (
+    error.response.data &&
+    typeof error.response.data === "object" &&
+    !Array.isArray(error.response.data)
+  ) {
     error.response.data.message = friendlyMessage;
   } else {
     error.response.data = { message: friendlyMessage };
@@ -46,6 +51,15 @@ apiClient.interceptors.request.use(
 apiClient.interceptors.response.use(
   (response) => response,
   async (error) => {
+    // Guard against null/undefined so malformed reject payloads never crash.
+    if (error == null) {
+      const friendlyMessage = "An unexpected error occurred. Please try again.";
+      return Promise.reject({
+        message: friendlyMessage,
+        response: { data: { message: friendlyMessage }, status: 0 },
+      });
+    }
+
     const originalRequest = error.config;
     let friendlyMessage = "An unexpected error occurred. Please try again.";
 

@@ -12,6 +12,7 @@ import {
   ForbiddenError,
   NotFoundError,
 } from "../utils/errors.js";
+import { sendSuccess } from "../utils/responseHandler.js";
 
 import dns from "dns/promises";
 import ipaddr from "ipaddr.js";
@@ -32,7 +33,7 @@ const isSafeWebhookUrl = async (urlStr) => {
       // dns.lookup checks /etc/hosts and DNS, returning the IP
       const { address } = await dns.lookup(hostname);
       resolvedIp = address;
-    } catch (err) {
+    } catch (_err) {
       // If we can't resolve it, it's not a valid safe public URL
       return false;
     }
@@ -41,7 +42,7 @@ const isSafeWebhookUrl = async (urlStr) => {
     let addr;
     try {
       addr = ipaddr.parse(resolvedIp);
-    } catch (err) {
+    } catch (_err) {
       return false;
     }
 
@@ -63,7 +64,7 @@ const isSafeWebhookUrl = async (urlStr) => {
     }
 
     return true;
-  } catch (err) {
+  } catch (_err) {
     return false;
   }
 };
@@ -163,7 +164,7 @@ export const createWebhook = async (req, res, next) => {
 
     let validated;
     try {
-      validated = createWebhookSchema.parse(req.body);
+      validated = await createWebhookSchema.parseAsync(req.body);
     } catch (zodErr) {
       return next(zodErr);
     }
@@ -192,19 +193,19 @@ export const createWebhook = async (req, res, next) => {
 
     const webhook = await Webhook.create(webhookData);
 
-    return res.status(201).json({
-      success: true,
-      message: "Webhook registered successfully.",
-      webhook: {
-        _id: webhook._id,
-        organizationId: webhook.organizationId,
-        targetUrl: webhook.targetUrl,
-        events: webhook.events,
-        secret: webhook.secret,
-        isActive: webhook.isActive,
+    const webhookResponse = webhook.toObject();
+    delete webhookResponse.secret;
+
+    return sendSuccess(
+      res,
+      {
+        webhook: webhookResponse,
       },
-    });
+      "Webhook registered successfully.",
+      201,
+    );
   } catch (error) {
+    console.error("DEBUG WEBHOOK ERROR:", error);
     next(error);
   }
 };
@@ -234,7 +235,7 @@ export const getWebhooks = async (req, res, next) => {
       createdAt: -1,
     });
 
-    return res.status(200).json({ success: true, webhooks });
+    return sendSuccess(res, { webhooks });
   } catch (error) {
     next(error);
   }
@@ -271,7 +272,7 @@ export const updateWebhook = async (req, res, next) => {
 
     let validated;
     try {
-      validated = updateWebhookSchema.parse(req.body);
+      validated = await updateWebhookSchema.parseAsync(req.body);
     } catch (zodErr) {
       return next(zodErr);
     }
@@ -291,11 +292,14 @@ export const updateWebhook = async (req, res, next) => {
 
     await webhook.save();
 
-    return res.status(200).json({
-      success: true,
-      message: "Webhook updated successfully.",
-      webhook,
-    });
+    const webhookResponse = webhook.toObject();
+    delete webhookResponse.secret;
+
+    return sendSuccess(
+      res,
+      { webhook: webhookResponse },
+      "Webhook updated successfully.",
+    );
   } catch (error) {
     next(error);
   }
@@ -332,10 +336,7 @@ export const deleteWebhook = async (req, res, next) => {
 
     await webhook.deleteOne();
 
-    return res.status(200).json({
-      success: true,
-      message: "Webhook deleted successfully.",
-    });
+    return sendSuccess(res, null, "Webhook deleted successfully.");
   } catch (error) {
     next(error);
   }
@@ -408,8 +409,7 @@ export const getWebhookDeliveries = async (req, res, next) => {
       .skip((page - 1) * limit)
       .limit(limit);
 
-    return res.status(200).json({
-      success: true,
+    return sendSuccess(res, {
       deliveries,
       pagination: {
         total,
@@ -460,11 +460,11 @@ export const redeliverWebhookPayload = async (req, res, next) => {
       );
     }
 
-    return res.status(200).json({
-      success: true,
-      message: "Webhook payload redelivered successfully.",
-      delivery: newDelivery,
-    });
+    return sendSuccess(
+      res,
+      { delivery: newDelivery },
+      "Webhook payload redelivered successfully.",
+    );
   } catch (error) {
     next(error);
   }

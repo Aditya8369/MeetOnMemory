@@ -35,7 +35,10 @@ const SIGNING_SECRET = "test_signing_secret";
  * @param {number} [timestamp] - Unix timestamp (defaults to now)
  * @returns {{ signature: string, timestamp: string }}
  */
-const generateSlackSignature = (body, timestamp = Math.floor(Date.now() / 1000)) => {
+const generateSlackSignature = (
+  body,
+  timestamp = Math.floor(Date.now() / 1000),
+) => {
   const sigBasestring = `v0:${timestamp}:${body}`;
   const signature =
     "v0=" +
@@ -64,7 +67,8 @@ beforeAll(() => {
   process.env.SLACK_SIGNING_SECRET = SIGNING_SECRET;
   process.env.SLACK_CLIENT_ID = "test_client_id";
   process.env.SLACK_CLIENT_SECRET = "test_client_secret";
-  process.env.SLACK_REDIRECT_URI = "http://localhost:4000/api/slack/oauth_redirect";
+  process.env.SLACK_REDIRECT_URI =
+    "http://localhost:4000/api/slack/oauth_redirect";
 });
 
 afterAll(() => {
@@ -270,7 +274,7 @@ describe("GET /api/slack/install", () => {
     });
     const token = jwt.sign(
       { id: user._id },
-      process.env.JWT_SECRET || "fallback_secret"
+      process.env.JWT_SECRET || "fallback_secret",
     );
 
     const res = await request(app)
@@ -289,7 +293,11 @@ describe("GET /api/slack/oauth_redirect", () => {
   const JWT_SECRET = process.env.JWT_SECRET || "test_jwt_secret";
 
   const createValidState = (orgId, userId) => {
-    return jwt.sign({ orgId: orgId.toString(), userId: userId.toString() }, JWT_SECRET, { expiresIn: "15m" });
+    return jwt.sign(
+      { orgId: orgId.toString(), userId: userId.toString() },
+      JWT_SECRET,
+      { expiresIn: "15m" },
+    );
   };
 
   it("returns 400 when no code is provided", async () => {

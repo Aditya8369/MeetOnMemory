@@ -68,6 +68,8 @@ export const PERMISSIONS = {
   settings: {
     view: ["owner", "admin", "moderator"],
     edit: ["owner", "admin"],
+    self_view: ["owner", "admin", "moderator", "member", "guest"],
+    self_edit: ["owner", "admin", "moderator", "member", "guest"],
   },
   // Reports permissions
   reports: {
@@ -88,15 +90,20 @@ export const PERMISSIONS = {
     // Merging/consolidating memories mutates the graph in bulk, so it's
     // restricted like other structural knowledge-base changes.
     consolidate: ["owner", "admin", "moderator"],
-    // Manually triggering a graph snapshot is a lightweight, non-destructive
-    // read-adjacent action (it never mutates decisions/action items), so it's
-    // available to the same roles that can view the knowledge base.
-    snapshot: ["owner", "admin", "moderator", "member"],
+    // Running a contradiction scan or resolving a conflict mutates graph
+    // metadata (status/supersededByMemory) for other users' memories, so
+    // it's restricted the same way as consolidate.
+    resolve_conflicts: ["owner", "admin", "moderator"],
+    // Running a lifecycle sweep or manually archiving/restoring a memory
+    // mutates lifecycle state in bulk (or for other users' memories), so
+    // it's restricted the same way as consolidate/resolve_conflicts.
+    manage_lifecycle: ["owner", "admin", "moderator"],
   },
   // Notifications permissions
   notifications: {
     view: ["owner", "admin", "moderator", "member", "guest"],
     manage: ["owner", "admin"],
+    self_manage: ["owner", "admin", "moderator", "member", "guest"],
   },
   // Audit Logs permissions
   audit_logs: {

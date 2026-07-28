@@ -56,8 +56,23 @@ const meetingSchema = new mongoose.Schema(
     agendaItems: [
       {
         text: { type: String, required: true },
+        description: { type: String, default: "" },
+        duration: { type: Number, default: null }, // planned duration in minutes
+        actualDuration: { type: Number, default: 0 }, // actual duration in milliseconds
+        startedAt: { type: Date, default: null },
+        completedAt: { type: Date, default: null },
+        status: {
+          type: String,
+          enum: ["pending", "active", "completed", "skipped"],
+          default: "pending",
+        },
       },
     ],
+    agendaProgress: {
+      type: String,
+      enum: ["not_started", "in_progress", "completed"],
+      default: "not_started",
+    },
     policyDetails: {
       // For policy-type meetings
       policyName: { type: String, default: "" },
@@ -96,6 +111,30 @@ const meetingSchema = new mongoose.Schema(
       default: "uploaded",
     },
     tags: [String], // e.g., ["policy", "finance", "staff"]
+    externalCalendarRefs: [
+      {
+        provider: { type: String, enum: ["google", "outlook"], required: true },
+        eventId: { type: String, required: true },
+      },
+    ],
+
+    // Calendar integration - store external event IDs for both providers
+    calendarEvents: {
+      google: {
+        eventId: { type: String, default: null },
+        syncedAt: { type: Date, default: null },
+      },
+      microsoft: {
+        eventId: { type: String, default: null },
+        syncedAt: { type: Date, default: null },
+      },
+    },
+
+    // Legacy field for backward compatibility
+    archived: {
+      type: Boolean,
+      default: false,
+    },
 
     // Google Calendar integration
     googleEventId: {
@@ -111,6 +150,15 @@ const meetingSchema = new mongoose.Schema(
     collaborativeNotes: {
       type: String, // Plain-text snapshot for read-only views and semantic search
       default: "",
+    },
+    series: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "MeetingSeries",
+      default: null,
+    },
+    seriesOccurrence: {
+      type: Number,
+      default: null,
     },
   },
   { timestamps: true },
