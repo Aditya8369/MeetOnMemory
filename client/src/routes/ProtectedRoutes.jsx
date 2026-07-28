@@ -14,6 +14,7 @@ import OrganizationSettings from "../pages/OrganizationSettings.jsx";
 import Dashboard from "../pages/Dashboard.jsx";
 
 // Feature Pages
+import CompareMeetings from "../pages/MeetingComparison";
 import CreateMeeting from "../pages/CreateMeeting.jsx";
 import UploadMeeting from "../pages/UploadMeeting.jsx";
 import Policies from "../pages/Policies.jsx";
@@ -46,6 +47,14 @@ const ProtectedRoutes = (
       element={
         <ProtectedRoute resource="meetings" action="view">
           <MeetingListPage />
+        </ProtectedRoute>
+      }
+    />
+    <Route
+      path="/meetings/compare"
+      element={
+        <ProtectedRoute resource="meetings" action="view">
+          <CompareMeetings />
         </ProtectedRoute>
       }
     />
