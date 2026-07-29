@@ -1,7 +1,10 @@
-import React, { useState, useEffect, useId } from "react";
+import React, { useState, useEffect, useId, useRef } from "react";
 import { Copy, Trash2, X, Plus, Calendar, Lock, Globe } from "lucide-react";
 import { toast } from "react-toastify";
 import { sharedLinkApi } from "../../services";
+
+const FOCUSABLE_SELECTOR =
+  'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
 
 const ShareModal = ({ isOpen, onClose, resourceId, resourceType, title }) => {
   const [links, setLinks] = useState([]);
@@ -13,6 +16,9 @@ const ShareModal = ({ isOpen, onClose, resourceId, resourceType, title }) => {
   const [expirationDate, setExpirationDate] = useState("");
   const [passcode, setPasscode] = useState("");
   const titleId = useId();
+  const dialogRef = useRef(null);
+  const closeButtonRef = useRef(null);
+  const previouslyFocusedRef = useRef(null);
 
   useEffect(() => {
     if (isOpen) {
@@ -24,19 +30,67 @@ const ShareModal = ({ isOpen, onClose, resourceId, resourceType, title }) => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen, resourceId]);
 
+  // Move focus into the dialog on open; restore it on close
+  useEffect(() => {
+    if (!isOpen) return;
+
+    previouslyFocusedRef.current = document.activeElement;
+    const frame = window.requestAnimationFrame(() => {
+      closeButtonRef.current?.focus();
+    });
+
+    return () => {
+      window.cancelAnimationFrame(frame);
+      const previous = previouslyFocusedRef.current;
+      if (previous && typeof previous.focus === "function") {
+        previous.focus();
+      }
+    };
+  }, [isOpen]);
+
+  // Escape dismissal + Tab focus trap for keyboard navigation
   useEffect(() => {
     if (!isOpen) return;
 
     const handleKeyDown = (e) => {
       if (e.key === "Escape") {
         e.preventDefault();
-        onClose();
+        if (showForm) {
+          setShowForm(false);
+          setExpirationDate("");
+          setPasscode("");
+          closeButtonRef.current?.focus();
+        } else {
+          onClose();
+        }
+        return;
+      }
+
+      if (e.key !== "Tab" || !dialogRef.current) return;
+
+      const focusable = Array.from(
+        dialogRef.current.querySelectorAll(FOCUSABLE_SELECTOR),
+      ).filter(
+        (el) => el.offsetParent !== null || el === document.activeElement,
+      );
+
+      if (focusable.length === 0) return;
+
+      const first = focusable[0];
+      const last = focusable[focusable.length - 1];
+
+      if (e.shiftKey && document.activeElement === first) {
+        e.preventDefault();
+        last.focus();
+      } else if (!e.shiftKey && document.activeElement === last) {
+        e.preventDefault();
+        first.focus();
       }
     };
 
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [isOpen, onClose]);
+  }, [isOpen, onClose, showForm]);
 
   const fetchLinks = async () => {
     try {
@@ -116,6 +170,7 @@ const ShareModal = ({ isOpen, onClose, resourceId, resourceType, title }) => {
         </span>
 
         <div
+          ref={dialogRef}
           role="dialog"
           aria-modal="true"
           aria-labelledby={titleId}
@@ -130,6 +185,7 @@ const ShareModal = ({ isOpen, onClose, resourceId, resourceType, title }) => {
               Share {title}
             </h3>
             <button
+              ref={closeButtonRef}
               type="button"
               onClick={onClose}
               aria-label="Close share modal"
@@ -241,6 +297,7 @@ const ShareModal = ({ isOpen, onClose, resourceId, resourceType, title }) => {
                     min={new Date().toISOString().split("T")[0]}
                     value={expirationDate}
                     onChange={(e) => setExpirationDate(e.target.value)}
+                    autoFocus
                     className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg shadow-sm focus:ring-indigo-500 focus:border-indigo-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
                   />
                 </div>
