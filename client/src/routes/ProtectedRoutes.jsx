@@ -35,6 +35,7 @@ import KnowledgeTimeline from "../pages/KnowledgeTimeline.jsx";
 import MemoryConsolidation from "../pages/MemoryConsolidation.jsx";
 import MemoryLifecycle from "../pages/MemoryLifecycle.jsx";
 import GraphSnapshots from "../pages/GraphSnapshots.jsx";
+import DecisionGraph from "../pages/DecisionGraph.jsx";
 import PolicyCompliance from "../pages/PolicyCompliance.jsx";
 import Settings from "../pages/Settings.jsx";
 import MembershipRequests from "../pages/MembershipRequests.jsx";
@@ -92,6 +93,14 @@ const ProtectedRoutes = (
       element={
         <ProtectedRoute resource="knowledge" action="view">
           <GraphSnapshots />
+        </ProtectedRoute>
+      }
+    />
+    <Route
+      path="/decisions/graph"
+      element={
+        <ProtectedRoute resource="knowledge" action="view">
+          <DecisionGraph />
         </ProtectedRoute>
       }
     />
