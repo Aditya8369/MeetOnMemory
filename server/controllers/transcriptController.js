@@ -7,10 +7,7 @@ import {
   indexMeeting,
 } from "../utils/embeddingUtils.js";
 import { indexTranscriptChunks } from "../utils/transcriptEmbeddingUtils.js";
-import {
-  sanitizeFilenameForHeader,
-  getContentDispositionHeader,
-} from "../utils/fileUtils.js";
+import { getContentDispositionHeader } from "../utils/fileUtils.js";
 import { sendSuccess, sendError } from "../utils/responseHandler.js";
 import fs from "fs";
 import path from "path";

@@ -17,7 +17,7 @@ export const exportMeeting = async (req, res) => {
     const title =
       meeting.structuredMoM?.title || meeting.title || "Meeting Minutes";
     const filenameBase = sanitizeFilenameForHeader(
-      title.replace(/[^a-z0-9]/gi, "_").toLowerCase()
+      title.replace(/[^a-z0-9]/gi, "_").toLowerCase(),
     );
 
     if (format === "pdf") {

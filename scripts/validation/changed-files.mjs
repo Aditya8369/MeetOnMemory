@@ -134,7 +134,10 @@ export function getChangedFiles() {
 
 export function selectChangedFiles(regex, prefix = "") {
   return getChangedFiles().filter(
-    (file) => (!prefix || file.startsWith(prefix)) && regex.test(file) && existsSync(path.join(repoRoot, file)),
+    (file) =>
+      (!prefix || file.startsWith(prefix)) &&
+      regex.test(file) &&
+      existsSync(path.join(repoRoot, file)),
   );
 }
 
