@@ -10,16 +10,21 @@ import OrganizationHub from "../pages/OrganizationHub.jsx";
 import JoinOrganizationPage from "../pages/JoinOrganizationPage.jsx";
 import CreateOrganizationPage from "../pages/CreateOrganizationPage.jsx";
 import BrowseOrganizations from "../pages/BrowseOrganizations/BrowseOrganizations.jsx";
+import OrganizationSettings from "../pages/OrganizationSettings.jsx";
 import Dashboard from "../pages/Dashboard.jsx";
 
 // Feature Pages
+import CompareMeetings from "../pages/MeetingComparison";
 import CreateMeeting from "../pages/CreateMeeting.jsx";
+import MeetingTemplates from "../pages/MeetingTemplates.jsx";
 import UploadMeeting from "../pages/UploadMeeting.jsx";
 import Policies from "../pages/Policies.jsx";
 import Summaries from "../pages/Summaries.jsx";
 import Reports from "../pages/Reports.jsx";
 import AiSearch from "../pages/AiSearch.jsx";
+import AiAssistant from "../pages/AiAssistant.jsx";
 import MeetingDetails from "../pages/MeetingDetails.jsx";
+import MeetingRoom from "../pages/MeetingRoom.jsx";
 import TranscriptViewer from "../pages/TranscriptViewer.jsx";
 import TeamMembers from "../pages/TeamMembers.jsx";
 import Profile from "../pages/Profile.jsx";
@@ -28,11 +33,20 @@ import Notifications from "../pages/Notifications.jsx";
 import Tasks from "../pages/Tasks.jsx";
 import KnowledgeTimeline from "../pages/KnowledgeTimeline.jsx";
 import MemoryConsolidation from "../pages/MemoryConsolidation.jsx";
+import MemoryLifecycle from "../pages/MemoryLifecycle.jsx";
+import KnowledgeArchive from "../pages/KnowledgeArchive.jsx";
 import GraphSnapshots from "../pages/GraphSnapshots.jsx";
+import DecisionGraph from "../pages/DecisionGraph.jsx";
 import PolicyCompliance from "../pages/PolicyCompliance.jsx";
 import Settings from "../pages/Settings.jsx";
 import MembershipRequests from "../pages/MembershipRequests.jsx";
+import MembersManagement from "../pages/Admin/MembersManagement.jsx";
+import AuditLogViewer from "../pages/Admin/AuditLogViewer.jsx";
 import AdminPanel from "../pages/AdminPanel.jsx";
+import Bookmarks from "../pages/Bookmarks.jsx";
+import ActivityFeed from "../pages/ActivityFeed.jsx";
+import TagBrowser from "../pages/TagBrowser.jsx";
+import AttendanceAnalytics from "../pages/AttendanceAnalytics.jsx";
 
 const ProtectedRoutes = (
   <React.Fragment>
@@ -41,6 +55,14 @@ const ProtectedRoutes = (
       element={
         <ProtectedRoute resource="meetings" action="view">
           <MeetingListPage />
+        </ProtectedRoute>
+      }
+    />
+    <Route
+      path="/meetings/compare"
+      element={
+        <ProtectedRoute resource="meetings" action="view">
+          <CompareMeetings />
         </ProtectedRoute>
       }
     />
@@ -61,10 +83,50 @@ const ProtectedRoutes = (
       }
     />
     <Route
+      path="/knowledge/lifecycle"
+      element={
+        <ProtectedRoute resource="knowledge" action="view">
+          <MemoryLifecycle />
+        </ProtectedRoute>
+      }
+    />
+    <Route
+      path="/knowledge/archive"
+      element={
+        <ProtectedRoute resource="knowledge" action="view">
+          <KnowledgeArchive />
+        </ProtectedRoute>
+      }
+    />
+    <Route
       path="/knowledge/graph-history"
       element={
         <ProtectedRoute resource="knowledge" action="view">
           <GraphSnapshots />
+        </ProtectedRoute>
+      }
+    />
+    <Route
+      path="/decisions/graph"
+      element={
+        <ProtectedRoute resource="knowledge" action="view">
+          <DecisionGraph />
+        </ProtectedRoute>
+      }
+    />
+    <Route
+      path="/admin/members"
+      element={
+        <ProtectedRoute resource="team_members" action="view">
+          <MembersManagement />
+        </ProtectedRoute>
+      }
+    />
+    <Route
+      path="/admin/audit-logs"
+      element={
+        <ProtectedRoute resource="audit_logs" action="view">
+          <AuditLogViewer />
         </ProtectedRoute>
       }
     />
@@ -101,6 +163,30 @@ const ProtectedRoutes = (
       }
     />
     <Route
+      path="/organization/settings"
+      element={
+        <ProtectedRoute resource="organizations" action="view">
+          <OrganizationSettings />
+        </ProtectedRoute>
+      }
+    />
+    <Route
+      path="/organizations/settings"
+      element={
+        <ProtectedRoute resource="organizations" action="view">
+          <OrganizationSettings />
+        </ProtectedRoute>
+      }
+    />
+    <Route
+      path="/organization-settings"
+      element={
+        <ProtectedRoute resource="organizations" action="view">
+          <OrganizationSettings />
+        </ProtectedRoute>
+      }
+    />
+    <Route
       path="/dashboard"
       element={
         <ProtectedRoute>
@@ -115,6 +201,14 @@ const ProtectedRoutes = (
       element={
         <ProtectedRoute resource="meetings" action="create">
           <CreateMeeting />
+        </ProtectedRoute>
+      }
+    />
+    <Route
+      path="/meeting-templates"
+      element={
+        <ProtectedRoute resource="meetings" action="view">
+          <MeetingTemplates />
         </ProtectedRoute>
       }
     />
@@ -159,6 +253,14 @@ const ProtectedRoutes = (
       }
     />
     <Route
+      path="/assistant"
+      element={
+        <ProtectedRoute>
+          <AiAssistant />
+        </ProtectedRoute>
+      }
+    />
+    <Route
       path="/transcript/:meetingId"
       element={
         <ProtectedRoute resource="meetings" action="view">
@@ -171,6 +273,14 @@ const ProtectedRoutes = (
       element={
         <ProtectedRoute resource="meetings" action="view">
           <MeetingDetails />
+        </ProtectedRoute>
+      }
+    />
+    <Route
+      path="/meeting-room/:roomId"
+      element={
+        <ProtectedRoute resource="meetings" action="view">
+          <MeetingRoom />
         </ProtectedRoute>
       }
     />
@@ -238,6 +348,39 @@ const ProtectedRoutes = (
         </ProtectedRoute>
       }
     />
+    <Route
+      path="/bookmarks"
+      element={
+        <ProtectedRoute>
+          <Bookmarks />
+        </ProtectedRoute>
+      }
+    />
+    <Route
+      path="/activities"
+      element={
+        <ProtectedRoute>
+          <ActivityFeed />
+        </ProtectedRoute>
+      }
+    />
+    <Route
+      path="/tags"
+      element={
+        <ProtectedRoute>
+          <TagBrowser />
+        </ProtectedRoute>
+      }
+    />
+    <Route
+      path="/attendance-analytics"
+      element={
+        <ProtectedRoute resource="reports" action="view">
+          <AttendanceAnalytics />
+        </ProtectedRoute>
+      }
+    />
+    <Route path="/access-denied" element={<AccessDenied />} />
 
     <Route
       path="/admin-panel"

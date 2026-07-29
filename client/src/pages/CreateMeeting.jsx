@@ -10,7 +10,10 @@ import { useLiveMeeting } from "./CreateMeeting/hooks/useLiveMeeting";
 import { useSessionCards } from "./CreateMeeting/hooks/useSessionCards";
 
 const CreateMeeting = () => {
-  const [activeSection, setActiveSection] = useState("live");
+  const [activeSection, setActiveSection] = useState(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    return urlParams.get("templateId") ? "schedule" : "live";
+  });
 
   const scheduleMeetingHooks = useScheduleMeeting();
   const liveMeetingHooks = useLiveMeeting();
