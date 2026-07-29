@@ -11,6 +11,7 @@ import {
   ArrowRight,
   Sparkles,
   Shield,
+  Users,
 } from "lucide-react";
 import Navbar from "../components/Navbar.jsx";
 import TopContributorsWidget from "../components/organization/TopContributorsWidget";
@@ -32,6 +33,7 @@ const ROUTE_MAP = {
   summaries: "/summaries",
   policies: "/policies",
   reports: "/reports",
+  "attendance-analytics": "/attendance-analytics",
 };
 
 /* ─── Dashboard ───────────────────────────────────────────────────────────── */
@@ -111,6 +113,18 @@ const Dashboard = () => {
       tag: t("dashboard.analytics"),
       tagColor: "bg-indigo-50 text-indigo-700 border-indigo-100",
       accentRing: "group-hover:ring-indigo-100",
+    },
+    {
+      id: "attendance-analytics",
+      icon: Users,
+      title: "Attendance Analytics",
+      description:
+        "Visualize per-member attendance rates, heatmap activity, and trends.",
+      iconBg: "bg-pink-50",
+      iconColor: "text-pink-600",
+      tag: "Analytics",
+      tagColor: "bg-pink-50 text-pink-700 border-pink-100",
+      accentRing: "group-hover:ring-pink-100",
     },
   ];
 
