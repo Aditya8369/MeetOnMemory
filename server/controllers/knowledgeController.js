@@ -433,6 +433,37 @@ export const updateActionItemStatus = async (req, res) => {
   }
 };
 
+export const toggleActionItemReminderStatus = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { enabled } = req.body;
+    const organization = sanitizeOrg(req.user?.organization);
+
+    if (typeof id !== "string" || !mongoose.Types.ObjectId.isValid(id)) {
+      return sendError(res, 400, "Invalid action item id");
+    }
+
+    const cleanId = new mongoose.Types.ObjectId(id);
+    const item = await ActionItem.findOne({
+      _id: cleanId,
+      organization,
+    });
+
+    if (!item) {
+      return sendError(res, 404, "Action item not found");
+    }
+
+    item.remindersEnabled =
+      enabled !== undefined ? Boolean(enabled) : !item.remindersEnabled;
+    await item.save();
+
+    sendSuccess(res, { actionItem: item });
+  } catch (error) {
+    console.error("toggleActionItemReminderStatus error:", error);
+    sendError(res, 500, "Failed to toggle action item reminder");
+  }
+};
+
 /**
  * POST /api/knowledge/lifecycle/run
  * Manually triggers a full lifecycle sweep (active/dormant/archived/expired
