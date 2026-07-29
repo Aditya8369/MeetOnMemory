@@ -43,6 +43,7 @@ import AdminPanel from "../pages/AdminPanel.jsx";
 import Bookmarks from "../pages/Bookmarks.jsx";
 import ActivityFeed from "../pages/ActivityFeed.jsx";
 import TagBrowser from "../pages/TagBrowser.jsx";
+import AttendanceAnalytics from "../pages/AttendanceAnalytics.jsx";
 
 const ProtectedRoutes = (
   <React.Fragment>
@@ -341,6 +342,14 @@ const ProtectedRoutes = (
       element={
         <ProtectedRoute>
           <TagBrowser />
+        </ProtectedRoute>
+      }
+    />
+    <Route
+      path="/attendance-analytics"
+      element={
+        <ProtectedRoute resource="reports" action="view">
+          <AttendanceAnalytics />
         </ProtectedRoute>
       }
     />

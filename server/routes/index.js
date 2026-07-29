@@ -29,6 +29,7 @@ import comparisonRoutes from "./comparisonRoutes.js";
 import dashboardRoutes from "./dashboardRoutes.js";
 import agendaTimerRoutes from "./agendaTimerRoutes.js";
 import decisionGraphRoutes from "./decisionGraphRoutes.js";
+import attendanceAnalyticsRoutes from "./attendanceAnalyticsRoutes.js";
 const router = express.Router();
 
 // ==========================================
@@ -64,5 +65,6 @@ router.use("/api/meeting-series", meetingSeriesRoutes);
 router.use("/api/comparison", comparisonRoutes);
 router.use("/api/dashboard", dashboardRoutes);
 router.use("/api/decision-graph", decisionGraphRoutes);
+router.use("/api/attendance-analytics", attendanceAnalyticsRoutes);
 
 export default router;
