@@ -210,6 +210,25 @@ export const createOrJoinOrganization = async (userId, orgName) => {
       members: [userId],
     });
 
+    // Create admin membership for the creator (RBAC); unique index prevents duplicates
+    try {
+      await Membership.create({
+        user: userId,
+        organization: organization._id,
+        role: "admin",
+        status: "active",
+      });
+    } catch (error) {
+      // Roll back the org if membership creation fails to avoid inconsistent state
+      await Organization.findByIdAndDelete(organization._id);
+      if (error.code === 11000) {
+        throw new ConflictError(
+          "You are already a member of this organization.",
+        );
+      }
+      throw error;
+    }
+
     await userModel.findByIdAndUpdate(userId, {
       role: "admin",
       organization: organization._id,
