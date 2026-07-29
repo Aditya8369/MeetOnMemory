@@ -8,6 +8,7 @@ import {
   Minimize2,
   X,
   GripHorizontal,
+  Pin,
 } from "lucide-react";
 import useAssistant from "../context/useAssistant";
 import AppContent from "../context/AppContent";
@@ -26,6 +27,7 @@ const FloatingAssistant = () => {
     error,
     isSocketConnected,
     isRateLimited,
+    pinnedContext,
     ui,
     openAssistant,
     closeAssistant,
@@ -37,6 +39,7 @@ const FloatingAssistant = () => {
     handleNewSession,
     handleDeleteSession,
     handleSendMessage,
+    handleUnpinContext,
   } = useAssistant();
 
   const messagesEndRef = useRef(null);
@@ -250,6 +253,30 @@ const FloatingAssistant = () => {
             <div className="flex items-center justify-center gap-2 border-b border-yellow-200 bg-yellow-50 px-3 py-2 text-xs font-medium text-yellow-800 dark:border-yellow-900/50 dark:bg-yellow-950/40 dark:text-yellow-200">
               <RefreshCw className="h-3.5 w-3.5 animate-spin" />
               Connecting to real-time service...
+            </div>
+          )}
+
+          {pinnedContext && (
+            <div className="flex items-center justify-between gap-2 border-b border-indigo-100 bg-indigo-50/70 px-3 py-2 dark:border-indigo-900/40 dark:bg-indigo-950/30">
+              <div className="flex min-w-0 items-center gap-1.5 text-xs text-indigo-900 dark:text-indigo-200">
+                <Pin className="h-3.5 w-3.5 shrink-0 text-indigo-600" />
+                <span className="font-medium shrink-0">Pinned:</span>
+                <span className="truncate">
+                  <span className="mr-1 uppercase text-[10px] font-bold tracking-wide text-indigo-500">
+                    {pinnedContext.type}
+                  </span>
+                  {pinnedContext.title}
+                </span>
+              </div>
+              <button
+                type="button"
+                onClick={handleUnpinContext}
+                className="inline-flex shrink-0 items-center gap-1 rounded-md px-1.5 py-0.5 text-[11px] font-medium text-indigo-700 hover:bg-indigo-100 dark:text-indigo-300 dark:hover:bg-indigo-900/40"
+                aria-label="Remove pinned context"
+              >
+                <X className="h-3 w-3" />
+                Remove
+              </button>
             </div>
           )}
 

@@ -1,4 +1,6 @@
 import { execSync } from "node:child_process";
+import { existsSync } from "node:fs";
+import path from "node:path";
 
 function resolveRepoRoot() {
   try {
@@ -83,7 +85,9 @@ function buildRefCandidates() {
   }
 
   for (const remote of preferredRemotes) {
-    const remoteHead = tryCapture(`git symbolic-ref --quiet "refs/remotes/${escapeRef(remote)}/HEAD"`);
+    const remoteHead = tryCapture(
+      `git symbolic-ref --quiet "refs/remotes/${escapeRef(remote)}/HEAD"`,
+    );
     if (remoteHead) {
       candidates.unshift(remoteHead);
     }
@@ -93,13 +97,9 @@ function buildRefCandidates() {
 }
 
 function diffFromBaseRef(baseRef) {
-  const mergeBase = tryCapture(
-    `git merge-base HEAD "${escapeRef(baseRef)}"`,
-  );
+  const mergeBase = tryCapture(`git merge-base HEAD "${escapeRef(baseRef)}"`);
   if (!mergeBase) return [];
-  return parseLines(
-    tryCapture(`git diff --name-only "${mergeBase}"...HEAD`),
-  );
+  return parseLines(tryCapture(`git diff --name-only "${mergeBase}"...HEAD`));
 }
 
 function getWorkingTreeFiles() {
@@ -107,9 +107,7 @@ function getWorkingTreeFiles() {
 }
 
 function getUntrackedFiles() {
-  return parseLines(
-    tryCapture("git ls-files --others --exclude-standard"),
-  );
+  return parseLines(tryCapture("git ls-files --others --exclude-standard"));
 }
 
 export function detectBaseRef() {
@@ -136,7 +134,10 @@ export function getChangedFiles() {
 
 export function selectChangedFiles(regex, prefix = "") {
   return getChangedFiles().filter(
-    (file) => (!prefix || file.startsWith(prefix)) && regex.test(file),
+    (file) =>
+      (!prefix || file.startsWith(prefix)) &&
+      regex.test(file) &&
+      existsSync(path.join(repoRoot, file)),
   );
 }
 
@@ -162,4 +163,35 @@ export function runNpm(args, options = {}) {
 
 export function runNpx(args, options = {}) {
   run(`${npxCommand} ${args}`, options);
+}
+
+function cleanNpmPrefixEnv(env = process.env) {
+  const cleaned = { ...env };
+  delete cleaned.npm_config_prefix;
+  delete cleaned.NPM_CONFIG_PREFIX;
+  return cleaned;
+}
+
+export function resolvePrettierCommand() {
+  const prettierCjs = path.join(
+    repoRoot,
+    "node_modules/prettier/bin/prettier.cjs",
+  );
+  if (existsSync(prettierCjs)) {
+    return `node "${prettierCjs}"`;
+  }
+  return `${npxCommand} --yes prettier`;
+}
+
+export function runPrettierCheck(
+  files,
+  { cwd = repoRoot, label = "format" } = {},
+) {
+  if (files.length === 0) return;
+
+  logStep(label, `Checking ${files.length} file(s) with Prettier...`);
+  run(`${resolvePrettierCommand()} --check ${quoteFiles(files)}`, {
+    cwd,
+    env: cleanNpmPrefixEnv(),
+  });
 }

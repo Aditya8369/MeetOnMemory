@@ -86,6 +86,8 @@ export const getOpenActionItems = async (req, res) => {
       status = "open",
       sortBy = "createdAt",
       includeArchived,
+      lifecycleState,
+      search,
     } = req.query || {};
     const organization = sanitizeOrg(req.user?.organization);
 
@@ -137,11 +139,16 @@ export const getOpenActionItems = async (req, res) => {
       });
     }
 
-    // Archived/expired memories are excluded from default retrieval per
-    // the Memory Lifecycle Management engine (Issue #377) — they remain
-    // searchable/restorable via the lifecycle endpoints, just not shown
-    // in everyday listings unless explicitly requested.
-    if (includeArchived !== "true") {
+    if (search && typeof search === "string") {
+      query = query.where({ text: { $regex: search, $options: "i" } });
+    }
+
+    if (
+      lifecycleState &&
+      ["active", "dormant", "archived", "expired"].includes(lifecycleState)
+    ) {
+      query = query.where({ lifecycleState });
+    } else if (includeArchived !== "true") {
       query = query.where({
         lifecycleState: { $nin: ["archived", "expired"] },
       });
@@ -191,7 +198,13 @@ export const getOpenActionItems = async (req, res) => {
 
 export const getDecisions = async (req, res) => {
   try {
-    const { status, sortBy = "createdAt", includeArchived } = req.query || {};
+    const {
+      status,
+      sortBy = "createdAt",
+      includeArchived,
+      lifecycleState,
+      search,
+    } = req.query || {};
     const organization = sanitizeOrg(req.user?.organization);
 
     const allowedStatuses = ["open", "in-progress", "resolved", "superseded"];
@@ -224,9 +237,16 @@ export const getDecisions = async (req, res) => {
       filter.status = "superseded";
     }
 
-    // Archived/expired memories are excluded from default retrieval per
-    // the Memory Lifecycle Management engine (Issue #377).
-    if (includeArchived !== "true") {
+    if (search && typeof search === "string") {
+      filter.text = { $regex: search, $options: "i" };
+    }
+
+    if (
+      lifecycleState &&
+      ["active", "dormant", "archived", "expired"].includes(lifecycleState)
+    ) {
+      filter.lifecycleState = lifecycleState;
+    } else if (includeArchived !== "true") {
       filter.lifecycleState = { $nin: ["archived", "expired"] };
     }
 
@@ -410,6 +430,37 @@ export const updateActionItemStatus = async (req, res) => {
   } catch (error) {
     console.error("updateActionItemStatus error:", error);
     sendError(res, 500, "Failed to update action item");
+  }
+};
+
+export const toggleActionItemReminderStatus = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { enabled } = req.body;
+    const organization = sanitizeOrg(req.user?.organization);
+
+    if (typeof id !== "string" || !mongoose.Types.ObjectId.isValid(id)) {
+      return sendError(res, 400, "Invalid action item id");
+    }
+
+    const cleanId = new mongoose.Types.ObjectId(id);
+    const item = await ActionItem.findOne({
+      _id: cleanId,
+      organization,
+    });
+
+    if (!item) {
+      return sendError(res, 404, "Action item not found");
+    }
+
+    item.remindersEnabled =
+      enabled !== undefined ? Boolean(enabled) : !item.remindersEnabled;
+    await item.save();
+
+    sendSuccess(res, { actionItem: item });
+  } catch (error) {
+    console.error("toggleActionItemReminderStatus error:", error);
+    sendError(res, 500, "Failed to toggle action item reminder");
   }
 };
 

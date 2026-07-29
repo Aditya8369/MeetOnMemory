@@ -91,6 +91,16 @@ const actionItemSchema = new mongoose.Schema(
       type: Date,
       default: null,
     },
+    remindersEnabled: {
+      type: Boolean,
+      default: true,
+    },
+    reminderSent: {
+      upcoming: { type: Boolean, default: false },
+      overdue: { type: Boolean, default: false },
+      upcomingSentAt: { type: Date, default: null },
+      overdueSentAt: { type: Date, default: null },
+    },
     embedding: {
       type: [Number],
       default: [],

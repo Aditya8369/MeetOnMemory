@@ -9,8 +9,9 @@ import React, {
 } from "react";
 import { io } from "socket.io-client";
 import AppContent from "./AppContent.js";
+import { getBackendUrl } from "../config/backendConfig.js";
 
-const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5000";
+const API_URL = getBackendUrl();
 const UI_STORAGE_KEY = "meetonmemory-assistant-ui";
 
 const AssistantContext = createContext(null);
@@ -55,6 +56,7 @@ export const AssistantProvider = ({ children }) => {
   const [error, setError] = useState("");
   const [isSocketConnected, setIsSocketConnected] = useState(false);
   const [isRateLimited, setIsRateLimited] = useState(false);
+  const [pinnedContext, setPinnedContext] = useState(null);
   const [ui, setUi] = useState(readStoredUi);
 
   const socketRef = useRef(null);
@@ -233,6 +235,7 @@ export const AssistantProvider = ({ children }) => {
       if (!res.ok) throw new Error("Failed to load session");
       const data = await res.json();
       setMessages(data.messages || []);
+      setPinnedContext(data.pinnedContext || null);
     } catch (err) {
       console.error(err);
       setError("Could not load the selected conversation.");
@@ -252,6 +255,7 @@ export const AssistantProvider = ({ children }) => {
       setSessions((prev) => [data, ...prev]);
       setCurrentSessionId(data._id);
       setMessages([]);
+      setPinnedContext(null);
       setError("");
       setIsRateLimited(false);
     } catch (err) {
@@ -272,9 +276,85 @@ export const AssistantProvider = ({ children }) => {
       if (currentSessionIdRef.current === id) {
         setCurrentSessionId(null);
         setMessages([]);
+        setPinnedContext(null);
       }
     } catch (err) {
       console.error(err);
+    }
+  }, []);
+
+  const pinContextToSession = useCallback(async (sessionId, pin) => {
+    if (!sessionId || !pin?.type || !pin?.refId) return null;
+    tokenRef.current = localStorage.getItem("token");
+    const res = await fetch(
+      `${API_URL}/api/assistant/sessions/${sessionId}/pinned-context`,
+      {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${tokenRef.current}`,
+        },
+        credentials: "include",
+        body: JSON.stringify({
+          type: pin.type,
+          refId: pin.refId,
+          title: pin.title,
+        }),
+      },
+    );
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      throw new Error(data.error || "Failed to pin context");
+    }
+    setPinnedContext(data.pinnedContext || null);
+    return data.pinnedContext;
+  }, []);
+
+  const ensureSessionAndPin = useCallback(
+    async (pin) => {
+      let sessionId = currentSessionIdRef.current;
+      if (!sessionId) {
+        tokenRef.current = localStorage.getItem("token");
+        const res = await fetch(`${API_URL}/api/assistant/sessions`, {
+          method: "POST",
+          headers: { Authorization: `Bearer ${tokenRef.current}` },
+          credentials: "include",
+        });
+        if (!res.ok) throw new Error("Failed to create session");
+        const data = await res.json();
+        setSessions((prev) => [data, ...prev]);
+        sessionId = data._id;
+        setCurrentSessionId(sessionId);
+        setMessages([]);
+      }
+      await pinContextToSession(sessionId, pin);
+      if (pin?.title) {
+        setInputValue(`Tell me about: ${pin.title}`);
+      }
+    },
+    [pinContextToSession],
+  );
+
+  const handleUnpinContext = useCallback(async () => {
+    if (!currentSessionIdRef.current) {
+      setPinnedContext(null);
+      return;
+    }
+    try {
+      tokenRef.current = localStorage.getItem("token");
+      const res = await fetch(
+        `${API_URL}/api/assistant/sessions/${currentSessionIdRef.current}/pinned-context`,
+        {
+          method: "DELETE",
+          headers: { Authorization: `Bearer ${tokenRef.current}` },
+          credentials: "include",
+        },
+      );
+      if (!res.ok) throw new Error("Failed to remove pinned context");
+      setPinnedContext(null);
+    } catch (err) {
+      console.error(err);
+      setError("Could not remove pinned context.");
     }
   }, []);
 
@@ -353,6 +433,7 @@ export const AssistantProvider = ({ children }) => {
       error,
       isSocketConnected,
       isRateLimited,
+      pinnedContext,
       ui,
       openAssistant,
       closeAssistant,
@@ -364,6 +445,8 @@ export const AssistantProvider = ({ children }) => {
       handleNewSession,
       handleDeleteSession,
       handleSendMessage,
+      ensureSessionAndPin,
+      handleUnpinContext,
     }),
     [
       sessions,
@@ -374,6 +457,7 @@ export const AssistantProvider = ({ children }) => {
       error,
       isSocketConnected,
       isRateLimited,
+      pinnedContext,
       ui,
       openAssistant,
       closeAssistant,
@@ -385,6 +469,8 @@ export const AssistantProvider = ({ children }) => {
       handleNewSession,
       handleDeleteSession,
       handleSendMessage,
+      ensureSessionAndPin,
+      handleUnpinContext,
     ],
   );
 
