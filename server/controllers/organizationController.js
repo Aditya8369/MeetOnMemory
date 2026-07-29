@@ -99,7 +99,6 @@ export const selectOrganization = async (req, res) => {
   }
 };
 
-
 /**
  * ✅ Get organization members
  * Returns: { success: true, members: [...] }
