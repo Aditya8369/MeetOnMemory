@@ -19,6 +19,8 @@ import AttachmentPanel from "../components/meeting-details/AttachmentPanel";
 import ReactionSummaryCard from "../components/meeting-details/ReactionSummaryCard";
 import SeriesNavigation from "../components/meeting-details/SeriesNavigation";
 import CompareButton from "../components/meeting-details/CompareButton";
+import AgendaTimer from "../components/meeting-details/AgendaTimer";
+import AgendaPacingReport from "../components/meeting-details/AgendaPacingReport";
 
 const MeetingDetails = () => {
   const { id } = useParams();
@@ -171,6 +173,15 @@ const MeetingDetails = () => {
           onShare={() => setShareModalOpen(true)}
           onPresent={() => setIsPresentModeOpen(true)}
         />
+
+        {/* Conditional rendering for Agenda Timer vs Pacing Report */}
+        {meeting.status !== "completed" &&
+        meeting.agendaProgress !== "completed" ? (
+          <AgendaTimer meeting={meeting} />
+        ) : (
+          <AgendaPacingReport meetingId={meeting._id} />
+        )}
+
         <MeetingSummary meeting={meeting} />
         <ReactionSummaryCard meetingId={meeting._id} />
         <MeetingCollaborativeNotes meeting={meeting} />

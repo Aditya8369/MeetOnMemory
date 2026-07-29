@@ -37,7 +37,17 @@ export const useScheduleMeeting = () => {
       try {
         const res = await meetingTemplateApi.getTemplates();
         if (res.data?.success) {
-          setTemplates(res.data.templates);
+          const tpls = res.data.templates || [];
+          setTemplates(tpls);
+
+          const urlParams = new URLSearchParams(window.location.search);
+          const tplParamId = urlParams.get("templateId");
+          if (tplParamId) {
+            const found = tpls.find((t) => t._id === tplParamId);
+            if (found) {
+              applyTemplate(found);
+            }
+          }
         }
       } catch (error) {
         console.error("Failed to fetch templates:", error);
@@ -46,6 +56,53 @@ export const useScheduleMeeting = () => {
     fetchTemplates();
   }, []);
 
+  const applyTemplate = (template) => {
+    if (!template) return;
+    setSelectedTemplateId(template._id);
+
+    setScheduleData((prev) => ({
+      ...prev,
+      title: template.title || template.name || prev.title,
+      description: template.description || prev.description,
+      duration: template.defaultDuration
+        ? String(template.defaultDuration)
+        : prev.duration,
+    }));
+
+    if (
+      Array.isArray(template.agendaBlocks) &&
+      template.agendaBlocks.length > 0
+    ) {
+      const newBlocks = template.agendaBlocks.map((block) => ({
+        text: block.title,
+        description: block.description || "",
+        duration: block.duration || 10,
+        id: Date.now().toString() + Math.random(),
+      }));
+      setAgendaItems(newBlocks);
+    }
+
+    if (
+      Array.isArray(template.defaultParticipants) &&
+      template.defaultParticipants.length > 0
+    ) {
+      const defaultParts = template.defaultParticipants.map(
+        (emailOrName, idx) => ({
+          id: Date.now() + idx,
+          name: emailOrName.includes("@")
+            ? emailOrName.split("@")[0]
+            : emailOrName,
+          email: emailOrName.includes("@")
+            ? emailOrName
+            : `${emailOrName}@example.com`,
+        }),
+      );
+      setParticipants(defaultParts);
+    }
+
+    toast.info(`Applied template: "${template.name || template.title}"`);
+  };
+
   const handleTemplateSelect = (e) => {
     const templateId = e.target.value;
     setSelectedTemplateId(templateId);
@@ -53,14 +110,7 @@ export const useScheduleMeeting = () => {
     if (templateId) {
       const template = templates.find((t) => t._id === templateId);
       if (template) {
-        const newBlocks = template.agendaBlocks.map((block) => ({
-          text: block.title,
-          description: block.description,
-          duration: block.duration,
-          id: Date.now().toString() + Math.random(),
-        }));
-        setAgendaItems(newBlocks);
-        toast.info("Template agenda applied");
+        applyTemplate(template);
       }
     }
   };

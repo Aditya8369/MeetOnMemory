@@ -19,6 +19,7 @@ const VITEST_TEST_FILES = new Set([
   "server/tests/knowledgeController.test.js",
   "server/tests/transcriptController.test.js",
   "server/tests/meetingDigestService.test.js",
+  "server/tests/imageUrl.test.js",
 ]);
 const JEST_RELATED_IGNORE = [
   "tests/integration.test.js",
@@ -35,8 +36,28 @@ const serverFiles = changedFiles.filter(
 
 const directTests = serverFiles.filter((file) => TEST_FILE_REGEX.test(file));
 const sourceFiles = serverFiles.filter((file) => !directTests.includes(file));
-const vitestTests = directTests.filter((file) => VITEST_TEST_FILES.has(file));
-const jestTests = directTests.filter((file) => !vitestTests.includes(file));
+const vitestOwnedSources = new Set([
+  "server/services/OrganizationService.js",
+  "server/services/InvitationService.js",
+  "server/controllers/organizationController.js",
+  "server/controllers/knowledgeController.js",
+  "server/controllers/transcriptController.js",
+  "server/services/meetingDigestService.js",
+  "server/utils/imageUrl.js",
+]);
+const vitestTests = [
+  ...directTests.filter((file) => VITEST_TEST_FILES.has(file)),
+  ...sourceFiles
+    .filter((file) => vitestOwnedSources.has(file))
+    .map((file) => {
+      const base = file.split("/").pop().replace(/\.js$/, "");
+      return `server/tests/${base}.test.js`;
+    })
+    .filter((file) => VITEST_TEST_FILES.has(file)),
+];
+const uniqueVitestTests = [...new Set(vitestTests)];
+const jestTests = directTests.filter((file) => !VITEST_TEST_FILES.has(file));
+const jestSources = sourceFiles.filter((file) => !vitestOwnedSources.has(file));
 
 logStep(
   "test:server:related",
@@ -59,16 +80,17 @@ if (jestTests.length > 0) {
   );
 }
 
-if (sourceFiles.length > 0) {
-  const scopedSources = sourceFiles.map((file) => file.slice("server/".length));
+if (jestSources.length > 0) {
+  const scopedSources = jestSources.map((file) => file.slice("server/".length));
   const ignoreArgs = JEST_RELATED_IGNORE.map(
-    (pattern) => `--testPathIgnorePatterns="${pattern}"`,
+    (pattern) => `--testPathIgnorePatterns=${pattern}`,
   ).join(" ");
 
+  // File paths must immediately follow --findRelatedTests (Jest 30+).
   run(
-    `${JEST} --runInBand --findRelatedTests --passWithNoTests ${ignoreArgs} ${quoteFiles(
+    `${JEST} --runInBand --passWithNoTests --findRelatedTests ${quoteFiles(
       scopedSources,
-    )}`,
+    )} ${ignoreArgs}`,
     {
       cwd: serverCwd,
     },
@@ -79,10 +101,10 @@ if (sourceFiles.length > 0) {
   });
 }
 
-if (vitestTests.length > 0) {
+if (uniqueVitestTests.length > 0) {
   runNpx(
     `vitest run --passWithNoTests ${quoteFiles(
-      vitestTests.map((file) => file.slice("server/".length)),
+      uniqueVitestTests.map((file) => file.slice("server/".length)),
     )}`,
     {
       cwd: serverCwd,

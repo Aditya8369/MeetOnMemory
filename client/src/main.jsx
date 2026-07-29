@@ -7,6 +7,10 @@ import App from "./App.jsx";
 import { BrowserRouter } from "react-router-dom";
 import { AppContextProvider } from "./context/AppContext.jsx";
 import { ThemeProvider } from "./context/ThemeContext.jsx";
+import { ClerkAuthProvider } from "./context/ClerkAuthProvider.jsx";
+import { registerSW } from "virtual:pwa-register";
+
+registerSW({ immediate: true });
 
 // Prevent FOUC by applying theme class before render
 const savedTheme = localStorage.getItem("theme");
@@ -20,10 +24,12 @@ if (initialTheme === "dark") {
 
 createRoot(document.getElementById("root")).render(
   <BrowserRouter>
-    <ThemeProvider>
-      <AppContextProvider>
-        <App />
-      </AppContextProvider>
-    </ThemeProvider>
+    <ClerkAuthProvider>
+      <ThemeProvider>
+        <AppContextProvider>
+          <App />
+        </AppContextProvider>
+      </ThemeProvider>
+    </ClerkAuthProvider>
   </BrowserRouter>,
 );
