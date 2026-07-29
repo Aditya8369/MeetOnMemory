@@ -18,6 +18,7 @@ import HelpCenter from "../pages/HelpCenter.jsx";
 import Careers from "../pages/Careers.jsx";
 import PublicSharedView from "../pages/PublicSharedView.jsx";
 import DeveloperDocs from "../pages/DeveloperDocs.jsx";
+import AcceptInvite from "../pages/AcceptInvite.jsx";
 
 const PublicRoutes = (
   <React.Fragment>
@@ -25,6 +26,7 @@ const PublicRoutes = (
     <Route path="/login" element={<Login />} />
     <Route path="/email-verify" element={<EmailVerify />} />
     <Route path="/reset-password" element={<ResetPassword />} />
+    <Route path="/invite/:token" element={<AcceptInvite />} />
     <Route path="/privacy" element={<Privacy />} />
     <Route path="/terms" element={<Terms />} />
     <Route path="/security" element={<Security />} />

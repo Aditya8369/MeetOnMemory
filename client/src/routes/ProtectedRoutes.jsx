@@ -39,6 +39,8 @@ import DecisionGraph from "../pages/DecisionGraph.jsx";
 import PolicyCompliance from "../pages/PolicyCompliance.jsx";
 import Settings from "../pages/Settings.jsx";
 import MembershipRequests from "../pages/MembershipRequests.jsx";
+import MembersManagement from "../pages/Admin/MembersManagement.jsx";
+import AuditLogViewer from "../pages/Admin/AuditLogViewer.jsx";
 import AdminPanel from "../pages/AdminPanel.jsx";
 import Bookmarks from "../pages/Bookmarks.jsx";
 import ActivityFeed from "../pages/ActivityFeed.jsx";
@@ -99,6 +101,22 @@ const ProtectedRoutes = (
       element={
         <ProtectedRoute resource="knowledge" action="view">
           <DecisionGraph />
+        </ProtectedRoute>
+      }
+    />
+    <Route
+      path="/admin/members"
+      element={
+        <ProtectedRoute resource="team_members" action="view">
+          <MembersManagement />
+        </ProtectedRoute>
+      }
+    />
+    <Route
+      path="/admin/audit-logs"
+      element={
+        <ProtectedRoute resource="audit_logs" action="view">
+          <AuditLogViewer />
         </ProtectedRoute>
       }
     />
