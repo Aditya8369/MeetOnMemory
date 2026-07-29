@@ -28,6 +28,7 @@ import meetingSeriesRoutes from "./meetingSeriesRoutes.js";
 import comparisonRoutes from "./comparisonRoutes.js";
 import dashboardRoutes from "./dashboardRoutes.js";
 import agendaTimerRoutes from "./agendaTimerRoutes.js";
+import digestRoutes from "./digestRoutes.js";
 const router = express.Router();
 
 // ==========================================
@@ -62,5 +63,6 @@ router.use("/api/meetings/:meetingId/attachments", attachmentRoutes);
 router.use("/api/meeting-series", meetingSeriesRoutes);
 router.use("/api/comparison", comparisonRoutes);
 router.use("/api/dashboard", dashboardRoutes);
+router.use("/api/digest-preferences", digestRoutes);
 
 export default router;
