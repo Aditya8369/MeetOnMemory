@@ -34,6 +34,7 @@ import Tasks from "../pages/Tasks.jsx";
 import KnowledgeTimeline from "../pages/KnowledgeTimeline.jsx";
 import MemoryConsolidation from "../pages/MemoryConsolidation.jsx";
 import MemoryLifecycle from "../pages/MemoryLifecycle.jsx";
+import KnowledgeArchive from "../pages/KnowledgeArchive.jsx";
 import GraphSnapshots from "../pages/GraphSnapshots.jsx";
 import PolicyCompliance from "../pages/PolicyCompliance.jsx";
 import Settings from "../pages/Settings.jsx";
@@ -82,6 +83,14 @@ const ProtectedRoutes = (
       element={
         <ProtectedRoute resource="knowledge" action="view">
           <MemoryLifecycle />
+        </ProtectedRoute>
+      }
+    />
+    <Route
+      path="/knowledge/archive"
+      element={
+        <ProtectedRoute resource="knowledge" action="view">
+          <KnowledgeArchive />
         </ProtectedRoute>
       }
     />
