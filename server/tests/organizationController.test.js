@@ -1,6 +1,7 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { describe, it, expect, beforeEach, vi } from "vitest";
 import {
   createOrJoinOrganization,
+  joinOrganization,
   getOrganizationSettings,
   updateOrganization,
 } from "../controllers/organizationController.js";
@@ -9,6 +10,7 @@ import * as OrganizationService from "../services/OrganizationService.js";
 // Mock the service layer
 vi.mock("../services/OrganizationService.js", () => ({
   createOrJoinOrganization: vi.fn(),
+  joinOrganizationById: vi.fn(),
   getOrganizationSettings: vi.fn(),
   updateOrganization: vi.fn(),
 }));
@@ -26,7 +28,7 @@ describe("organizationController - createOrJoinOrganization", () => {
       query: {},
       params: {},
       app: {
-        get: vi.fn().mockReturnValue({}), // mock io
+        get: vi.fn().mockReturnValue({}),
       },
     };
 
@@ -60,7 +62,7 @@ describe("organizationController - createOrJoinOrganization", () => {
     });
   });
 
-  it("should create a new organization if it does not exist", async () => {
+  it("should call service and return success for create", async () => {
     const mockResult = {
       success: true,
       message: "Organization created successfully!",
@@ -92,7 +94,7 @@ describe("organizationController - createOrJoinOrganization", () => {
     );
   });
 
-  it("should join an existing organization", async () => {
+  it("should call service and return success for join", async () => {
     const mockResult = {
       success: true,
       message: "Joined existing organization successfully.",
@@ -144,6 +146,86 @@ describe("organizationController - createOrJoinOrganization", () => {
     expect(res.json).toHaveBeenCalledWith({
       success: false,
       message: "Organization not found.",
+    });
+  });
+});
+
+describe("organizationController - joinOrganization", () => {
+  let req;
+  let res;
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+
+    req = {
+      user: { id: "user123" },
+      body: { organizationId: "org456" },
+      app: {
+        get: vi.fn().mockReturnValue({}),
+      },
+    };
+
+    res = {
+      status: vi.fn().mockReturnThis(),
+      json: vi.fn(),
+    };
+  });
+
+  it("should call service and return success", async () => {
+    const mockResult = {
+      success: true,
+      message: "Joined organization successfully.",
+      userData: {
+        name: "Test User",
+        role: "Member",
+        organization: {
+          _id: "org456",
+          name: "Test Org",
+        },
+      },
+    };
+
+    OrganizationService.joinOrganizationById.mockResolvedValue(mockResult);
+
+    await joinOrganization(req, res);
+
+    expect(OrganizationService.joinOrganizationById).toHaveBeenCalledWith(
+      "user123",
+      "org456",
+    );
+
+    expect(res.status).toHaveBeenCalledWith(200);
+    expect(res.json).toHaveBeenCalledWith(
+      expect.objectContaining({
+        success: true,
+        message: "Joined organization successfully.",
+      }),
+    );
+  });
+
+  it("should return 401 if user is not authenticated", async () => {
+    req.user = null;
+
+    await joinOrganization(req, res);
+
+    expect(res.status).toHaveBeenCalledWith(401);
+    expect(res.json).toHaveBeenCalledWith({
+      success: false,
+      message: "Authentication failed.",
+    });
+  });
+
+  it("should return 500 on service error", async () => {
+    OrganizationService.joinOrganizationById.mockRejectedValue(
+      new Error("Service error"),
+    );
+
+    await joinOrganization(req, res);
+
+    expect(res.status).toHaveBeenCalledWith(500);
+    expect(res.json).toHaveBeenCalledWith({
+      success: false,
+      message: "Service error",
     });
   });
 });
