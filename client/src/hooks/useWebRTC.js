@@ -25,25 +25,17 @@ export default function useWebRTC(roomId, callbacks) {
   const screenTrackRef = useRef(null);
   const peersRef = useRef([]);
 
-  const joinMeeting = async () => {
+  const joinMeeting = async (providedStream = null) => {
     try {
       setLoading(true);
 
-      const stream = await navigator.mediaDevices.getUserMedia({
+      const stream = providedStream || await navigator.mediaDevices.getUserMedia({
         video: true,
         audio: true,
       });
 
       streamRef.current = stream;
       setJoined(true);
-
-      setTimeout(() => {
-        if (userVideoRef.current) {
-          userVideoRef.current.srcObject = stream;
-        }
-      }, 100);
-
-      socketRef.current = io(backendUrl, { transports: ["websocket"] });
       const userInfo = { name: "You" };
 
       socketRef.current.emit("join-meeting", { roomId, userInfo });
