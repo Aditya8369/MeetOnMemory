@@ -32,14 +32,31 @@ function applyFriendlyMessage(error, friendlyMessage) {
   error.message = friendlyMessage;
 }
 
-// Attach credentials + latest CSRF token on every request
+let clerkTokenGetter = null;
+
+export const setClerkTokenGetter = (getterFn) => {
+  clerkTokenGetter = getterFn;
+};
+
+// Attach credentials + latest CSRF token + Clerk token on every request
 apiClient.interceptors.request.use(
-  (config) => {
+  async (config) => {
     config.withCredentials = true;
+    config.headers = config.headers || {};
+
+    if (clerkTokenGetter && typeof clerkTokenGetter === "function") {
+      try {
+        const clerkToken = await clerkTokenGetter();
+        if (clerkToken) {
+          config.headers["Authorization"] = `Bearer ${clerkToken}`;
+        }
+      } catch (err) {
+        console.warn("Failed to retrieve Clerk token for API request", err);
+      }
+    }
 
     const token = getCsrfToken();
     if (token) {
-      config.headers = config.headers || {};
       config.headers["X-CSRF-Token"] = token;
     }
 

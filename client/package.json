@@ -21,6 +21,7 @@
     "validate:full": "npm run lint && npm run test:ci && npm run build"
   },
   "dependencies": {
+    "@clerk/clerk-react": "^5.22.0",
     "@hello-pangea/dnd": "^18.0.1",
     "@tailwindcss/vite": "^4.1.16",
     "axios": "^1.13.2",
