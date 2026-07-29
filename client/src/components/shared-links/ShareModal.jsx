@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useId } from "react";
 import { Copy, Trash2, X, Plus, Calendar, Lock, Globe } from "lucide-react";
 import { toast } from "react-toastify";
 import { sharedLinkApi } from "../../services";
@@ -12,6 +12,7 @@ const ShareModal = ({ isOpen, onClose, resourceId, resourceType, title }) => {
   const [showForm, setShowForm] = useState(false);
   const [expirationDate, setExpirationDate] = useState("");
   const [passcode, setPasscode] = useState("");
+  const titleId = useId();
 
   useEffect(() => {
     if (isOpen) {
@@ -22,6 +23,20 @@ const ShareModal = ({ isOpen, onClose, resourceId, resourceType, title }) => {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen, resourceId]);
+
+  useEffect(() => {
+    if (!isOpen) return;
+
+    const handleKeyDown = (e) => {
+      if (e.key === "Escape") {
+        e.preventDefault();
+        onClose();
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [isOpen, onClose]);
 
   const fetchLinks = async () => {
     try {
@@ -94,22 +109,33 @@ const ShareModal = ({ isOpen, onClose, resourceId, resourceType, title }) => {
         <div
           className="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity"
           onClick={onClose}
+          aria-hidden="true"
         ></div>
         <span className="hidden sm:inline-block sm:align-middle sm:h-screen">
           &#8203;
         </span>
 
-        <div className="inline-block align-bottom bg-white dark:bg-gray-800 rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg w-full">
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby={titleId}
+          className="inline-block align-bottom bg-white dark:bg-gray-800 rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg w-full"
+        >
           <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-700 flex justify-between items-center">
-            <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100 flex items-center gap-2">
-              <Globe className="w-5 h-5 text-indigo-500" />
+            <h3
+              id={titleId}
+              className="text-lg font-medium text-gray-900 dark:text-gray-100 flex items-center gap-2"
+            >
+              <Globe className="w-5 h-5 text-indigo-500" aria-hidden="true" />
               Share {title}
             </h3>
             <button
+              type="button"
               onClick={onClose}
-              className="text-gray-400 hover:text-gray-500"
+              aria-label="Close share modal"
+              className="text-gray-400 hover:text-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 rounded"
             >
-              <X className="w-5 h-5" />
+              <X className="w-5 h-5" aria-hidden="true" />
             </button>
           </div>
 
@@ -121,10 +147,11 @@ const ShareModal = ({ isOpen, onClose, resourceId, resourceType, title }) => {
                     Active Links
                   </h4>
                   <button
+                    type="button"
                     onClick={() => setShowForm(true)}
-                    className="flex items-center gap-1 text-sm text-indigo-600 dark:text-indigo-400 hover:text-indigo-800 dark:hover:text-indigo-300"
+                    className="flex items-center gap-1 text-sm text-indigo-600 dark:text-indigo-400 hover:text-indigo-800 dark:hover:text-indigo-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 rounded"
                   >
-                    <Plus className="w-4 h-4" /> New Link
+                    <Plus className="w-4 h-4" aria-hidden="true" /> New Link
                   </button>
                 </div>
 
@@ -152,7 +179,10 @@ const ShareModal = ({ isOpen, onClose, resourceId, resourceType, title }) => {
                           <div className="mt-1 flex items-center gap-3 text-xs text-gray-500 dark:text-gray-400">
                             {link.expirationDate ? (
                               <span className="flex items-center gap-1">
-                                <Calendar className="w-3 h-3" />
+                                <Calendar
+                                  className="w-3 h-3"
+                                  aria-hidden="true"
+                                />
                                 Expires:{" "}
                                 {new Date(
                                   link.expirationDate,
@@ -160,30 +190,39 @@ const ShareModal = ({ isOpen, onClose, resourceId, resourceType, title }) => {
                               </span>
                             ) : (
                               <span className="flex items-center gap-1">
-                                <Calendar className="w-3 h-3" /> Never expires
+                                <Calendar
+                                  className="w-3 h-3"
+                                  aria-hidden="true"
+                                />{" "}
+                                Never expires
                               </span>
                             )}
                             {link.hasPasscode && (
                               <span className="flex items-center gap-1 text-amber-600 dark:text-amber-400">
-                                <Lock className="w-3 h-3" /> Password protected
+                                <Lock className="w-3 h-3" aria-hidden="true" />{" "}
+                                Password protected
                               </span>
                             )}
                           </div>
                         </div>
                         <div className="ml-4 flex items-center gap-2">
                           <button
+                            type="button"
                             onClick={() => handleCopy(link.hash)}
-                            className="p-1.5 text-gray-500 hover:text-indigo-600 dark:hover:text-indigo-400 bg-white dark:bg-gray-800 rounded shadow-sm border border-gray-200 dark:border-gray-700"
+                            className="p-1.5 text-gray-500 hover:text-indigo-600 dark:hover:text-indigo-400 bg-white dark:bg-gray-800 rounded shadow-sm border border-gray-200 dark:border-gray-700 focus:outline-none focus:ring-2 focus:ring-indigo-500"
                             title="Copy link"
+                            aria-label="Copy link"
                           >
-                            <Copy className="w-4 h-4" />
+                            <Copy className="w-4 h-4" aria-hidden="true" />
                           </button>
                           <button
+                            type="button"
                             onClick={() => handleRevoke(link._id)}
-                            className="p-1.5 text-red-500 hover:text-red-700 bg-white dark:bg-gray-800 rounded shadow-sm border border-gray-200 dark:border-gray-700"
+                            className="p-1.5 text-red-500 hover:text-red-700 bg-white dark:bg-gray-800 rounded shadow-sm border border-gray-200 dark:border-gray-700 focus:outline-none focus:ring-2 focus:ring-indigo-500"
                             title="Revoke link"
+                            aria-label="Revoke link"
                           >
-                            <Trash2 className="w-4 h-4" />
+                            <Trash2 className="w-4 h-4" aria-hidden="true" />
                           </button>
                         </div>
                       </div>
@@ -221,7 +260,7 @@ const ShareModal = ({ isOpen, onClose, resourceId, resourceType, title }) => {
                   <button
                     type="button"
                     onClick={() => setShowForm(false)}
-                    className="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700"
+                    className="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-indigo-500"
                   >
                     Cancel
                   </button>
