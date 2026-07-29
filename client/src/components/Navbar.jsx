@@ -40,6 +40,7 @@ import {
   ScanSearch,
   GitMerge,
   History,
+  Archive,
 } from "lucide-react";
 
 const NAV_LINK_KEYS = [
@@ -377,6 +378,12 @@ const Navbar = () => {
       label: "Memory Lifecycle",
       href: "/knowledge/lifecycle",
       icon: History,
+      permission: { resource: "knowledge", action: "view" },
+    },
+    {
+      label: "Knowledge Archive",
+      href: "/knowledge/archive",
+      icon: Archive,
       permission: { resource: "knowledge", action: "view" },
     },
     {
