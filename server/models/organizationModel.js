@@ -81,12 +81,30 @@ const organizationSchema = new mongoose.Schema(
       ref: "user",
       required: true,
     },
-    // Deprecated: Use Membership model instead
-    // Kept for backward compatibility during migration
     members: [
       {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: "user",
+        userId: {
+          type: mongoose.Schema.Types.ObjectId,
+          ref: "user",
+        },
+        role: {
+          type: String,
+          enum: ["owner", "admin", "member", "viewer"],
+          default: "member",
+        },
+        invitedBy: {
+          type: mongoose.Schema.Types.ObjectId,
+          ref: "user",
+        },
+        joinedAt: {
+          type: Date,
+          default: Date.now,
+        },
+        status: {
+          type: String,
+          enum: ["active", "invited", "suspended"],
+          default: "active",
+        },
       },
     ],
     metadata: {
