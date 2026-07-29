@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import {
   FileText,
   UserCircle,
@@ -16,6 +17,7 @@ import {
 } from "lucide-react";
 import { StatusBadge, Pill, formatDate } from "./PolicyUtils";
 import ShareModal from "../shared-links/ShareModal";
+import { askAssistantAbout } from "../../utils/askAssistant.js";
 
 export const PolicyDetailModal = ({
   policy: p,
@@ -24,6 +26,7 @@ export const PolicyDetailModal = ({
   onReanalyze,
   onCompare,
 }) => {
+  const navigate = useNavigate();
   const [shareModalOpen, setShareModalOpen] = useState(false);
 
   const authorName = p?.uploadedBy?.name || "Unknown";
@@ -156,12 +159,25 @@ export const PolicyDetailModal = ({
         </div>
       )}
 
-      <div className="flex gap-2 pt-2 border-t border-gray-100 mt-2">
+      <div className="flex gap-2 pt-2 border-t border-gray-100 mt-2 flex-wrap">
         <button
           onClick={() => onDownload(p._id, p.name)}
           className="inline-flex items-center gap-2 bg-indigo-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-indigo-700 transition"
         >
           <Download className="w-4 h-4" /> Download
+        </button>
+        <button
+          type="button"
+          onClick={() =>
+            askAssistantAbout(navigate, {
+              type: "policy",
+              refId: p._id,
+              title: p.name || "Untitled Policy",
+            })
+          }
+          className="inline-flex items-center gap-2 bg-violet-50 text-violet-700 hover:bg-violet-100 px-4 py-2 rounded-lg text-sm font-medium transition"
+        >
+          <MessageSquare className="w-4 h-4" /> Ask Assistant
         </button>
         <button
           onClick={onClose}

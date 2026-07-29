@@ -1,9 +1,10 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import { io } from "socket.io-client";
-import { Send, RefreshCw } from "lucide-react";
+import { Send, RefreshCw, Pin, X } from "lucide-react";
 import ChatSessionSidebar from "../components/ChatSessionSidebar";
 import SourceCitation from "../components/SourceCitation";
 import { getBackendUrl } from "../config/backendConfig.js";
+import { consumePendingAssistantPin } from "../utils/askAssistant.js";
 
 const API_URL = getBackendUrl();
 
@@ -16,10 +17,12 @@ const AiAssistant = () => {
   const [error, setError] = useState("");
   const [isSocketConnected, setIsSocketConnected] = useState(true);
   const [isRateLimited, setIsRateLimited] = useState(false);
+  const [pinnedContext, setPinnedContext] = useState(null);
 
   const socketRef = useRef(null);
   const messagesEndRef = useRef(null);
   const tokenRef = useRef(localStorage.getItem("token"));
+  const pendingPinHandled = useRef(false);
 
   useEffect(() => {
     fetchSessions();
@@ -119,6 +122,84 @@ const AiAssistant = () => {
     }
   };
 
+  const pinContextToSession = useCallback(async (sessionId, pin) => {
+    if (!sessionId || !pin?.type || !pin?.refId) return null;
+    const res = await fetch(
+      `${API_URL}/api/assistant/sessions/${sessionId}/pinned-context`,
+      {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${tokenRef.current}`,
+        },
+        body: JSON.stringify({
+          type: pin.type,
+          refId: pin.refId,
+          title: pin.title,
+        }),
+      },
+    );
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      throw new Error(data.error || "Failed to pin context");
+    }
+    setPinnedContext(data.pinnedContext || null);
+    return data.pinnedContext;
+  }, []);
+
+  const handleUnpinContext = async () => {
+    if (!currentSessionId) {
+      setPinnedContext(null);
+      return;
+    }
+    try {
+      const res = await fetch(
+        `${API_URL}/api/assistant/sessions/${currentSessionId}/pinned-context`,
+        {
+          method: "DELETE",
+          headers: { Authorization: `Bearer ${tokenRef.current}` },
+        },
+      );
+      if (!res.ok) throw new Error("Failed to remove pinned context");
+      setPinnedContext(null);
+    } catch (err) {
+      console.error(err);
+      setError("Could not remove pinned context.");
+    }
+  };
+
+  const ensureSessionAndPin = useCallback(
+    async (pin) => {
+      let sessionId = currentSessionIdRef.current;
+      if (!sessionId) {
+        const res = await fetch(`${API_URL}/api/assistant/sessions`, {
+          method: "POST",
+          headers: { Authorization: `Bearer ${tokenRef.current}` },
+        });
+        if (!res.ok) throw new Error("Failed to create session");
+        const data = await res.json();
+        setSessions((prev) => [data, ...prev]);
+        sessionId = data._id;
+        setCurrentSessionId(sessionId);
+        setMessages([]);
+      }
+      await pinContextToSession(sessionId, pin);
+      setInputValue(`Tell me about: ${pin.title}`);
+    },
+    [pinContextToSession],
+  );
+
+  useEffect(() => {
+    if (pendingPinHandled.current) return;
+    const pending = consumePendingAssistantPin();
+    if (!pending) return;
+    pendingPinHandled.current = true;
+    ensureSessionAndPin(pending).catch((err) => {
+      console.error(err);
+      setError(err.message || "Could not pin this resource.");
+    });
+  }, [ensureSessionAndPin]);
+
   const handleSelectSession = async (id) => {
     setCurrentSessionId(id);
     setError("");
@@ -130,6 +211,7 @@ const AiAssistant = () => {
       if (!res.ok) throw new Error("Failed to load session");
       const data = await res.json();
       setMessages(data.messages || []);
+      setPinnedContext(data.pinnedContext || null);
     } catch (err) {
       console.error(err);
       setError("Could not load the selected conversation.");
@@ -147,6 +229,7 @@ const AiAssistant = () => {
       setSessions([data, ...sessions]);
       setCurrentSessionId(data._id);
       setMessages([]);
+      setPinnedContext(null);
       setError("");
       setIsRateLimited(false);
     } catch (err) {
@@ -165,6 +248,7 @@ const AiAssistant = () => {
       if (currentSessionId === id) {
         setCurrentSessionId(null);
         setMessages([]);
+        setPinnedContext(null);
       }
     } catch (err) {
       console.error(err);
@@ -248,6 +332,30 @@ const AiAssistant = () => {
           </div>
         )}
 
+        {pinnedContext && (
+          <div className="px-4 sm:px-6 py-2.5 border-b border-indigo-100 bg-indigo-50/70 flex items-center justify-between gap-3">
+            <div className="flex items-center gap-2 min-w-0 text-sm text-indigo-900">
+              <Pin className="w-4 h-4 shrink-0 text-indigo-600" />
+              <span className="font-medium shrink-0">Pinned context:</span>
+              <span className="truncate">
+                <span className="uppercase text-[10px] tracking-wide font-bold text-indigo-500 mr-1.5">
+                  {pinnedContext.type}
+                </span>
+                {pinnedContext.title}
+              </span>
+            </div>
+            <button
+              type="button"
+              onClick={handleUnpinContext}
+              className="inline-flex items-center gap-1 shrink-0 rounded-lg px-2 py-1 text-xs font-medium text-indigo-700 hover:bg-indigo-100 transition"
+              aria-label="Remove pinned context"
+            >
+              <X className="w-3.5 h-3.5" />
+              Remove
+            </button>
+          </div>
+        )}
+
         <div className="flex-1 overflow-y-auto p-4 sm:p-6 custom-scrollbar">
           {!currentSessionId && messages.length === 0 ? (
             <div className="h-full flex flex-col items-center justify-center text-center max-w-lg mx-auto">
@@ -271,7 +379,8 @@ const AiAssistant = () => {
               </h2>
               <p className="text-gray-500 mb-8">
                 Ask questions about your organization's meetings, decisions, and
-                policies. I'll search your memory and provide cited answers.
+                policies. Pin a resource from Meeting, Policy, or Knowledge
+                pages to focus answers on that context.
               </p>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 w-full">
                 {[
@@ -390,7 +499,11 @@ const AiAssistant = () => {
                 type="text"
                 value={inputValue}
                 onChange={(e) => setInputValue(e.target.value)}
-                placeholder="Ask about meetings, decisions, or policies..."
+                placeholder={
+                  pinnedContext
+                    ? `Ask about this ${pinnedContext.type}...`
+                    : "Ask about meetings, decisions, or policies..."
+                }
                 disabled={isStreaming || !isSocketConnected}
                 className="w-full pl-5 pr-14 py-3.5 bg-gray-50 border border-gray-300 rounded-2xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 disabled:opacity-60 transition-all shadow-sm"
               />
