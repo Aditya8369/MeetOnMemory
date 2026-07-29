@@ -181,6 +181,26 @@ export const downloadPolicy = async (req, res, next) => {
 };
 
 /* ─────────────────────────────────────────────────────────────
+   4b. COMPARE TWO VERSIONS OF THE SAME POLICY
+   ───────────────────────────────────────────────────────────── */
+export const comparePolicyVersions = async (req, res, next) => {
+  try {
+    const from = typeof req.query.from === "string" ? req.query.from : "";
+    const to = typeof req.query.to === "string" ? req.query.to : "";
+
+    const comparison = await PolicyService.comparePolicyVersions(
+      req.params.id,
+      from,
+      to,
+    );
+
+    return sendSuccess(res, comparison, "Policy version diff generated.");
+  } catch (err) {
+    next(err);
+  }
+};
+
+/* ─────────────────────────────────────────────────────────────
    5. DELETE POLICY
    ───────────────────────────────────────────────────────────── */
 export const deletePolicy = async (req, res, next) => {
