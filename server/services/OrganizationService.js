@@ -396,7 +396,7 @@ export const getPublicOrganizationBySlug = async (slug) => {
 
   // Find organization by slug - only select public fields
   const organization = await Organization.findOne(
-    { slug },
+    { slug, visibility: "public" },
     "name slug description logo bannerUrl visibility createdAt metadata",
   );
 
@@ -710,7 +710,12 @@ export const createOrganization = async (
 /**
  * ✅ Get All Organizations (Paginated)
  */
-export const getOrganizations = async (visibility, page = 1, limit = 20) => {
+export const getOrganizations = async (
+  userId,
+  visibility,
+  page = 1,
+  limit = 20,
+) => {
   // Validate visibility value
   const validVisibility =
     visibility && isValidVisibility(visibility)
@@ -724,10 +729,40 @@ export const getOrganizations = async (visibility, page = 1, limit = 20) => {
   const pageNum = Math.max(1, parseInt(page) || 1);
   const limitNum = Math.min(100, Math.max(1, parseInt(limit) || 20));
 
-  // Build safe query filter with only validated values
+  // Build safe query filter
   const safeFilter = {};
+
   if (validVisibility) {
+    // Specific visibility requested — filter by it directly
     safeFilter.visibility = validVisibility;
+  } else {
+    // No visibility filter: show public orgs + orgs where user is member/owner
+    const userMemberships = await Membership.find({
+      user: userId,
+      status: "active",
+    })
+      .select("organization")
+      .lean();
+
+    const memberOrgIds = userMemberships
+      .map((m) => m.organization)
+      .filter(Boolean);
+
+    safeFilter.$or = [
+      { visibility: "public" },
+      { owner: new mongoose.Types.ObjectId(String(userId)) },
+      ...(memberOrgIds.length > 0
+        ? [
+            {
+              _id: {
+                $in: memberOrgIds.map(
+                  (id) => new mongoose.Types.ObjectId(String(id)),
+                ),
+              },
+            },
+          ]
+        : []),
+    ];
   }
 
   const organizations = await Organization.find(safeFilter)
@@ -840,7 +875,7 @@ export const getOrganizationSettings = async (userId, orgIdOrSlug = null) => {
 /**
  * ✅ Get Organization by ID or Slug
  */
-export const getOrganizationById = async (idOrSlug) => {
+export const getOrganizationById = async (idOrSlug, userId) => {
   // Validate input - only allow alphanumeric, hyphens, and underscores for slug
   const slugRegex = /^[a-zA-Z0-9-_]+$/;
   if (!slugRegex.test(idOrSlug)) {
@@ -862,6 +897,23 @@ export const getOrganizationById = async (idOrSlug) => {
 
   if (!organization) {
     throw new NotFoundError("Organization not found.");
+  }
+
+  // Authorization check: private orgs require membership or ownership
+  if (organization.visibility !== "public") {
+    const isOwner = organization.owner?._id
+      ? organization.owner._id.toString() === userId.toString()
+      : organization.owner?.toString() === userId.toString();
+
+    const membership = await Membership.findOne({
+      user: userId,
+      organization: organization._id,
+      status: "active",
+    }).lean();
+
+    if (!membership && !isOwner && !isLegacyMember(organization, userId)) {
+      throw new ForbiddenError("Not authorized to view this organization.");
+    }
   }
 
   const memberCount = await Membership.countDocuments({
