@@ -1,7 +1,6 @@
 import request from "supertest";
 import { app } from "../server.js";
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { describe, it, expect, beforeEach, vi } from "vitest";
 import {
   createOrJoinOrganization,
   joinOrganization,
@@ -84,7 +83,6 @@ describe("organizationController - createOrJoinOrganization", () => {
     });
   });
 
-  it("should create a new organization if it does not exist", async () => {
   it("should return 400 if organization name is missing", async () => {
     req.body.name = "";
 
