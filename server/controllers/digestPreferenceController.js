@@ -15,12 +15,10 @@ export const getPreferences = async (req, res) => {
 
     res.status(200).json(preferences);
   } catch (error) {
-    res
-      .status(500)
-      .json({
-        message: "Error fetching digest preferences",
-        error: error.message,
-      });
+    res.status(500).json({
+      message: "Error fetching digest preferences",
+      error: error.message,
+    });
   }
 };
 
@@ -57,12 +55,10 @@ export const updatePreferences = async (req, res) => {
 
     res.status(200).json(preferences);
   } catch (error) {
-    res
-      .status(500)
-      .json({
-        message: "Error updating digest preferences",
-        error: error.message,
-      });
+    res.status(500).json({
+      message: "Error updating digest preferences",
+      error: error.message,
+    });
   }
 };
 
@@ -166,12 +162,10 @@ export const previewDigest = async (req, res) => {
 
     res.status(200).json({ html });
   } catch (error) {
-    res
-      .status(500)
-      .json({
-        message: "Error generating digest preview",
-        error: error.message,
-      });
+    res.status(500).json({
+      message: "Error generating digest preview",
+      error: error.message,
+    });
   }
 };
 
