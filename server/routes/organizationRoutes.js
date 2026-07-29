@@ -5,7 +5,6 @@ import {
   getAllOrganizations,
   joinOrganization,
   selectOrganization,
-  getOrganizationMembers,
   getPublicOrganizationBySlug,
   browsePublicOrganizations,
   searchOrganizations,
@@ -130,15 +129,6 @@ router.get(
   userAuth,
   requirePermission("organizations", "view"),
   getAllOrganizations,
-);
-
-// Fetch organization members
-router.get(
-  "/members",
-  userAuth,
-  requireOrgMembership,
-  requirePermission("team_members", "view"),
-  getOrganizationMembers,
 );
 
 // Public organization profile by slug (no auth required)
