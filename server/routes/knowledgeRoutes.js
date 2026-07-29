@@ -9,6 +9,7 @@ import {
   submitMemoryFeedback,
   recalculateImportance,
   updateActionItemStatus,
+  toggleActionItemReminderStatus,
   runMemoryLifecycleSweep,
   updateMemoryLifecycleState,
 } from "../controllers/knowledgeController.js";
@@ -91,6 +92,13 @@ router.patch(
   requireOrgMembership,
   requirePermission("tasks", "edit"),
   updateActionItemStatus,
+);
+router.patch(
+  "/action-items/:id/reminders",
+  writeLimiter,
+  requireOrgMembership,
+  requirePermission("tasks", "edit"),
+  toggleActionItemReminderStatus,
 );
 router.patch(
   "/:type/:id/feedback",

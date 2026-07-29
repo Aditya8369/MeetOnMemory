@@ -13,6 +13,8 @@ export const knowledgeApi = {
   },
   updateActionItemStatus: (id, status) =>
     apiClient.patch(`/api/knowledge/action-items/${id}`, { status }),
+  toggleActionItemReminder: (id, enabled) =>
+    apiClient.patch(`/api/knowledge/action-items/${id}/reminders`, { enabled }),
   getDecisions: (sortBy = "createdAt", status, options = {}) => {
     let url = `/api/knowledge/decisions?sortBy=${sortBy}${status ? `&status=${status}` : ""}`;
     if (options.includeArchived) url += `&includeArchived=true`;
