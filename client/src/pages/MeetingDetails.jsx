@@ -21,7 +21,7 @@ import SeriesNavigation from "../components/meeting-details/SeriesNavigation";
 import CompareButton from "../components/meeting-details/CompareButton";
 import AgendaTimer from "../components/meeting-details/AgendaTimer";
 import AgendaPacingReport from "../components/meeting-details/AgendaPacingReport";
-
+import FeedbackForm from "../components/meeting-details/FeedbackForm";
 const MeetingDetails = () => {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -200,6 +200,9 @@ const MeetingDetails = () => {
         <AttachmentPanel meetingId={meeting._id} />
         <PollSection meetingId={meeting._id} />
         <CommentSection meetingId={meeting._id} />
+        {meeting.status === "completed" && (
+          <FeedbackForm meetingId={meeting._id} />
+        )}
       </div>
 
       <ShareModal

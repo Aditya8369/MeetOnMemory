@@ -1,26 +1,14 @@
-import { describe, it, expect, beforeEach, vi as jest } from "vitest";
+import { describe, it, expect, beforeEach, jest } from "@jest/globals";
 import mongoose from "mongoose";
 
-jest.mock("../models/actionItemModel.js", () => ({
-  default: {
-    find: jest.fn(),
-  },
-}));
-
-jest.mock("../models/userModel.js", () => ({
-  default: {
-    findOne: jest.fn(),
-  },
-}));
-
-jest.mock("../services/notificationService.js", () => ({
+jest.unstable_mockModule("../services/notificationService.js", () => ({
   createNotification: jest.fn().mockResolvedValue({ id: "notif_1" }),
 }));
 
-const ActionItem = (await import("../models/actionItemModel.js")).default;
-const userModel = (await import("../models/userModel.js")).default;
 const { createNotification } =
   await import("../services/notificationService.js");
+const ActionItem = (await import("../models/actionItemModel.js")).default;
+const userModel = (await import("../models/userModel.js")).default;
 const { processActionItemReminders } =
   await import("../services/actionItemReminderService.js");
 
@@ -48,7 +36,7 @@ describe("actionItemReminderService", () => {
     };
 
     const mockPopulate = jest.fn().mockResolvedValue([mockItem]);
-    ActionItem.find.mockReturnValue({ populate: mockPopulate });
+    jest.spyOn(ActionItem, "find").mockReturnValue({ populate: mockPopulate });
 
     const result = await processActionItemReminders({
       organization: orgId.toString(),
@@ -92,7 +80,7 @@ describe("actionItemReminderService", () => {
     };
 
     const mockPopulate = jest.fn().mockResolvedValue([mockItem]);
-    ActionItem.find.mockReturnValue({ populate: mockPopulate });
+    jest.spyOn(ActionItem, "find").mockReturnValue({ populate: mockPopulate });
 
     const result = await processActionItemReminders({
       organization: orgId.toString(),
@@ -132,7 +120,7 @@ describe("actionItemReminderService", () => {
     };
 
     const mockPopulate = jest.fn().mockResolvedValue([mockItem]);
-    ActionItem.find.mockReturnValue({ populate: mockPopulate });
+    jest.spyOn(ActionItem, "find").mockReturnValue({ populate: mockPopulate });
 
     const result = await processActionItemReminders({
       organization: orgId.toString(),
