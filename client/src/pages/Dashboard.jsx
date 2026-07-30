@@ -18,6 +18,7 @@ import TopContributorsWidget from "../components/organization/TopContributorsWid
 import DashboardMetricsWidget from "../components/dashboard/DashboardMetricsWidget.jsx";
 import OrganizationLogo from "../components/organization/OrganizationLogo.jsx";
 import OrganizationBanner from "../components/organization/OrganizationBanner.jsx";
+import PersonalNotesSidebar from "../components/PersonalNotesSidebar.jsx";
 
 /* ─── Role Badge ──────────────────────────────────────────────────────────── */
 const ROLE_STYLES = {
@@ -346,16 +347,17 @@ const Dashboard = () => {
           </div>
         </section>
 
-        {/* ── Gamification ── */}
+        {/* ── Additional Widgets (Gamification & Notes) ── */}
         <section
-          aria-label="Organization Engagement"
-          className="mt-6 sm:mt-8 fade-in-up stagger-3"
+          aria-label="Additional Widgets"
+          className="mt-6 sm:mt-8 fade-in-up stagger-3 grid grid-cols-1 lg:grid-cols-2 gap-6"
         >
           <TopContributorsWidget
             organizationId={
               userData?.organization?._id || userData?.organization
             }
           />
+          <PersonalNotesSidebar />
         </section>
       </main>
     </div>

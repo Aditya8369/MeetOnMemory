@@ -29,6 +29,7 @@ import webhookRoutes from "./routes/webhookRoutes.js";
 import slackRoutes from "./routes/slackRoutes.js";
 import transcriptRoutes from "./routes/transcriptRoutes.js";
 import recapRoutes from "./routes/recapRoutes.js";
+import personalNoteRoutes from "./routes/personalNoteRoutes.js";
 import { configureExpress, configureErrorHandling } from "./config/express.js";
 import { configureSocket } from "./config/socket.js";
 import { startWorkers } from "./config/workers.js";
@@ -111,6 +112,7 @@ app.use("/api/webhooks", webhookRoutes);
 app.use("/api/slack", slackWebhookParser, slackRoutes);
 app.use("/api/transcripts", transcriptRoutes);
 app.use("/api/recap", recapRoutes);
+app.use("/api/personal-notes", personalNoteRoutes);
 
 // Health check endpoint — registered BEFORE the global rate limiter so
 // keep-alive pings (e.g. from GitHub Actions cron job) are never blocked.

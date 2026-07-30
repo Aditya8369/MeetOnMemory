@@ -23,7 +23,7 @@
     "validate": "node ../scripts/validation/validate-server-changed.mjs",
     "validate:changed": "node ../scripts/validation/validate-server-changed.mjs",
     "validate:pr": "node ../scripts/validation/validate-server-pr.mjs",
-    "validate:full": "npm run lint && npm run test:ci && npm run test:startup"
+    "validate:full": "npm run lint && npm run test:ci && npm run test:unit && npm run test:startup"
   },
   "dependencies": {
     "@azure/identity": "^4.13.1",

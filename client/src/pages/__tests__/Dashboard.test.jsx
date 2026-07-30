@@ -40,7 +40,7 @@ describe("Dashboard", () => {
     expect(screen.getByTestId("feature-cards-grid")).toBeInTheDocument();
   });
 
-  it("renders all six admin feature cards in a plain CSS grid (#712)", async () => {
+  it("renders all seven admin feature cards in a plain CSS grid (#712)", async () => {
     const { container } = render(
       <MemoryRouter>
         <AppContent.Provider value={{ userData: mockUserData }}>
@@ -61,6 +61,7 @@ describe("Dashboard", () => {
     expect(screen.getByText("dashboard.reportsAnalytics")).toBeInTheDocument();
 
     expect(screen.getByText("Attendance Analytics")).toBeInTheDocument();
+    expect(screen.getByText("Meeting Cost Analytics")).toBeInTheDocument();
 
     expect(
       container.querySelectorAll(".dash-card").length,
@@ -100,6 +101,9 @@ describe("Dashboard", () => {
     ).toBeInTheDocument();
     expect(screen.getByText("dashboard.reportsAnalytics")).toBeInTheDocument();
     expect(screen.getByText("Attendance Analytics")).toBeInTheDocument();
+    expect(
+      screen.queryByText("Meeting Cost Analytics"),
+    ).not.toBeInTheDocument();
   });
 
   it("treats ADMIN role case-insensitively so all admin cards show", () => {
@@ -127,5 +131,6 @@ describe("Dashboard", () => {
     ).toBeInTheDocument();
     expect(screen.getByText("dashboard.reportsAnalytics")).toBeInTheDocument();
     expect(screen.getByText("Attendance Analytics")).toBeInTheDocument();
+    expect(screen.getByText("Meeting Cost Analytics")).toBeInTheDocument();
   });
 });
