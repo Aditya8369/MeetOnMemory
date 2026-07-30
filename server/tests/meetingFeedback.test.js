@@ -1,6 +1,5 @@
 import {
   submitFeedback,
-  getFeedbackForMeeting,
   getAggregateFeedback,
   deleteFeedback,
 } from "../controllers/meetingFeedbackController.js";

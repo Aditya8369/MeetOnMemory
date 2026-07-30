@@ -5,6 +5,7 @@ import { meetingApi } from "../services";
 import MeetingHeader from "../components/meeting-details/MeetingHeader";
 import MeetingSummary from "../components/meeting-details/MeetingSummary";
 import MeetingCollaborativeNotes from "../components/meeting-details/MeetingCollaborativeNotes";
+import PersonalNotes from "../components/meeting-details/PersonalNotes";
 import MeetingTranscript from "../components/meeting-details/MeetingTranscript";
 import MeetingParticipants from "../components/meeting-details/MeetingParticipants";
 import MeetingMetadata from "../components/meeting-details/MeetingMetadata";
@@ -184,6 +185,7 @@ const MeetingDetails = () => {
 
         <MeetingSummary meeting={meeting} />
         <ReactionSummaryCard meetingId={meeting._id} />
+        <PersonalNotes meeting={meeting} />
         <MeetingCollaborativeNotes meeting={meeting} />
         <MeetingTranscript meeting={meeting} />
         <MeetingParticipants meeting={meeting} />

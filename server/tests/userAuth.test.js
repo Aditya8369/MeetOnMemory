@@ -22,6 +22,7 @@ jest.unstable_mockModule("../services/authLinkingService.js", () => ({
   findUserByClerkId: jest
     .fn()
     .mockResolvedValue({ _id: "clerk-linked-mongo-id" }),
+  provisionOrLinkClerkUser: jest.fn(),
 }));
 
 describe("userAuth Middleware Dual Auth", () => {

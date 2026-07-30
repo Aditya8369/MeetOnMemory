@@ -20,7 +20,6 @@ jest.unstable_mockModule("../services/notificationService.js", () => ({
 const ActionItem = (await import("../models/actionItemModel.js")).default;
 const { createNotification } =
   await import("../services/notificationService.js");
-const userModel = (await import("../models/userModel.js")).default;
 const { processActionItemReminders } =
   await import("../services/actionItemReminderService.js");
 

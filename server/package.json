@@ -18,12 +18,12 @@
     "test:integration": "node --experimental-vm-modules node_modules/jest/bin/jest.js --forceExit --ci tests/integration.test.js",
     "test:related:jest": "node --experimental-vm-modules node_modules/jest/bin/jest.js --forceExit --runInBand --passWithNoTests --findRelatedTests",
     "test:related:vitest": "vitest related",
-    "test:unit": "vitest run tests/OrganizationService.test.js tests/InvitationService.test.js tests/organizationController.test.js tests/knowledgeController.test.js tests/transcriptController.test.js tests/meetingDigestService.test.js",
+    "test:unit": "vitest run tests/OrganizationService.test.js tests/InvitationService.test.js tests/organizationController.test.js tests/knowledgeController.test.js tests/transcriptController.test.js tests/meetingDigestService.test.js tests/sessionAiPermission.test.js tests/decisionGraphOptimized.test.js tests/clerkRbacIntegration.test.js",
     "test:related": "node ../scripts/validation/run-server-related-tests.mjs",
     "validate": "node ../scripts/validation/validate-server-changed.mjs",
     "validate:changed": "node ../scripts/validation/validate-server-changed.mjs",
     "validate:pr": "node ../scripts/validation/validate-server-pr.mjs",
-    "validate:full": "npm run lint && npm run test:ci && npm run test:startup"
+    "validate:full": "npm run lint && npm run test:ci && npm run test:unit && npm run test:startup"
   },
   "dependencies": {
     "@azure/identity": "^4.13.1",

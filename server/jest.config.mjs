@@ -23,5 +23,8 @@ export default {
     "knowledgeController.test.js",
     "transcriptController.test.js",
     "meetingDigestService.test.js",
+    "sessionAiPermission.test.js",
+    "decisionGraphOptimized.test.js",
+    "clerkRbacIntegration.test.js",
   ],
 };
