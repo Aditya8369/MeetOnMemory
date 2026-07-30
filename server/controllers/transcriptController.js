@@ -840,7 +840,7 @@ export const updateSpeakers = async (req, res) => {
     }
 
     const meeting = transcript.meeting;
-    const userId = req.user._id.toString();
+    const userId = (req.user._id || req.user.id)?.toString();
 
     const isOwner = meeting.uploadedBy?.toString() === userId;
     const isAdminInSameOrg =
