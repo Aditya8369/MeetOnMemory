@@ -80,7 +80,6 @@ const MembersManagement = () => {
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, []);
-
   const handleInvite = async (e) => {
     e.preventDefault();
     if (!inviteForm.email.trim()) return;
