@@ -107,6 +107,16 @@ const KnowledgeArchive = () => {
     return () => clearTimeout(timer);
   }, [loadArchivedMemories]);
 
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (e.key === "Escape") {
+        setRestoreModal((prev) => ({ ...prev, isOpen: false }));
+        setHistoryModal((prev) => ({ ...prev, isOpen: false }));
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, []);
   const openRestoreModal = (memory) => {
     setRestoreModal({
       isOpen: true,
