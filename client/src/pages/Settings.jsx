@@ -27,6 +27,7 @@ import CalendarIntegrations from "../components/CalendarIntegrations.jsx";
 import useTheme from "../context/useTheme.jsx";
 import WebhooksManager from "../components/WebhooksManager.jsx";
 import DigestPreferences from "../components/DigestPreferences.jsx";
+import RecapPreferences from "../components/RecapPreferences.jsx";
 
 const Settings = () => {
   const { userData, logoutUser } = useContext(AppContent);
@@ -641,6 +642,24 @@ const Settings = () => {
               </div>
             </div>
             <DigestPreferences />
+          </div>
+
+          {/* Meeting Recaps Section */}
+          <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-2xl p-6 shadow-sm fade-in-up stagger-4">
+            <div className="flex items-center gap-3 mb-6">
+              <div className="p-2 bg-blue-50 dark:bg-blue-900/30 rounded-xl">
+                <Mail className="w-5 h-5 text-blue-600 dark:text-blue-400" />
+              </div>
+              <div>
+                <h2 className="text-lg font-bold text-slate-900 dark:text-white">
+                  Meeting Recaps
+                </h2>
+                <p className="text-xs text-slate-500 dark:text-slate-400">
+                  Configure automatic email recaps for processed meetings
+                </p>
+              </div>
+            </div>
+            <RecapPreferences />
           </div>
 
           {/* Calendar Integrations */}
