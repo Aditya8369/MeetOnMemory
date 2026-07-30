@@ -32,6 +32,7 @@ import digestRoutes from "./digestRoutes.js";
 import decisionGraphRoutes from "./decisionGraphRoutes.js";
 import attendanceAnalyticsRoutes from "./attendanceAnalyticsRoutes.js";
 import meetingFeedbackRoutes from "./meetingFeedbackRoutes.js";
+import meetingCostRoutes from "./meetingCostRoutes.js";
 
 const router = express.Router();
 
@@ -71,5 +72,6 @@ router.use("/api/digest-preferences", digestRoutes);
 router.use("/api/decision-graph", decisionGraphRoutes);
 router.use("/api/attendance-analytics", attendanceAnalyticsRoutes);
 router.use("/api/feedback", meetingFeedbackRoutes);
+router.use("/api/meeting-cost", meetingCostRoutes);
 
 export default router;

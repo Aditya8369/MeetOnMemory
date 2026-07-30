@@ -47,6 +47,7 @@ import Bookmarks from "../pages/Bookmarks.jsx";
 import ActivityFeed from "../pages/ActivityFeed.jsx";
 import TagBrowser from "../pages/TagBrowser.jsx";
 import AttendanceAnalytics from "../pages/AttendanceAnalytics.jsx";
+import MeetingCostAnalytics from "../pages/MeetingCostAnalytics.jsx";
 
 const ProtectedRoutes = (
   <React.Fragment>
@@ -377,6 +378,14 @@ const ProtectedRoutes = (
       element={
         <ProtectedRoute resource="reports" action="view">
           <AttendanceAnalytics />
+        </ProtectedRoute>
+      }
+    />
+    <Route
+      path="/meeting-cost-analytics"
+      element={
+        <ProtectedRoute resource="reports" action="view">
+          <MeetingCostAnalytics />
         </ProtectedRoute>
       }
     />
