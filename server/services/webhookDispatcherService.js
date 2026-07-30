@@ -5,6 +5,7 @@ import axios from "axios";
 import Webhook from "../models/Webhook.js";
 import WebhookDelivery from "../models/WebhookDelivery.js";
 import eventBus from "./eventBus.js";
+import { validateWebhookDestination } from "../utils/webhookUrlSafety.js";
 
 // Redis connection management
 let _producerConnection = null;
@@ -102,6 +103,69 @@ export const performDispatch = async (webhookId, payload, options = {}) => {
   const signature = generateSignature(payload, timestamp, webhook.secret);
   const startTime = Date.now();
 
+  // Re-validate destination immediately before delivery (DNS rebinding / TOCTOU).
+  const safety = await validateWebhookDestination(webhook.targetUrl);
+  if (!safety.ok) {
+    const executionTimeMs = Date.now() - startTime;
+    const errorMsg = `Unsafe webhook destination blocked: ${safety.reason}`;
+    const deliveryStatus = isFinalAttempt ? "dlq" : "failed";
+
+    console.warn(
+      `🚫 ${errorMsg} (webhook=${webhookId}, url=${webhook.targetUrl}, attempt=${attempt})`,
+    );
+
+    await WebhookDelivery.create({
+      webhookId: webhook._id,
+      organizationId: webhook.organizationId,
+      event: payload.event || "custom",
+      payload,
+      responseStatus: null,
+      responseHeaders: null,
+      responseBody: null,
+      executionTimeMs,
+      attempt,
+      status: deliveryStatus,
+      errorReason: errorMsg,
+    });
+
+    const updatedWebhook = await Webhook.findByIdAndUpdate(
+      webhookId,
+      { $inc: { consecutiveFailures: 1 } },
+      { new: true },
+    );
+
+    if (updatedWebhook) {
+      const newFailures = updatedWebhook.consecutiveFailures;
+      let newHealthStatus = updatedWebhook.healthStatus;
+      let newIsActive = updatedWebhook.isActive;
+
+      if (newFailures >= 15) {
+        newHealthStatus = "paused";
+        newIsActive = false;
+        console.warn(
+          `🚨 Webhook ${updatedWebhook._id} (${updatedWebhook.targetUrl}) reached 15 consecutive failures. Auto-pausing subscription.`,
+        );
+      } else if (newFailures >= 10) {
+        newHealthStatus = "degraded";
+        console.warn(
+          `⚠️ Webhook ${updatedWebhook._id} (${updatedWebhook.targetUrl}) health degraded (${newFailures} consecutive failures).`,
+        );
+      }
+
+      if (
+        newHealthStatus !== updatedWebhook.healthStatus ||
+        newIsActive !== updatedWebhook.isActive
+      ) {
+        await Webhook.findByIdAndUpdate(webhookId, {
+          healthStatus: newHealthStatus,
+          isActive: newIsActive,
+        });
+      }
+    }
+
+    throw new Error(`Webhook dispatch failed: ${errorMsg}`);
+  }
+
   try {
     console.log(
       `📡 Sending webhook event '${payload.event}' to ${webhook.targetUrl} (Attempt ${attempt})...`,
@@ -114,6 +178,12 @@ export const performDispatch = async (webhookId, payload, options = {}) => {
         "x-meetonmemory-request-timestamp": timestamp,
       },
       timeout: 10000, // 10 second timeout
+      // Do not follow redirects to a different (possibly private) host.
+      maxRedirects: 0,
+      // Pin the connection to the addresses we just validated.
+      lookup: (hostname, _options, callback) => {
+        callback(null, safety.pinnedAddress, safety.family);
+      },
     });
 
     const sanitizeHeaders = (headers) => {
