@@ -1,7 +1,10 @@
 import jwt from "jsonwebtoken";
 import userModel from "../models/userModel.js";
 import { getAuthProviderFlag } from "../utils/authUtils.js";
-import { findUserByClerkId } from "../services/authLinkingService.js";
+import {
+  findUserByClerkId,
+  provisionOrLinkClerkUser,
+} from "../services/authLinkingService.js";
 import { verifyToken } from "@clerk/express";
 
 const userAuth = async (req, res, next) => {
@@ -28,10 +31,19 @@ const userAuth = async (req, res, next) => {
 
         if (decodedClerk && decodedClerk.sub) {
           user = await findUserByClerkId(decodedClerk.sub);
-          if (!user && authProvider === "clerk") {
-            return res.status(404).json({
-              success: false,
-              message: "User not found in database.",
+          if (!user) {
+            user = await provisionOrLinkClerkUser({
+              clerkUserId: decodedClerk.sub,
+              email:
+                decodedClerk.email ||
+                decodedClerk.email_address ||
+                decodedClerk.primary_email_address,
+              name:
+                decodedClerk.name ||
+                (decodedClerk.first_name
+                  ? `${decodedClerk.first_name} ${decodedClerk.last_name || ""}`.trim()
+                  : null),
+              profilePic: decodedClerk.picture || decodedClerk.image_url,
             });
           }
         }

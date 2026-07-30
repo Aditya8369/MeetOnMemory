@@ -11,6 +11,7 @@ import {
   getUserData,
   googleCalendarAuth,
   googleCalendarCallback,
+  syncClerkUser,
 } from "../controllers/authControllers.js";
 import userAuth from "../middleware/userAuth.js";
 import {
@@ -25,6 +26,7 @@ const router = express.Router();
 router.post("/register", registerLimiter, register);
 router.post("/login", loginLimiter, login);
 router.post("/logout", logout);
+router.post("/sync-clerk-user", userAuth, syncClerkUser);
 
 // ✅ Verification & password reset with rate limiting
 router.post("/send-verify-otp", otpLimiter, userAuth, sendVerifyOtp);
