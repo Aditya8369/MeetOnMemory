@@ -17,7 +17,6 @@ import {
 import { toast } from "react-toastify";
 import MeetingSentimentChart from "../components/MeetingSentimentChart";
 import AppContent from "../context/AppContent.js";
-import { getBackendUrl } from "../config/backendConfig.js";
 
 const HighlightedText = ({ text, query }) => {
   if (!query) return <>{text}</>;
@@ -52,8 +51,6 @@ const TranscriptViewer = () => {
   const [newSpeakerName, setNewSpeakerName] = useState("");
   const [isBulkUpdate, setIsBulkUpdate] = useState(true);
 
-  const backendUrl = getBackendUrl();
-
   const fetchTranscript = useCallback(async () => {
     try {
       setLoading(true);
@@ -66,7 +63,7 @@ const TranscriptViewer = () => {
     } finally {
       setLoading(false);
     }
-  }, [meetingId, backendUrl]);
+  }, [meetingId]);
 
   useEffect(() => {
     fetchTranscript();

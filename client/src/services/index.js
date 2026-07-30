@@ -18,3 +18,4 @@ export * from "./tagApi";
 export * from "./attachmentApi";
 export * from "./meetingSeriesApi";
 export * from "./meetingFeedbackApi";
+export * from "./meetingCostApi";

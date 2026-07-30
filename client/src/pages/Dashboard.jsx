@@ -34,6 +34,7 @@ const ROUTE_MAP = {
   policies: "/policies",
   reports: "/reports",
   "attendance-analytics": "/attendance-analytics",
+  "meeting-cost-analytics": "/meeting-cost-analytics",
 };
 
 /* ─── Dashboard ───────────────────────────────────────────────────────────── */
@@ -125,6 +126,19 @@ const Dashboard = () => {
       tag: "Analytics",
       tagColor: "bg-pink-50 text-pink-700 border-pink-100",
       accentRing: "group-hover:ring-pink-100",
+    },
+    {
+      id: "meeting-cost-analytics",
+      icon: BarChart3,
+      title: "Meeting Cost Analytics",
+      description:
+        "Analyze organizational cost and time investment across all meetings.",
+      iconBg: "bg-blue-50",
+      iconColor: "text-blue-600",
+      tag: "Cost",
+      tagColor: "bg-blue-50 text-blue-700 border-blue-100",
+      accentRing: "group-hover:ring-blue-100",
+      adminOnly: true,
     },
   ];
 
