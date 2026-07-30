@@ -2,6 +2,7 @@ import request from "supertest";
 import jwt from "jsonwebtoken";
 import mongoose from "mongoose";
 import axios from "axios";
+import dns from "dns/promises";
 import { jest } from "@jest/globals";
 import { app } from "../server.js";
 import User from "../models/userModel.js";
@@ -24,10 +25,16 @@ import * as dispatcher from "../services/webhookDispatcherService.js";
 // Mock axios post to avoid hitting real endpoints
 let axiosSpy;
 let queueSpy;
+let dnsLookupSpy;
+
+const publicDnsAnswer = [{ address: "93.184.216.34", family: 4 }];
+
 beforeAll(() => {
   axiosSpy = jest
     .spyOn(axios, "post")
     .mockResolvedValue({ status: 200, data: {} });
+
+  dnsLookupSpy = jest.spyOn(dns, "lookup").mockResolvedValue(publicDnsAnswer);
 
   if (dispatcher.webhookQueue) {
     queueSpy = jest
@@ -41,6 +48,7 @@ beforeAll(() => {
 
 afterAll(() => {
   axiosSpy.mockRestore();
+  dnsLookupSpy.mockRestore();
   if (queueSpy) queueSpy.mockRestore();
 });
 
@@ -252,12 +260,40 @@ describe("Webhook Endpoints & Dispatcher", () => {
       expect(
         callArgs[2].headers["x-meetonmemory-request-timestamp"],
       ).toBeDefined();
+      expect(callArgs[2].maxRedirects).toBe(0);
+      expect(typeof callArgs[2].lookup).toBe("function");
 
       // Verify WebhookDelivery log record created
       const logs = await WebhookDelivery.find({ webhookId: hook._id });
       expect(logs.length).toBe(1);
       expect(logs[0].status).toBe("success");
       expect(logs[0].event).toBe("meeting.created");
+    });
+
+    it("should block delivery when destination revalidates to a private IP", async () => {
+      const hook = await Webhook.create({
+        organizationId: organization._id,
+        targetUrl: "https://example.com/private-now",
+        events: ["meeting.created"],
+        secret: "secret",
+      });
+
+      axiosSpy.mockClear();
+      dnsLookupSpy.mockResolvedValueOnce([{ address: "10.0.0.5", family: 4 }]);
+
+      await expect(
+        dispatcher.performDispatch(hook._id, {
+          event: "meeting.created",
+          data: { title: "Should not deliver" },
+        }),
+      ).rejects.toThrow(/Unsafe webhook destination blocked/);
+
+      expect(axiosSpy).not.toHaveBeenCalled();
+
+      const logs = await WebhookDelivery.find({ webhookId: hook._id });
+      expect(logs.length).toBe(1);
+      expect(logs[0].status).toBe("failed");
+      expect(logs[0].errorReason).toMatch(/Unsafe webhook destination blocked/);
     });
   });
 
