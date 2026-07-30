@@ -94,7 +94,11 @@ function Troubleshooting() {
       >
         <HelpCircle className="w-4 h-4" />
         Troubleshooting tips
-        {open ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
+        {open ? (
+          <ChevronUp className="w-3 h-3" />
+        ) : (
+          <ChevronDown className="w-3 h-3" />
+        )}
       </button>
       {open && (
         <ul className="mt-2 space-y-1.5 pl-6 list-disc text-sm text-gray-600 dark:text-gray-400">
@@ -107,13 +111,7 @@ function Troubleshooting() {
   );
 }
 
-function DeviceSelector({
-  label,
-  devices,
-  selected,
-  onChange,
-  icon,
-}) {
+function DeviceSelector({ label, devices, selected, onChange, icon }) {
   if (devices.length <= 1) return null;
   return (
     <div className="flex items-center gap-2">
@@ -140,7 +138,10 @@ function AudioLevelBar({ level }) {
   const bars = 8;
   const activeBars = Math.round(level * bars);
   return (
-    <div className="flex items-center gap-1.5" aria-label={`Microphone level: ${Math.round(level * 100)}%`}>
+    <div
+      className="flex items-center gap-1.5"
+      aria-label={`Microphone level: ${Math.round(level * 100)}%`}
+    >
       <Volume2 className="w-4 h-4 text-gray-400" />
       <div className="flex gap-0.5 h-4 items-end">
         {Array.from({ length: bars }, (_, i) => (
@@ -169,7 +170,6 @@ export default function DeviceSetupModal({
   onContinueWithout,
 }) {
   const videoRef = useRef(null);
-  const [showTroubleshooting, setShowTroubleshooting] = useState(false);
 
   const {
     cameraStatus,
@@ -196,8 +196,6 @@ export default function DeviceSetupModal({
     switchCamera,
     switchMicrophone,
     retry,
-    setSelectedCamera,
-    setSelectedMicrophone,
     setError,
   } = permission;
 
@@ -258,13 +256,19 @@ export default function DeviceSetupModal({
               icon={<Camera className="w-4 h-4 text-indigo-500" />}
               label="Camera"
               status={cameraMissing ? "unavailable" : cameraStatus}
-              detail={cameras.length > 0 ? `${cameras.length} detected` : undefined}
+              detail={
+                cameras.length > 0 ? `${cameras.length} detected` : undefined
+              }
             />
             <StatusRow
               icon={<Mic className="w-4 h-4 text-indigo-500" />}
               label="Microphone"
               status={micMissing ? "unavailable" : micStatus}
-              detail={microphones.length > 0 ? `${microphones.length} detected` : undefined}
+              detail={
+                microphones.length > 0
+                  ? `${microphones.length} detected`
+                  : undefined
+              }
             />
             <StatusRow
               icon={<Monitor className="w-4 h-4 text-indigo-500" />}
@@ -278,7 +282,9 @@ export default function DeviceSetupModal({
           {!checked && (
             <div className="text-center py-3">
               <div className="animate-spin w-6 h-6 border-2 border-indigo-500 border-t-transparent rounded-full mx-auto" />
-              <p className="text-sm text-gray-400 mt-2">Checking permissions...</p>
+              <p className="text-sm text-gray-400 mt-2">
+                Checking permissions...
+              </p>
             </div>
           )}
 
@@ -358,9 +364,7 @@ export default function DeviceSetupModal({
           {blocked && <BrowserGuide guide={browserGuide} />}
 
           {/* Troubleshooting */}
-          {hasDevices && (
-            <Troubleshooting />
-          )}
+          {hasDevices && <Troubleshooting />}
         </div>
 
         {/* Actions */}

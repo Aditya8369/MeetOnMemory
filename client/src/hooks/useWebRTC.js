@@ -29,13 +29,23 @@ export default function useWebRTC(roomId, callbacks) {
     try {
       setLoading(true);
 
-      const stream = providedStream || await navigator.mediaDevices.getUserMedia({
-        video: true,
-        audio: true,
-      });
+      const stream =
+        providedStream ||
+        (await navigator.mediaDevices.getUserMedia({
+          video: true,
+          audio: true,
+        }));
 
       streamRef.current = stream;
       setJoined(true);
+
+      setTimeout(() => {
+        if (userVideoRef.current) {
+          userVideoRef.current.srcObject = stream;
+        }
+      }, 100);
+
+      socketRef.current = io(backendUrl, { transports: ["websocket"] });
       const userInfo = { name: "You" };
 
       socketRef.current.emit("join-meeting", { roomId, userInfo });
