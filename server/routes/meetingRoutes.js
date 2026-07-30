@@ -28,6 +28,10 @@ import {
   archiveMeeting,
   restoreMeeting,
   notifyLiveMeeting, // NEW: Notify participants of a live meeting
+  getMeetingInvite,
+  regenerateMeetingInvite,
+  updateMeetingInvite,
+  resolveMeetingInvite,
 } from "../controllers/meetingController.js";
 import {
   resendDigest,
@@ -156,6 +160,34 @@ router.get(
   requireOrgMembership,
   requirePermission("meetings", "view"),
   getAllMeetings,
+);
+
+// ✅ Resolve shareable meeting invite (must be before /:id)
+router.get("/invite/:code", userAuth, resolveMeetingInvite);
+
+// ✅ Meeting invite management (Issue #920)
+router.get(
+  "/:id/invite",
+  userAuth,
+  requireOrgAccess(Meeting),
+  requirePermission("meetings", "view"),
+  getMeetingInvite,
+);
+router.post(
+  "/:id/invite/regenerate",
+  userAuth,
+  writeLimiter,
+  requireOrgAccess(Meeting),
+  requirePermission("meetings", "edit"),
+  regenerateMeetingInvite,
+);
+router.patch(
+  "/:id/invite",
+  userAuth,
+  writeLimiter,
+  requireOrgAccess(Meeting),
+  requirePermission("meetings", "edit"),
+  updateMeetingInvite,
 );
 
 // ✅ Get Single Meeting Details (for Meeting Details Page)

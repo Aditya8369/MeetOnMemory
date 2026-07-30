@@ -17,6 +17,7 @@ import path from "path";
 import { z } from "zod";
 import Meeting from "../models/meetingModel.js"; // eslint-disable-line no-unused-vars
 import * as MeetingService from "../services/MeetingService.js";
+import * as MeetingInviteService from "../services/MeetingInviteService.js";
 import { ValidationError, UnauthorizedError } from "../utils/errors.js";
 import AuditService from "../services/AuditService.js";
 import { sendSuccess } from "../utils/responseHandler.js";
@@ -571,6 +572,66 @@ export const notifyLiveMeeting = async (req, res, next) => {
     );
 
     return sendSuccess(res, { count }, "Participants notified");
+  } catch (err) {
+    next(err);
+  }
+};
+
+/* ─────────────────────────────────────────────────────────────
+   Meeting invite links (Issue #920)
+   ───────────────────────────────────────────────────────────── */
+
+export const getMeetingInvite = async (req, res, next) => {
+  try {
+    if (!req.user?._id) throw new UnauthorizedError("Login required");
+    const invite = await MeetingInviteService.getOrCreateInvite(
+      req.params.id,
+      req.user,
+    );
+    return sendSuccess(res, { invite }, "Meeting invite ready.");
+  } catch (err) {
+    next(err);
+  }
+};
+
+export const regenerateMeetingInvite = async (req, res, next) => {
+  try {
+    if (!req.user?._id) throw new UnauthorizedError("Login required");
+    const invite = await MeetingInviteService.regenerateInvite(
+      req.params.id,
+      req.user,
+    );
+    return sendSuccess(res, { invite }, "Meeting invite regenerated.");
+  } catch (err) {
+    next(err);
+  }
+};
+
+export const updateMeetingInvite = async (req, res, next) => {
+  try {
+    if (!req.user?._id) throw new UnauthorizedError("Login required");
+    const invite = await MeetingInviteService.updateInvite(
+      req.params.id,
+      req.user,
+      {
+        enabled: req.body?.enabled,
+        expiresAt: req.body?.expiresAt,
+      },
+    );
+    return sendSuccess(res, { invite }, "Meeting invite updated.");
+  } catch (err) {
+    next(err);
+  }
+};
+
+export const resolveMeetingInvite = async (req, res, next) => {
+  try {
+    if (!req.user?._id) throw new UnauthorizedError("Login required");
+    const result = await MeetingInviteService.resolveInvite(
+      req.params.code,
+      req.user,
+    );
+    return sendSuccess(res, result, "Meeting invite validated.");
   } catch (err) {
     next(err);
   }

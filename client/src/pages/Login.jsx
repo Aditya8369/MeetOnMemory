@@ -32,15 +32,26 @@ const Login = () => {
     }
   }, [location.search]);
 
-  // Already signed in — leave the login page
+  // Already signed in — leave the login page (preserve invite/return URL)
   useEffect(() => {
     if (!loading && isLoggedin && userData) {
+      const from = location.state?.from;
+      const redirect = location.state?.redirect;
+      const target =
+        (from?.pathname ? `${from.pathname}${from.search || ""}` : null) ||
+        redirect;
+
+      if (target) {
+        navigate(target, { replace: true });
+        return;
+      }
+
       navigate(
         userData.hasCompletedOnboarding ? "/dashboard" : "/organizations",
         { replace: true },
       );
     }
-  }, [loading, isLoggedin, userData, navigate]);
+  }, [loading, isLoggedin, userData, navigate, location.state]);
 
   const finishAuth = async (welcomeName) => {
     const user = await initializeAuth();
@@ -51,9 +62,14 @@ const Login = () => {
 
     toast.success(`Welcome, ${welcomeName || user.name}!`);
 
-    const from = location.state?.from?.pathname;
-    if (from) {
-      navigate(from, { replace: true });
+    const from = location.state?.from;
+    const redirect = location.state?.redirect;
+    const target =
+      (from?.pathname ? `${from.pathname}${from.search || ""}` : null) ||
+      redirect;
+
+    if (target) {
+      navigate(target, { replace: true });
       return;
     }
 
