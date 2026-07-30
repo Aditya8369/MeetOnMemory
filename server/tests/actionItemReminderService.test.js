@@ -20,6 +20,7 @@ jest.unstable_mockModule("../services/notificationService.js", () => ({
 const ActionItem = (await import("../models/actionItemModel.js")).default;
 const { createNotification } =
   await import("../services/notificationService.js");
+const userModel = (await import("../models/userModel.js")).default;
 const { processActionItemReminders } =
   await import("../services/actionItemReminderService.js");
 
@@ -47,7 +48,7 @@ describe("actionItemReminderService", () => {
     };
 
     const mockPopulate = jest.fn().mockResolvedValue([mockItem]);
-    ActionItem.find.mockReturnValue({ populate: mockPopulate });
+    jest.spyOn(ActionItem, "find").mockReturnValue({ populate: mockPopulate });
 
     const result = await processActionItemReminders({
       organization: orgId.toString(),
@@ -91,7 +92,7 @@ describe("actionItemReminderService", () => {
     };
 
     const mockPopulate = jest.fn().mockResolvedValue([mockItem]);
-    ActionItem.find.mockReturnValue({ populate: mockPopulate });
+    jest.spyOn(ActionItem, "find").mockReturnValue({ populate: mockPopulate });
 
     const result = await processActionItemReminders({
       organization: orgId.toString(),
@@ -131,7 +132,7 @@ describe("actionItemReminderService", () => {
     };
 
     const mockPopulate = jest.fn().mockResolvedValue([mockItem]);
-    ActionItem.find.mockReturnValue({ populate: mockPopulate });
+    jest.spyOn(ActionItem, "find").mockReturnValue({ populate: mockPopulate });
 
     const result = await processActionItemReminders({
       organization: orgId.toString(),

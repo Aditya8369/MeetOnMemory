@@ -4,6 +4,7 @@ import { MemoryRouter } from "react-router-dom";
 import { describe, it, expect, vi, beforeAll } from "vitest";
 import App from "../App";
 import AppContent from "../context/AppContent";
+
 // Mock matchMedia for JSDOM
 beforeAll(() => {
   Object.defineProperty(window, "matchMedia", {
@@ -38,8 +39,12 @@ vi.mock("../components/Footer.jsx", () => ({
 vi.mock("../components/ScrollNavigator.jsx", () => ({
   default: () => <div data-testid="scroll-navigator" />,
 }));
-vi.mock("../components/ErrorBoundary.jsx", () => ({
-  default: ({ children }) => <div data-testid="error-boundary">{children}</div>,
+vi.mock("../components/FloatingAssistant.jsx", () => ({
+  default: () => <div data-testid="floating-assistant" />,
+}));
+vi.mock("../context/useAssistant", () => ({
+  useAssistant: () => ({}),
+  AssistantProvider: ({ children }) => <>{children}</>,
 }));
 
 // Mock some pages used in the assertions
@@ -90,7 +95,7 @@ describe("App Routing", () => {
   it("renders Dashboard inside ProtectedRoute (ProtectedRoute)", () => {
     render(
       <MemoryRouter initialEntries={["/dashboard"]}>
-        <AppContent.Provider value={{ isLoggedin: false }}>
+        <AppContent.Provider value={{ isLoggedin: true }}>
           <App />
         </AppContent.Provider>
       </MemoryRouter>,

@@ -31,6 +31,8 @@ import agendaTimerRoutes from "./agendaTimerRoutes.js";
 import digestRoutes from "./digestRoutes.js";
 import decisionGraphRoutes from "./decisionGraphRoutes.js";
 import attendanceAnalyticsRoutes from "./attendanceAnalyticsRoutes.js";
+import meetingFeedbackRoutes from "./meetingFeedbackRoutes.js";
+
 const router = express.Router();
 
 // ==========================================
@@ -68,5 +70,6 @@ router.use("/api/dashboard", dashboardRoutes);
 router.use("/api/digest-preferences", digestRoutes);
 router.use("/api/decision-graph", decisionGraphRoutes);
 router.use("/api/attendance-analytics", attendanceAnalyticsRoutes);
+router.use("/api/feedback", meetingFeedbackRoutes);
 
 export default router;
