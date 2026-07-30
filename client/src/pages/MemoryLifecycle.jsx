@@ -122,7 +122,6 @@ const MemoryLifecycle = () => {
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, []);
-
   const handleRunSweep = async () => {
     setSweeping(true);
     try {

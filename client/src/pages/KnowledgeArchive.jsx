@@ -98,7 +98,7 @@ const KnowledgeArchive = () => {
     } finally {
       setLoading(false);
     }
-  }, [selectedType, searchQuery, selectedTag]);
+  }, [selectedType, searchQuery]);
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -117,7 +117,6 @@ const KnowledgeArchive = () => {
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, []);
-
   const openRestoreModal = (memory) => {
     setRestoreModal({
       isOpen: true,

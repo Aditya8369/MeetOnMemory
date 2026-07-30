@@ -3,10 +3,11 @@ import { io } from "socket.io-client";
 import Peer from "simple-peer";
 import { toast } from "react-toastify";
 import { useNavigate } from "react-router-dom";
+import { getBackendUrl } from "../config/backendConfig.js";
 
 export default function useWebRTC(roomId, callbacks) {
   const navigate = useNavigate();
-  const backendUrl = import.meta.env.VITE_BACKEND_URL;
+  const backendUrl = getBackendUrl();
 
   const [joined, setJoined] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -24,14 +25,16 @@ export default function useWebRTC(roomId, callbacks) {
   const screenTrackRef = useRef(null);
   const peersRef = useRef([]);
 
-  const joinMeeting = async () => {
+  const joinMeeting = async (providedStream = null) => {
     try {
       setLoading(true);
 
-      const stream = await navigator.mediaDevices.getUserMedia({
-        video: true,
-        audio: true,
-      });
+      const stream =
+        providedStream ||
+        (await navigator.mediaDevices.getUserMedia({
+          video: true,
+          audio: true,
+        }));
 
       streamRef.current = stream;
       setJoined(true);

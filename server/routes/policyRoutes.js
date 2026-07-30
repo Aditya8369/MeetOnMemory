@@ -8,7 +8,7 @@ import Policy from "../models/policyModel.js";
 import {
   requireOwnerOrAdmin,
   requireOrgMembership,
-  requireAdmin,
+  requireAdminOrOwner,
   requirePermission,
   requireOrgAccess,
 } from "../middleware/rbac.js";
@@ -18,6 +18,7 @@ import {
   downloadPolicy,
   deletePolicy,
   analyzePolicy,
+  comparePolicyVersions,
 } from "../controllers/policyController.js";
 
 const router = express.Router();
@@ -156,7 +157,7 @@ router.post(
   "/upload",
   uploadLimiter,
   userAuth,
-  requireAdmin,
+  requireAdminOrOwner,
   requireOrgMembership,
   requirePermission("policies", "create"),
   handleMulterUpload,
@@ -177,6 +178,13 @@ router.get(
   requireOrgAccess(Policy),
   requirePermission("policies", "view"),
   downloadPolicy,
+);
+router.get(
+  "/:id/diff",
+  userAuth,
+  requireOrgAccess(Policy),
+  requirePermission("policies", "view"),
+  comparePolicyVersions,
 );
 router.delete(
   "/:id",

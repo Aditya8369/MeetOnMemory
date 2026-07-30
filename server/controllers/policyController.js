@@ -19,6 +19,7 @@ import * as PolicyService from "../services/PolicyService.js";
 import { ValidationError, UnauthorizedError } from "../utils/errors.js";
 import AuditService from "../services/AuditService.js";
 import { sendSuccess } from "../utils/responseHandler.js";
+import * as activityService from "../services/activityService.js";
 // ═══════════════════════════════════════════════════════════════
 // Zod validation schemas
 // ═══════════════════════════════════════════════════════════════
@@ -79,6 +80,17 @@ export const uploadPolicy = async (req, res, next) => {
         organizationId: orgId,
         details: { title: policy.title, commitMsg: validated.commitMsg },
       });
+
+      const io = req.app.get("io");
+      activityService.logActivity(
+        io,
+        orgId,
+        uploaderId,
+        isUpdate ? "policy.updated" : "policy.created",
+        "Policy",
+        policy._id,
+        policy.title,
+      );
     }
 
     return sendSuccess(
@@ -138,6 +150,11 @@ export const getPolicies = async (req, res, next) => {
       req.user?.organization || null,
     );
 
+    res.setHeader(
+      "Cache-Control",
+      "public, max-age=3600, stale-while-revalidate=86400",
+    );
+
     return sendSuccess(res, { policies });
   } catch (err) {
     next(err);
@@ -152,7 +169,32 @@ export const downloadPolicy = async (req, res, next) => {
     const { safeFilePath, fileName } =
       await PolicyService.getPolicyDownloadPath(req.params.id);
 
+    res.setHeader(
+      "Cache-Control",
+      "public, max-age=3600, stale-while-revalidate=86400",
+    );
+
     return res.download(safeFilePath, fileName);
+  } catch (err) {
+    next(err);
+  }
+};
+
+/* ─────────────────────────────────────────────────────────────
+   4b. COMPARE TWO VERSIONS OF THE SAME POLICY
+   ───────────────────────────────────────────────────────────── */
+export const comparePolicyVersions = async (req, res, next) => {
+  try {
+    const from = typeof req.query.from === "string" ? req.query.from : "";
+    const to = typeof req.query.to === "string" ? req.query.to : "";
+
+    const comparison = await PolicyService.comparePolicyVersions(
+      req.params.id,
+      from,
+      to,
+    );
+
+    return sendSuccess(res, comparison, "Policy version diff generated.");
   } catch (err) {
     next(err);
   }
@@ -188,6 +230,17 @@ export const deletePolicy = async (req, res, next) => {
         organizationId: policy.organization,
         details: { title: policy.title },
       });
+
+      const io = req.app.get("io");
+      activityService.logActivity(
+        io,
+        policy.organization,
+        getUserId(req),
+        "policy.deleted",
+        "Policy",
+        policy._id,
+        policy.title,
+      );
     }
 
     return sendSuccess(res, null, "Policy deleted successfully.");
