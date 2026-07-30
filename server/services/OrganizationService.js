@@ -143,7 +143,7 @@ const joinOrganization = async (userId, organization) => {
   }
 
   if (!Array.isArray(organization.members)) organization.members = [];
-  organization.members.push(userId);
+  organization.members.push({ userId, role: "member" });
   await organization.save();
 
   await userModel.findByIdAndUpdate(userId, {
@@ -207,7 +207,7 @@ export const createOrJoinOrganization = async (userId, orgName) => {
       slug: uniqueSlug,
       owner: userId,
       createdBy: userId,
-      members: [userId],
+      members: [{ userId, role: "admin" }],
     });
 
     // Create admin membership for the creator (RBAC); unique index prevents duplicates
@@ -700,7 +700,7 @@ export const createOrganization = async (
     visibility: visibility || "private",
     joinPolicy: joinPolicy || "open",
     owner: userId,
-    members: [userId],
+    members: [{ userId, role: "admin" }],
     metadata: metadata || {},
   });
 
