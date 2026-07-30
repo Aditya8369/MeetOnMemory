@@ -3,7 +3,7 @@ import { render, screen } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { describe, it, expect, vi, beforeAll } from "vitest";
 import App from "../App";
-
+import AppContent from "../context/AppContent";
 // Mock matchMedia for JSDOM
 beforeAll(() => {
   Object.defineProperty(window, "matchMedia", {
@@ -60,7 +60,9 @@ describe("App Routing", () => {
   it("renders Home on the root path (PublicRoute)", () => {
     render(
       <MemoryRouter initialEntries={["/"]}>
-        <App />
+        <AppContent.Provider value={{ isLoggedin: false }}>
+          <App />
+        </AppContent.Provider>
       </MemoryRouter>,
     );
     expect(screen.getByTestId("home-page")).toBeInTheDocument();
@@ -73,7 +75,9 @@ describe("App Routing", () => {
   it("renders Login and hides Footer on /login", () => {
     render(
       <MemoryRouter initialEntries={["/login"]}>
-        <App />
+        <AppContent.Provider value={{ isLoggedin: false }}>
+          <App />
+        </AppContent.Provider>
       </MemoryRouter>,
     );
     expect(screen.getByTestId("login-page")).toBeInTheDocument();
@@ -86,7 +90,9 @@ describe("App Routing", () => {
   it("renders Dashboard inside ProtectedRoute (ProtectedRoute)", () => {
     render(
       <MemoryRouter initialEntries={["/dashboard"]}>
-        <App />
+        <AppContent.Provider value={{ isLoggedin: false }}>
+          <App />
+        </AppContent.Provider>
       </MemoryRouter>,
     );
     expect(screen.getByTestId("protected-route")).toBeInTheDocument();
@@ -96,7 +102,9 @@ describe("App Routing", () => {
   it("renders NotFound page as fallback on unknown paths", () => {
     render(
       <MemoryRouter initialEntries={["/unknown-path-that-does-not-exist"]}>
-        <App />
+        <AppContent.Provider value={{ isLoggedin: false }}>
+          <App />
+        </AppContent.Provider>
       </MemoryRouter>,
     );
     // Since fallback route maps to <NotFound />

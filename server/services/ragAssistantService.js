@@ -54,8 +54,6 @@ export const resolvePinnedResource = async (
     throw new Error("Organization membership is required to pin context.");
   }
 
-  const orgId = organizationId.toString();
-
   if (type === "meeting") {
     const meeting = await Meeting.findOne({
       _id: refId,

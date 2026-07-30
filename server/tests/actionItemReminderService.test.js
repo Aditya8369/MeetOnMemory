@@ -1,24 +1,23 @@
-import { describe, it, expect, beforeEach, vi as jest } from "vitest";
+import { jest } from "@jest/globals";
 import mongoose from "mongoose";
 
-jest.mock("../models/actionItemModel.js", () => ({
+jest.unstable_mockModule("../models/actionItemModel.js", () => ({
   default: {
     find: jest.fn(),
   },
 }));
 
-jest.mock("../models/userModel.js", () => ({
+jest.unstable_mockModule("../models/userModel.js", () => ({
   default: {
     findOne: jest.fn(),
   },
 }));
 
-jest.mock("../services/notificationService.js", () => ({
+jest.unstable_mockModule("../services/notificationService.js", () => ({
   createNotification: jest.fn().mockResolvedValue({ id: "notif_1" }),
 }));
 
 const ActionItem = (await import("../models/actionItemModel.js")).default;
-const userModel = (await import("../models/userModel.js")).default;
 const { createNotification } =
   await import("../services/notificationService.js");
 const { processActionItemReminders } =
@@ -32,7 +31,7 @@ describe("actionItemReminderService", () => {
   it("should send upcoming reminders for action items due within 24h", async () => {
     const orgId = new mongoose.Types.ObjectId();
     const userId = new mongoose.Types.ObjectId();
-    const dueDate = new Date(Date.now() + 12 * 60 * 60 * 1000); // 12h in future
+    const dueDate = new Date(Date.now() + 12 * 60 * 60 * 1000);
 
     const mockItem = {
       _id: new mongoose.Types.ObjectId(),
@@ -72,7 +71,7 @@ describe("actionItemReminderService", () => {
   it("should send overdue reminders for past action items", async () => {
     const orgId = new mongoose.Types.ObjectId();
     const userId = new mongoose.Types.ObjectId();
-    const dueDate = new Date(Date.now() - 2 * 60 * 60 * 1000); // 2h in past
+    const dueDate = new Date(Date.now() - 2 * 60 * 60 * 1000);
 
     const mockItem = {
       _id: new mongoose.Types.ObjectId(),
@@ -125,7 +124,7 @@ describe("actionItemReminderService", () => {
       status: "open",
       dueDate,
       remindersEnabled: true,
-      reminderSent: { upcoming: true, overdue: true }, // Already sent overdue
+      reminderSent: { upcoming: true, overdue: true },
       organization: orgId,
       sourceMeetingId: { _id: "m3", title: "Docs Review", organizer: userId },
       save: jest.fn().mockResolvedValue(true),

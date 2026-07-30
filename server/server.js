@@ -28,6 +28,7 @@ import assistantRoutes from "./routes/assistantRoutes.js";
 import webhookRoutes from "./routes/webhookRoutes.js";
 import slackRoutes from "./routes/slackRoutes.js";
 import transcriptRoutes from "./routes/transcriptRoutes.js";
+import recapRoutes from "./routes/recapRoutes.js";
 import { configureExpress, configureErrorHandling } from "./config/express.js";
 import { configureSocket } from "./config/socket.js";
 import { startWorkers } from "./config/workers.js";
@@ -49,6 +50,7 @@ import { createAdapter } from "@socket.io/redis-adapter"; // eslint-disable-line
 import { startCalendarSyncJob } from "./jobs/calendarSyncJob.js";
 import startPollExpirationJob from "./jobs/pollExpirationJob.js";
 import startActionItemReminderJob from "./jobs/actionItemReminderJob.js";
+import startRecapBatchJob from "./jobs/recapBatchJob.js";
 import { createClient } from "redis"; // eslint-disable-line no-unused-vars
 import {
   initAIWorker, // eslint-disable-line no-unused-vars
@@ -108,6 +110,7 @@ app.use("/api/assistant", assistantRoutes);
 app.use("/api/webhooks", webhookRoutes);
 app.use("/api/slack", slackWebhookParser, slackRoutes);
 app.use("/api/transcripts", transcriptRoutes);
+app.use("/api/recap", recapRoutes);
 
 // Health check endpoint — registered BEFORE the global rate limiter so
 // keep-alive pings (e.g. from GitHub Actions cron job) are never blocked.
@@ -149,6 +152,9 @@ if (process.env.NODE_ENV !== "test") {
 
   // Start action item reminder job
   startActionItemReminderJob();
+
+  // Start recap batch job
+  startRecapBatchJob();
 }
 
 // (AI, Data Export, and Webhook workers are initialized inside server.listen callback)

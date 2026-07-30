@@ -700,7 +700,7 @@ export const createOrganization = async (
     visibility: visibility || "private",
     joinPolicy: joinPolicy || "open",
     owner: userId,
-    members: [userId],
+    members: [{ userId: userId, role: "owner" }],
     metadata: metadata || {},
   });
 
