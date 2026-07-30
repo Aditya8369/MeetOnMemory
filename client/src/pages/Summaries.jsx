@@ -42,6 +42,17 @@ const Summaries = () => {
   const [openExportMenuId, setOpenExportMenuId] = useState(null);
   const { exportMeeting, isExporting } = useExport();
 
+  // Handle Escape key to close modal
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (e.key === "Escape") {
+        setViewModal(null);
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, []);
+
   // 🎙️ Setup browser-based voice recognition
   useEffect(() => {
     if ("webkitSpeechRecognition" in window || "SpeechRecognition" in window) {
@@ -230,7 +241,8 @@ const Summaries = () => {
           {/* Main Section */}
           {loading ? (
             <div className="flex justify-center items-center py-10 text-gray-500">
-              <Loader2 className="animate-spin w-6 h-6 mr-2" /> {t("summaries.loading")}
+              <Loader2 className="animate-spin w-6 h-6 mr-2" />{" "}
+              {t("summaries.loading")}
             </div>
           ) : sortedSummaries.length > 0 ? (
             <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6 justify-items-center">
@@ -263,7 +275,10 @@ const Summaries = () => {
                       }
                       className="p-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-full transition"
                     >
-                      <MoreVertical size={20} className="text-gray-600 dark:text-gray-400" />
+                      <MoreVertical
+                        size={20}
+                        className="text-gray-600 dark:text-gray-400"
+                      />
                     </button>
 
                     {openMenuId === summary._id && (
@@ -285,14 +300,18 @@ const Summaries = () => {
                           className="w-full text-left px-4 py-2 hover:bg-gray-50 dark:hover:bg-gray-600 flex items-center gap-2 text-sm text-gray-700 dark:text-gray-200"
                         >
                           <Star size={16} />{" "}
-                          {starredIds.includes(summary._id) ? t("summaries.unstar") : t("summaries.star")}
+                          {starredIds.includes(summary._id)
+                            ? t("summaries.unstar")
+                            : t("summaries.star")}
                         </button>
                         <button
                           onClick={() => togglePin(summary._id)}
                           className="w-full text-left px-4 py-2 hover:bg-gray-50 dark:hover:bg-gray-600 flex items-center gap-2 text-sm text-gray-700 dark:text-gray-200"
                         >
                           <Pin size={16} />{" "}
-                          {pinnedIds.includes(summary._id) ? t("summaries.unpin") : t("summaries.pin")}
+                          {pinnedIds.includes(summary._id)
+                            ? t("summaries.unpin")
+                            : t("summaries.pin")}
                         </button>
                         <button
                           onClick={() => handleDelete(summary._id)}
@@ -400,8 +419,14 @@ const Summaries = () => {
 
       {/* View Modal */}
       {viewModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl max-w-3xl w-full max-h-[90vh] overflow-hidden flex flex-col">
+        <div
+          className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4"
+          onClick={() => setViewModal(null)}
+        >
+          <div
+            className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl max-w-3xl w-full max-h-[90vh] overflow-hidden flex flex-col"
+            onClick={(e) => e.stopPropagation()}
+          >
             <div className="flex items-center justify-between p-6 border-b border-gray-200 dark:border-gray-700">
               <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100 flex items-center gap-3">
                 <FileText className="w-6 h-6 text-indigo-600" />
@@ -435,7 +460,9 @@ const Summaries = () => {
             <div className="flex gap-3 p-6 border-t border-gray-200 dark:border-gray-700">
               <button
                 onClick={() => {
-                  navigator.clipboard.writeText(viewModal.summary || viewModal.transcript || "");
+                  navigator.clipboard.writeText(
+                    viewModal.summary || viewModal.transcript || "",
+                  );
                   toast.success(t("aiSearch.copiedToClipboard"));
                 }}
                 className="px-4 py-2 rounded-md border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 flex items-center gap-2"
