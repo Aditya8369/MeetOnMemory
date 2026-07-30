@@ -22,6 +22,7 @@ import CompareButton from "../components/meeting-details/CompareButton";
 import AgendaTimer from "../components/meeting-details/AgendaTimer";
 import AgendaPacingReport from "../components/meeting-details/AgendaPacingReport";
 import FeedbackForm from "../components/meeting-details/FeedbackForm";
+import FollowUpThreads from "../components/meeting-details/FollowUpThreads";
 const MeetingDetails = () => {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -203,6 +204,7 @@ const MeetingDetails = () => {
         {meeting.status === "completed" && (
           <FeedbackForm meetingId={meeting._id} />
         )}
+        <FollowUpThreads meetingId={meeting._id} />
       </div>
 
       <ShareModal
