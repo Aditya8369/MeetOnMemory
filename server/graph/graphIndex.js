@@ -95,7 +95,6 @@ export async function buildMultiOrgGraph(organizationIds) {
  * decision and action-item documents.
  */
 async function assembleGraph(decisions, actionItems) {
-
   const adjacency = new Map();
   const nodes = new Map();
 

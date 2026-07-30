@@ -1,5 +1,5 @@
 import { federatedRetrieve } from "../services/federatedSearchService.js";
-import { getRedisClient, setSearchCache } from "../services/redisService.js";
+import { setSearchCache } from "../services/redisService.js";
 import { sendSuccess, sendError } from "../utils/responseHandler.js";
 
 export const federatedSearch = async (req, res) => {
@@ -30,11 +30,10 @@ export const federatedSearch = async (req, res) => {
 
     const userId = req.user?._id;
 
-    const { results, meta } = await federatedRetrieve(
-      userId,
-      organizationIds,
-      { query, ...options },
-    );
+    const { results, meta } = await federatedRetrieve(userId, organizationIds, {
+      query,
+      ...options,
+    });
 
     const message = results.length
       ? "Federated search successful."

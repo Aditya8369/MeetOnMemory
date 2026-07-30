@@ -128,11 +128,12 @@ function fuseResults(semanticResults, graphExpansions, options, orgMap = {}) {
       existing.connectedVia = hit.path;
     } else {
       const orgId = node.organization || null;
-      const ws = orgId && orgMap[orgId]
-        ? { id: orgId, name: orgMap[orgId].name, slug: orgMap[orgId].slug }
-        : orgId
-          ? { id: orgId }
-          : null;
+      const ws =
+        orgId && orgMap[orgId]
+          ? { id: orgId, name: orgMap[orgId].name, slug: orgMap[orgId].slug }
+          : orgId
+            ? { id: orgId }
+            : null;
       fused.set(hit.key, {
         key: hit.key,
         type: node.type,
@@ -176,7 +177,11 @@ async function runFederatedSemanticSearch(
       });
       for (const hit of meetingHits) {
         const hitOrg = hit.organization || null;
-        if (accessibleOrgIds.length && hitOrg && !accessibleOrgIds.includes(hitOrg)) {
+        if (
+          accessibleOrgIds.length &&
+          hitOrg &&
+          !accessibleOrgIds.includes(hitOrg)
+        ) {
           continue;
         }
         results.push({
@@ -186,11 +191,16 @@ async function runFederatedSemanticSearch(
           title: hit.title,
           summary: hit.summary,
           semanticScore: hit.similarityScore || 0,
-          workspace: hitOrg && orgMap[hitOrg]
-            ? { id: hitOrg, name: orgMap[hitOrg].name, slug: orgMap[hitOrg].slug }
-            : hitOrg
-              ? { id: hitOrg }
-              : null,
+          workspace:
+            hitOrg && orgMap[hitOrg]
+              ? {
+                  id: hitOrg,
+                  name: orgMap[hitOrg].name,
+                  slug: orgMap[hitOrg].slug,
+                }
+              : hitOrg
+                ? { id: hitOrg }
+                : null,
         });
       }
     } catch (err) {
@@ -228,11 +238,16 @@ async function runFederatedSemanticSearch(
         title: node.text,
         summary: node.text,
         semanticScore: score,
-        workspace: nodeOrg && orgMap[nodeOrg]
-          ? { id: nodeOrg, name: orgMap[nodeOrg].name, slug: orgMap[nodeOrg].slug }
-          : nodeOrg
-            ? { id: nodeOrg }
-            : null,
+        workspace:
+          nodeOrg && orgMap[nodeOrg]
+            ? {
+                id: nodeOrg,
+                name: orgMap[nodeOrg].name,
+                slug: orgMap[nodeOrg].slug,
+              }
+            : nodeOrg
+              ? { id: nodeOrg }
+              : null,
       });
     }
   }
@@ -328,8 +343,16 @@ function attachFederatedExplanations(rankedResults, graph) {
   return explained;
 }
 
-export async function federatedRetrieve(userId, organizationIds, rawOptions = {}) {
-  if (!rawOptions.query || typeof rawOptions.query !== "string" || !rawOptions.query.trim()) {
+export async function federatedRetrieve(
+  userId,
+  organizationIds,
+  rawOptions = {},
+) {
+  if (
+    !rawOptions.query ||
+    typeof rawOptions.query !== "string" ||
+    !rawOptions.query.trim()
+  ) {
     throw new Error("A non-empty query string is required");
   }
 
@@ -345,7 +368,9 @@ export async function federatedRetrieve(userId, organizationIds, rawOptions = {}
     })
       .select("organization")
       .lean();
-    accessibleOrgIds = [...new Set(memberships.map((m) => m.organization.toString()))];
+    accessibleOrgIds = [
+      ...new Set(memberships.map((m) => m.organization.toString())),
+    ];
   } else {
     const memberships = await Membership.find({
       user: userId,
@@ -353,7 +378,9 @@ export async function federatedRetrieve(userId, organizationIds, rawOptions = {}
     })
       .select("organization")
       .lean();
-    accessibleOrgIds = [...new Set(memberships.map((m) => m.organization.toString()))];
+    accessibleOrgIds = [
+      ...new Set(memberships.map((m) => m.organization.toString())),
+    ];
   }
 
   if (!accessibleOrgIds.length) {
