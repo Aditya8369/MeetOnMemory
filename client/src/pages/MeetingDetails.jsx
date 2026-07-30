@@ -11,6 +11,7 @@ import MeetingParticipants from "../components/meeting-details/MeetingParticipan
 import MeetingMetadata from "../components/meeting-details/MeetingMetadata";
 import MeetingActions from "../components/meeting-details/MeetingActions";
 import ShareModal from "../components/shared-links/ShareModal";
+import MeetingInviteModal from "../components/meetings/MeetingInviteModal";
 import MeetingFollowUpBanner from "../components/meeting-details/MeetingFollowUpBanner";
 import PresentMode from "../components/meeting-details/PresentMode";
 import CommentSection from "../components/meeting-details/CommentSection";
@@ -31,6 +32,7 @@ const MeetingDetails = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [shareModalOpen, setShareModalOpen] = useState(false);
+  const [inviteModalOpen, setInviteModalOpen] = useState(false);
   const [isPresentModeOpen, setIsPresentModeOpen] = useState(false);
 
   useEffect(() => {
@@ -173,6 +175,7 @@ const MeetingDetails = () => {
         <MeetingHeader
           meeting={meeting}
           onShare={() => setShareModalOpen(true)}
+          onShareInvite={() => setInviteModalOpen(true)}
           onPresent={() => setIsPresentModeOpen(true)}
         />
 
@@ -214,6 +217,13 @@ const MeetingDetails = () => {
         onClose={() => setShareModalOpen(false)}
         resourceId={meeting._id}
         resourceType="Meeting"
+        title={meeting.title}
+      />
+
+      <MeetingInviteModal
+        isOpen={inviteModalOpen}
+        onClose={() => setInviteModalOpen(false)}
+        meetingId={meeting._id}
         title={meeting.title}
       />
 

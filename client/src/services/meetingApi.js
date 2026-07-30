@@ -40,4 +40,11 @@ export const meetingApi = {
     apiClient.put(`/api/meetings/timer/${meetingId}/agenda/${itemId}/skip`),
   getAgendaPacingReport: (meetingId) =>
     apiClient.get(`/api/meetings/timer/${meetingId}/pacing`),
+
+  getInvite: (meetingId) => apiClient.get(`/api/meetings/${meetingId}/invite`),
+  regenerateInvite: (meetingId) =>
+    apiClient.post(`/api/meetings/${meetingId}/invite/regenerate`),
+  updateInvite: (meetingId, data) =>
+    apiClient.patch(`/api/meetings/${meetingId}/invite`, data),
+  resolveInvite: (code) => apiClient.get(`/api/meetings/invite/${code}`),
 };

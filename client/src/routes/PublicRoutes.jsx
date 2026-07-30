@@ -19,6 +19,7 @@ import Careers from "../pages/Careers.jsx";
 import PublicSharedView from "../pages/PublicSharedView.jsx";
 import DeveloperDocs from "../pages/DeveloperDocs.jsx";
 import AcceptInvite from "../pages/AcceptInvite.jsx";
+import MeetingInviteJoin from "../pages/MeetingInviteJoin.jsx";
 
 const PublicRoutes = (
   <React.Fragment>
@@ -27,6 +28,7 @@ const PublicRoutes = (
     <Route path="/email-verify" element={<EmailVerify />} />
     <Route path="/reset-password" element={<ResetPassword />} />
     <Route path="/invite/:token" element={<AcceptInvite />} />
+    <Route path="/meeting-invite/:code" element={<MeetingInviteJoin />} />
     <Route path="/privacy" element={<Privacy />} />
     <Route path="/terms" element={<Terms />} />
     <Route path="/security" element={<Security />} />

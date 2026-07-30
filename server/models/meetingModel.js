@@ -160,6 +160,21 @@ const meetingSchema = new mongoose.Schema(
       type: Number,
       default: null,
     },
+
+    // Shareable meeting invite link (Issue #920)
+    inviteCode: {
+      type: String,
+      default: null,
+      trim: true,
+    },
+    inviteEnabled: {
+      type: Boolean,
+      default: true,
+    },
+    inviteExpiresAt: {
+      type: Date,
+      default: null,
+    },
   },
   { timestamps: true },
 );
@@ -169,6 +184,14 @@ meetingSchema.index({ organization: 1, createdAt: -1 });
 meetingSchema.index({ uploadedBy: 1, createdAt: -1 });
 meetingSchema.index({ status: 1 });
 meetingSchema.index({ title: "text", summary: "text" });
+meetingSchema.index(
+  { inviteCode: 1 },
+  {
+    unique: true,
+    sparse: true,
+    partialFilterExpression: { inviteCode: { $type: "string" } },
+  },
+);
 
 const Meeting = mongoose.model("Meeting", meetingSchema);
 export default Meeting;
