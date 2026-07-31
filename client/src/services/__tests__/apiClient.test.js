@@ -83,6 +83,14 @@ describe("apiClient interceptors", () => {
     expect(originalRequest.headers["X-CSRF-Token"]).toBe("tok-new");
     expect(requestSpy).toHaveBeenCalled();
     expect(result).toEqual(retryResponse);
+
+    // `vi.clearAllMocks()` resets call history but does NOT restore a spy, so
+    // without this the stub leaks into every later test in the file. It was
+    // previously invisible because `apiClient.get()` reached
+    // `Axios.prototype.request` internally and never touched the instance
+    // property this spy replaces; now that GETs are routed through the instance
+    // for de-duplication (#978), the leak became load-bearing.
+    requestSpy.mockRestore();
   });
 
   it("does not retry CSRF failures more than once", async () => {
