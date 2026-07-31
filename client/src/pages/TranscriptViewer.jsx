@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useCallback, useContext } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import api from "../services/apiClient.js";
+import { speakerMappingApi } from "../services/speakerMappingApi.js";
 import {
   FileText,
   Search,
@@ -49,7 +50,6 @@ const TranscriptViewer = () => {
   const { userData } = useContext(AppContent);
   const [editingSpeakerIndex, setEditingSpeakerIndex] = useState(null);
   const [newSpeakerName, setNewSpeakerName] = useState("");
-  const [isBulkUpdate, setIsBulkUpdate] = useState(true);
 
   const fetchTranscript = useCallback(async () => {
     try {
@@ -73,23 +73,16 @@ const TranscriptViewer = () => {
     if (!newSpeakerName.trim()) return;
 
     try {
-      const response = await api.put(
-        `/transcripts/${transcript._id}/speakers`,
-        {
-          oldSpeaker,
-          newSpeaker: newSpeakerName.trim(),
-          segmentIndex: isBulkUpdate ? null : index,
-        },
+      // Use the new Speaker Mapping API
+      await speakerMappingApi.saveAndApplyMapping(
+        meetingId,
+        oldSpeaker,
+        newSpeakerName.trim(),
       );
 
-      if (response.data.success) {
-        toast.success("Speaker updated successfully");
-        setTranscript(
-          response.data.data || response.data.transcript || response.data,
-        );
-        // Refresh transcript fully to ensure UI sync
-        fetchTranscript();
-      }
+      toast.success("Speaker mapped successfully");
+      // Refresh transcript fully to ensure UI sync
+      fetchTranscript();
     } catch (error) {
       console.error("Error updating speaker:", error);
       toast.error(error.response?.data?.message || "Failed to update speaker");
@@ -367,15 +360,7 @@ const TranscriptViewer = () => {
                           </datalist>
                           <div className="flex items-center gap-1">
                             <label className="text-xs text-gray-600 dark:text-gray-400 flex items-center gap-1 cursor-pointer">
-                              <input
-                                type="checkbox"
-                                checked={isBulkUpdate}
-                                onChange={(e) =>
-                                  setIsBulkUpdate(e.target.checked)
-                                }
-                                className="rounded text-indigo-600"
-                              />
-                              Update all '{segment.speaker}'
+                              Map all '{segment.speaker}' globally
                             </label>
                           </div>
                           <button
@@ -399,7 +384,6 @@ const TranscriptViewer = () => {
                             if (canEdit) {
                               setEditingSpeakerIndex(index);
                               setNewSpeakerName(segment.speaker);
-                              setIsBulkUpdate(true);
                             }
                           }}
                           className={`px-2 py-1 bg-indigo-100 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300 text-xs font-medium rounded ${canEdit ? "cursor-pointer hover:bg-indigo-200 dark:hover:bg-indigo-800/50 transition-colors" : ""}`}
