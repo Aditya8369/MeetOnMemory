@@ -119,6 +119,13 @@ const getAllMeetingsQuerySchema = z.object({
     }),
   search: z.string().optional(),
   meetingType: z.string().optional(),
+  sortBy: z
+    .enum(["createdAt", "title", "date"])
+    .optional()
+    .default("createdAt"),
+  sortOrder: z.enum(["asc", "desc"]).optional().default("desc"),
+  startDate: z.string().optional(),
+  endDate: z.string().optional(),
   includeArchived: z
     .string()
     .optional()
