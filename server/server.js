@@ -58,7 +58,11 @@ import {
   initAIWorker, // eslint-disable-line no-unused-vars
   initDataExportWorker, // eslint-disable-line no-unused-vars
   initConflictScanWorker, // eslint-disable-line no-unused-vars
+  shutdownQueues,
 } from "./services/queueService.js";
+import { createGracefulShutdown } from "./utils/gracefulShutdown.js";
+import mongoose from "mongoose";
+import { closeRedis } from "./services/redisService.js";
 import { initWebhookWorker } from "./services/webhookDispatcherService.js"; // eslint-disable-line no-unused-vars
 import { globalLimiter } from "./middleware/rateLimiter.js"; // eslint-disable-line no-unused-vars
 import errorHandler from "./middleware/errorHandler.js";
@@ -165,19 +169,25 @@ if (process.env.NODE_ENV !== "test") {
 // ERROR HANDLER
 app.use(errorHandler);
 
-// GRACEFUL SHUTDOWN
-process.on("SIGTERM", () => {
-  console.log("SIGTERM received. Shutting down gracefully...");
-  server.close(() => {
-    process.exit(0);
-  });
+// ─── GRACEFUL SHUTDOWN (Issue #975) ──────────────────────────────────────────
+// The previous handlers only called `server.close()`, which stops the HTTP
+// listener and nothing else. In-flight BullMQ jobs were killed mid-execution on
+// every deploy and — with the old `attempts: 1` default — were never
+// re-delivered. This controller drains workers *before* closing datastores, and
+// force-exits after a deadline so a stuck handle can't hang the process until
+// the platform SIGKILLs it.
+const gracefulShutdown = createGracefulShutdown({
+  server,
+  io,
+  closeQueues: () => shutdownQueues(),
+  closeDatabase: () => mongoose.connection.close(false),
+  closeRedis: () => closeRedis(),
 });
 
-process.on("SIGINT", () => {
-  console.log("SIGINT received. Shutting down gracefully...");
-  server.close(() => {
-    process.exit(0);
-  });
-});
+// Signal handlers are skipped under Jest: the test runner owns process
+// lifecycle, and registering an exit-on-SIGINT handler there would fight it.
+if (process.env.NODE_ENV !== "test") {
+  gracefulShutdown.registerSignalHandlers();
+}
 
-export { app, server };
+export { app, server, gracefulShutdown };
