@@ -469,7 +469,11 @@ export const getAllMeetings = async (userId, orgId, queryParams = {}) => {
   };
 };
 
-export const getMeetingById = async (meetingId, userId = null, orgId = null) => {
+export const getMeetingById = async (
+  meetingId,
+  userId = null,
+  orgId = null,
+) => {
   if (!isValidObjectId(meetingId)) {
     throw new ValidationError("Invalid meeting ID");
   }
