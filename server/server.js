@@ -34,6 +34,7 @@ import meetingHealthRoutes from "./routes/meetingHealthRoutes.js";
 import { configureExpress, configureErrorHandling } from "./config/express.js";
 import { configureSocket } from "./config/socket.js";
 import { startWorkers } from "./config/workers.js";
+import { initListeners } from "./events/listeners.js";
 import routes from "./routes/index.js";
 
 // Import slackService, cacheInvalidationService, and conflictScanTrigger to register eventBus listeners.
@@ -133,6 +134,16 @@ const server = http.createServer(app);
 
 // SOCKET.IO
 const io = configureSocket(server, app);
+
+// ─── EVENT LISTENERS (Issue #977) ────────────────────────────────────────────
+// `initListeners` registers every in-app notification and engagement-point
+// handler, and was never called — so `meeting.created`, `mom.generated`,
+// `export.ready`, `organization.joined` and `live_meeting.notified` all emitted
+// into a void, `Navbar.jsx`'s `notification:new` subscription could never fire,
+// and `awardEngagementPoints` (called from nowhere else) meant the leaderboard
+// was permanently zero. It must run after `configureSocket` because it needs
+// `io` to push notifications to each user's personal room.
+initListeners(io);
 
 // SERVER START (Skipped during Jest test execution)
 if (process.env.NODE_ENV !== "test") {
