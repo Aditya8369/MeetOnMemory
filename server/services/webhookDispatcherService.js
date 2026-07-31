@@ -6,6 +6,9 @@ import Webhook from "../models/Webhook.js";
 import WebhookDelivery from "../models/WebhookDelivery.js";
 import eventBus from "./eventBus.js";
 import { validateWebhookDestination } from "../utils/webhookUrlSafety.js";
+import queueRegistry, { resolveJobOptions } from "./queueRegistry.js";
+
+const WEBHOOK_QUEUE_NAME = "webhook-dispatches";
 
 // Redis connection management
 let _producerConnection = null;
@@ -22,6 +25,8 @@ function getProducerConnection() {
     _producerConnection.on("error", (err) => {
       console.error("⚠️ Webhook Producer Redis Connection Error:", err.message);
     });
+    // Issue #975: nothing used to close these on shutdown.
+    queueRegistry.registerConnection("webhook-producer", _producerConnection);
   }
   return _producerConnection;
 }
@@ -36,6 +41,7 @@ function getWorkerConnection() {
     _workerConnection.on("error", (err) => {
       console.error("⚠️ Webhook Worker Redis Connection Error:", err.message);
     });
+    queueRegistry.registerConnection("webhook-worker", _workerConnection);
   }
   return _workerConnection;
 }
@@ -45,9 +51,14 @@ function getWebhookQueue() {
   if (!_webhookQueueInstance) {
     const conn = getProducerConnection();
     if (conn) {
-      _webhookQueueInstance = new Queue("webhook-dispatches", {
+      _webhookQueueInstance = new Queue(WEBHOOK_QUEUE_NAME, {
         connection: conn,
+        // This queue already passed attempts/backoff at enqueue time, but it
+        // had no retention caps — so every completed and failed dispatch stayed
+        // in Redis forever. The shared defaults supply both (Issue #975).
+        defaultJobOptions: resolveJobOptions(WEBHOOK_QUEUE_NAME),
       });
+      queueRegistry.registerQueue(WEBHOOK_QUEUE_NAME, _webhookQueueInstance);
     }
   }
   return _webhookQueueInstance;
@@ -369,18 +380,13 @@ export const dispatchWebhookEvent = async (organizationId, event, data) => {
 
     for (const webhook of webhooks) {
       if (getWebhookQueue()) {
-        // Add to BullMQ with exponential backoff retries for reliability
-        await webhookQueue.add(
-          "dispatch-webhook",
-          { webhookId: webhook._id, payload },
-          {
-            attempts: 5,
-            backoff: {
-              type: "exponential",
-              delay: 2000, // 2s initial delay
-            },
-          },
-        );
+        // Retries/backoff (5 attempts, 2s exponential) now come from the
+        // queue's shared defaults in queueRegistry.js rather than being
+        // repeated at every call site — same values, one place to change them.
+        await webhookQueue.add("dispatch-webhook", {
+          webhookId: webhook._id,
+          payload,
+        });
       } else {
         // Fallback: Synchronous dispatch in local/dev environment without Redis
         performDispatch(webhook._id, payload, {
@@ -412,7 +418,7 @@ export const initWebhookWorker = () => {
   }
 
   const worker = new Worker(
-    "webhook-dispatches",
+    WEBHOOK_QUEUE_NAME,
     async (job) => {
       const { webhookId, payload } = job.data;
       const attempt = job.attemptsMade + 1;
@@ -423,6 +429,10 @@ export const initWebhookWorker = () => {
     },
     { connection, concurrency: 10 },
   );
+
+  // Issue #975: register so SIGTERM drains in-flight dispatches instead of
+  // killing them mid-request.
+  queueRegistry.registerWorker(WEBHOOK_QUEUE_NAME, worker);
 
   worker.on("completed", (job) => {
     console.log(`✅ Webhook job ${job.id} completed successfully`);
