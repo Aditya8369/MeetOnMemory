@@ -6,9 +6,39 @@ import {
   provisionOrLinkClerkUser,
 } from "../services/authLinkingService.js";
 import { verifyToken } from "@clerk/express";
+import logger from "../utils/logger.js";
+
+/**
+ * Build a log-safe snapshot of an auth request.
+ * Never includes cookies, Authorization headers, tokens, or other credentials.
+ */
+export function sanitizeAuthRequestForLog(req = {}) {
+  const headers = req.headers || {};
+  const authorization =
+    typeof req.header === "function"
+      ? req.header("Authorization")
+      : headers.authorization || headers.Authorization;
+
+  return {
+    method: req.method || undefined,
+    url: req.originalUrl || req.url || undefined,
+    ip: req.ip || headers["x-forwarded-for"] || undefined,
+    origin: headers.origin || undefined,
+    hasAuthCookie: Boolean(req.cookies?.token),
+    hasAuthorizationHeader: Boolean(authorization),
+  };
+}
+
+const isVerboseAuthLoggingEnabled = () => process.env.NODE_ENV !== "production";
 
 const userAuth = async (req, res, next) => {
+  const safeRequest = sanitizeAuthRequestForLog(req);
+
   try {
+    if (isVerboseAuthLoggingEnabled()) {
+      logger.info("Auth middleware request", safeRequest);
+    }
+
     const authProvider = getAuthProviderFlag();
     const token =
       req.cookies?.token || req.header("Authorization")?.replace("Bearer ", "");
@@ -86,9 +116,17 @@ const userAuth = async (req, res, next) => {
     }
 
     req.user = user;
+
+    if (isVerboseAuthLoggingEnabled()) {
+      logger.info("Auth middleware success", {
+        ...safeRequest,
+        userId: user._id?.toString?.() || user.id || undefined,
+      });
+    }
+
     next();
   } catch (error) {
-    console.error("Auth middleware error:", error);
+    logger.error("Auth middleware error", error, safeRequest);
     return res.status(401).json({
       success: false,
       message: "Unauthorized or token expired.",
