@@ -128,7 +128,11 @@ export const analyzePolicy = async (req, res, next) => {
   try {
     const userId = getUserId(req);
     const orgId = req.user?.organization || null;
-    const policy = await PolicyService.reanalyzePolicy(req.params.id, userId, orgId);
+    const policy = await PolicyService.reanalyzePolicy(
+      req.params.id,
+      userId,
+      orgId,
+    );
 
     return sendSuccess(
       res,

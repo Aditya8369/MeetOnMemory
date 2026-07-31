@@ -23,12 +23,18 @@ import {
   removePolicyFromIndex,
   reevaluatePolicyDecisions,
 } from "./policyComplianceService.js";
-import { NotFoundError, ValidationError, ForbiddenError } from "../utils/errors.js";
+import {
+  NotFoundError,
+  ValidationError,
+  ForbiddenError,
+} from "../utils/errors.js";
 import { computeLineDiff } from "../utils/lineDiff.js";
 
 const _assertPolicyAccess = (policy, userId, orgId) => {
   const isUploader =
-    policy.uploadedBy && userId && policy.uploadedBy.toString() === userId.toString();
+    policy.uploadedBy &&
+    userId &&
+    policy.uploadedBy.toString() === userId.toString();
   const isInOrg =
     policy.organization &&
     orgId &&
@@ -313,7 +319,11 @@ export const uploadAndProcessPolicy = async (
  * @param {string} policyId - ObjectId of the policy to re-analyze
  * @returns {Promise<Policy>}
  */
-export const reanalyzePolicy = async (policyId, userId = null, orgId = null) => {
+export const reanalyzePolicy = async (
+  policyId,
+  userId = null,
+  orgId = null,
+) => {
   const policy = await Policy.findById(policyId);
   if (!policy) throw new NotFoundError("Policy not found.");
 
@@ -392,7 +402,11 @@ export const getAllPolicies = async (userId, orgId) => {
  * @param {string} policyId
  * @returns {Promise<{safeFilePath: string, fileName: string}>}
  */
-export const getPolicyDownloadPath = async (policyId, userId = null, orgId = null) => {
+export const getPolicyDownloadPath = async (
+  policyId,
+  userId = null,
+  orgId = null,
+) => {
   const policy = await Policy.findById(policyId);
   if (!policy) throw new NotFoundError("Policy not found.");
 
