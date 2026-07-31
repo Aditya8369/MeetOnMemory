@@ -25,6 +25,7 @@ import AgendaTimer from "../components/meeting-details/AgendaTimer";
 import AgendaPacingReport from "../components/meeting-details/AgendaPacingReport";
 import FeedbackForm from "../components/meeting-details/FeedbackForm";
 import FollowUpThreads from "../components/meeting-details/FollowUpThreads";
+import HealthScoreCard from "../components/meeting-details/HealthScoreCard";
 const MeetingDetails = () => {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -188,6 +189,9 @@ const MeetingDetails = () => {
         )}
 
         <MeetingSummary meeting={meeting} />
+        {meeting.status === "completed" && (
+          <HealthScoreCard meetingId={meeting._id} />
+        )}
         <ReactionSummaryCard meetingId={meeting._id} />
         <PersonalNotes meeting={meeting} />
         <MeetingCollaborativeNotes meeting={meeting} />

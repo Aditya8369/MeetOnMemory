@@ -50,6 +50,7 @@ import TagBrowser from "../pages/TagBrowser.jsx";
 import AttendanceAnalytics from "../pages/AttendanceAnalytics.jsx";
 import MeetingCostAnalytics from "../pages/MeetingCostAnalytics.jsx";
 import RecapScheduleDashboard from "../pages/RecapScheduleDashboard.jsx";
+import MeetingHealthDashboard from "../pages/MeetingHealthDashboard.jsx";
 
 const ProtectedRoutes = (
   <React.Fragment>
@@ -404,6 +405,14 @@ const ProtectedRoutes = (
       element={
         <ProtectedRoute resource="settings" action="view">
           <RecapScheduleDashboard />
+        </ProtectedRoute>
+      }
+    />
+    <Route
+      path="/meeting-health"
+      element={
+        <ProtectedRoute resource="reports" action="view">
+          <MeetingHealthDashboard />
         </ProtectedRoute>
       }
     />
