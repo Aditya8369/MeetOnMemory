@@ -171,21 +171,27 @@ export const getSeriesById = async (req, res) => {
 export const getSeriesMeetings = async (req, res) => {
   try {
     const page = parseInt(req.query.page) || 1;
-    const limit = parseInt(req.query.limit) || 20;
-    const skip = (page - 1) * limit;
+    let limit =
+      req.query.limit === "0" || req.query.limit === "all"
+        ? 0
+        : parseInt(req.query.limit);
+    if (isNaN(limit)) limit = 20;
 
-    const meetings = await Meeting.find({
-      series: req.params.id,
-      organization: req.user.organization,
-    })
-      .sort({ seriesOccurrence: 1 })
-      .skip(skip)
-      .limit(limit);
+    const orgId = req.user?.organization || req.user?.organizationId || null;
+    const query = { series: req.params.id };
+    if (orgId) {
+      query.organization = orgId;
+    }
 
-    const total = await Meeting.countDocuments({
-      series: req.params.id,
-      organization: req.user.organization,
-    });
+    const total = await Meeting.countDocuments(query);
+
+    let meetingsQuery = Meeting.find(query).sort({ seriesOccurrence: 1 });
+    if (limit > 0) {
+      const skip = (page - 1) * limit;
+      meetingsQuery = meetingsQuery.skip(skip).limit(limit);
+    }
+
+    const meetings = await meetingsQuery;
 
     res.json({
       success: true,
@@ -193,7 +199,7 @@ export const getSeriesMeetings = async (req, res) => {
       pagination: {
         total,
         page,
-        pages: Math.ceil(total / limit),
+        pages: limit > 0 ? Math.ceil(total / limit) : 1,
       },
     });
   } catch (error) {
@@ -204,6 +210,7 @@ export const getSeriesMeetings = async (req, res) => {
     });
   }
 };
+
 
 export const cancelSeries = async (req, res) => {
   try {
