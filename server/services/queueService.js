@@ -16,6 +16,7 @@ let _conflictScanQueueInstance = null;
 let _sentimentAnalysisQueueInstance = null;
 let _recalculateImportanceQueueInstance = null;
 let _memoryLifecycleQueueInstance = null;
+let _recapDeliveryQueueInstance = null;
 
 function getProducerConnection() {
   if (!process.env.REDIS_URI) return null;
@@ -124,6 +125,19 @@ function getMemoryLifecycleQueue() {
   return _memoryLifecycleQueueInstance;
 }
 
+function getRecapDeliveryQueue() {
+  if (!process.env.REDIS_URI) return null;
+  if (!_recapDeliveryQueueInstance) {
+    const conn = getProducerConnection();
+    if (conn) {
+      _recapDeliveryQueueInstance = new Queue("recap-delivery-queue", {
+        connection: conn,
+      });
+    }
+  }
+  return _recapDeliveryQueueInstance;
+}
+
 // Wrapper to preserve syntax compatibility
 export const aiQueue = {
   add: async (...args) => {
@@ -206,6 +220,20 @@ export const memoryLifecycleQueue = {
   },
   get isActive() {
     return getMemoryLifecycleQueue() !== null;
+  },
+};
+
+export const recapDeliveryQueue = {
+  add: async (...args) => {
+    const q = getRecapDeliveryQueue();
+    if (!q) {
+      console.warn("⚠️ Queue operation ignored: Redis is not configured.");
+      return null;
+    }
+    return await q.add(...args);
+  },
+  get isActive() {
+    return getRecapDeliveryQueue() !== null;
   },
 };
 

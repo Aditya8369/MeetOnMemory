@@ -48,6 +48,7 @@ import ActivityFeed from "../pages/ActivityFeed.jsx";
 import TagBrowser from "../pages/TagBrowser.jsx";
 import AttendanceAnalytics from "../pages/AttendanceAnalytics.jsx";
 import MeetingCostAnalytics from "../pages/MeetingCostAnalytics.jsx";
+import RecapScheduleDashboard from "../pages/RecapScheduleDashboard.jsx";
 
 const ProtectedRoutes = (
   <React.Fragment>
@@ -386,6 +387,14 @@ const ProtectedRoutes = (
       element={
         <ProtectedRoute resource="reports" action="view">
           <MeetingCostAnalytics />
+        </ProtectedRoute>
+      }
+    />
+    <Route
+      path="/recap-schedule"
+      element={
+        <ProtectedRoute resource="settings" action="view">
+          <RecapScheduleDashboard />
         </ProtectedRoute>
       }
     />
