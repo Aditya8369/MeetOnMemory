@@ -115,15 +115,10 @@ app.use("/api/personal-notes", personalNoteRoutes);
 app.use("/api/template-library", templateLibraryRoutes);
 app.use("/api/meeting-health", meetingHealthRoutes);
 
-// Health check endpoint — registered BEFORE the global rate limiter so
-// keep-alive pings (e.g. from GitHub Actions cron job) are never blocked.
-app.get(["/health", "/api/health"], (req, res) => {
-  res.status(200).json({
-    status: "UP",
-    timestamp: new Date().toISOString(),
-    env: process.env.NODE_ENV,
-  });
-});
+// Issue #979: the /health handler that used to be duplicated here was
+// unreachable dead code — configureExpress registers it first, and two copies
+// of the same route are two things to keep in sync. The single definition now
+// lives in config/health.js.
 app.use(routes);
 
 // ERROR HANDLING (Must be after routes)
