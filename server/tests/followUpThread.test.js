@@ -1,4 +1,3 @@
-// removed request and app
 import { createCsrfAgent } from "./helpers/csrfHelper.js";
 import FollowUpThread from "../models/followUpThreadModel.js";
 import ThreadReply from "../models/threadReplyModel.js";

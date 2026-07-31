@@ -115,4 +115,20 @@ describe("App Routing", () => {
     // Since fallback route maps to <NotFound />
     expect(screen.getByTestId("not-found-page")).toBeInTheDocument();
   });
+
+  it("does not render the custom glowing cursor overlay (#729)", () => {
+    const { container } = render(
+      <MemoryRouter initialEntries={["/"]}>
+        <AppContent.Provider value={{ isLoggedin: false }}>
+          <App />
+        </AppContent.Provider>
+      </MemoryRouter>,
+    );
+
+    expect(container.querySelector(".custom-cursor")).not.toBeInTheDocument();
+    expect(
+      container.querySelector(".custom-cursor-ring"),
+    ).not.toBeInTheDocument();
+    expect(screen.getByTestId("home-page")).toBeInTheDocument();
+  });
 });
