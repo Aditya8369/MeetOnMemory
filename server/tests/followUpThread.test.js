@@ -1,5 +1,3 @@
-import request from "supertest";
-import { app } from "../server.js";
 import { createCsrfAgent } from "./helpers/csrfHelper.js";
 import FollowUpThread from "../models/followUpThreadModel.js";
 import ThreadReply from "../models/threadReplyModel.js";
