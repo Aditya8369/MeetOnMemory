@@ -190,6 +190,9 @@ const MeetingDetails = () => {
         )}
 
         <MeetingSummary meeting={meeting} />
+        {meeting.status === "completed" && (
+          <HealthScoreCard meetingId={meeting._id} />
+        )}
         <ReactionSummaryCard meetingId={meeting._id} />
         <PersonalNotes meeting={meeting} />
         <MeetingCollaborativeNotes meeting={meeting} />
