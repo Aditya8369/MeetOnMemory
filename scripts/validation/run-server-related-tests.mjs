@@ -20,6 +20,7 @@ const VITEST_TEST_FILES = new Set([
   "server/tests/transcriptController.test.js",
   "server/tests/meetingDigestService.test.js",
   "server/tests/imageUrl.test.js",
+  "server/tests/MeetingService.test.js",
 ]);
 const JEST_RELATED_IGNORE = [
   "tests/integration.test.js",
@@ -42,14 +43,25 @@ const vitestOwnedSources = new Set([
   "server/controllers/organizationController.js",
   "server/controllers/knowledgeController.js",
   "server/controllers/transcriptController.js",
+  "server/controllers/meetingController.js",
   "server/services/meetingDigestService.js",
+  "server/services/MeetingService.js",
+  "server/services/MeetingStorageService.js",
   "server/utils/imageUrl.js",
 ]);
+const VITEST_SOURCE_TEST_MAP = {
+  "server/controllers/meetingController.js":
+    "server/tests/MeetingService.test.js",
+  "server/services/MeetingService.js": "server/tests/MeetingService.test.js",
+  "server/services/MeetingStorageService.js":
+    "server/tests/MeetingService.test.js",
+};
 const vitestTests = [
   ...directTests.filter((file) => VITEST_TEST_FILES.has(file)),
   ...sourceFiles
     .filter((file) => vitestOwnedSources.has(file))
     .map((file) => {
+      if (VITEST_SOURCE_TEST_MAP[file]) return VITEST_SOURCE_TEST_MAP[file];
       const base = file.split("/").pop().replace(/\.js$/, "");
       return `server/tests/${base}.test.js`;
     })

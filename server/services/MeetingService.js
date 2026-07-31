@@ -425,6 +425,11 @@ export const generateMeetingMoM = async (
   };
 };
 
+const MEETING_LIST_SORT_FIELDS = new Set(["createdAt", "title", "date"]);
+
+const escapeRegex = (value) =>
+  String(value).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
 export const getAllMeetings = async (userId, orgId, queryParams = {}) => {
   const {
     page = 1,
@@ -432,29 +437,60 @@ export const getAllMeetings = async (userId, orgId, queryParams = {}) => {
     startDate,
     endDate,
     includeArchived,
+    search,
+    meetingType,
+    sortBy = "createdAt",
+    sortOrder = "desc",
   } = queryParams;
 
-  const queryOptions = [{ uploadedBy: userId }];
-  if (orgId) {
-    queryOptions.push({ organization: orgId });
-  }
+  const filters = [];
 
-  const query = { $or: queryOptions };
+  const ownershipOptions = [{ uploadedBy: userId }];
+  if (orgId) {
+    ownershipOptions.push({ organization: orgId });
+  }
+  filters.push({ $or: ownershipOptions });
 
   if (!includeArchived) {
-    query.archived = { $ne: true };
+    filters.push({ archived: { $ne: true } });
   }
 
   if (startDate || endDate) {
-    query.date = {};
-    if (startDate) query.date.$gte = new Date(startDate);
-    if (endDate) query.date.$lte = new Date(endDate);
+    const dateFilter = {};
+    if (startDate) dateFilter.$gte = new Date(startDate);
+    if (endDate) dateFilter.$lte = new Date(endDate);
+    filters.push({ date: dateFilter });
   }
 
-  const skip = (parseInt(page) - 1) * parseInt(limit);
+  if (meetingType) {
+    filters.push({ meetingType });
+  }
+
+  const searchTerm = typeof search === "string" ? search.trim() : "";
+  if (searchTerm) {
+    const escaped = escapeRegex(searchTerm);
+    filters.push({
+      $or: [
+        { title: { $regex: escaped, $options: "i" } },
+        { summary: { $regex: escaped, $options: "i" } },
+      ],
+    });
+  }
+
+  const query = filters.length === 1 ? filters[0] : { $and: filters };
+
+  const resolvedSortBy = MEETING_LIST_SORT_FIELDS.has(sortBy)
+    ? sortBy
+    : "createdAt";
+  const sortDirection = sortOrder === "asc" ? 1 : -1;
+  const sort = { [resolvedSortBy]: sortDirection };
+
+  const pageNum = parseInt(page, 10);
+  const limitNum = parseInt(limit, 10);
+  const skip = (pageNum - 1) * limitNum;
 
   const [meetings, total] = await Promise.all([
-    MeetingStorageService.getMeetingsQuery(query, skip, parseInt(limit)),
+    MeetingStorageService.getMeetingsQuery(query, skip, limitNum, sort),
     MeetingStorageService.countMeetingsQuery(query),
   ]);
 
@@ -462,9 +498,9 @@ export const getAllMeetings = async (userId, orgId, queryParams = {}) => {
     meetings,
     pagination: {
       total,
-      page: parseInt(page),
-      limit: parseInt(limit),
-      totalPages: Math.ceil(total / parseInt(limit)),
+      page: pageNum,
+      limit: limitNum,
+      totalPages: Math.ceil(total / limitNum) || 0,
     },
   };
 };

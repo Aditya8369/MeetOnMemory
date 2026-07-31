@@ -12,9 +12,14 @@ export const findMeetingByQuery = async (query) => {
   return await Meeting.findOne(query);
 };
 
-export const getMeetingsQuery = async (query, skip, limit) => {
+export const getMeetingsQuery = async (
+  query,
+  skip,
+  limit,
+  sort = { createdAt: -1 },
+) => {
   return await Meeting.find(query)
-    .sort({ createdAt: -1 })
+    .sort(sort)
     .skip(skip)
     .limit(limit)
     .select(
