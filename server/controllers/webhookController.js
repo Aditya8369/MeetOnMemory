@@ -134,7 +134,7 @@ const updateWebhookSchema = z.object({
     .refine((url) => url.startsWith("http://") || url.startsWith("https://"), {
       message: "Target URL must start with http:// or https://.",
     })
-    .refine((url) => isSafeWebhookUrl(url), {
+    .refine(async (url) => await isSafeWebhookUrl(url), {
       message:
         "Target URL must be a public, safe address. Local/private addresses are not permitted.",
     })
