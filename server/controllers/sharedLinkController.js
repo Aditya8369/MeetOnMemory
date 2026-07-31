@@ -39,7 +39,9 @@ export const createLink = async (req, res) => {
     const userOrgId = req.user.organization?.toString();
 
     const isUploader =
-      resource.uploadedBy && userId && resource.uploadedBy.toString() === userId;
+      resource.uploadedBy &&
+      userId &&
+      resource.uploadedBy.toString() === userId;
     const isInSameOrg =
       resource.organization &&
       userOrgId &&
