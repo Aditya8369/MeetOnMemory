@@ -1,5 +1,4 @@
 import { jest } from "@jest/globals";
-const vi = jest;
 import { ROLE_HIERARCHY, hasPermission } from "../utils/rbacPermissions.js";
 import {
   inviteMemberToOrganization,

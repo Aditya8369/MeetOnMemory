@@ -35,6 +35,7 @@ import meetingFeedbackRoutes from "./meetingFeedbackRoutes.js";
 import meetingCostRoutes from "./meetingCostRoutes.js";
 import followUpThreadRoutes from "./followUpThreadRoutes.js";
 import recapScheduleRoutes from "./recapScheduleRoutes.js";
+import meetingClipRoutes from "./meetingClipRoutes.js";
 
 const router = express.Router();
 
@@ -77,5 +78,6 @@ router.use("/api/feedback", meetingFeedbackRoutes);
 router.use("/api/meeting-cost", meetingCostRoutes);
 router.use("/api/follow-up-threads", followUpThreadRoutes);
 router.use("/api/recap-schedule", recapScheduleRoutes);
+router.use("/api/clips", meetingClipRoutes);
 
 export default router;

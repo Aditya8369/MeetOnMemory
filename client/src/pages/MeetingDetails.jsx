@@ -25,6 +25,8 @@ import AgendaTimer from "../components/meeting-details/AgendaTimer";
 import AgendaPacingReport from "../components/meeting-details/AgendaPacingReport";
 import FeedbackForm from "../components/meeting-details/FeedbackForm";
 import FollowUpThreads from "../components/meeting-details/FollowUpThreads";
+import ClipManager from "../components/meeting-details/ClipManager";
+
 const MeetingDetails = () => {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -192,6 +194,7 @@ const MeetingDetails = () => {
         <PersonalNotes meeting={meeting} />
         <MeetingCollaborativeNotes meeting={meeting} />
         <MeetingTranscript meeting={meeting} />
+        <ClipManager meetingId={meeting._id} />
         <MeetingParticipants meeting={meeting} />
         <MeetingMetadata meeting={meeting} />
         <div className="mb-6 flex justify-end gap-2 items-center">
