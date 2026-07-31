@@ -10,7 +10,6 @@ import ProtectedRoutes from "./routes/ProtectedRoutes.jsx";
 import NotFound from "./pages/NotFound.jsx";
 
 import ScrollNavigator from "./components/ScrollNavigator";
-import CustomCursor from "./components/CustomCursor.jsx";
 import FloatingAssistant from "./components/FloatingAssistant.jsx";
 
 // --- Components ---
@@ -63,8 +62,6 @@ const App = () => {
 
         {/* Global Footer */}
         {shouldShowFooter && <Footer />}
-
-        <CustomCursor />
       </ErrorBoundary>
     </div>
   );
