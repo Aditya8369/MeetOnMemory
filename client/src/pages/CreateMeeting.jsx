@@ -12,7 +12,14 @@ import { useSessionCards } from "./CreateMeeting/hooks/useSessionCards";
 const CreateMeeting = () => {
   const [activeSection, setActiveSection] = useState(() => {
     const urlParams = new URLSearchParams(window.location.search);
-    return urlParams.get("templateId") ? "schedule" : "live";
+    if (
+      urlParams.get("templateId") ||
+      urlParams.get("fromActionItems") === "1" ||
+      window.history.state?.followUpDraft
+    ) {
+      return "schedule";
+    }
+    return "live";
   });
 
   const scheduleMeetingHooks = useScheduleMeeting();
