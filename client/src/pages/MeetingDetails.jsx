@@ -26,6 +26,7 @@ import AgendaPacingReport from "../components/meeting-details/AgendaPacingReport
 import FeedbackForm from "../components/meeting-details/FeedbackForm";
 import FollowUpThreads from "../components/meeting-details/FollowUpThreads";
 import ClipManager from "../components/meeting-details/ClipManager";
+import SpeakerAttribution from "../components/meeting-details/SpeakerAttribution";
 
 const MeetingDetails = () => {
   const { id } = useParams();
@@ -194,6 +195,10 @@ const MeetingDetails = () => {
         <PersonalNotes meeting={meeting} />
         <MeetingCollaborativeNotes meeting={meeting} />
         <MeetingTranscript meeting={meeting} />
+        <SpeakerAttribution
+          meetingId={meeting._id}
+          participants={meeting.participants}
+        />
         <ClipManager meetingId={meeting._id} />
         <MeetingParticipants meeting={meeting} />
         <MeetingMetadata meeting={meeting} />
