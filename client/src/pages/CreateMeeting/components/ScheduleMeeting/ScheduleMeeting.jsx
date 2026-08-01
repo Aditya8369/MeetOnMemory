@@ -4,6 +4,7 @@ import ParticipantsSection from "./ParticipantsSection";
 import AgendaSection from "./AgendaSection";
 import AttachmentSection from "./AttachmentSection";
 import CalendarNotice from "./CalendarNotice";
+import DraftRecoveryBanner from "./DraftRecoveryBanner";
 import SmartAgendaGenerator from "../../../../components/meetings/SmartAgendaGenerator";
 
 const ScheduleMeeting = ({ hookProps }) => {
@@ -29,8 +30,11 @@ const ScheduleMeeting = ({ hookProps }) => {
     handleAttachmentUpload,
     removeAttachment,
     handleScheduleSubmit,
-    isFollowUpDraft,
-    sourceActionItemIds,
+    recoverableDraft,
+    lastSavedAt,
+    draftStatus,
+    restoreDraft,
+    discardDraft,
   } = hookProps;
 
   return (
@@ -46,19 +50,14 @@ const ScheduleMeeting = ({ hookProps }) => {
         </div>
       </div>
 
-      {isFollowUpDraft && (
-        <div className="mb-6 rounded-xl border border-indigo-200 bg-indigo-50 px-4 py-3 text-sm text-indigo-900">
-          <p className="font-semibold mb-1">Follow-up meeting draft</p>
-          <p>
-            Title and agenda were pre-filled from{" "}
-            {sourceActionItemIds?.length || agendaItems.length} selected action
-            item(s). Review the agenda preview below, adjust as needed, then
-            schedule.
-          </p>
-        </div>
-      )}
-
       <form onSubmit={handleScheduleSubmit}>
+        <DraftRecoveryBanner
+          savedAt={recoverableDraft?.savedAt}
+          lastSavedAt={lastSavedAt}
+          status={draftStatus}
+          onRestore={restoreDraft}
+          onDiscard={discardDraft}
+        />
         <MeetingInformationForm
           scheduleData={scheduleData}
           setScheduleData={setScheduleData}
