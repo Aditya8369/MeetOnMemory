@@ -5,6 +5,7 @@ import AgendaSection from "./AgendaSection";
 import AttachmentSection from "./AttachmentSection";
 import CalendarNotice from "./CalendarNotice";
 import DraftRecoveryBanner from "./DraftRecoveryBanner";
+import SmartAgendaGenerator from "../../../../components/meetings/SmartAgendaGenerator";
 
 const ScheduleMeeting = ({ hookProps }) => {
   const {
@@ -92,6 +93,46 @@ const ScheduleMeeting = ({ hookProps }) => {
             </select>
           </div>
         )}
+
+        {isFollowUpDraft && agendaItems.length > 0 && (
+          <div className="mb-4 rounded-lg border border-slate-200 bg-slate-50 px-4 py-3">
+            <p className="text-sm font-semibold text-slate-800 mb-2">
+              Agenda preview ({agendaItems.length} items)
+            </p>
+            <ol className="list-decimal list-inside space-y-1 text-sm text-slate-700">
+              {agendaItems.map((item) => (
+                <li key={item.id || item.text}>
+                  <span className="font-medium">{item.text}</span>
+                  {item.description ? (
+                    <span className="text-slate-500">
+                      {" "}
+                      — {item.description}
+                    </span>
+                  ) : null}
+                </li>
+              ))}
+            </ol>
+          </div>
+        )}
+
+        <div className="mb-6">
+          <SmartAgendaGenerator
+            onApplySuccess={(items) => {
+              const newAgendaItems = items.map((i) => ({
+                text: i.status === "edited" ? i.acceptedText : i.text,
+                description: i.description,
+                duration: i.estimatedDuration,
+                id: Date.now().toString() + Math.random(),
+              }));
+              if (hookProps.setAgendaItems) {
+                hookProps.setAgendaItems((prev) => [
+                  ...prev,
+                  ...newAgendaItems,
+                ]);
+              }
+            }}
+          />
+        </div>
 
         <AgendaSection
           agendaItems={agendaItems}

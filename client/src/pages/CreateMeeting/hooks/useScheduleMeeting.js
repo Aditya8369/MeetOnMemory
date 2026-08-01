@@ -240,5 +240,6 @@ export const useScheduleMeeting = ({
     draftStatus,
     restoreDraft,
     discardDraft,
+    setAgendaItems,
   };
 };
