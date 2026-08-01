@@ -97,7 +97,7 @@ export const resetGeminiClient = () => {
  * @param {string} label used in logs and the timeout message
  * @returns {Promise<string>} raw model output text
  */
-const generateText = async (prompt, label) => {
+export const generateText = async (prompt, label) => {
   const result = await callWithResilience(
     async (signal) => {
       const model = getGenerativeModel();
@@ -133,7 +133,7 @@ const generateText = async (prompt, label) => {
  * @param {string} outputText
  * @returns {object|null}
  */
-const parseJsonOutput = (outputText) => {
+export const parseJsonOutput = (outputText) => {
   try {
     return JSON.parse(outputText);
   } catch {

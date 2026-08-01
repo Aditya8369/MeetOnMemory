@@ -75,6 +75,8 @@ describe("AppContext session regression", () => {
         Object.keys(store).forEach((key) => delete store[key]);
       }),
     });
+
+    vi.stubEnv("VITE_CLERK_PUBLISHABLE_KEY", "pk_test_mocked_key");
   });
 
   it("restores auth, user, and organization after ClerkSessionSync bootstrap", async () => {
