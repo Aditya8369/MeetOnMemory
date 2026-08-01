@@ -85,6 +85,7 @@ const updateMeetingSchema = z.object({
   location: z.string().optional(),
   venue: z.string().optional(),
   tags: z.array(z.string()).optional(),
+  summary: z.string().optional(),
 });
 
 const searchMeetingSchema = z.object({
@@ -486,6 +487,7 @@ export const updateMeeting = async (req, res, next) => {
           description: meeting.description,
           meetingType: meeting.meetingType,
           date: meeting.date,
+          summary: meeting.summary,
         },
       },
       "Meeting updated successfully",
