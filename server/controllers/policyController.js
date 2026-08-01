@@ -126,7 +126,13 @@ export const uploadPolicy = async (req, res, next) => {
    ───────────────────────────────────────────────────────────── */
 export const analyzePolicy = async (req, res, next) => {
   try {
-    const policy = await PolicyService.reanalyzePolicy(req.params.id);
+    const userId = getUserId(req);
+    const orgId = req.user?.organization || null;
+    const policy = await PolicyService.reanalyzePolicy(
+      req.params.id,
+      userId,
+      orgId,
+    );
 
     return sendSuccess(
       res,
@@ -166,8 +172,10 @@ export const getPolicies = async (req, res, next) => {
    ───────────────────────────────────────────────────────────── */
 export const downloadPolicy = async (req, res, next) => {
   try {
+    const userId = getUserId(req);
+    const orgId = req.user?.organization || null;
     const { safeFilePath, fileName } =
-      await PolicyService.getPolicyDownloadPath(req.params.id);
+      await PolicyService.getPolicyDownloadPath(req.params.id, userId, orgId);
 
     res.setHeader(
       "Cache-Control",
