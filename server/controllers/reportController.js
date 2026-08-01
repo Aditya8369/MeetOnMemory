@@ -73,12 +73,10 @@ export const getReportTemplate = async (req, res) => {
       !template.isShared &&
       template.createdBy.toString() !== req.user._id.toString()
     ) {
-      return res
-        .status(403)
-        .json({
-          success: false,
-          message: "Not authorized to view this template",
-        });
+      return res.status(403).json({
+        success: false,
+        message: "Not authorized to view this template",
+      });
     }
 
     res.status(200).json({ success: true, data: template });
@@ -111,13 +109,11 @@ export const createReportTemplate = async (req, res) => {
     res.status(201).json({ success: true, data: template });
   } catch (error) {
     if (error instanceof z.ZodError) {
-      return res
-        .status(400)
-        .json({
-          success: false,
-          message: "Validation error",
-          errors: error.errors,
-        });
+      return res.status(400).json({
+        success: false,
+        message: "Validation error",
+        errors: error.errors,
+      });
     }
     console.error("Error creating report template:", error);
     res.status(500).json({ success: false, message: "Server error" });
@@ -142,12 +138,10 @@ export const updateReportTemplate = async (req, res) => {
 
     // Only creator can update
     if (template.createdBy.toString() !== req.user._id.toString()) {
-      return res
-        .status(403)
-        .json({
-          success: false,
-          message: "Not authorized to edit this template",
-        });
+      return res.status(403).json({
+        success: false,
+        message: "Not authorized to edit this template",
+      });
     }
 
     Object.assign(template, validatedData);
@@ -156,13 +150,11 @@ export const updateReportTemplate = async (req, res) => {
     res.status(200).json({ success: true, data: template });
   } catch (error) {
     if (error instanceof z.ZodError) {
-      return res
-        .status(400)
-        .json({
-          success: false,
-          message: "Validation error",
-          errors: error.errors,
-        });
+      return res.status(400).json({
+        success: false,
+        message: "Validation error",
+        errors: error.errors,
+      });
     }
     console.error("Error updating report template:", error);
     res.status(500).json({ success: false, message: "Server error" });
@@ -185,12 +177,10 @@ export const deleteReportTemplate = async (req, res) => {
 
     // Only creator can delete
     if (template.createdBy.toString() !== req.user._id.toString()) {
-      return res
-        .status(403)
-        .json({
-          success: false,
-          message: "Not authorized to delete this template",
-        });
+      return res.status(403).json({
+        success: false,
+        message: "Not authorized to delete this template",
+      });
     }
 
     await template.deleteOne();
