@@ -1,24 +1,17 @@
 import mongoose from "mongoose";
-import { createCsrfAgent } from "./helpers/csrfHelper.js";
-import jwt from "jsonwebtoken";
+import request from "supertest";
+import { app } from "../server.js";
+import { createClerkTestToken, authHeader } from "./helpers/clerkTestAuth.js";
 import User from "../models/userModel.js";
 import Organization from "../models/organizationModel.js";
 import MeetingTemplate from "../models/meetingTemplateModel.js";
 import TemplateLibrary from "../models/templateLibraryModel.js";
-
-const generateToken = (id) => {
-  return jwt.sign({ id }, process.env.JWT_SECRET || "test_secret", {
-    expiresIn: "30d",
-  });
-};
 
 describe("Template Library API", () => {
   let orgId;
   let userId;
   let token;
   let meetingTemplateId;
-  let agent;
-  let csrfToken;
 
   beforeAll(async () => {
     const user = new User({
@@ -29,6 +22,8 @@ describe("Template Library API", () => {
       password: "password123",
       organization: new mongoose.Types.ObjectId(), // Will be updated
     });
+    await user.save();
+    user.clerkUserId = `user_test_${user._id}`;
     await user.save();
     userId = user._id;
 
@@ -43,11 +38,10 @@ describe("Template Library API", () => {
     user.organization = orgId;
     await user.save();
 
-    token = generateToken(userId);
-
-    const csrfSetup = await createCsrfAgent();
-    agent = csrfSetup.agent;
-    csrfToken = csrfSetup.csrfToken;
+    token = createClerkTestToken({
+      clerkUserId: user.clerkUserId,
+      email: user.email,
+    });
 
     const template = new MeetingTemplate({
       organizationId: orgId,
@@ -74,10 +68,9 @@ describe("Template Library API", () => {
   describe("Template Library Lifecycle", () => {
     it("should publish, fetch, clone, and rate a template", async () => {
       // 1. Publish a template
-      let res = await agent
+      let res = await request(app)
         .post("/api/template-library")
-        .set("Authorization", `Bearer ${token}`)
-        .set("X-CSRF-Token", csrfToken)
+        .set(authHeader(token))
         .send({
           templateId: meetingTemplateId,
           category: "Engineering",
@@ -90,9 +83,9 @@ describe("Template Library API", () => {
       expect(res.body).toHaveProperty("description", "Published Weekly sync");
 
       // 2. Fetch templates
-      res = await agent
+      res = await request(app)
         .get("/api/template-library")
-        .set("Authorization", `Bearer ${token}`);
+        .set(authHeader(token));
 
       expect(res.status).toBe(200);
       expect(res.body.templates.length).toBe(1);
@@ -103,10 +96,9 @@ describe("Template Library API", () => {
         originalTemplateId: meetingTemplateId,
       });
 
-      res = await agent
+      res = await request(app)
         .post(`/api/template-library/${libraryEntry._id}/clone`)
-        .set("Authorization", `Bearer ${token}`)
-        .set("X-CSRF-Token", csrfToken);
+        .set(authHeader(token));
 
       expect(res.status).toBe(201);
       expect(res.body).toHaveProperty("name", "Original Template (Clone)");
@@ -117,10 +109,9 @@ describe("Template Library API", () => {
       expect(updatedLibraryEntry.cloneCount).toBe(1);
 
       // 4. Rate template
-      res = await agent
+      res = await request(app)
         .post(`/api/template-library/${libraryEntry._id}/rate`)
-        .set("Authorization", `Bearer ${token}`)
-        .set("X-CSRF-Token", csrfToken)
+        .set(authHeader(token))
         .send({
           rating: 4,
           review: "Great template!",

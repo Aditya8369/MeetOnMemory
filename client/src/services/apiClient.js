@@ -1,5 +1,4 @@
 import axios from "axios";
-import { getCsrfToken, refreshCsrfToken } from "./csrfService.js";
 import { getBackendUrl } from "../config/backendConfig.js";
 import {
   DEFAULT_RETRY_CONFIG,
@@ -42,14 +41,6 @@ const apiClient = axios.create({
  */
 export const requestDeduplicator = createRequestDeduplicator();
 
-const CSRF_FAILED_MESSAGE = "CSRF token validation failed.";
-
-function isCsrfError(error) {
-  const status = error.response?.status;
-  const message = error.response?.data?.message;
-  return status === 419 || (status === 403 && message === CSRF_FAILED_MESSAGE);
-}
-
 function applyFriendlyMessage(error, friendlyMessage) {
   if (!error.response) {
     error.response = { data: { message: friendlyMessage }, status: 0 };
@@ -71,26 +62,58 @@ export const setClerkTokenGetter = (getterFn) => {
   clerkTokenGetter = getterFn;
 };
 
-// Attach credentials + latest CSRF token + Clerk token on every request
+/** Current Clerk session JWT for HTTP and Socket.IO auth */
+export const getClerkBearerToken = async () => {
+  if (!clerkTokenGetter || typeof clerkTokenGetter !== "function") {
+    return null;
+  }
+  try {
+    return await clerkTokenGetter();
+  } catch (err) {
+    console.warn("Failed to retrieve Clerk token", err);
+    return null;
+  }
+};
+
+/**
+ * Socket.IO client options authenticated with the live Clerk session.
+ */
+export const createClerkSocketOptions = async (extra = {}) => {
+  const token = await getClerkBearerToken();
+  return {
+    auth: token ? { token } : {},
+    transports: ["websocket", "polling"],
+    ...extra,
+  };
+};
+
+const attachAuthorization = (headers, bearerValue) => {
+  if (!headers) return;
+  if (typeof headers.set === "function") {
+    headers.set("Authorization", bearerValue);
+    return;
+  }
+  headers.Authorization = bearerValue;
+};
+
 apiClient.interceptors.request.use(
   async (config) => {
     config.withCredentials = true;
-    config.headers = config.headers || {};
 
-    if (clerkTokenGetter && typeof clerkTokenGetter === "function") {
-      try {
-        const clerkToken = await clerkTokenGetter();
-        if (clerkToken) {
-          config.headers["Authorization"] = `Bearer ${clerkToken}`;
+    // Prefer an explicit Authorization already set by the caller (bootstrap).
+    const existing =
+      typeof config.headers?.get === "function"
+        ? config.headers.get("Authorization")
+        : config.headers?.Authorization;
+
+    if (!existing) {
+      const clerkToken = await getClerkBearerToken();
+      if (clerkToken) {
+        if (!config.headers) {
+          config.headers = {};
         }
-      } catch (err) {
-        console.warn("Failed to retrieve Clerk token for API request", err);
+        attachAuthorization(config.headers, `Bearer ${clerkToken}`);
       }
-    }
-
-    const token = getCsrfToken();
-    if (token) {
-      config.headers["X-CSRF-Token"] = token;
     }
 
     return config;
@@ -103,7 +126,6 @@ const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 apiClient.interceptors.response.use(
   (response) => response,
   async (error) => {
-    // Guard against null/undefined so malformed reject payloads never crash.
     if (error == null) {
       const friendlyMessage = "An unexpected error occurred. Please try again.";
       return Promise.reject({
@@ -152,31 +174,7 @@ apiClient.interceptors.response.use(
 
     let friendlyMessage = "An unexpected error occurred. Please try again.";
 
-    // Refresh CSRF once, then retry the failed request
-    if (isCsrfError(error) && originalRequest && !originalRequest._retry) {
-      originalRequest._retry = true;
-
-      try {
-        await refreshCsrfToken();
-        const token = getCsrfToken();
-
-        if (token) {
-          originalRequest.headers = originalRequest.headers || {};
-          originalRequest.headers["X-CSRF-Token"] = token;
-          return apiClient.request(originalRequest);
-        }
-
-        friendlyMessage =
-          "Session security token expired. Please refresh the page.";
-      } catch (csrfErr) {
-        console.error("Failed to refresh CSRF token", csrfErr);
-        friendlyMessage =
-          "Session security token expired. Please refresh the page.";
-      }
-    } else if (isCsrfError(error) && originalRequest?._retry) {
-      friendlyMessage =
-        "Session security token expired. Please refresh the page.";
-    } else if (!error.response) {
+    if (!error.response) {
       if (!navigator.onLine) {
         friendlyMessage =
           "Network offline. Please check your internet connection.";
@@ -199,16 +197,12 @@ apiClient.interceptors.response.use(
             "Session expired. Please log in again.";
           break;
         case 403:
-          if (error.response.data?.message !== CSRF_FAILED_MESSAGE) {
-            friendlyMessage =
-              "You do not have permission to perform this action.";
-          }
+          friendlyMessage =
+            error.response.data?.message ||
+            "You do not have permission to perform this action.";
           break;
         case 404:
           friendlyMessage = "The requested resource was not found.";
-          break;
-        case 419:
-          friendlyMessage = "Session expired (CSRF). Please refresh the page.";
           break;
         // 429 deliberately has no case here. It falls through to the default
         // branch, which prefers the backend's own message — and the server
@@ -245,11 +239,11 @@ apiClient.interceptors.response.use(
 const rawRequest = apiClient.request.bind(apiClient);
 
 apiClient.request = function dedupedRequest(config = {}) {
-  // A replay (retry or CSRF refresh) must bypass de-duplication. Its config
-  // still has the same method/url/params as the original, so it would match the
-  // map entry for the request it is replaying — and that entry is the outer
-  // promise, which has not settled yet. The replay would then await itself and
-  // hang until the caller's timeout.
+  // A replay (retry) must bypass de-duplication. Its config still has the same
+  // method/url/params as the original, so it would match the map entry for the
+  // request it is replaying — and that entry is the outer promise, which has
+  // not settled yet. The replay would then await itself and hang until the
+  // caller's timeout.
   const isReplay = Boolean(config._retryCount || config._retry);
   if (isReplay) return rawRequest(config);
 

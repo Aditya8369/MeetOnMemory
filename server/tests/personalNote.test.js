@@ -1,46 +1,42 @@
-import { createCsrfAgent } from "./helpers/csrfHelper.js";
+import request from "supertest";
+import { app } from "../server.js";
+import { createClerkTestToken, authHeader } from "./helpers/clerkTestAuth.js";
 import PersonalNote from "../models/personalNoteModel.js";
 import User from "../models/userModel.js";
 import Meeting from "../models/meetingModel.js";
-import jwt from "jsonwebtoken";
 
 describe("PersonalNote API", () => {
   let token;
   let user;
   let meeting;
-  let agent;
-  let csrfToken;
 
   beforeEach(async () => {
-    // Create test user
     user = await User.create({
       name: "Test Note User",
       email: "noteuser@test.com",
       password: "password123",
       role: "member",
     });
+    user.clerkUserId = `user_test_${user._id}`;
+    await user.save();
 
-    token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, {
-      expiresIn: "1h",
+    token = createClerkTestToken({
+      clerkUserId: user.clerkUserId,
+      email: user.email,
     });
 
-    // Create test meeting
     meeting = await Meeting.create({
       title: "Test Note Meeting",
       date: new Date(),
       uploadedBy: user._id,
       participants: [{ name: "Test User" }],
     });
-
-    // Initialize agent with CSRF
-    ({ agent, csrfToken } = await createCsrfAgent());
   });
 
   it("should create a new personal note", async () => {
-    const res = await agent
+    const res = await request(app)
       .post(`/api/personal-notes/${meeting._id}`)
-      .set("Authorization", `Bearer ${token}`)
-      .set("X-CSRF-Token", csrfToken)
+      .set(authHeader(token))
       .send({ content: "This is a private note." });
 
     expect(res.statusCode).toBe(200);
@@ -55,10 +51,9 @@ describe("PersonalNote API", () => {
       content: "Initial content",
     });
 
-    const res = await agent
+    const res = await request(app)
       .post(`/api/personal-notes/${meeting._id}`)
-      .set("Authorization", `Bearer ${token}`)
-      .set("X-CSRF-Token", csrfToken)
+      .set(authHeader(token))
       .send({ content: "Updated content" });
     if (res.statusCode === 404)
       console.log("404 Error Body:", res.body, res.text);
@@ -69,10 +64,9 @@ describe("PersonalNote API", () => {
   });
 
   it("should add an annotation", async () => {
-    const res = await agent
+    const res = await request(app)
       .post(`/api/personal-notes/${meeting._id}/annotations`)
-      .set("Authorization", `Bearer ${token}`)
-      .set("X-CSRF-Token", csrfToken)
+      .set(authHeader(token))
       .send({
         annotationText: "Important highlight",
         sourceField: "transcript",
@@ -89,10 +83,9 @@ describe("PersonalNote API", () => {
   });
 
   it("should pin a note", async () => {
-    const res = await agent
+    const res = await request(app)
       .patch(`/api/personal-notes/${meeting._id}/pin`)
-      .set("Authorization", `Bearer ${token}`)
-      .set("X-CSRF-Token", csrfToken)
+      .set(authHeader(token))
       .send({ isPinned: true });
 
     expect(res.statusCode).toBe(200);
@@ -108,9 +101,9 @@ describe("PersonalNote API", () => {
       isPinned: true,
     });
 
-    const res = await agent
+    const res = await request(app)
       .get(`/api/personal-notes/pinned`)
-      .set("Authorization", `Bearer ${token}`);
+      .set(authHeader(token));
 
     expect(res.statusCode).toBe(200);
     expect(res.body.success).toBe(true);
@@ -128,9 +121,9 @@ describe("PersonalNote API", () => {
     // Wait for text index to build if necessary, though in memory or local test db might be instant
     await new Promise((resolve) => setTimeout(resolve, 500));
 
-    const res = await agent
+    const res = await request(app)
       .get(`/api/personal-notes/search?q=specific`)
-      .set("Authorization", `Bearer ${token}`);
+      .set(authHeader(token));
 
     expect(res.statusCode).toBe(200);
     expect(res.body.success).toBe(true);

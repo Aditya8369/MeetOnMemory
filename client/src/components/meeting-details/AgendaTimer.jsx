@@ -9,6 +9,7 @@ import {
   getItemTiming,
   summarizeAgendaTiming,
 } from "../../utils/agendaTiming";
+import { createClerkSocketOptions } from "../../services/apiClient.js";
 
 const AgendaTimer = ({ meeting }) => {
   const { backendUrl, userData } = useContext(AppContent);
@@ -60,32 +61,39 @@ const AgendaTimer = ({ meeting }) => {
   }, [activeItem, elapsedMs]);
 
   useEffect(() => {
-    socketRef.current = io(backendUrl, {
-      withCredentials: true,
-      transports: ["websocket"],
-    });
+    let cancelled = false;
 
-    socketRef.current.on("connect", () => {
-      socketRef.current.emit("join-meeting", {
-        roomId: meeting._id,
-        userInfo: { name: userData?.name },
+    (async () => {
+      const opts = await createClerkSocketOptions({
+        transports: ["websocket"],
       });
-    });
+      if (cancelled) return;
 
-    socketRef.current.on("agenda_timer_updated", ({ item, action }) => {
-      setAgendaItems((prev) =>
-        prev.map((ai) => {
-          if (ai._id === item._id) return item;
-          // If action is start, other items should be pending if they were active
-          if (action === "start" && ai.status === "active") {
-            return { ...ai, status: "pending" };
-          }
-          return ai;
-        }),
-      );
-    });
+      socketRef.current = io(backendUrl, opts);
+
+      socketRef.current.on("connect", () => {
+        socketRef.current.emit("join-meeting", {
+          roomId: meeting._id,
+          userInfo: { name: userData?.name },
+        });
+      });
+
+      socketRef.current.on("agenda_timer_updated", ({ item, action }) => {
+        setAgendaItems((prev) =>
+          prev.map((ai) => {
+            if (ai._id === item._id) return item;
+            // If action is start, other items should be pending if they were active
+            if (action === "start" && ai.status === "active") {
+              return { ...ai, status: "pending" };
+            }
+            return ai;
+          }),
+        );
+      });
+    })();
 
     return () => {
+      cancelled = true;
       if (socketRef.current) socketRef.current.disconnect();
     };
   }, [backendUrl, meeting._id, userData?.name]);

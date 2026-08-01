@@ -1,6 +1,5 @@
 export { default as apiClient } from "./apiClient";
 export * from "./authApi";
-export * from "./csrfService";
 export * from "./meetingApi";
 export * from "./organizationApi";
 export * from "./userApi";

@@ -97,10 +97,10 @@ Powered by:
 
 ## Authentication & Security
 
-- JWT Authentication
-- Protected Routes
-- Password Hashing (bcrypt)
-- Secure API Access
+- Clerk identity provider (sole login/session provider)
+- MongoDB-backed organizations, memberships, roles, and RBAC
+- Protected routes and permission middleware
+- Secondary JWTs for shared links, Slack OAuth state, and data exports (not user login)
 
 ## Real-Time Communication
 
@@ -158,7 +158,8 @@ AI Summaries     Semantic Search
 - Node.js
 - Express.js
 - Socket.IO
-- JWT Authentication
+- Clerk (`@clerk/express`) for identity
+- MongoDB RBAC for authorization
 - Multer
 - Nodemailer
 - Cookie Parser
@@ -280,9 +281,17 @@ PORT=4000
 
 MONGODB_URI=your_mongodb_uri
 
-JWT_SECRET=your_secret
+# Clerk — sole identity provider (required)
+AUTH_PROVIDER=clerk
+CLERK_SECRET_KEY=sk_test_your_clerk_secret
+
+# Secondary token signing ONLY (shared links, Slack OAuth state, data exports).
+# Not used for user login sessions.
+JWT_SECRET=your_secondary_jwt_secret
 
 NODE_ENV=development
+
+CLIENT_URL=http://localhost:5173
 
 SMTP_USER=your_email
 
@@ -337,11 +346,23 @@ The frontend features automatic backend resolution and works out-of-the-box with
 cd client
 
 npm install
+```
 
+Create `client/.env` (required for Clerk):
+
+```env
+VITE_CLERK_PUBLISHABLE_KEY=pk_test_your_clerk_publishable_key
+# Local development (required protocol: http — not https)
+VITE_BACKEND_URL=http://localhost:4000
+# Production
+# VITE_BACKEND_URL=https://meetonmemory.onrender.com
+```
+
+```bash
 npm run dev
 ```
 
-> **Note**: Creating a `.env` file is completely optional. If no `VITE_BACKEND_URL` variable exists, the frontend automatically falls back to `http://localhost:4000`. You only need to set `VITE_BACKEND_URL` if you want to override the target backend URL.
+> **Note**: `VITE_CLERK_PUBLISHABLE_KEY` is required. Without it, sign-in/sign-up are unavailable. If `VITE_BACKEND_URL` is unset, the frontend falls back to `http://localhost:4000`.
 
 ---
 
@@ -349,27 +370,31 @@ npm run dev
 
 ### Server
 
-| Variable             | Purpose               |
-| -------------------- | --------------------- |
-| PORT                 | Server Port           |
-| MONGODB_URI          | MongoDB Connection    |
-| JWT_SECRET           | Authentication Secret |
-| GEMINI_API_KEY       | Google Gemini         |
-| GEMINI_MODEL         | Gemini Model          |
-| PINECONE_API_KEY     | Pinecone Access       |
-| PINECONE_ENVIRONMENT | Pinecone Environment  |
-| INDEX_NAME           | Pinecone Index        |
-| HUGGINGFACE_API_KEY  | Embeddings            |
-| ASSEMBLYAI_API_KEY   | Speech Processing     |
-| SMTP_USER            | Email Service         |
-| SMTP_PASS            | Email Service         |
-| SENDER_EMAIL         | Sender Email          |
+| Variable             | Purpose                                                        |
+| -------------------- | -------------------------------------------------------------- |
+| PORT                 | Server Port                                                    |
+| MONGODB_URI          | MongoDB Connection                                             |
+| AUTH_PROVIDER        | Must be `clerk` (sole identity provider)                       |
+| CLERK_SECRET_KEY     | Clerk secret key for session verification                      |
+| JWT_SECRET           | Secondary token signing (shared links / Slack state / exports) |
+| CLIENT_URL           | Frontend origin for OAuth redirects                            |
+| GEMINI_API_KEY       | Google Gemini                                                  |
+| GEMINI_MODEL         | Gemini Model                                                   |
+| PINECONE_API_KEY     | Pinecone Access                                                |
+| PINECONE_ENVIRONMENT | Pinecone Environment                                           |
+| INDEX_NAME           | Pinecone Index                                                 |
+| HUGGINGFACE_API_KEY  | Embeddings                                                     |
+| ASSEMBLYAI_API_KEY   | Speech Processing                                              |
+| SMTP_USER            | Email Service                                                  |
+| SMTP_PASS            | Email Service                                                  |
+| SENDER_EMAIL         | Sender Email                                                   |
 
 ### Client
 
-| Variable         | Purpose         |
-| ---------------- | --------------- |
-| VITE_BACKEND_URL | Backend API URL |
+| Variable                   | Purpose                                       |
+| -------------------------- | --------------------------------------------- |
+| VITE_CLERK_PUBLISHABLE_KEY | Clerk publishable key (required for sign-in)  |
+| VITE_BACKEND_URL           | Backend API URL (optional; defaults to :4000) |
 
 ---
 

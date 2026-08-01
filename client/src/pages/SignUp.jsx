@@ -1,6 +1,6 @@
 import React, { useContext, useEffect, useMemo } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
-import { SignIn, useAuth, useClerk } from "@clerk/clerk-react";
+import { SignUp, useAuth, useClerk } from "@clerk/clerk-react";
 import AppContent from "../context/AppContent";
 import AuthPageShell from "../components/AuthPageShell";
 import {
@@ -31,7 +31,7 @@ const BootstrapPending = ({ title }) => (
   </AuthPageShell>
 );
 
-const LoginInner = () => {
+const SignUpInner = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const { isLoggedin, userData, loading, initializeAuth, setLoading } =
@@ -50,19 +50,16 @@ const LoginInner = () => {
     }
   }, [loading, isLoggedin, userData, navigate, location]);
 
-  // Never mount <SignIn /> while Clerk is still loading or Mongo bootstrap runs —
-  // Clerk auto-redirects signed-in users to fallbackRedirectUrl and that fights
-  // ProtectedRoute's Navigate to /login.
   if (!clerkLoaded || loading) {
-    return <BootstrapPending title="Sign in to MeetOnMemory" />;
+    return <BootstrapPending title="Create your MeetOnMemory account" />;
   }
 
   if (isSignedIn && !isLoggedin) {
     return (
-      <AuthPageShell title="Sign in to MeetOnMemory">
+      <AuthPageShell title="Create your MeetOnMemory account">
         <div className="text-center space-y-4 py-6">
           <h1 className="text-xl font-semibold text-white">
-            Couldn&apos;t finish sign-in
+            Couldn&apos;t finish sign-up
           </h1>
           <p className="text-slate-400 text-sm leading-relaxed">
             Your Clerk session is active, but MeetOnMemory could not load your
@@ -89,7 +86,7 @@ const LoginInner = () => {
             <button
               type="button"
               className="px-4 py-2 rounded-lg border border-slate-600 text-slate-200 text-sm font-medium hover:bg-slate-800"
-              onClick={() => signOut({ redirectUrl: "/login" })}
+              onClick={() => signOut({ redirectUrl: "/signup" })}
             >
               Sign out
             </button>
@@ -100,11 +97,11 @@ const LoginInner = () => {
   }
 
   return (
-    <AuthPageShell title="Sign in to MeetOnMemory">
-      <SignIn
+    <AuthPageShell title="Create your MeetOnMemory account">
+      <SignUp
         routing="path"
-        path="/login"
-        signUpUrl="/signup"
+        path="/signup"
+        signInUrl="/login"
         fallbackRedirectUrl={fallbackRedirectUrl}
         appearance={meetOnMemoryClerkAppearance}
         initialValues={meetOnMemoryClerkInitialValues}
@@ -113,10 +110,10 @@ const LoginInner = () => {
   );
 };
 
-const Login = () => {
+const SignUpPage = () => {
   if (!clerkPubKey || clerkPubKey.trim().length === 0) {
     return (
-      <AuthPageShell title="Sign in unavailable">
+      <AuthPageShell title="Sign up unavailable">
         <div className="text-center space-y-3">
           <h1 className="text-2xl font-bold text-white tracking-tight">
             Authentication unavailable
@@ -131,7 +128,7 @@ const Login = () => {
     );
   }
 
-  return <LoginInner />;
+  return <SignUpInner />;
 };
 
-export default Login;
+export default SignUpPage;

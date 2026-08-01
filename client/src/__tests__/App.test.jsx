@@ -27,6 +27,26 @@ vi.mock("react-toastify", () => ({
   ToastContainer: () => <div data-testid="toast-container" />,
 }));
 
+vi.mock("@clerk/clerk-react", () => ({
+  ClerkProvider: ({ children }) => <>{children}</>,
+  SignIn: () => <div data-testid="clerk-sign-in" />,
+  SignUp: () => <div data-testid="clerk-sign-up" />,
+  UserButton: () => <div data-testid="clerk-user-button" />,
+  useAuth: () => ({
+    isSignedIn: false,
+    isLoaded: true,
+    getToken: vi.fn(),
+  }),
+  useUser: () => ({
+    user: null,
+    isLoaded: true,
+  }),
+  useClerk: () => ({
+    signOut: vi.fn(),
+    openUserProfile: vi.fn(),
+  }),
+}));
+
 // Mock components to simplify rendering
 vi.mock("../components/ProtectedRoute.jsx", () => ({
   default: ({ children }) => (
@@ -56,6 +76,9 @@ vi.mock("../pages/NotFound.jsx", () => ({
 }));
 vi.mock("../pages/Login.jsx", () => ({
   default: () => <div data-testid="login-page" />,
+}));
+vi.mock("../pages/SignUp.jsx", () => ({
+  default: () => <div data-testid="signup-page" />,
 }));
 vi.mock("../pages/Dashboard.jsx", () => ({
   default: () => <div data-testid="dashboard-page" />,
@@ -90,6 +113,18 @@ describe("App Routing", () => {
     // Check conditional layouts
     expect(screen.queryByTestId("footer")).not.toBeInTheDocument();
     expect(screen.queryByTestId("scroll-navigator")).not.toBeInTheDocument();
+  });
+
+  it("renders SignUp and hides Footer on /signup", () => {
+    render(
+      <MemoryRouter initialEntries={["/signup"]}>
+        <AppContent.Provider value={{ isLoggedin: false }}>
+          <App />
+        </AppContent.Provider>
+      </MemoryRouter>,
+    );
+    expect(screen.getByTestId("signup-page")).toBeInTheDocument();
+    expect(screen.queryByTestId("footer")).not.toBeInTheDocument();
   });
 
   it("renders Dashboard inside ProtectedRoute (ProtectedRoute)", () => {

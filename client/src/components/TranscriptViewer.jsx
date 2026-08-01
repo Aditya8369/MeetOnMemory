@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { Search, Clock, User } from "lucide-react";
-import axios from "axios";
+import apiClient from "../services/apiClient";
 
 const TranscriptViewer = ({ meetingId }) => {
   const [transcript, setTranscript] = useState(null);
@@ -12,7 +12,7 @@ const TranscriptViewer = ({ meetingId }) => {
     const fetchTranscript = async () => {
       try {
         setLoading(true);
-        const { data } = await axios.get(
+        const { data } = await apiClient.get(
           `/api/meetings/${meetingId}/transcript`,
           { withCredentials: true },
         );

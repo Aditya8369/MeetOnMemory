@@ -8,18 +8,14 @@
 
 import { describe, it, expect, beforeEach, vi } from "vitest";
 
-vi.mock("../csrfService.js", () => ({
-  getCsrfToken: () => "test-csrf-token",
-  refreshCsrfToken: vi.fn().mockResolvedValue("test-csrf-token"),
-}));
-
 vi.mock("../../config/backendConfig.js", () => ({
   getBackendUrl: () => "http://localhost:4000",
 }));
 
 const apiClientModule = await import("../apiClient.js");
 const apiClient = apiClientModule.default;
-const { DEFAULT_TIMEOUT_MS, requestDeduplicator } = apiClientModule;
+const { DEFAULT_TIMEOUT_MS, requestDeduplicator, setClerkTokenGetter } =
+  apiClientModule;
 
 /**
  * Installs a fake adapter driven by a queue of outcomes, and records every
@@ -65,6 +61,7 @@ const useAdapter = (outcomes) => {
 
 beforeEach(() => {
   requestDeduplicator.clear();
+  setClerkTokenGetter(null);
   vi.useRealTimers();
 });
 
@@ -192,13 +189,11 @@ describe("error messages", () => {
     expect(error.message).toBe("Server unavailable. Please try again later.");
   });
 
-  it("preserves the existing 403 message", async () => {
+  it("prefers the backend's own 403 message", async () => {
     useAdapter([{ status: 403, data: { message: "nope" } }]);
 
     const error = await apiClient.get("/x").catch((e) => e);
-    expect(error.message).toBe(
-      "You do not have permission to perform this action.",
-    );
+    expect(error.message).toBe("nope");
   });
 });
 
@@ -258,12 +253,14 @@ describe("request de-duplication", () => {
 });
 
 describe("existing behaviour is preserved", () => {
-  it("still attaches the CSRF header", async () => {
+  it("attaches the Clerk Bearer token when a getter is registered", async () => {
+    setClerkTokenGetter(async () => "clerk_test_token");
     const { calls } = useAdapter([{ status: 200 }]);
 
     await apiClient.get("/meetings");
 
-    expect(calls[0].headers["X-CSRF-Token"]).toBe("test-csrf-token");
+    expect(calls[0].headers.Authorization).toBe("Bearer clerk_test_token");
+    expect(calls[0].headers["X-CSRF-Token"]).toBeUndefined();
   });
 
   it("still sends credentials", async () => {
@@ -273,17 +270,18 @@ describe("existing behaviour is preserved", () => {
     expect(calls[0].withCredentials).toBe(true);
   });
 
-  it("still refreshes CSRF once and replays the request", async () => {
+  it("does not retry CSRF-style 403 responses (CSRF retired)", async () => {
     const { calls } = useAdapter([
       { status: 403, data: { message: "CSRF token validation failed." } },
       { status: 200 },
     ]);
 
-    await apiClient.post("/meetings", {});
+    await expect(apiClient.post("/meetings", {})).rejects.toMatchObject({
+      message: "CSRF token validation failed.",
+    });
 
-    // A 403 is not in the retry set, so this replay can only be coming from the
-    // pre-existing CSRF path — which must keep working unchanged.
-    expect(calls).toHaveLength(2);
+    // 403 is not in the retry set and CSRF refresh is gone — one attempt only.
+    expect(calls).toHaveLength(1);
   });
 
   it("still guards against a null rejection payload", async () => {
