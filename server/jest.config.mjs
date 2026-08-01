@@ -26,5 +26,10 @@ export default {
     "clerkRbacIntegration.test.js",
     "decisionGraphOptimized.test.js",
     "sessionAiPermission.test.js",
+    "MeetingService.test.js",
+    "attendanceAnalyticsOptimized.test.js",
+    "calendarSyncOrganization.test.js",
+    "pollExpirationBatch.test.js",
+    "realtimeClerkAuthPhase4.test.js",
   ],
 };

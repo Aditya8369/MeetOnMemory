@@ -22,6 +22,7 @@ import UploadMeeting from "../pages/UploadMeeting.jsx";
 import Policies from "../pages/Policies.jsx";
 import Summaries from "../pages/Summaries.jsx";
 import Reports from "../pages/Reports.jsx";
+import ReportBuilder from "../pages/ReportBuilder.jsx";
 import AiSearch from "../pages/AiSearch.jsx";
 import AiAssistant from "../pages/AiAssistant.jsx";
 import MeetingDetails from "../pages/MeetingDetails.jsx";
@@ -253,6 +254,14 @@ const ProtectedRoutes = (
       element={
         <ProtectedRoute resource="reports" action="view">
           <Reports />
+        </ProtectedRoute>
+      }
+    />
+    <Route
+      path="/reports/builder/:templateId?"
+      element={
+        <ProtectedRoute resource="reports" action="view">
+          <ReportBuilder />
         </ProtectedRoute>
       }
     />

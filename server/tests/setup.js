@@ -44,8 +44,8 @@ process.env.CLERK_SECRET_KEY =
   process.env.CLERK_SECRET_KEY || "test_clerk_secret";
 
 // Force Redis disabled for tests to prevent ioredis from hanging while retrying connections
-delete process.env.REDIS_URI;
-delete process.env.REDIS_URL;
+process.env.REDIS_URI = "";
+process.env.REDIS_URL = "";
 
 // ─── Teardown ──────────────────────────────────────────────────────────────
 afterAll(async () => {
