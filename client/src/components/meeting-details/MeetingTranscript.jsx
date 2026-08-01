@@ -44,7 +44,7 @@ const MeetingTranscript = ({ meeting }) => {
   const handleCopy = async () => {
     try {
       await navigator.clipboard.writeText(transcript);
-      alert("Transcript copied to clipboard!");
+      toast.success("Transcript copied to clipboard!");
     } catch (err) {
       console.error("Failed to copy:", err);
     }
