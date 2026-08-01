@@ -2,9 +2,9 @@ import React, { useState, useRef, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import AppContent from "../../context/AppContent.js";
 import useExport from "../../hooks/useExport.js";
-import { Mic, MicOff, Loader2 } from "lucide-react";
+import { Copy, Mic, MicOff, Loader2 } from "lucide-react";
 import { toast } from "react-toastify";
-import apiClient from "../../services/apiClient";
+import axios from "axios";
 
 const MeetingActions = ({ meeting, onDelete, onRename }) => {
   const navigate = useNavigate();
@@ -12,6 +12,7 @@ const MeetingActions = ({ meeting, onDelete, onRename }) => {
   const [showRenameModal, setShowRenameModal] = useState(false);
   const [newTitle, setNewTitle] = useState("");
   const [showExportMenu, setShowExportMenu] = useState(false);
+  const [isDuplicating, setIsDuplicating] = useState(false);
   const { exportMeeting, isExporting } = useExport();
 
   // Recording state
@@ -43,6 +44,13 @@ const MeetingActions = ({ meeting, onDelete, onRename }) => {
     exportMeeting(meeting, format);
   };
 
+  const handleDuplicate = () => {
+    if (isDuplicating) return;
+    setIsDuplicating(true);
+    toast.info("Preparing a reusable meeting draft...");
+    navigate(`/create-meeting?duplicateFrom=${meeting._id}`);
+  };
+
   const handleRename = () => {
     setNewTitle(meeting.title || "");
     setShowRenameModal(true);
@@ -57,27 +65,6 @@ const MeetingActions = ({ meeting, onDelete, onRename }) => {
 
   const handleDelete = () => {
     setShowDeleteModal(true);
-  };
-
-  // Accessibility & Escape key handler (#838)
-  useEffect(() => {
-    const handleKeyDown = (e) => {
-      if (e.key === "Escape") {
-        if (showDeleteModal) setShowDeleteModal(false);
-        if (showRenameModal) setShowRenameModal(false);
-      }
-    };
-
-    if (showDeleteModal || showRenameModal) {
-      window.addEventListener("keydown", handleKeyDown);
-    }
-    return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [showDeleteModal, showRenameModal]);
-
-  const handleBackdropClick = (e, closeModal) => {
-    if (e.target === e.currentTarget) {
-      closeModal();
-    }
   };
 
   const confirmDelete = () => {
@@ -95,7 +82,7 @@ const MeetingActions = ({ meeting, onDelete, onRename }) => {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
 
       // Start recording session on server
-      const { data } = await apiClient.post(
+      const { data } = await axios.post(
         `/api/meetings/${meeting._id}/recording/start`,
         {},
         { withCredentials: true },
@@ -126,7 +113,7 @@ const MeetingActions = ({ meeting, onDelete, onRename }) => {
           formData.append("audio", blob, "audio.webm");
 
           try {
-            await apiClient.post(
+            await axios.post(
               `/api/meetings/${meeting._id}/transcript/upload`,
               formData,
               { withCredentials: true },
@@ -164,7 +151,7 @@ const MeetingActions = ({ meeting, onDelete, onRename }) => {
       formData.append("audio", blob, "audio.webm");
 
       try {
-        await apiClient.post(
+        await axios.post(
           `/api/meetings/${meeting._id}/transcript/upload`,
           formData,
           { withCredentials: true },
@@ -176,7 +163,7 @@ const MeetingActions = ({ meeting, onDelete, onRename }) => {
 
     // Stop recording on server
     try {
-      const { data } = await apiClient.post(
+      const { data } = await axios.post(
         `/api/meetings/${meeting._id}/recording/stop`,
         {},
         { withCredentials: true },
@@ -193,7 +180,7 @@ const MeetingActions = ({ meeting, onDelete, onRename }) => {
       // Poll for transcript completion
       const pollInterval = setInterval(async () => {
         try {
-          const { data: transcriptData } = await apiClient.get(
+          const { data: transcriptData } = await axios.get(
             `/api/meetings/${meeting._id}/transcript`,
             { withCredentials: true },
           );
@@ -389,6 +376,19 @@ const MeetingActions = ({ meeting, onDelete, onRename }) => {
           </div>
 
           <button
+            onClick={handleDuplicate}
+            disabled={isDuplicating}
+            className="flex items-center justify-center gap-2 px-4 py-2 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 rounded-lg transition-colors text-sm font-medium disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            {isDuplicating ? (
+              <Loader2 className="w-4 h-4 animate-spin" />
+            ) : (
+              <Copy className="w-4 h-4" />
+            )}
+            {isDuplicating ? "Preparing..." : "Duplicate Meeting"}
+          </button>
+
+          <button
             onClick={handleRename}
             className="flex items-center justify-center gap-2 px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition-colors text-sm font-medium"
           >
@@ -452,38 +452,25 @@ const MeetingActions = ({ meeting, onDelete, onRename }) => {
 
       {/* Delete Confirmation Modal */}
       {showDeleteModal && (
-        <div
-          onClick={(e) =>
-            handleBackdropClick(e, () => setShowDeleteModal(false))
-          }
-          className="fixed inset-0 bg-black/60 backdrop-blur-xs flex items-center justify-center z-50 p-4"
-        >
-          <div
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="delete-modal-title"
-            className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 max-w-md w-full shadow-2xl space-y-4"
-          >
-            <h3
-              id="delete-modal-title"
-              className="text-lg font-bold text-slate-900 dark:text-white"
-            >
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
+            <h3 className="text-lg font-semibold text-gray-900 mb-2">
               Delete Meeting
             </h3>
-            <p className="text-sm text-slate-600 dark:text-slate-300">
+            <p className="text-gray-600 mb-6">
               Are you sure you want to delete this meeting? This action cannot
               be undone.
             </p>
-            <div className="flex gap-3 justify-end pt-2">
+            <div className="flex gap-3 justify-end">
               <button
                 onClick={() => setShowDeleteModal(false)}
-                className="px-4 py-2 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 rounded-xl transition-colors text-xs font-semibold cursor-pointer"
+                className="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition-colors text-sm font-medium"
               >
                 Cancel
               </button>
               <button
                 onClick={confirmDelete}
-                className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-xl transition-colors text-xs font-semibold cursor-pointer shadow-xs"
+                className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg transition-colors text-sm font-medium"
               >
                 Delete
               </button>
@@ -494,47 +481,29 @@ const MeetingActions = ({ meeting, onDelete, onRename }) => {
 
       {/* Rename Modal */}
       {showRenameModal && (
-        <div
-          onClick={(e) =>
-            handleBackdropClick(e, () => setShowRenameModal(false))
-          }
-          className="fixed inset-0 bg-black/60 backdrop-blur-xs flex items-center justify-center z-50 p-4"
-        >
-          <div
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="rename-modal-title"
-            className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 max-w-md w-full shadow-2xl space-y-4"
-          >
-            <h3
-              id="rename-modal-title"
-              className="text-lg font-bold text-slate-900 dark:text-white"
-            >
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
+            <h3 className="text-lg font-semibold text-gray-900 mb-2">
               Rename Meeting
             </h3>
             <input
               type="text"
               value={newTitle}
               onChange={(e) => setNewTitle(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter") {
-                  confirmRename();
-                }
-              }}
-              className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white text-xs focus:ring-2 focus:ring-blue-500 focus:outline-none"
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 mb-4"
               placeholder="Enter new title"
               autoFocus
             />
-            <div className="flex gap-3 justify-end pt-2">
+            <div className="flex gap-3 justify-end">
               <button
                 onClick={() => setShowRenameModal(false)}
-                className="px-4 py-2 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 rounded-xl transition-colors text-xs font-semibold cursor-pointer"
+                className="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition-colors text-sm font-medium"
               >
                 Cancel
               </button>
               <button
                 onClick={confirmRename}
-                className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl transition-colors text-xs font-semibold cursor-pointer shadow-xs"
+                className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors text-sm font-medium"
               >
                 Save
               </button>

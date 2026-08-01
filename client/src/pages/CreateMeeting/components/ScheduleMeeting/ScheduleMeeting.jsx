@@ -5,7 +5,7 @@ import AgendaSection from "./AgendaSection";
 import AttachmentSection from "./AttachmentSection";
 import CalendarNotice from "./CalendarNotice";
 
-const ScheduleMeeting = ({ hookProps }) => {
+const ScheduleMeeting = ({ hookProps, loadingDuplicate = false }) => {
   const {
     scheduleData,
     setScheduleData,
@@ -28,8 +28,6 @@ const ScheduleMeeting = ({ hookProps }) => {
     handleAttachmentUpload,
     removeAttachment,
     handleScheduleSubmit,
-    isFollowUpDraft,
-    sourceActionItemIds,
   } = hookProps;
 
   return (
@@ -45,15 +43,12 @@ const ScheduleMeeting = ({ hookProps }) => {
         </div>
       </div>
 
-      {isFollowUpDraft && (
-        <div className="mb-6 rounded-xl border border-indigo-200 bg-indigo-50 px-4 py-3 text-sm text-indigo-900">
-          <p className="font-semibold mb-1">Follow-up meeting draft</p>
-          <p>
-            Title and agenda were pre-filled from{" "}
-            {sourceActionItemIds?.length || agendaItems.length} selected action
-            item(s). Review the agenda preview below, adjust as needed, then
-            schedule.
-          </p>
+      {loadingDuplicate && (
+        <div
+          className="mb-6 rounded-lg border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-800"
+          role="status"
+        >
+          Loading reusable meeting details...
         </div>
       )}
 
@@ -94,27 +89,6 @@ const ScheduleMeeting = ({ hookProps }) => {
           </div>
         )}
 
-        {isFollowUpDraft && agendaItems.length > 0 && (
-          <div className="mb-4 rounded-lg border border-slate-200 bg-slate-50 px-4 py-3">
-            <p className="text-sm font-semibold text-slate-800 mb-2">
-              Agenda preview ({agendaItems.length} items)
-            </p>
-            <ol className="list-decimal list-inside space-y-1 text-sm text-slate-700">
-              {agendaItems.map((item) => (
-                <li key={item.id || item.text}>
-                  <span className="font-medium">{item.text}</span>
-                  {item.description ? (
-                    <span className="text-slate-500">
-                      {" "}
-                      — {item.description}
-                    </span>
-                  ) : null}
-                </li>
-              ))}
-            </ol>
-          </div>
-        )}
-
         <AgendaSection
           agendaItems={agendaItems}
           newAgenda={newAgenda}
@@ -134,7 +108,7 @@ const ScheduleMeeting = ({ hookProps }) => {
         {/* Submit */}
         <button
           type="submit"
-          disabled={loading}
+          disabled={loading || loadingDuplicate}
           className="w-full px-6 py-3 bg-blue-600 text-white rounded-lg font-semibold hover:bg-blue-700 transition flex items-center justify-center gap-2 disabled:opacity-50"
         >
           {loading ? (

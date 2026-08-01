@@ -17,12 +17,9 @@ import path from "path";
 import { z } from "zod";
 import Meeting from "../models/meetingModel.js"; // eslint-disable-line no-unused-vars
 import * as MeetingService from "../services/MeetingService.js";
-import * as MeetingInviteService from "../services/MeetingInviteService.js";
 import { ValidationError, UnauthorizedError } from "../utils/errors.js";
 import AuditService from "../services/AuditService.js";
 import { sendSuccess } from "../utils/responseHandler.js";
-import * as activityService from "../services/activityService.js";
-import MeetingDigestService from "../services/MeetingDigestService.js";
 
 const pushMeetingToIntegrations = (...args) =>
   import("../services/calendarSyncService.js").then((mod) =>
@@ -56,14 +53,6 @@ const uploadMeetingSchema = z.object({
   meetingType: z
     .enum(["conference", "policy", "event", "internal", "external", "board"])
     .optional(),
-  tags: z
-    .union([z.string(), z.array(z.string())])
-    .optional()
-    .transform((val) => {
-      if (!val) return [];
-      if (Array.isArray(val)) return val;
-      return [val];
-    }),
 });
 
 const summarizeMeetingSchema = z.object({
@@ -85,7 +74,6 @@ const updateMeetingSchema = z.object({
   location: z.string().optional(),
   venue: z.string().optional(),
   tags: z.array(z.string()).optional(),
-  summary: z.string().optional(),
 });
 
 const searchMeetingSchema = z.object({
@@ -120,13 +108,6 @@ const getAllMeetingsQuerySchema = z.object({
     }),
   search: z.string().optional(),
   meetingType: z.string().optional(),
-  sortBy: z
-    .enum(["createdAt", "title", "date"])
-    .optional()
-    .default("createdAt"),
-  sortOrder: z.enum(["asc", "desc"]).optional().default("desc"),
-  startDate: z.string().optional(),
-  endDate: z.string().optional(),
   includeArchived: z
     .string()
     .optional()
@@ -178,19 +159,6 @@ export const createMeeting = async (req, res, next) => {
 
     if (req.body.syncToCalendar) {
       pushMeetingToIntegrations(uploaderId, meeting).catch(console.error);
-    }
-
-    if (req.user?.organization) {
-      const io = req.app.get("io");
-      activityService.logActivity(
-        io,
-        req.user.organization,
-        uploaderId,
-        "meeting.created",
-        "Meeting",
-        meeting._id,
-        meeting.title,
-      );
     }
 
     return sendSuccess(
@@ -248,19 +216,6 @@ export const uploadMeeting = async (req, res, next) => {
         req.file,
         validated,
       );
-
-    if (req.user?.organization) {
-      const io = req.app.get("io");
-      activityService.logActivity(
-        io,
-        req.user.organization,
-        uploaderId,
-        "meeting.uploaded",
-        "Meeting",
-        meeting._id,
-        meeting.title,
-      );
-    }
 
     return sendSuccess(
       res,
@@ -343,13 +298,6 @@ export const summarizeMeeting = async (req, res, next) => {
       );
     }
 
-    // Fire and forget email digest
-    if (result.meetingId) {
-      MeetingDigestService.sendMeetingDigest(result.meetingId).catch((err) => {
-        console.error("Failed to send meeting digest automatically:", err);
-      });
-    }
-
     return sendSuccess(
       res,
       {
@@ -410,17 +358,6 @@ export const deleteMeeting = async (req, res, next) => {
         organizationId: req.doc.organization,
         details: { title: req.doc.title },
       });
-
-      const io = req.app.get("io");
-      activityService.logActivity(
-        io,
-        req.doc.organization,
-        getUserId(req),
-        "meeting.deleted",
-        "Meeting",
-        req.doc._id,
-        req.doc.title,
-      );
     }
 
     return sendSuccess(res, null, "Meeting deleted successfully");
@@ -433,15 +370,24 @@ export const deleteMeeting = async (req, res, next) => {
    7. GET MEETING BY ID
    Used by: MeetingDetails.jsx
    ───────────────────────────────────────────────────────────── */
+export const getMeetingDuplicateData = async (req, res, next) => {
+  try {
+    getUserId(req);
+    const duplicateData = MeetingService.buildDuplicateMeetingData(req.doc);
+    return sendSuccess(
+      res,
+      { duplicateData },
+      "Meeting duplication data loaded successfully",
+    );
+  } catch (err) {
+    next(err);
+  }
+};
+
 export const getMeetingById = async (req, res, next) => {
   try {
-    const userId = getUserId(req);
-    const orgId = req.user?.organization || null;
-    const meeting = await MeetingService.getMeetingById(
-      req.params.id,
-      userId,
-      orgId,
-    );
+    getUserId(req); // ensure authenticated
+    const meeting = await MeetingService.getMeetingById(req.params.id);
     return sendSuccess(res, { meeting });
   } catch (err) {
     next(err);
@@ -470,19 +416,6 @@ export const updateMeeting = async (req, res, next) => {
       req.doc || null, // from requireOwner middleware
     );
 
-    if (req.user?.organization) {
-      const io = req.app.get("io");
-      activityService.logActivity(
-        io,
-        req.user.organization,
-        userId,
-        "meeting.updated",
-        "Meeting",
-        meeting._id,
-        meeting.title,
-      );
-    }
-
     return sendSuccess(
       res,
       {
@@ -492,7 +425,6 @@ export const updateMeeting = async (req, res, next) => {
           description: meeting.description,
           meetingType: meeting.meetingType,
           date: meeting.date,
-          summary: meeting.summary,
         },
       },
       "Meeting updated successfully",
@@ -586,66 +518,6 @@ export const notifyLiveMeeting = async (req, res, next) => {
     );
 
     return sendSuccess(res, { count }, "Participants notified");
-  } catch (err) {
-    next(err);
-  }
-};
-
-/* ─────────────────────────────────────────────────────────────
-   Meeting invite links (Issue #920)
-   ───────────────────────────────────────────────────────────── */
-
-export const getMeetingInvite = async (req, res, next) => {
-  try {
-    if (!req.user?._id) throw new UnauthorizedError("Login required");
-    const invite = await MeetingInviteService.getOrCreateInvite(
-      req.params.id,
-      req.user,
-    );
-    return sendSuccess(res, { invite }, "Meeting invite ready.");
-  } catch (err) {
-    next(err);
-  }
-};
-
-export const regenerateMeetingInvite = async (req, res, next) => {
-  try {
-    if (!req.user?._id) throw new UnauthorizedError("Login required");
-    const invite = await MeetingInviteService.regenerateInvite(
-      req.params.id,
-      req.user,
-    );
-    return sendSuccess(res, { invite }, "Meeting invite regenerated.");
-  } catch (err) {
-    next(err);
-  }
-};
-
-export const updateMeetingInvite = async (req, res, next) => {
-  try {
-    if (!req.user?._id) throw new UnauthorizedError("Login required");
-    const invite = await MeetingInviteService.updateInvite(
-      req.params.id,
-      req.user,
-      {
-        enabled: req.body?.enabled,
-        expiresAt: req.body?.expiresAt,
-      },
-    );
-    return sendSuccess(res, { invite }, "Meeting invite updated.");
-  } catch (err) {
-    next(err);
-  }
-};
-
-export const resolveMeetingInvite = async (req, res, next) => {
-  try {
-    if (!req.user?._id) throw new UnauthorizedError("Login required");
-    const result = await MeetingInviteService.resolveInvite(
-      req.params.code,
-      req.user,
-    );
-    return sendSuccess(res, result, "Meeting invite validated.");
   } catch (err) {
     next(err);
   }
