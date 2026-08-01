@@ -262,5 +262,6 @@ export const useScheduleMeeting = () => {
     handleAttachmentUpload,
     removeAttachment,
     handleScheduleSubmit,
+    setAgendaItems,
   };
 };

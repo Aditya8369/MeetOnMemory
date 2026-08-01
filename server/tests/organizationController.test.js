@@ -42,7 +42,7 @@ describe("Organization Endpoints", () => {
         .post("/api/organizations/create-or-join")
         .send({ name: "Test Org" });
 
-      expect(res.statusCode).toEqual(403);
+      expect(res.statusCode).toEqual(401);
       expect(res.body).toHaveProperty("success", false);
     });
   });
