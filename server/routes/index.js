@@ -37,6 +37,7 @@ import followUpThreadRoutes from "./followUpThreadRoutes.js";
 import recapScheduleRoutes from "./recapScheduleRoutes.js";
 import meetingClipRoutes from "./meetingClipRoutes.js";
 import speakerMappingRoutes from "./speakerMappingRoutes.js";
+import noteVersionRoutes from "./noteVersionRoutes.js";
 
 const router = express.Router();
 
@@ -81,5 +82,6 @@ router.use("/api/follow-up-threads", followUpThreadRoutes);
 router.use("/api/recap-schedule", recapScheduleRoutes);
 router.use("/api/clips", meetingClipRoutes);
 router.use("/api/speaker-mappings", speakerMappingRoutes);
+router.use("/api/note-versions", noteVersionRoutes);
 
 export default router;

@@ -21,9 +21,9 @@ import {
   ForbiddenError,
 } from "../utils/errors.js";
 
-// Imported specific services and utils
 import { validatePath } from "../utils/fileUtils.js";
 import * as MeetingStorageService from "./MeetingStorageService.js";
+import { snapshotNoteVersion } from "../controllers/noteVersionController.js";
 
 // AI / calendar / queue / transcription stacks are loaded on demand. Static
 // imports pull @xenova/transformers, axios diamonds, and related graphs into
@@ -418,6 +418,20 @@ export const generateMeetingMoM = async (
 
   console.log("✅ MoM saved to database");
 
+  if (meetingToUpdate && meetingToUpdate._id) {
+    try {
+      await snapshotNoteVersion(
+        meetingToUpdate._id,
+        "summary",
+        momText,
+        "ai_processing",
+        userId,
+      );
+    } catch (err) {
+      console.error("⚠️ Failed to snapshot AI summary:", err.message);
+    }
+  }
+
   try {
     if (!meetingId)
       eventBus.emit("meeting.created", {
@@ -574,6 +588,7 @@ export const updateMeeting = async (userId, meetingId, data, doc = null) => {
     location,
     venue,
     tags,
+    summary,
   } = data;
 
   if (title) meeting.title = title.trim();
@@ -585,8 +600,25 @@ export const updateMeeting = async (userId, meetingId, data, doc = null) => {
   if (location !== undefined) meeting.location = location;
   if (venue !== undefined) meeting.venue = venue;
   if (tags) meeting.tags = tags;
+  if (summary !== undefined) {
+    meeting.summary = summary;
+  }
 
   await meeting.save();
+
+  if (summary !== undefined) {
+    try {
+      await snapshotNoteVersion(
+        meeting._id,
+        "summary",
+        summary,
+        "user_edit",
+        userId,
+      );
+    } catch (err) {
+      console.error("⚠️ Failed to snapshot edited summary:", err.message);
+    }
+  }
 
   try {
     eventBus.emit("meeting.updated", meeting);

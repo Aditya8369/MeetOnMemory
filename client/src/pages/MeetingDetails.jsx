@@ -21,12 +21,14 @@ import AttachmentPanel from "../components/meeting-details/AttachmentPanel";
 import ReactionSummaryCard from "../components/meeting-details/ReactionSummaryCard";
 import SeriesNavigation from "../components/meeting-details/SeriesNavigation";
 import CompareButton from "../components/meeting-details/CompareButton";
+import HealthScoreCard from "../components/meeting-details/HealthScoreCard";
 import AgendaTimer from "../components/meeting-details/AgendaTimer";
 import AgendaPacingReport from "../components/meeting-details/AgendaPacingReport";
 import FeedbackForm from "../components/meeting-details/FeedbackForm";
 import FollowUpThreads from "../components/meeting-details/FollowUpThreads";
 import ClipManager from "../components/meeting-details/ClipManager";
 import SpeakerAttribution from "../components/meeting-details/SpeakerAttribution";
+import NoteVersionHistory from "../components/NoteVersionHistory";
 
 const MeetingDetails = () => {
   const { id } = useParams();
@@ -37,6 +39,7 @@ const MeetingDetails = () => {
   const [shareModalOpen, setShareModalOpen] = useState(false);
   const [inviteModalOpen, setInviteModalOpen] = useState(false);
   const [isPresentModeOpen, setIsPresentModeOpen] = useState(false);
+  const [historyField, setHistoryField] = useState(null); // 'summary' or 'collaborativeNotes'
 
   useEffect(() => {
     const fetchMeetingDetails = async () => {
@@ -190,13 +193,60 @@ const MeetingDetails = () => {
           <AgendaPacingReport meetingId={meeting._id} />
         )}
 
-        <MeetingSummary meeting={meeting} />
+        <div className="relative">
+          <div className="absolute top-4 right-4 z-10">
+            <button
+              onClick={() => setHistoryField("summary")}
+              className="text-xs px-2 py-1 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded border border-gray-300 transition flex items-center gap-1"
+            >
+              <svg
+                className="w-3.5 h-3.5"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
+                />
+              </svg>
+              History
+            </button>
+          </div>
+          <MeetingSummary meeting={meeting} />
+        </div>
+
         {meeting.status === "completed" && (
           <HealthScoreCard meetingId={meeting._id} />
         )}
         <ReactionSummaryCard meetingId={meeting._id} />
         <PersonalNotes meeting={meeting} />
-        <MeetingCollaborativeNotes meeting={meeting} />
+        <div className="relative">
+          <div className="absolute top-4 right-4 z-10">
+            <button
+              onClick={() => setHistoryField("collaborativeNotes")}
+              className="text-xs px-2 py-1 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded border border-gray-300 transition flex items-center gap-1"
+            >
+              <svg
+                className="w-3.5 h-3.5"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
+                />
+              </svg>
+              History
+            </button>
+          </div>
+          <MeetingCollaborativeNotes meeting={meeting} />
+        </div>
         <MeetingTranscript meeting={meeting} />
         <SpeakerAttribution
           meetingId={meeting._id}
@@ -242,6 +292,17 @@ const MeetingDetails = () => {
         <PresentMode
           meeting={meeting}
           onClose={() => setIsPresentModeOpen(false)}
+        />
+      )}
+
+      {historyField && (
+        <NoteVersionHistory
+          meetingId={meeting._id}
+          field={historyField}
+          onClose={() => setHistoryField(null)}
+          onRestored={(updatedMeeting) => {
+            setMeeting(updatedMeeting);
+          }}
         />
       )}
     </div>
