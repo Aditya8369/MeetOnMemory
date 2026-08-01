@@ -68,11 +68,12 @@ export function configureExpress(app) {
   app.use(express.json({ limit: BODY_LIMIT }));
   app.use(express.urlencoded({ extended: true, limit: BODY_LIMIT }));
 
+  // Cookies used for shared-link access tokens (not user sessions).
+  // Must run before public shared routes so passcode JWT cookies are readable.
+  app.use(cookieParser());
+
   app.use("/api/webhooks", webhookRoutes);
   app.use("/api/public/shared", publicSharedRoutes);
-
-  // Cookies still used for shared-link access tokens (not user sessions)
-  app.use(cookieParser());
 
   // Health endpoints — registered BEFORE the global rate limiter so keep-alive
   // pings (e.g. from the GitHub Actions cron job) and orchestrator probes are
