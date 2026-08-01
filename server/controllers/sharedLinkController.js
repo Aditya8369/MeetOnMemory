@@ -25,7 +25,35 @@ export const createLink = async (req, res) => {
         .json({ success: false, message: "Invalid resource type" });
     }
 
-    // Optionally check if user has access to this resource, assuming they do because of auth middleware
+    // Check if user has access to this resource
+    const resourceModel = resourceType === "Meeting" ? Meeting : Policy;
+    const resource = await resourceModel.findById(resourceId);
+
+    if (!resource) {
+      return res
+        .status(404)
+        .json({ success: false, message: `${resourceType} not found` });
+    }
+
+    const userId = (req.user._id || req.user.id)?.toString();
+    const userOrgId = req.user.organization?.toString();
+
+    const isUploader =
+      resource.uploadedBy &&
+      userId &&
+      resource.uploadedBy.toString() === userId;
+    const isInSameOrg =
+      resource.organization &&
+      userOrgId &&
+      resource.organization.toString() === userOrgId;
+
+    if (!isUploader && !isInSameOrg) {
+      return res.status(403).json({
+        success: false,
+        message: "Forbidden: You do not have permission to share this resource",
+      });
+    }
+
     let hashedPasscode = null;
     if (passcode) {
       const salt = await bcrypt.genSalt(10);
