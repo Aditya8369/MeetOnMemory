@@ -4,6 +4,7 @@ import ParticipantsSection from "./ParticipantsSection";
 import AgendaSection from "./AgendaSection";
 import AttachmentSection from "./AttachmentSection";
 import CalendarNotice from "./CalendarNotice";
+import SmartAgendaGenerator from "../../../../components/meetings/SmartAgendaGenerator";
 
 const ScheduleMeeting = ({ hookProps }) => {
   const {
@@ -114,6 +115,25 @@ const ScheduleMeeting = ({ hookProps }) => {
             </ol>
           </div>
         )}
+
+        <div className="mb-6">
+          <SmartAgendaGenerator
+            onApplySuccess={(items) => {
+              const newAgendaItems = items.map((i) => ({
+                text: i.status === "edited" ? i.acceptedText : i.text,
+                description: i.description,
+                duration: i.estimatedDuration,
+                id: Date.now().toString() + Math.random(),
+              }));
+              if (hookProps.setAgendaItems) {
+                hookProps.setAgendaItems((prev) => [
+                  ...prev,
+                  ...newAgendaItems,
+                ]);
+              }
+            }}
+          />
+        </div>
 
         <AgendaSection
           agendaItems={agendaItems}
