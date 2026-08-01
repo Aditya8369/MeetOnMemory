@@ -2,90 +2,79 @@ import express from "express";
 import cors from "cors";
 import cookieParser from "cookie-parser";
 import { corsOptions } from "./corsOptions.js";
+import {
+  csrfProtectionMiddleware,
+  csrfTokenProvider, // eslint-disable-line no-unused-vars
+  csrfErrorHandler,
+} from "../middleware/csrfProtection.js";
 import { globalLimiter } from "../middleware/rateLimiter.js";
 import errorHandler from "../middleware/errorHandler.js";
-import { configureSecurity } from "./security.js";
-import { configureHealthEndpoints } from "./health.js";
-import { requestContext } from "../middleware/requestContext.js";
+import requestContext from "../middleware/requestContext.js";
 
-/**
- * Body-parser limits (Issue #979).
- *
- * These used to be `50mb` globally, so *every* endpoint — login, notification
- * preferences, comment creation — would buffer and JSON-parse a 50 MB body
- * before any handler, validator or auth check ran. A handful of concurrent
- * large posts to an unauthenticated route is enough to exhaust heap on a small
- * instance. The large limit is needed by a few upload/transcript routes, not by
- * the entire API surface.
- */
-const BODY_LIMIT = process.env.BODY_LIMIT || "2mb";
-const LARGE_BODY_LIMIT = process.env.LARGE_BODY_LIMIT || "50mb";
-
-/**
- * Routes that legitimately receive large payloads (base64 audio, long
- * transcripts, document content). Kept as an explicit allow-list so raising a
- * limit is a visible decision rather than a global default.
- */
-const LARGE_BODY_ROUTES = [
-  "/api/meetings",
-  "/api/transcripts",
-  "/api/sessions",
-  "/api/policies",
-];
-
-// Import webhook routes (external auth — Slack signing secret / shared passcodes)
+// Import webhook routes that bypass CSRF
 import webhookRoutes from "../routes/webhookRoutes.js";
 import slackRoutes from "../routes/slackRoutes.js";
 import { slackWebhookParser } from "../middleware/slackWebhookParser.js";
 import publicSharedRoutes from "../routes/publicSharedRoutes.js";
 
 export function configureExpress(app) {
+  // Trust proxy for Render/Vercel
   app.set("trust proxy", 1);
 
-  // ==========================================
-  // SECURITY HEADERS + REQUEST CORRELATION (Issue #979)
-  //   Registered first so *every* response carries them, including the ones
-  //   produced by the Slack/webhook routes mounted below and by error handlers.
-  // ==========================================
-  configureSecurity(app);
-  app.use(requestContext());
-
+  // MIDDLEWARES
+  // Correlation IDs must run before every API path, including webhook and
+  // CSRF-bypassed routes.
+  app.use(requestContext);
   app.use(cors(corsOptions));
 
-  // Slack webhooks need raw body before JSON parse
+  app.use(express.json({ limit: "50mb" }));
+  app.use(express.urlencoded({ extended: true, limit: "50mb" }));
+
+  // ==========================================
+  // 1. BYPASSED ROUTES (No CSRF Protection)
+  //    External services authenticate via their own mechanisms.
+  // ==========================================
   app.use("/api/slack", slackWebhookParser, slackRoutes);
-
-  // Large limits only where they're actually needed (see LARGE_BODY_ROUTES).
-  app.use(LARGE_BODY_ROUTES, express.json({ limit: LARGE_BODY_LIMIT }));
-  app.use(
-    LARGE_BODY_ROUTES,
-    express.urlencoded({ extended: true, limit: LARGE_BODY_LIMIT }),
-  );
-
-  // Everything else gets a limit sized for ordinary JSON payloads. Express's
-  // body parsers are no-ops once a body has already been parsed, so the routes
-  // above keep their larger allowance.
-  app.use(express.json({ limit: BODY_LIMIT }));
-  app.use(express.urlencoded({ extended: true, limit: BODY_LIMIT }));
-
   app.use("/api/webhooks", webhookRoutes);
   app.use("/api/public/shared", publicSharedRoutes);
 
-  // Cookies still used for shared-link access tokens (not user sessions)
+  // ==========================================
+  // 2. COOKIES & CSRF (Global for all remaining routes)
+  // ==========================================
   app.use(cookieParser());
+  app.use(csrfProtectionMiddleware);
 
-  // Health endpoints — registered BEFORE the global rate limiter so keep-alive
-  // pings (e.g. from the GitHub Actions cron job) and orchestrator probes are
-  // never blocked. A rate-limited readiness probe would report an instance as
-  // unhealthy purely because it was being polled.
-  //
-  // Issue #979: this replaces a static handler that returned `200 UP`
-  // unconditionally — even with MongoDB down — with real dependency checks.
-  configureHealthEndpoints(app);
+  // CSRF token provider
+  app.get("/api/csrf-token", (req, res) => {
+    res.json({ csrfToken: req.csrfToken() });
+  });
 
+  // Health check endpoint — registered BEFORE the global rate limiter so
+  // keep-alive pings (e.g. from GitHub Actions cron job) are never blocked.
+  app.get(["/health", "/api/health"], (req, res) => {
+    res.status(200).json({
+      status: "UP",
+      timestamp: new Date().toISOString(),
+      env: process.env.NODE_ENV,
+    });
+  });
+
+  // GLOBAL RATE LIMITER
   app.use(globalLimiter);
 }
 
 export function configureErrorHandling(app) {
+  // Return a consistent correlated response for unmatched routes.
+  app.use((req, res) => {
+    res.status(404).json({
+      success: false,
+      message: "The requested resource was not found.",
+      requestId: req.requestId,
+    });
+  });
+
+  // CSRF ERROR HANDLER
+  app.use(csrfErrorHandler);
+  // ERROR HANDLER
   app.use(errorHandler);
 }

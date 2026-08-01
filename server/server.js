@@ -26,16 +26,11 @@ import policyComplianceRoutes from "./routes/policyComplianceRoutes.js";
 import sessionRoutes from "./routes/sessionRoutes.js";
 import assistantRoutes from "./routes/assistantRoutes.js";
 import webhookRoutes from "./routes/webhookRoutes.js";
+import slackRoutes from "./routes/slackRoutes.js";
 import transcriptRoutes from "./routes/transcriptRoutes.js";
-import recapRoutes from "./routes/recapRoutes.js";
-import personalNoteRoutes from "./routes/personalNoteRoutes.js";
-import templateLibraryRoutes from "./routes/templateLibraryRoutes.js";
-import meetingHealthRoutes from "./routes/meetingHealthRoutes.js";
-import automationRuleRoutes from "./routes/automationRuleRoutes.js";
 import { configureExpress, configureErrorHandling } from "./config/express.js";
 import { configureSocket } from "./config/socket.js";
 import { startWorkers } from "./config/workers.js";
-import { initListeners } from "./events/listeners.js";
 import routes from "./routes/index.js";
 
 // Import slackService, cacheInvalidationService, and conflictScanTrigger to register eventBus listeners.
@@ -45,7 +40,6 @@ import "./services/cacheInvalidationService.js";
 // listener, which enqueues a background contradiction scan per
 // organization whenever new decisions/action items are extracted.
 import "./services/conflictScanTrigger.js";
-import "./services/automationRuleService.js";
 
 import meetingSocket from "./socket/meetingSocket.js"; // eslint-disable-line no-unused-vars
 import documentSync from "./socket/documentSync.js"; // eslint-disable-line no-unused-vars
@@ -53,22 +47,14 @@ import transcriptSocket from "./socket/transcriptSocket.js"; // eslint-disable-l
 import { initRedis, getRedisClient } from "./services/redisService.js"; // eslint-disable-line no-unused-vars
 import { createAdapter } from "@socket.io/redis-adapter"; // eslint-disable-line no-unused-vars
 import { startCalendarSyncJob } from "./jobs/calendarSyncJob.js";
-import startPollExpirationJob from "./jobs/pollExpirationJob.js";
-import startActionItemReminderJob from "./jobs/actionItemReminderJob.js";
-import startRecapBatchJob from "./jobs/recapBatchJob.js";
 import { createClient } from "redis"; // eslint-disable-line no-unused-vars
 import {
   initAIWorker, // eslint-disable-line no-unused-vars
   initDataExportWorker, // eslint-disable-line no-unused-vars
   initConflictScanWorker, // eslint-disable-line no-unused-vars
-  shutdownQueues,
 } from "./services/queueService.js";
-import { createGracefulShutdown } from "./utils/gracefulShutdown.js";
-import mongoose from "mongoose";
-import { closeRedis } from "./services/redisService.js";
 import { initWebhookWorker } from "./services/webhookDispatcherService.js"; // eslint-disable-line no-unused-vars
 import { globalLimiter } from "./middleware/rateLimiter.js"; // eslint-disable-line no-unused-vars
-import errorHandler from "./middleware/errorHandler.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -82,25 +68,8 @@ const app = express();
 const PORT = process.env.PORT || 4000;
 
 if (!process.env.JWT_SECRET) {
-  console.error(
-    "FATAL ERROR: JWT_SECRET is missing (required for shared-link, Slack state, and export tokens — not user login).",
-  );
+  console.error("FATAL ERROR: JWT_SECRET environment variable is missing.");
   process.exit(1);
-}
-
-if (!process.env.CLERK_SECRET_KEY && process.env.NODE_ENV !== "test") {
-  console.error(
-    "FATAL ERROR: CLERK_SECRET_KEY is missing. MeetOnMemory uses Clerk as the sole identity provider.",
-  );
-  process.exit(1);
-}
-
-// Force Clerk-only identity (legacy/dual modes retired)
-process.env.AUTH_PROVIDER = "clerk";
-if (process.env.NODE_ENV === "test") {
-  process.env.CLERK_TEST_AUTH = process.env.CLERK_TEST_AUTH || "jwt";
-  process.env.CLERK_SECRET_KEY =
-    process.env.CLERK_SECRET_KEY || "test_clerk_secret";
 }
 
 // DATABASE & CACHE
@@ -113,10 +82,7 @@ configureExpress(app);
 app.use("/api/auth", authRoutes);
 app.use(["/api/organization", "/api/organizations"], organizationRoutes);
 app.use(["/api/membership", "/api/memberships"], membershipRoutes);
-app.use(
-  ["/api/membership-request", "/api/membership-requests"],
-  membershipRequestRoutes,
-);
+app.use("/api/membership-request", membershipRequestRoutes);
 app.use("/api/invitation", invitationRoutes);
 app.use("/api/meetings", meetingRoutes);
 app.use("/api/search", searchRoutes);
@@ -128,22 +94,24 @@ app.use("/api/user", userRoutes);
 app.use("/api/notifications", notificationRoutes);
 app.use("/api/knowledge", knowledgeRoutes);
 app.use("/api/calendar", calendarRoutes);
-app.use(["/api/policy-compliance", "/api/compliance"], policyComplianceRoutes);
+app.use("/api/compliance", policyComplianceRoutes);
+import { slackWebhookParser } from "./middleware/slackWebhookParser.js";
 
 app.use("/api/sessions", sessionRoutes);
 app.use("/api/assistant", assistantRoutes);
 app.use("/api/webhooks", webhookRoutes);
+app.use("/api/slack", slackWebhookParser, slackRoutes);
 app.use("/api/transcripts", transcriptRoutes);
-app.use("/api/recap", recapRoutes);
-app.use("/api/personal-notes", personalNoteRoutes);
-app.use("/api/template-library", templateLibraryRoutes);
-app.use("/api/meeting-health", meetingHealthRoutes);
-app.use("/api/automation-rules", automationRuleRoutes);
 
-// Issue #979: the /health handler that used to be duplicated here was
-// unreachable dead code — configureExpress registers it first, and two copies
-// of the same route are two things to keep in sync. The single definition now
-// lives in config/health.js.
+// Health check endpoint — registered BEFORE the global rate limiter so
+// keep-alive pings (e.g. from GitHub Actions cron job) are never blocked.
+app.get(["/health", "/api/health"], (req, res) => {
+  res.status(200).json({
+    status: "UP",
+    timestamp: new Date().toISOString(),
+    env: process.env.NODE_ENV,
+  });
+});
 app.use(routes);
 
 // ERROR HANDLING (Must be after routes)
@@ -152,17 +120,7 @@ configureErrorHandling(app);
 const server = http.createServer(app);
 
 // SOCKET.IO
-const io = configureSocket(server, app);
-
-// ─── EVENT LISTENERS (Issue #977) ────────────────────────────────────────────
-// `initListeners` registers every in-app notification and engagement-point
-// handler, and was never called — so `meeting.created`, `mom.generated`,
-// `export.ready`, `organization.joined` and `live_meeting.notified` all emitted
-// into a void, `Navbar.jsx`'s `notification:new` subscription could never fire,
-// and `awardEngagementPoints` (called from nowhere else) meant the leaderboard
-// was permanently zero. It must run after `configureSocket` because it needs
-// `io` to push notifications to each user's personal room.
-initListeners(io);
+configureSocket(server, app);
 
 // SERVER START (Skipped during Jest test execution)
 if (process.env.NODE_ENV !== "test") {
@@ -179,41 +137,23 @@ if (process.env.NODE_ENV !== "test") {
 
   // Start calendar sync job
   startCalendarSyncJob();
-
-  // Start poll expiration job
-  startPollExpirationJob(io);
-
-  // Start action item reminder job
-  startActionItemReminderJob();
-
-  // Start recap batch job
-  startRecapBatchJob();
 }
 
 // (AI, Data Export, and Webhook workers are initialized inside server.listen callback)
 
-// ERROR HANDLER
-app.use(errorHandler);
-
-// ─── GRACEFUL SHUTDOWN (Issue #975) ──────────────────────────────────────────
-// The previous handlers only called `server.close()`, which stops the HTTP
-// listener and nothing else. In-flight BullMQ jobs were killed mid-execution on
-// every deploy and — with the old `attempts: 1` default — were never
-// re-delivered. This controller drains workers *before* closing datastores, and
-// force-exits after a deadline so a stuck handle can't hang the process until
-// the platform SIGKILLs it.
-const gracefulShutdown = createGracefulShutdown({
-  server,
-  io,
-  closeQueues: () => shutdownQueues(),
-  closeDatabase: () => mongoose.connection.close(false),
-  closeRedis: () => closeRedis(),
+// GRACEFUL SHUTDOWN
+process.on("SIGTERM", () => {
+  console.log("SIGTERM received. Shutting down gracefully...");
+  server.close(() => {
+    process.exit(0);
+  });
 });
 
-// Signal handlers are skipped under Jest: the test runner owns process
-// lifecycle, and registering an exit-on-SIGINT handler there would fight it.
-if (process.env.NODE_ENV !== "test") {
-  gracefulShutdown.registerSignalHandlers();
-}
+process.on("SIGINT", () => {
+  console.log("SIGINT received. Shutting down gracefully...");
+  server.close(() => {
+    process.exit(0);
+  });
+});
 
-export { app, server, gracefulShutdown };
+export { app, server };
