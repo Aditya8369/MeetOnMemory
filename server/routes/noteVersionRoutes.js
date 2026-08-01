@@ -11,8 +11,9 @@ router.get(
   noteVersionController.getVersionHistory,
 );
 router.get("/version/:versionId", noteVersionController.getVersionContent);
+router.get("/version/:versionId/diff", noteVersionController.getVersionDiff);
 router.get(
-  "/version/:versionId/diff/:compareVersionId?",
+  "/version/:versionId/diff/:compareVersionId",
   noteVersionController.getVersionDiff,
 );
 router.post(
