@@ -4,6 +4,7 @@ import Peer from "simple-peer";
 import { toast } from "react-toastify";
 import { useNavigate } from "react-router-dom";
 import { getBackendUrl } from "../config/backendConfig.js";
+import { createClerkSocketOptions } from "../services/apiClient.js";
 
 export default function useWebRTC(roomId, callbacks) {
   const navigate = useNavigate();
@@ -45,7 +46,10 @@ export default function useWebRTC(roomId, callbacks) {
         }
       }, 100);
 
-      socketRef.current = io(backendUrl, { transports: ["websocket"] });
+      const opts = await createClerkSocketOptions({
+        transports: ["websocket"],
+      });
+      socketRef.current = io(backendUrl, opts);
       const userInfo = { name: "You" };
 
       socketRef.current.emit("join-meeting", { roomId, userInfo });

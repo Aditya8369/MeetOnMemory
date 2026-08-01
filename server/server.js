@@ -75,8 +75,25 @@ const app = express();
 const PORT = process.env.PORT || 4000;
 
 if (!process.env.JWT_SECRET) {
-  console.error("FATAL ERROR: JWT_SECRET environment variable is missing.");
+  console.error(
+    "FATAL ERROR: JWT_SECRET is missing (required for shared-link, Slack state, and export tokens — not user login).",
+  );
   process.exit(1);
+}
+
+if (!process.env.CLERK_SECRET_KEY && process.env.NODE_ENV !== "test") {
+  console.error(
+    "FATAL ERROR: CLERK_SECRET_KEY is missing. MeetOnMemory uses Clerk as the sole identity provider.",
+  );
+  process.exit(1);
+}
+
+// Force Clerk-only identity (legacy/dual modes retired)
+process.env.AUTH_PROVIDER = "clerk";
+if (process.env.NODE_ENV === "test") {
+  process.env.CLERK_TEST_AUTH = process.env.CLERK_TEST_AUTH || "jwt";
+  process.env.CLERK_SECRET_KEY =
+    process.env.CLERK_SECRET_KEY || "test_clerk_secret";
 }
 
 // DATABASE & CACHE

@@ -6,6 +6,8 @@ import {
   run,
   runNpx,
 } from "./changed-files.mjs";
+import { existsSync } from "node:fs";
+import path from "node:path";
 
 const JEST =
   "node --experimental-vm-modules node_modules/jest/bin/jest.js --forceExit";
@@ -21,11 +23,15 @@ const VITEST_TEST_FILES = new Set([
   "server/tests/meetingDigestService.test.js",
   "server/tests/imageUrl.test.js",
   "server/tests/MeetingService.test.js",
+  "server/tests/realtimeClerkAuthPhase4.test.js",
 ]);
 const JEST_RELATED_IGNORE = [
   "tests/integration.test.js",
   "tests/policyComplianceIntegration.test.js",
 ];
+
+const fileExists = (repoRelativePath) =>
+  existsSync(path.join(repoRoot, repoRelativePath));
 
 const changedFiles = getChangedFiles();
 const serverFiles = changedFiles.filter(
@@ -66,10 +72,15 @@ const vitestTests = [
       return `server/tests/${base}.test.js`;
     })
     .filter((file) => VITEST_TEST_FILES.has(file)),
-];
+].filter(fileExists);
 const uniqueVitestTests = [...new Set(vitestTests)];
-const jestTests = directTests.filter((file) => !VITEST_TEST_FILES.has(file));
-const jestSources = sourceFiles.filter((file) => !vitestOwnedSources.has(file));
+// Skip deleted legacy test files still present in the diff against main.
+const jestTests = directTests.filter(
+  (file) => !VITEST_TEST_FILES.has(file) && fileExists(file),
+);
+const jestSources = sourceFiles.filter(
+  (file) => !vitestOwnedSources.has(file) && fileExists(file),
+);
 
 logStep(
   "test:server:related",

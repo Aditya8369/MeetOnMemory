@@ -4,7 +4,7 @@ import AppContent from "../../context/AppContent.js";
 import useExport from "../../hooks/useExport.js";
 import { Mic, MicOff, Loader2 } from "lucide-react";
 import { toast } from "react-toastify";
-import axios from "axios";
+import apiClient from "../../services/apiClient";
 
 const MeetingActions = ({ meeting, onDelete, onRename }) => {
   const navigate = useNavigate();
@@ -95,7 +95,7 @@ const MeetingActions = ({ meeting, onDelete, onRename }) => {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
 
       // Start recording session on server
-      const { data } = await axios.post(
+      const { data } = await apiClient.post(
         `/api/meetings/${meeting._id}/recording/start`,
         {},
         { withCredentials: true },
@@ -126,7 +126,7 @@ const MeetingActions = ({ meeting, onDelete, onRename }) => {
           formData.append("audio", blob, "audio.webm");
 
           try {
-            await axios.post(
+            await apiClient.post(
               `/api/meetings/${meeting._id}/transcript/upload`,
               formData,
               { withCredentials: true },
@@ -164,7 +164,7 @@ const MeetingActions = ({ meeting, onDelete, onRename }) => {
       formData.append("audio", blob, "audio.webm");
 
       try {
-        await axios.post(
+        await apiClient.post(
           `/api/meetings/${meeting._id}/transcript/upload`,
           formData,
           { withCredentials: true },
@@ -176,7 +176,7 @@ const MeetingActions = ({ meeting, onDelete, onRename }) => {
 
     // Stop recording on server
     try {
-      const { data } = await axios.post(
+      const { data } = await apiClient.post(
         `/api/meetings/${meeting._id}/recording/stop`,
         {},
         { withCredentials: true },
@@ -193,7 +193,7 @@ const MeetingActions = ({ meeting, onDelete, onRename }) => {
       // Poll for transcript completion
       const pollInterval = setInterval(async () => {
         try {
-          const { data: transcriptData } = await axios.get(
+          const { data: transcriptData } = await apiClient.get(
             `/api/meetings/${meeting._id}/transcript`,
             { withCredentials: true },
           );

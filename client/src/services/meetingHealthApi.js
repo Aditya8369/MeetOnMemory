@@ -1,23 +1,13 @@
-import axios from "axios";
-
-// If you have a configured axios instance, import it instead
-// import api from "./api"; // Example
+import apiClient from "./apiClient.js";
 
 const getMeetingHealth = async (meetingId) => {
-  const token = localStorage.getItem("token");
-  const response = await axios.get(`/api/meeting-health/${meetingId}`, {
-    headers: { Authorization: `Bearer ${token}` },
-  });
+  const response = await apiClient.get(`/api/meeting-health/${meetingId}`);
   return response.data;
 };
 
 const getOrganizationHealthTrends = async (organizationId) => {
-  const token = localStorage.getItem("token");
-  const response = await axios.get(
+  const response = await apiClient.get(
     `/api/meeting-health/trends/${organizationId}`,
-    {
-      headers: { Authorization: `Bearer ${token}` },
-    },
   );
   return response.data;
 };

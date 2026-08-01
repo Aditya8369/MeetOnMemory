@@ -25,6 +25,7 @@ import jwt from "jsonwebtoken";
 import mongoose from "mongoose";
 import express from "express";
 import { jest } from "@jest/globals";
+import { createClerkTestToken, authHeader } from "./helpers/clerkTestAuth.js";
 
 const axiosPost = jest.fn().mockResolvedValue({
   status: 200,
@@ -300,14 +301,16 @@ describe("GET /api/slack/install", () => {
       password: "password123",
       role: "admin",
     });
-    const token = jwt.sign(
-      { id: user._id },
-      process.env.JWT_SECRET || "fallback_secret",
-    );
+    user.clerkUserId = `user_test_${user._id}`;
+    await user.save();
+    const token = createClerkTestToken({
+      clerkUserId: user.clerkUserId,
+      email: user.email,
+    });
 
     const res = await request(app)
       .get("/api/slack/install")
-      .set("Authorization", `Bearer ${token}`);
+      .set(authHeader(token));
 
     // No organizationId in query or user.organization → 400
     expect(res.status).toBe(400);

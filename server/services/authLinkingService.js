@@ -1,6 +1,14 @@
 import userModel from "../models/userModel.js";
 import crypto from "crypto";
 
+const isPlaceholderClerkEmail = (email) => {
+  if (!email || typeof email !== "string") return true;
+  return (
+    email.endsWith("@clerk.placeholder") ||
+    /^user_[A-Za-z0-9]+(@|$)/.test(email)
+  );
+};
+
 /**
  * Finds a MongoDB user by their Clerk ID.
  * @param {string} clerkUserId - The Clerk user ID
@@ -67,6 +75,11 @@ export const provisionOrLinkClerkUser = async ({
     }
     if (name && (!user.name || user.name === "User")) {
       user.name = name;
+      needsSave = true;
+    }
+    // Session JWTs often omit email on first provision; fill/replace placeholders later.
+    if (email && isPlaceholderClerkEmail(user.email)) {
+      user.email = email;
       needsSave = true;
     }
     if (needsSave) {

@@ -3,8 +3,6 @@ import mongoose from "mongoose";
 import { authenticateSocket } from "../middleware/socketAuth.js";
 import * as authLinkingService from "../services/authLinkingService.js";
 import * as clerkExpress from "@clerk/express";
-import userModel from "../models/userModel.js";
-import jwt from "jsonwebtoken";
 
 vi.mock("@clerk/express", () => ({
   verifyToken: vi.fn(),
@@ -31,6 +29,8 @@ describe("Phase 4: Realtime Services & Third-Party Integration Clerk Auth (#890)
     delete process.env.AUTH_PROVIDER;
     delete process.env.CLERK_SECRET_KEY;
     delete process.env.JWT_SECRET;
+    // Ensure real Clerk verifyToken path (not CLERK_TEST_AUTH jwt stand-in)
+    delete process.env.CLERK_TEST_AUTH;
   });
 
   it("authenticates socket connection via Clerk token when provider is clerk", async () => {
@@ -96,31 +96,22 @@ describe("Phase 4: Realtime Services & Third-Party Integration Clerk Auth (#890)
     expect(nextFn).toHaveBeenCalledWith();
   });
 
-  it("fallbacks to legacy JWT auth in dual mode when Clerk token fails", async () => {
-    process.env.AUTH_PROVIDER = "dual";
+  it("rejects unauthorized socket connection when Clerk token is invalid", async () => {
+    process.env.AUTH_PROVIDER = "clerk";
     process.env.CLERK_SECRET_KEY = "mock_clerk_secret";
-    process.env.JWT_SECRET = "jwt_secret_123";
-    mockSocket.request.headers.cookie = "token=legacy_jwt_token";
-
-    const legacyUser = {
-      _id: dummyUserId,
-      role: "moderator",
-      organization: dummyOrgId,
-    };
+    mockSocket.handshake.auth.token = "bad_clerk_jwt";
 
     clerkExpress.verifyToken.mockRejectedValue(
       new Error("Invalid Clerk token"),
     );
-    vi.spyOn(jwt, "verify").mockReturnValue({ id: dummyUserId.toString() });
-    vi.spyOn(userModel, "findById").mockImplementation(() => ({
-      select: vi.fn().mockResolvedValue(legacyUser),
-    }));
 
     await authenticateSocket(mockSocket, nextFn);
 
-    expect(mockSocket.userId).toBe(dummyUserId.toString());
-    expect(mockSocket.userRole).toBe("moderator");
-    expect(nextFn).toHaveBeenCalledWith();
+    expect(nextFn).toHaveBeenCalledWith(
+      expect.objectContaining({
+        message: "Authentication error: Invalid Clerk token",
+      }),
+    );
   });
 
   it("rejects unauthorized socket connection gracefully when no token is provided", async () => {

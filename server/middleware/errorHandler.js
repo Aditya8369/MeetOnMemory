@@ -1,12 +1,7 @@
 import { AppError } from "../utils/errors.js";
-import { sendCsrfInvalid } from "../utils/csrfErrors.js";
 
 /**
  * Structural ZodError check (no `import "zod"`).
- *
- * Controllers still throw real ZodErrors from `zod`; we only need the public
- * shape here. Skipping a static zod import keeps this middleware out of zod's
- * large ESM graph under Jest's VM linker.
  *
  * @param {unknown} err
  */
@@ -18,29 +13,9 @@ function isZodError(err) {
 
 /**
  * Global Express error-handling middleware.
- *
- * Replaces all the scattered `catch (err) → res.status(500).json(...)` blocks
- * that previously lived inside every controller.  Any error passed to `next(err)`
- * — or thrown inside an `async` route handler that is wrapped with a try/catch
- * calling `next(err)` — lands here.
- *
- * Handled error types:
- *  • AppError subclasses (ValidationError, NotFoundError, …) — uses their
- *    built-in statusCode.
- *  • ZodError — schema parse failure → 400 with per-field issue list.
- *  • Mongoose ValidationError — maps to 400 with field messages.
- *  • Mongoose CastError — maps to 400 "Invalid ID" response.
- *  • CSRF token failure (EBADCSRFTOKEN) — maps to 403 + CSRF_INVALID.
- *  • Everything else — 500 Internal Server Error (message hidden in prod).
  */
 // eslint-disable-next-line no-unused-vars
 const errorHandler = (err, req, res, next) => {
-  // ── CSRF ────────────────────────────────────────────────────
-  if (err.code === "EBADCSRFTOKEN") {
-    return sendCsrfInvalid(res);
-  }
-
-  // ── Zod schema validation errors ────────────────────────────
   if (isZodError(err)) {
     const details = err.issues.map((issue) => ({
       field: issue.path.join("."),
@@ -53,7 +28,6 @@ const errorHandler = (err, req, res, next) => {
     });
   }
 
-  // ── Our custom AppError hierarchy ───────────────────────────
   if (err instanceof AppError) {
     const payload = {
       success: false,
@@ -63,7 +37,6 @@ const errorHandler = (err, req, res, next) => {
     return res.status(err.statusCode).json(payload);
   }
 
-  // ── Mongoose ValidationError (schema-level) ─────────────────
   if (err.name === "ValidationError" && err.errors) {
     const details = Object.values(err.errors).map((e) => ({
       field: e.path,
@@ -76,7 +49,6 @@ const errorHandler = (err, req, res, next) => {
     });
   }
 
-  // ── Mongoose CastError (bad ObjectId format) ─────────────────
   if (err.name === "CastError") {
     return res.status(400).json({
       success: false,
@@ -84,9 +56,6 @@ const errorHandler = (err, req, res, next) => {
     });
   }
 
-  // ── Everything else → 500 ────────────────────────────────────
-  // Log the full error for server-side debugging but never expose
-  // raw stack traces or internal messages in production.
   console.error("❌ Unhandled error:", err);
 
   const isProd = process.env.NODE_ENV === "production";
