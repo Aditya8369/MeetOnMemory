@@ -713,3 +713,52 @@ Return ONLY a valid JSON object matching this structure (no markdown formatting,
     keywords: Array.isArray(parsed.keywords) ? parsed.keywords : [],
   };
 };
+
+export const generateAgendaSuggestions = async (contextData) => {
+  if (!GEMINI_API_KEY) {
+    throw new Error(
+      "Agenda suggestion is unavailable: GEMINI_API_KEY is not configured.",
+    );
+  }
+
+  const prompt = `
+You are an AI assistant specialized in structuring meeting agendas based on organizational context.
+Given the following recent context from an organization (unresolved action items, deferred decisions, open threads, and past series history):
+
+${JSON.stringify(contextData, null, 2)}
+
+Generate 5-10 agenda suggestions for an upcoming meeting. 
+Consider unresolved action items, items explicitly deferred for future discussion, and active threads.
+
+Return ONLY a valid JSON array matching this structure (no markdown formatting, no backticks, no commentary):
+[
+  {
+    "text": "Brief title of agenda item",
+    "description": "More detailed context or objective",
+    "estimatedDuration": 15,
+    "sourceType": "action_item | decision | thread | series_history",
+    "sourceId": "corresponding ID from the context if applicable",
+    "sourceTitle": "Short human-readable string for badge e.g., 'From: Q2 Review'"
+  }
+]
+`;
+
+  let outputText;
+  try {
+    outputText = await generateText(prompt, "Gemini agenda suggestion");
+  } catch (err) {
+    console.error("❌ Agenda suggestion generation failed:", err.message);
+    throw new Error(
+      `Agenda suggestion generation failed (${err.kind ?? AI_ERROR_KIND.UNKNOWN}): ${err.message}`,
+    );
+  }
+
+  const parsed = parseJsonOutput(outputText);
+  if (!parsed || !Array.isArray(parsed)) {
+    throw new Error(
+      "Failed to parse Gemini JSON output for agenda suggestions",
+    );
+  }
+
+  return parsed;
+};
