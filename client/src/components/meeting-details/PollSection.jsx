@@ -316,6 +316,9 @@ const PollSection = ({ meetingId }) => {
                   return (
                     <div
                       key={opt._id}
+                      role="button"
+                      tabIndex={0}
+                      aria-label={`Vote for ${opt.text}`}
                       className={`relative overflow-hidden rounded-md border p-3 cursor-pointer transition-colors ${
                         !poll.isAnonymous &&
                         opt.votes.some(
@@ -332,6 +335,17 @@ const PollSection = ({ meetingId }) => {
                           poll.options,
                         )
                       }
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter" || e.key === " ") {
+                          e.preventDefault();
+                          handleVote(
+                            poll._id,
+                            poll.pollType,
+                            opt._id,
+                            poll.options,
+                          );
+                        }
+                      }}
                     >
                       <div
                         className="absolute top-0 left-0 h-full bg-blue-100 dark:bg-blue-900/30 opacity-50 z-0 transition-all duration-500"
