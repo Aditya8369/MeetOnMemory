@@ -519,13 +519,35 @@ export const getAllMeetings = async (userId, orgId, queryParams = {}) => {
   };
 };
 
-export const getMeetingById = async (meetingId) => {
+export const getMeetingById = async (
+  meetingId,
+  userId = null,
+  orgId = null,
+) => {
   if (!isValidObjectId(meetingId)) {
     throw new ValidationError("Invalid meeting ID");
   }
 
   const meeting = await MeetingStorageService.findMeetingById(meetingId);
   if (!meeting) throw new NotFoundError("Meeting not found");
+
+  if (userId || orgId) {
+    const isUploader =
+      meeting.uploadedBy &&
+      userId &&
+      meeting.uploadedBy.toString() === userId.toString();
+    const isInOrg =
+      meeting.organization &&
+      orgId &&
+      meeting.organization.toString() === orgId.toString();
+
+    if (!isUploader && !isInOrg) {
+      throw new ForbiddenError(
+        "Forbidden: You do not have access to this meeting",
+      );
+    }
+  }
+
   return meeting;
 };
 

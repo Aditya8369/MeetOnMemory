@@ -434,8 +434,13 @@ export const deleteMeeting = async (req, res, next) => {
    ───────────────────────────────────────────────────────────── */
 export const getMeetingById = async (req, res, next) => {
   try {
-    getUserId(req); // ensure authenticated
-    const meeting = await MeetingService.getMeetingById(req.params.id);
+    const userId = getUserId(req);
+    const orgId = req.user?.organization || null;
+    const meeting = await MeetingService.getMeetingById(
+      req.params.id,
+      userId,
+      orgId,
+    );
     return sendSuccess(res, { meeting });
   } catch (err) {
     next(err);
