@@ -24,6 +24,7 @@ const VITEST_TEST_FILES = new Set([
   "server/tests/imageUrl.test.js",
   "server/tests/MeetingService.test.js",
   "server/tests/realtimeClerkAuthPhase4.test.js",
+  "server/tests/sharedLinkAnalytics.test.js",
 ]);
 const JEST_RELATED_IGNORE = [
   "tests/integration.test.js",
@@ -50,6 +51,9 @@ const vitestOwnedSources = new Set([
   "server/controllers/knowledgeController.js",
   "server/controllers/transcriptController.js",
   "server/controllers/meetingController.js",
+  "server/controllers/sharedLinkController.js",
+  "server/models/sharedLinkModel.js",
+  "server/config/express.js",
   "server/services/meetingDigestService.js",
   "server/services/MeetingService.js",
   "server/services/MeetingStorageService.js",
@@ -61,6 +65,11 @@ const VITEST_SOURCE_TEST_MAP = {
   "server/services/MeetingService.js": "server/tests/MeetingService.test.js",
   "server/services/MeetingStorageService.js":
     "server/tests/MeetingService.test.js",
+  "server/controllers/sharedLinkController.js":
+    "server/tests/sharedLinkAnalytics.test.js",
+  "server/models/sharedLinkModel.js":
+    "server/tests/sharedLinkAnalytics.test.js",
+  "server/config/express.js": "server/tests/sharedLinkAnalytics.test.js",
 };
 const vitestTests = [
   ...directTests.filter((file) => VITEST_TEST_FILES.has(file)),
