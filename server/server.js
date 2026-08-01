@@ -31,6 +31,7 @@ import recapRoutes from "./routes/recapRoutes.js";
 import personalNoteRoutes from "./routes/personalNoteRoutes.js";
 import templateLibraryRoutes from "./routes/templateLibraryRoutes.js";
 import meetingHealthRoutes from "./routes/meetingHealthRoutes.js";
+import automationRuleRoutes from "./routes/automationRuleRoutes.js";
 import { configureExpress, configureErrorHandling } from "./config/express.js";
 import { configureSocket } from "./config/socket.js";
 import { startWorkers } from "./config/workers.js";
@@ -44,6 +45,7 @@ import "./services/cacheInvalidationService.js";
 // listener, which enqueues a background contradiction scan per
 // organization whenever new decisions/action items are extracted.
 import "./services/conflictScanTrigger.js";
+import "./services/automationRuleService.js";
 
 import meetingSocket from "./socket/meetingSocket.js"; // eslint-disable-line no-unused-vars
 import documentSync from "./socket/documentSync.js"; // eslint-disable-line no-unused-vars
@@ -136,6 +138,7 @@ app.use("/api/recap", recapRoutes);
 app.use("/api/personal-notes", personalNoteRoutes);
 app.use("/api/template-library", templateLibraryRoutes);
 app.use("/api/meeting-health", meetingHealthRoutes);
+app.use("/api/automation-rules", automationRuleRoutes);
 
 // Issue #979: the /health handler that used to be duplicated here was
 // unreachable dead code — configureExpress registers it first, and two copies

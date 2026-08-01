@@ -51,6 +51,7 @@ import AttendanceAnalytics from "../pages/AttendanceAnalytics.jsx";
 import MeetingCostAnalytics from "../pages/MeetingCostAnalytics.jsx";
 import RecapScheduleDashboard from "../pages/RecapScheduleDashboard.jsx";
 import MeetingHealthDashboard from "../pages/MeetingHealthDashboard.jsx";
+import AutomationRules from "../pages/AutomationRules.jsx";
 
 const ProtectedRoutes = (
   <React.Fragment>
@@ -139,6 +140,14 @@ const ProtectedRoutes = (
       element={
         <ProtectedRoute>
           <OrganizationHub />
+        </ProtectedRoute>
+      }
+    />
+    <Route
+      path="/automation-rules"
+      element={
+        <ProtectedRoute resource="organization" action="manage">
+          <AutomationRules />
         </ProtectedRoute>
       }
     />
