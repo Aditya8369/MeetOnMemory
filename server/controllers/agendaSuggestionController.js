@@ -19,12 +19,10 @@ export const generateAgenda = async (req, res) => {
     res.status(201).json(suggestion);
   } catch (error) {
     console.error("Error generating agenda suggestions:", error);
-    res
-      .status(500)
-      .json({
-        message: "Failed to generate agenda suggestions",
-        error: error.message,
-      });
+    res.status(500).json({
+      message: "Failed to generate agenda suggestions",
+      error: error.message,
+    });
   }
 };
 
@@ -52,12 +50,10 @@ export const updateSuggestionItem = async (req, res) => {
     res.status(200).json(suggestionDoc);
   } catch (error) {
     console.error("Error updating suggestion item:", error);
-    res
-      .status(500)
-      .json({
-        message: "Failed to update suggestion item",
-        error: error.message,
-      });
+    res.status(500).json({
+      message: "Failed to update suggestion item",
+      error: error.message,
+    });
   }
 };
 
@@ -70,12 +66,10 @@ export const applyAgenda = async (req, res) => {
     res.status(200).json(meeting);
   } catch (error) {
     console.error("Error applying agenda suggestions:", error);
-    res
-      .status(500)
-      .json({
-        message: "Failed to apply agenda suggestions",
-        error: error.message,
-      });
+    res.status(500).json({
+      message: "Failed to apply agenda suggestions",
+      error: error.message,
+    });
   }
 };
 
@@ -90,11 +84,9 @@ export const getSuggestionsByMeeting = async (req, res) => {
     res.status(200).json(suggestions);
   } catch (error) {
     console.error("Error fetching agenda suggestions:", error);
-    res
-      .status(500)
-      .json({
-        message: "Failed to fetch agenda suggestions",
-        error: error.message,
-      });
+    res.status(500).json({
+      message: "Failed to fetch agenda suggestions",
+      error: error.message,
+    });
   }
 };
