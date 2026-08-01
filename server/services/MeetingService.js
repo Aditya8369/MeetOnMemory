@@ -367,12 +367,26 @@ export const generateMeetingMoM = async (
 
   console.log(`🧠 Generating MoM for ${meetingId || "transcript-only"}...`);
 
-  const { generateMoMWithAI, normalizeMoM, buildHumanReadableMoM } =
+  const { generateMoMDetailed, normalizeMoM, buildHumanReadableMoM } =
     await loadGenerativeAI();
-  const structured = await generateMoMWithAI(textToSummarize, date, title);
+  // Issue #976: `generateMoMDetailed` also reports how the MoM was produced, so
+  // a meeting that fell back to the reduced-capability local model is recorded
+  // as such instead of being persisted as a normal, complete result.
+  const { mom: structured, generation } = await generateMoMDetailed(
+    textToSummarize,
+    date,
+    title,
+  );
   if (!structured) throw new Error("No summary generated");
 
-  const mom = normalizeMoM(structured, title, date);
+  if (generation?.degraded) {
+    console.warn(
+      `⚠️ MoM for ${meetingId || "transcript-only"} was generated in degraded mode ` +
+        `(${generation.provider}, reason: ${generation.reason}). Consider reprocessing.`,
+    );
+  }
+
+  const mom = normalizeMoM(structured, title, date, generation);
   const momText = buildHumanReadableMoM(mom);
 
   let meetingToUpdate = meeting;

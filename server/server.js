@@ -34,6 +34,7 @@ import meetingHealthRoutes from "./routes/meetingHealthRoutes.js";
 import { configureExpress, configureErrorHandling } from "./config/express.js";
 import { configureSocket } from "./config/socket.js";
 import { startWorkers } from "./config/workers.js";
+import { initListeners } from "./events/listeners.js";
 import routes from "./routes/index.js";
 
 // Import slackService, cacheInvalidationService, and conflictScanTrigger to register eventBus listeners.
@@ -58,7 +59,11 @@ import {
   initAIWorker, // eslint-disable-line no-unused-vars
   initDataExportWorker, // eslint-disable-line no-unused-vars
   initConflictScanWorker, // eslint-disable-line no-unused-vars
+  shutdownQueues,
 } from "./services/queueService.js";
+import { createGracefulShutdown } from "./utils/gracefulShutdown.js";
+import mongoose from "mongoose";
+import { closeRedis } from "./services/redisService.js";
 import { initWebhookWorker } from "./services/webhookDispatcherService.js"; // eslint-disable-line no-unused-vars
 import { globalLimiter } from "./middleware/rateLimiter.js"; // eslint-disable-line no-unused-vars
 import errorHandler from "./middleware/errorHandler.js";
@@ -132,15 +137,10 @@ app.use("/api/personal-notes", personalNoteRoutes);
 app.use("/api/template-library", templateLibraryRoutes);
 app.use("/api/meeting-health", meetingHealthRoutes);
 
-// Health check endpoint — registered BEFORE the global rate limiter so
-// keep-alive pings (e.g. from GitHub Actions cron job) are never blocked.
-app.get(["/health", "/api/health"], (req, res) => {
-  res.status(200).json({
-    status: "UP",
-    timestamp: new Date().toISOString(),
-    env: process.env.NODE_ENV,
-  });
-});
+// Issue #979: the /health handler that used to be duplicated here was
+// unreachable dead code — configureExpress registers it first, and two copies
+// of the same route are two things to keep in sync. The single definition now
+// lives in config/health.js.
 app.use(routes);
 
 // ERROR HANDLING (Must be after routes)
@@ -150,6 +150,16 @@ const server = http.createServer(app);
 
 // SOCKET.IO
 const io = configureSocket(server, app);
+
+// ─── EVENT LISTENERS (Issue #977) ────────────────────────────────────────────
+// `initListeners` registers every in-app notification and engagement-point
+// handler, and was never called — so `meeting.created`, `mom.generated`,
+// `export.ready`, `organization.joined` and `live_meeting.notified` all emitted
+// into a void, `Navbar.jsx`'s `notification:new` subscription could never fire,
+// and `awardEngagementPoints` (called from nowhere else) meant the leaderboard
+// was permanently zero. It must run after `configureSocket` because it needs
+// `io` to push notifications to each user's personal room.
+initListeners(io);
 
 // SERVER START (Skipped during Jest test execution)
 if (process.env.NODE_ENV !== "test") {
@@ -182,19 +192,25 @@ if (process.env.NODE_ENV !== "test") {
 // ERROR HANDLER
 app.use(errorHandler);
 
-// GRACEFUL SHUTDOWN
-process.on("SIGTERM", () => {
-  console.log("SIGTERM received. Shutting down gracefully...");
-  server.close(() => {
-    process.exit(0);
-  });
+// ─── GRACEFUL SHUTDOWN (Issue #975) ──────────────────────────────────────────
+// The previous handlers only called `server.close()`, which stops the HTTP
+// listener and nothing else. In-flight BullMQ jobs were killed mid-execution on
+// every deploy and — with the old `attempts: 1` default — were never
+// re-delivered. This controller drains workers *before* closing datastores, and
+// force-exits after a deadline so a stuck handle can't hang the process until
+// the platform SIGKILLs it.
+const gracefulShutdown = createGracefulShutdown({
+  server,
+  io,
+  closeQueues: () => shutdownQueues(),
+  closeDatabase: () => mongoose.connection.close(false),
+  closeRedis: () => closeRedis(),
 });
 
-process.on("SIGINT", () => {
-  console.log("SIGINT received. Shutting down gracefully...");
-  server.close(() => {
-    process.exit(0);
-  });
-});
+// Signal handlers are skipped under Jest: the test runner owns process
+// lifecycle, and registering an exit-on-SIGINT handler there would fight it.
+if (process.env.NODE_ENV !== "test") {
+  gracefulShutdown.registerSignalHandlers();
+}
 
-export { app, server };
+export { app, server, gracefulShutdown };

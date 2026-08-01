@@ -55,6 +55,7 @@
     "form-data": "^4.0.4",
     "fs": "^0.0.1-security",
     "googleapis": "^165.0.0",
+    "helmet": "^8.3.0",
     "ical-generator": "^10.0.0",
     "ioredis": "^5.11.1",
     "json2csv": "^6.0.0-alpha.2",
