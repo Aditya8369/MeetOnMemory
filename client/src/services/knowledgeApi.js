@@ -1,95 +1,87 @@
-import apiClient from "./apiClient";
+import api from "./api";
 
+/**
+ * Knowledge API Service
+ * Handles all requests related to decisions, action items, and lifecycle management.
+ */
 export const knowledgeApi = {
-  getActionItems: (status = "all", sortBy = "createdAt", options = {}) => {
-    let url = `/api/knowledge/action-items?status=${status}&sortBy=${sortBy}`;
-    if (options.includeArchived) url += `&includeArchived=true`;
-    if (options.lifecycleState)
-      url += `&lifecycleState=${options.lifecycleState}`;
-    if (options.search) url += `&search=${encodeURIComponent(options.search)}`;
-    if (options.page) url += `&page=${options.page}`;
-    if (options.limit) url += `&limit=${options.limit}`;
-    return apiClient.get(url);
+  /**
+   * Fetch decisions with optional sorting and pagination
+   */
+  getDecisions: async (sortBy = "createdAt", order = "desc", params = {}) => {
+    return api.get("/api/knowledge/decisions", {
+      params: {
+        sortBy,
+        order,
+        ...params, // Includes page, limit, lifecycleState, search, etc.
+      },
+    });
   },
-  updateActionItemStatus: (id, status) =>
-    apiClient.patch(`/api/knowledge/action-items/${id}`, { status }),
-  toggleActionItemReminder: (id, enabled) =>
-    apiClient.patch(`/api/knowledge/action-items/${id}/reminders`, { enabled }),
-  getDecisions: (sortBy = "createdAt", status, options = {}) => {
-    let url = `/api/knowledge/decisions?sortBy=${sortBy}${status ? `&status=${status}` : ""}`;
-    if (options.includeArchived) url += `&includeArchived=true`;
-    if (options.lifecycleState)
-      url += `&lifecycleState=${options.lifecycleState}`;
-    if (options.search) url += `&search=${encodeURIComponent(options.search)}`;
-    if (options.page) url += `&page=${options.page}`;
-    if (options.limit) url += `&limit=${options.limit}`;
-    return apiClient.get(url);
+
+  /**
+   * Fetch action items with optional sorting and pagination
+   */
+  getActionItems: async (status = "all", sortBy = "createdAt", params = {}) => {
+    return api.get("/api/knowledge/action-items", {
+      params: {
+        status,
+        sortBy,
+        ...params, // Includes page, limit, lifecycleState, search, etc.
+      },
+    });
   },
-  getDecisionLineage: (decisionId) =>
-    apiClient.get(`/api/knowledge/decisions/${decisionId}/lineage`),
-  submitFeedback: (type, id, rating) =>
-    apiClient.patch(`/api/knowledge/${type}/${id}/feedback`, { rating }),
-  recalculateImportance: () =>
-    apiClient.post(`/api/knowledge/importance/recalculate`),
-  // Memory Lifecycle Management (#377, #716)
-  runLifecycleSweep: () => apiClient.post(`/api/knowledge/lifecycle/run`),
-  updateMemoryLifecycleState: (type, id, state, reason) =>
-    apiClient.patch(`/api/knowledge/${type}/${id}/lifecycle`, {
-      state,
+
+  /**
+   * Update the lifecycle state of a memory (decision or action item)
+   */
+  updateMemoryLifecycleState: async (type, id, newState, reason) => {
+    return api.put(`/api/knowledge/${type}/${id}/lifecycle`, {
+      state: newState,
       reason,
-    }),
-  // Memory Consolidation Engine
-  runConsolidation: ({ dryRun = true, models } = {}) =>
-    apiClient.post(`/api/knowledge/consolidate`, {
-      dryRun,
-      ...(models ? { models } : {}),
-    }),
-  getConsolidationHistory: (model = "decision", limit = 50) =>
-    apiClient.get(
-      `/api/knowledge/consolidation/history?model=${model}&limit=${limit}`,
-    ),
-  // Memory Graph Snapshot & Time-Travel
-  getGraphSnapshots: ({ limit = 50, before } = {}) =>
-    apiClient.get(
-      `/api/knowledge/graph/snapshots?limit=${limit}${before ? `&before=${before}` : ""}`,
-    ),
-  getGraphSnapshot: (id) =>
-    apiClient.get(`/api/knowledge/graph/snapshots/${id}`),
-  exportGraphSnapshot: (id) =>
-    apiClient.get(`/api/knowledge/graph/snapshots/${id}/export`),
-  diffGraphSnapshots: (fromId, toId) =>
-    apiClient.get(
-      `/api/knowledge/graph/snapshots/diff?from=${fromId}&to=${toId}`,
-    ),
-  createGraphSnapshot: (force = false) =>
-    apiClient.post(`/api/knowledge/graph/snapshots`, { force }),
-  // AI-Powered Contradiction Detection & Conflict Resolution (#375, #715)
-  scanForConflicts: ({
-    dryRun = false,
-    models,
-    useAI = true,
-    minConfidence,
-  } = {}) =>
-    apiClient.post(`/api/knowledge/conflicts/scan`, {
-      dryRun,
-      ...(models ? { models } : {}),
-      useAI,
-      ...(minConfidence !== undefined ? { minConfidence } : {}),
-    }),
-  getConflicts: ({ model, status = "open", limit = 50 } = {}) =>
-    apiClient.get(
-      `/api/knowledge/conflicts?status=${status}&limit=${limit}${model ? `&model=${model}` : ""}`,
-    ),
-  getConflictDetail: (conflictId) =>
-    apiClient.get(`/api/knowledge/conflicts/${conflictId}`),
-  resolveConflict: (
-    conflictId,
-    { resolutionType, keptMemoryId, customValue, note },
-  ) =>
-    apiClient.post(`/api/knowledge/conflicts/${conflictId}/resolve`, {
-      resolutionType,
-      ...(keptMemoryId ? { keptMemoryId } : {}),
-      ...(customValue ? { customValue } : {}),
-      ...(note ? { note } : {}),
-    }),
+    });
+  },
+
+  /**
+   * Trigger a manual lifecycle sweep for the organization
+   */
+  runLifecycleSweep: async () => {
+    return api.post("/api/knowledge/lifecycle/sweep");
+  },
+
+  /**
+   * Fetch decision lineage for the timeline
+   */
+  getDecisionLineage: async (decisionId) => {
+    return api.get(`/api/knowledge/decisions/${decisionId}/lineage`);
+  },
+
+  /**
+   * Submit feedback for a memory item
+   */
+  submitFeedback: async (type, id, rating) => {
+    return api.patch(`/api/knowledge/${type}/${id}/feedback`, { rating });
+  },
+
+  /**
+   * Recalculate importance scores for all memories
+   */
+  recalculateImportance: async () => {
+    return api.post(`/api/knowledge/importance/recalculate`);
+  },
+
+  /**
+   * Toggle reminder status for an action item
+   */
+  toggleActionItemReminder: async (id, enabled) => {
+    return api.patch(`/api/knowledge/action-items/${id}/reminders`, { enabled });
+  },
+
+  /**
+   * Update the status of an action item
+   */
+  updateActionItemStatus: async (id, status) => {
+    return api.patch(`/api/knowledge/action-items/${id}`, { status });
+  },
 };
+
+export default knowledgeApi;
