@@ -1,4 +1,5 @@
 import mongoose from "mongoose";
+import { normalizeAgendaItems } from "../utils/agendaOrdering.js";
 
 const meetingSchema = new mongoose.Schema(
   {
@@ -57,22 +58,10 @@ const meetingSchema = new mongoose.Schema(
       {
         text: { type: String, required: true },
         description: { type: String, default: "" },
-        duration: { type: Number, default: null }, // planned duration in minutes
-        actualDuration: { type: Number, default: 0 }, // actual duration in milliseconds
-        startedAt: { type: Date, default: null },
-        completedAt: { type: Date, default: null },
-        status: {
-          type: String,
-          enum: ["pending", "active", "completed", "skipped"],
-          default: "pending",
-        },
+        duration: { type: Number, default: null },
+        position: { type: Number, min: 0, default: 0 },
       },
     ],
-    agendaProgress: {
-      type: String,
-      enum: ["not_started", "in_progress", "completed"],
-      default: "not_started",
-    },
     policyDetails: {
       // For policy-type meetings
       policyName: { type: String, default: "" },
@@ -151,47 +140,26 @@ const meetingSchema = new mongoose.Schema(
       type: String, // Plain-text snapshot for read-only views and semantic search
       default: "",
     },
-    series: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "MeetingSeries",
-      default: null,
-    },
-    seriesOccurrence: {
-      type: Number,
-      default: null,
-    },
-
-    // Shareable meeting invite link (Issue #920)
-    inviteCode: {
-      type: String,
-      default: null,
-      trim: true,
-    },
-    inviteEnabled: {
-      type: Boolean,
-      default: true,
-    },
-    inviteExpiresAt: {
-      type: Date,
-      default: null,
-    },
   },
   { timestamps: true },
 );
+
+meetingSchema.pre("validate", function normalizeAgendaOrder(next) {
+  if (this.isModified("agendaItems") || this.isNew) {
+    this.agendaItems = normalizeAgendaItems(
+      (this.agendaItems || []).map((item) =>
+        typeof item.toObject === "function" ? item.toObject() : item,
+      ),
+    );
+  }
+  next();
+});
 
 // Indexes for query performance
 meetingSchema.index({ organization: 1, createdAt: -1 });
 meetingSchema.index({ uploadedBy: 1, createdAt: -1 });
 meetingSchema.index({ status: 1 });
 meetingSchema.index({ title: "text", summary: "text" });
-meetingSchema.index(
-  { inviteCode: 1 },
-  {
-    unique: true,
-    sparse: true,
-    partialFilterExpression: { inviteCode: { $type: "string" } },
-  },
-);
 
 const Meeting = mongoose.model("Meeting", meetingSchema);
 export default Meeting;
