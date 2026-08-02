@@ -40,7 +40,7 @@ export function sanitizeLogValue(value, depth = 0, seen = new WeakSet()) {
   }
 
   if (typeof value !== "object") return String(value);
-  if (isBinaryValue(value) || isFileLike(value)) return "[REDACTED_BINARY]";
+  if (isBinaryValue(value) || isFileLike(value)) return "[REDACTED]";
   if (depth >= MAX_REDACTION_DEPTH) return "[MAX_DEPTH]";
   if (seen.has(value)) return "[CIRCULAR]";
 

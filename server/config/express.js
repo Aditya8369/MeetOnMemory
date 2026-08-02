@@ -3,10 +3,8 @@ import cors from "cors";
 import cookieParser from "cookie-parser";
 import { corsOptions } from "./corsOptions.js";
 import { configureHealthEndpoints } from "./health.js";
-import {
-  csrfProtectionMiddleware,
-  csrfErrorHandler,
-} from "../middleware/csrfProtection.js";
+import { configureSecurity } from "./security.js";
+import { csrfErrorHandler } from "../middleware/csrfProtection.js";
 import { globalLimiter } from "../middleware/rateLimiter.js";
 import errorHandler from "../middleware/errorHandler.js";
 import requestContext from "../middleware/requestContext.js";
@@ -22,9 +20,10 @@ export function configureExpress(app) {
   // Correlation IDs must be available on every response, including health,
   // webhook, public, CSRF, and not-found responses.
   app.use(requestContext);
+  configureSecurity(app);
   app.use(cors(corsOptions));
-  app.use(express.json({ limit: "50mb" }));
-  app.use(express.urlencoded({ extended: true, limit: "50mb" }));
+  app.use(express.json({ limit: "2mb" }));
+  app.use(express.urlencoded({ extended: true, limit: "2mb" }));
   app.use(cookieParser());
 
   // Dependency-aware health probes must not be blocked by the global limiter
@@ -35,11 +34,6 @@ export function configureExpress(app) {
   app.use("/api/slack", slackWebhookParser, slackRoutes);
   app.use("/api/webhooks", webhookRoutes);
   app.use("/api/public/shared", publicSharedRoutes);
-
-  app.use(csrfProtectionMiddleware);
-  app.get("/api/csrf-token", (req, res) => {
-    res.json({ csrfToken: req.csrfToken() });
-  });
 
   app.use(globalLimiter);
 }
