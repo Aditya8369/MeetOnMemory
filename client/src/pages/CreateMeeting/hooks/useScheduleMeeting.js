@@ -1,12 +1,40 @@
-import { useContext, useMemo, useState } from "react";
 import { toast } from "react-toastify";
 import { meetingApi, meetingTemplateApi } from "../../../services";
-import { useEffect } from "react";
+import { useCallback, useContext, useEffect, useMemo, useState } from "react";
 import AppContent from "../../../context/AppContent";
 import {
   buildMeetingDraftKey,
   useFormDraft,
 } from "../../../hooks/useFormDraft";
+
+export const buildDuplicateScheduleState = (duplicateData = {}) => ({
+  scheduleData: {
+    title: duplicateData.title || "",
+    description: duplicateData.description || "",
+    meetingType: duplicateData.meetingType || "conference",
+    date: "",
+    time: "",
+    duration: duplicateData.duration ?? "",
+    location: duplicateData.location || "",
+    venue: duplicateData.venue || "",
+    syncToCalendar: true,
+  },
+  participants: (duplicateData.participants || []).map(
+    (participant, index) => ({
+      ...participant,
+      id: `duplicate-participant-${index}`,
+    }),
+  ),
+  agendaItems: (duplicateData.agendaItems || []).map((item, index) => ({
+    ...item,
+    id: `duplicate-agenda-${index}`,
+  })),
+  metadata: {
+    tags: duplicateData.tags || [],
+    policyDetails: duplicateData.policyDetails || null,
+    recordingType: duplicateData.recordingType || "upload",
+  },
+});
 
 export const useScheduleMeeting = ({
   mode = "create",
@@ -33,6 +61,11 @@ export const useScheduleMeeting = ({
   const [loading, setLoading] = useState(false);
   const [templates, setTemplates] = useState([]);
   const [selectedTemplateId, setSelectedTemplateId] = useState("");
+  const [duplicateMetadata, setDuplicateMetadata] = useState({
+    tags: [],
+    policyDetails: null,
+    recordingType: "upload",
+  });
 
   const userId = userData?._id || userData?.id;
   const organizationId =
@@ -91,6 +124,15 @@ export const useScheduleMeeting = ({
       }
     };
     fetchTemplates();
+  }, []);
+
+  const hydrateDuplicateMeeting = useCallback((duplicateData) => {
+    const duplicated = buildDuplicateScheduleState(duplicateData);
+    setScheduleData(duplicated.scheduleData);
+    setParticipants(duplicated.participants);
+    setAgendaItems(duplicated.agendaItems);
+    setSelectedTemplateId("");
+    setDuplicateMetadata(duplicated.metadata);
   }, []);
 
   const handleTemplateSelect = (e) => {
@@ -171,6 +213,9 @@ export const useScheduleMeeting = ({
         ...scheduleData,
         participants,
         agendaItems,
+        tags: duplicateMetadata.tags,
+        policyDetails: duplicateMetadata.policyDetails,
+        recordingType: duplicateMetadata.recordingType,
       };
 
       const response = await meetingApi.scheduleMeeting(payload);
@@ -198,6 +243,11 @@ export const useScheduleMeeting = ({
         setParticipants([]);
         setAgendaItems([]);
         setAttachments([]);
+        setDuplicateMetadata({
+          tags: [],
+          policyDetails: null,
+          recordingType: "upload",
+        });
         setSelectedTemplateId("");
         clearDraft();
       } else {
@@ -235,6 +285,7 @@ export const useScheduleMeeting = ({
     handleAttachmentUpload,
     removeAttachment,
     handleScheduleSubmit,
+    hydrateDuplicateMeeting,
     recoverableDraft,
     lastSavedAt,
     draftStatus,
