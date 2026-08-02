@@ -12,7 +12,6 @@ import fs from "fs";
 import mongoose from "mongoose";
 import User from "../models/userModel.js";
 import Membership from "../models/membershipModel.js";
-import Tag from "../models/tagModel.js";
 import { captureSnapshot } from "./graphSnapshotService.js";
 import eventBus from "./eventBus.js";
 import {
@@ -21,9 +20,9 @@ import {
   ForbiddenError,
 } from "../utils/errors.js";
 
+// Imported specific services and utils
 import { validatePath } from "../utils/fileUtils.js";
 import * as MeetingStorageService from "./MeetingStorageService.js";
-import { snapshotNoteVersion } from "../controllers/noteVersionController.js";
 
 // AI / calendar / queue / transcription stacks are loaded on demand. Static
 // imports pull @xenova/transformers, axios diamonds, and related graphs into
@@ -110,6 +109,47 @@ const _runKnowledgeGraph = (meetingDoc, mom) => {
 // ═══════════════════════════════════════════════════════════════
 // Public service methods
 // ═══════════════════════════════════════════════════════════════
+
+export const buildDuplicateMeetingData = (meeting) => {
+  if (!meeting) throw new NotFoundError("Meeting not found");
+
+  const plain =
+    typeof meeting.toObject === "function" ? meeting.toObject() : meeting;
+
+  return {
+    sourceMeetingId: plain._id?.toString?.() || String(plain._id || ""),
+    title: `${plain.title || "Untitled Meeting"} (Copy)`,
+    description: plain.description || "",
+    organization:
+      plain.organization?.toString?.() || plain.organization || null,
+    meetingType: plain.meetingType || "conference",
+    date: "",
+    time: "",
+    duration: plain.duration ?? null,
+    location: plain.location || "",
+    venue: plain.venue || "",
+    participants: (plain.participants || []).map((participant) => ({
+      name: participant.name || "",
+      email: participant.email || "",
+      role: participant.role || "",
+    })),
+    agendaItems: (plain.agendaItems || []).map((item) => ({
+      text: item.text || "",
+      description: item.description || "",
+      duration: item.duration ?? null,
+    })),
+    tags: [...(plain.tags || [])],
+    policyDetails: plain.policyDetails
+      ? {
+          policyName: plain.policyDetails.policyName || "",
+          policyVersion: plain.policyDetails.policyVersion || "",
+          effectiveDate: plain.policyDetails.effectiveDate || null,
+          approvalRequired: Boolean(plain.policyDetails.approvalRequired),
+        }
+      : null,
+    recordingType: plain.recordingType || "upload",
+  };
+};
 
 export const createMeeting = async (uploaderId, orgId, data) => {
   const meeting = await MeetingStorageService.createMeetingRecord({
@@ -214,7 +254,6 @@ export const uploadAndTranscribeMeeting = async (
     title: body.title?.trim() || `Meeting - ${new Date().toLocaleDateString()}`,
     date: body.date ? new Date(body.date) : new Date(),
     meetingType: body.meetingType || "internal",
-    tags: body.tags || [],
     fileUrl: file.path,
     transcript: transcriptText,
     summary: "",
@@ -223,27 +262,6 @@ export const uploadAndTranscribeMeeting = async (
   });
 
   scheduleIndexMeeting(meeting);
-
-  if (body.tags && Array.isArray(body.tags) && orgId) {
-    for (const tagName of body.tags) {
-      const escapedTagName = tagName.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-      await Tag.findOneAndUpdate(
-        {
-          organization: orgId,
-          name: { $regex: new RegExp(`^${escapedTagName}$`, "i") },
-        },
-        {
-          $setOnInsert: {
-            name: tagName,
-            organization: orgId,
-            createdBy: uploaderId,
-          },
-          $inc: { usageCount: 1 },
-        },
-        { upsert: true, new: true },
-      );
-    }
-  }
 
   try {
     await fs.promises.unlink(validatePath(filePath));
@@ -367,26 +385,12 @@ export const generateMeetingMoM = async (
 
   console.log(`🧠 Generating MoM for ${meetingId || "transcript-only"}...`);
 
-  const { generateMoMDetailed, normalizeMoM, buildHumanReadableMoM } =
+  const { generateMoMWithAI, normalizeMoM, buildHumanReadableMoM } =
     await loadGenerativeAI();
-  // Issue #976: `generateMoMDetailed` also reports how the MoM was produced, so
-  // a meeting that fell back to the reduced-capability local model is recorded
-  // as such instead of being persisted as a normal, complete result.
-  const { mom: structured, generation } = await generateMoMDetailed(
-    textToSummarize,
-    date,
-    title,
-  );
+  const structured = await generateMoMWithAI(textToSummarize, date, title);
   if (!structured) throw new Error("No summary generated");
 
-  if (generation?.degraded) {
-    console.warn(
-      `⚠️ MoM for ${meetingId || "transcript-only"} was generated in degraded mode ` +
-        `(${generation.provider}, reason: ${generation.reason}). Consider reprocessing.`,
-    );
-  }
-
-  const mom = normalizeMoM(structured, title, date, generation);
+  const mom = normalizeMoM(structured, title, date);
   const momText = buildHumanReadableMoM(mom);
 
   let meetingToUpdate = meeting;
@@ -418,20 +422,6 @@ export const generateMeetingMoM = async (
 
   console.log("✅ MoM saved to database");
 
-  if (meetingToUpdate && meetingToUpdate._id) {
-    try {
-      await snapshotNoteVersion(
-        meetingToUpdate._id,
-        "summary",
-        momText,
-        "ai_processing",
-        userId,
-      );
-    } catch (err) {
-      console.error("⚠️ Failed to snapshot AI summary:", err.message);
-    }
-  }
-
   try {
     if (!meetingId)
       eventBus.emit("meeting.created", {
@@ -453,11 +443,6 @@ export const generateMeetingMoM = async (
   };
 };
 
-const MEETING_LIST_SORT_FIELDS = new Set(["createdAt", "title", "date"]);
-
-const escapeRegex = (value) =>
-  String(value).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-
 export const getAllMeetings = async (userId, orgId, queryParams = {}) => {
   const {
     page = 1,
@@ -465,60 +450,29 @@ export const getAllMeetings = async (userId, orgId, queryParams = {}) => {
     startDate,
     endDate,
     includeArchived,
-    search,
-    meetingType,
-    sortBy = "createdAt",
-    sortOrder = "desc",
   } = queryParams;
 
-  const filters = [];
-
-  const ownershipOptions = [{ uploadedBy: userId }];
+  const queryOptions = [{ uploadedBy: userId }];
   if (orgId) {
-    ownershipOptions.push({ organization: orgId });
+    queryOptions.push({ organization: orgId });
   }
-  filters.push({ $or: ownershipOptions });
+
+  const query = { $or: queryOptions };
 
   if (!includeArchived) {
-    filters.push({ archived: { $ne: true } });
+    query.archived = { $ne: true };
   }
 
   if (startDate || endDate) {
-    const dateFilter = {};
-    if (startDate) dateFilter.$gte = new Date(startDate);
-    if (endDate) dateFilter.$lte = new Date(endDate);
-    filters.push({ date: dateFilter });
+    query.date = {};
+    if (startDate) query.date.$gte = new Date(startDate);
+    if (endDate) query.date.$lte = new Date(endDate);
   }
 
-  if (meetingType) {
-    filters.push({ meetingType });
-  }
-
-  const searchTerm = typeof search === "string" ? search.trim() : "";
-  if (searchTerm) {
-    const escaped = escapeRegex(searchTerm);
-    filters.push({
-      $or: [
-        { title: { $regex: escaped, $options: "i" } },
-        { summary: { $regex: escaped, $options: "i" } },
-      ],
-    });
-  }
-
-  const query = filters.length === 1 ? filters[0] : { $and: filters };
-
-  const resolvedSortBy = MEETING_LIST_SORT_FIELDS.has(sortBy)
-    ? sortBy
-    : "createdAt";
-  const sortDirection = sortOrder === "asc" ? 1 : -1;
-  const sort = { [resolvedSortBy]: sortDirection };
-
-  const pageNum = parseInt(page, 10);
-  const limitNum = parseInt(limit, 10);
-  const skip = (pageNum - 1) * limitNum;
+  const skip = (parseInt(page) - 1) * parseInt(limit);
 
   const [meetings, total] = await Promise.all([
-    MeetingStorageService.getMeetingsQuery(query, skip, limitNum, sort),
+    MeetingStorageService.getMeetingsQuery(query, skip, parseInt(limit)),
     MeetingStorageService.countMeetingsQuery(query),
   ]);
 
@@ -526,42 +480,20 @@ export const getAllMeetings = async (userId, orgId, queryParams = {}) => {
     meetings,
     pagination: {
       total,
-      page: pageNum,
-      limit: limitNum,
-      totalPages: Math.ceil(total / limitNum) || 0,
+      page: parseInt(page),
+      limit: parseInt(limit),
+      totalPages: Math.ceil(total / parseInt(limit)),
     },
   };
 };
 
-export const getMeetingById = async (
-  meetingId,
-  userId = null,
-  orgId = null,
-) => {
+export const getMeetingById = async (meetingId) => {
   if (!isValidObjectId(meetingId)) {
     throw new ValidationError("Invalid meeting ID");
   }
 
   const meeting = await MeetingStorageService.findMeetingById(meetingId);
   if (!meeting) throw new NotFoundError("Meeting not found");
-
-  if (userId || orgId) {
-    const isUploader =
-      meeting.uploadedBy &&
-      userId &&
-      meeting.uploadedBy.toString() === userId.toString();
-    const isInOrg =
-      meeting.organization &&
-      orgId &&
-      meeting.organization.toString() === orgId.toString();
-
-    if (!isUploader && !isInOrg) {
-      throw new ForbiddenError(
-        "Forbidden: You do not have access to this meeting",
-      );
-    }
-  }
-
   return meeting;
 };
 
@@ -588,7 +520,6 @@ export const updateMeeting = async (userId, meetingId, data, doc = null) => {
     location,
     venue,
     tags,
-    summary,
   } = data;
 
   if (title) meeting.title = title.trim();
@@ -600,25 +531,8 @@ export const updateMeeting = async (userId, meetingId, data, doc = null) => {
   if (location !== undefined) meeting.location = location;
   if (venue !== undefined) meeting.venue = venue;
   if (tags) meeting.tags = tags;
-  if (summary !== undefined) {
-    meeting.summary = summary;
-  }
 
   await meeting.save();
-
-  if (summary !== undefined) {
-    try {
-      await snapshotNoteVersion(
-        meeting._id,
-        "summary",
-        summary,
-        "user_edit",
-        userId,
-      );
-    } catch (err) {
-      console.error("⚠️ Failed to snapshot edited summary:", err.message);
-    }
-  }
 
   try {
     eventBus.emit("meeting.updated", meeting);

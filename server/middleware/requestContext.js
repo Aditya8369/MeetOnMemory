@@ -35,6 +35,72 @@ export function resolveRequestId(incomingId) {
 }
 
 /**
+ * Recursively redact sensitive values before writing request metadata to logs.
+ * Kept here as a compatibility export for the existing security-health tests.
+ */
+export function redact(value) {
+  if (
+    value == null ||
+    typeof value === "boolean" ||
+    typeof value === "number" ||
+    typeof value === "string"
+  ) {
+    return value;
+  }
+
+  const seen = new WeakSet();
+  const sensitiveKey =
+    /authorization|cookie|password|passwd|secret|token|api[-_]?key|access[-_]?token|refresh[-_]?token|file|upload/i;
+
+  const visit = (input, depth = 0) => {
+    if (
+      input == null ||
+      typeof input === "boolean" ||
+      typeof input === "number" ||
+      typeof input === "string"
+    ) {
+      return input;
+    }
+    if (typeof input !== "object") return String(input);
+    if (depth >= 5) return "[MAX_DEPTH]";
+    if (seen.has(input)) return "[CIRCULAR]";
+    seen.add(input);
+
+    if (Array.isArray(input)) {
+      return input.slice(0, 50).map((item) => visit(item, depth + 1));
+    }
+
+    return Object.fromEntries(
+      Object.entries(input).map(([key, nestedValue]) => [
+        key,
+        sensitiveKey.test(key) ? "[REDACTED]" : visit(nestedValue, depth + 1),
+      ]),
+    );
+  };
+
+  return visit(value);
+}
+
+/**
+ * Build the minimal request context needed to correlate a failed request.
+ */
+export function buildLogContext(req) {
+  if (!req) return {};
+
+  const startedAt =
+    typeof req.startedAt === "number" ? req.startedAt : Date.now();
+
+  return {
+    requestId: req.requestId || req.id || null,
+    method: req.method || null,
+    path: req.originalUrl || req.url || null,
+    userId: req.user?.id || req.user?._id?.toString?.() || null,
+    ip: req.ip || null,
+    durationMs: Math.max(0, Date.now() - startedAt),
+  };
+}
+
+/**
  * Attach request-scoped correlation data and structured completion logging.
  */
 export function requestContext(req, res, next) {
@@ -42,7 +108,9 @@ export function requestContext(req, res, next) {
   const startedAt = process.hrtime.bigint();
 
   req.requestId = requestId;
-  req.log = logger.child({ requestId });
+  req.id = requestId;
+  req.startedAt = Date.now();
+  req.log = logger.child(buildLogContext(req));
   res.setHeader(REQUEST_ID_HEADER, requestId);
 
   res.on("finish", () => {
