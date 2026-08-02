@@ -109,8 +109,7 @@ const trashQuerySchema = z.object({
     .transform((val) => {
       if (!val) return 20;
       const parsed = parseInt(val, 10);
-      if (isNaN(parsed) || parsed < 1) return 20;
-      return parsed > 100 ? 100 : parsed;
+      return isNaN(parsed) || parsed < 1 ? 20 : Math.min(parsed, 100);
     }),
   search: z.string().trim().max(200).optional().default(""),
 });
