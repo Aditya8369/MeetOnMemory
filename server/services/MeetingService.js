@@ -23,6 +23,7 @@ import {
 // Imported specific services and utils
 import { validatePath } from "../utils/fileUtils.js";
 import * as MeetingStorageService from "./MeetingStorageService.js";
+import { normalizeAgendaItems } from "../utils/agendaOrdering.js";
 
 // AI / calendar / queue / transcription stacks are loaded on demand. Static
 // imports pull @xenova/transformers, axios diamonds, and related graphs into
@@ -164,7 +165,7 @@ export const createMeeting = async (uploaderId, orgId, data) => {
     location: data.location || "",
     venue: data.venue || "",
     participants: data.participants || [],
-    agendaItems: data.agendaItems || [],
+    agendaItems: normalizeAgendaItems(data.agendaItems),
     policyDetails: data.policyDetails || null,
     recordingType: data.recordingType || "upload",
     transcript: "",
@@ -520,6 +521,7 @@ export const updateMeeting = async (userId, meetingId, data, doc = null) => {
     location,
     venue,
     tags,
+    agendaItems,
   } = data;
 
   if (title) meeting.title = title.trim();
@@ -531,6 +533,9 @@ export const updateMeeting = async (userId, meetingId, data, doc = null) => {
   if (location !== undefined) meeting.location = location;
   if (venue !== undefined) meeting.venue = venue;
   if (tags) meeting.tags = tags;
+  if (agendaItems !== undefined) {
+    meeting.agendaItems = normalizeAgendaItems(agendaItems);
+  }
 
   await meeting.save();
 

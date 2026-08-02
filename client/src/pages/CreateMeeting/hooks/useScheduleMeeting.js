@@ -6,6 +6,10 @@ import {
   buildMeetingDraftKey,
   useFormDraft,
 } from "../../../hooks/useFormDraft";
+import {
+  moveAgendaItem,
+  normalizeAgendaItems,
+} from "../../../utils/agendaOrdering";
 
 export const buildDuplicateScheduleState = (duplicateData = {}) => ({
   scheduleData: {
@@ -81,10 +85,9 @@ export const useScheduleMeeting = ({
     () => ({
       scheduleData,
       participants,
-      agendaItems,
       selectedTemplateId,
     }),
-    [agendaItems, participants, scheduleData, selectedTemplateId],
+    [participants, scheduleData, selectedTemplateId],
   );
 
   const restoreDraftValues = (draft) => {
@@ -149,6 +152,7 @@ export const useScheduleMeeting = ({
           id: Date.now().toString() + Math.random(),
         }));
         setAgendaItems(newBlocks);
+        setAgendaItems(normalizeAgendaItems(newBlocks));
         toast.info("Template agenda applied");
       }
     }
@@ -175,14 +179,25 @@ export const useScheduleMeeting = ({
 
   const addAgendaItem = () => {
     if (newAgenda.trim()) {
-      setAgendaItems([...agendaItems, { text: newAgenda, id: Date.now() }]);
+      setAgendaItems((current) =>
+        normalizeAgendaItems([
+          ...current,
+          { text: newAgenda, id: crypto.randomUUID?.() || String(Date.now()) },
+        ]),
+      );
       setNewAgenda("");
       toast.success("Agenda item added");
     }
   };
 
   const removeAgendaItem = (id) => {
-    setAgendaItems(agendaItems.filter((a) => a.id !== id));
+    setAgendaItems((current) =>
+      normalizeAgendaItems(current.filter((a) => a.id !== id)),
+    );
+  };
+
+  const reorderAgendaItem = (fromIndex, toIndex) => {
+    setAgendaItems((current) => moveAgendaItem(current, fromIndex, toIndex));
   };
 
   const handleAttachmentUpload = (e) => {
@@ -212,10 +227,10 @@ export const useScheduleMeeting = ({
       const payload = {
         ...scheduleData,
         participants,
-        agendaItems,
         tags: duplicateMetadata.tags,
         policyDetails: duplicateMetadata.policyDetails,
         recordingType: duplicateMetadata.recordingType,
+        agendaItems: normalizeAgendaItems(agendaItems),
       };
 
       const response = await meetingApi.scheduleMeeting(payload);
@@ -269,7 +284,6 @@ export const useScheduleMeeting = ({
     participants,
     newParticipant,
     setNewParticipant,
-    agendaItems,
     newAgenda,
     setNewAgenda,
     attachments,
@@ -282,6 +296,7 @@ export const useScheduleMeeting = ({
     removeParticipant,
     addAgendaItem,
     removeAgendaItem,
+    reorderAgendaItem,
     handleAttachmentUpload,
     removeAttachment,
     handleScheduleSubmit,

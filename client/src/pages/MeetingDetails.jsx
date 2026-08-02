@@ -5,30 +5,14 @@ import { meetingApi } from "../services";
 import MeetingHeader from "../components/meeting-details/MeetingHeader";
 import MeetingSummary from "../components/meeting-details/MeetingSummary";
 import MeetingCollaborativeNotes from "../components/meeting-details/MeetingCollaborativeNotes";
-import PersonalNotes from "../components/meeting-details/PersonalNotes";
 import MeetingTranscript from "../components/meeting-details/MeetingTranscript";
 import MeetingParticipants from "../components/meeting-details/MeetingParticipants";
+import MeetingAgenda from "../components/meeting-details/MeetingAgenda";
 import MeetingMetadata from "../components/meeting-details/MeetingMetadata";
 import MeetingActions from "../components/meeting-details/MeetingActions";
 import ShareModal from "../components/shared-links/ShareModal";
-import MeetingInviteModal from "../components/meetings/MeetingInviteModal";
 import MeetingFollowUpBanner from "../components/meeting-details/MeetingFollowUpBanner";
 import PresentMode from "../components/meeting-details/PresentMode";
-import CommentSection from "../components/meeting-details/CommentSection";
-import PollSection from "../components/meeting-details/PollSection";
-import DigestActions from "../components/meeting-details/DigestActions";
-import AttachmentPanel from "../components/meeting-details/AttachmentPanel";
-import ReactionSummaryCard from "../components/meeting-details/ReactionSummaryCard";
-import SeriesNavigation from "../components/meeting-details/SeriesNavigation";
-import CompareButton from "../components/meeting-details/CompareButton";
-import HealthScoreCard from "../components/meeting-details/HealthScoreCard";
-import AgendaTimer from "../components/meeting-details/AgendaTimer";
-import AgendaPacingReport from "../components/meeting-details/AgendaPacingReport";
-import FeedbackForm from "../components/meeting-details/FeedbackForm";
-import FollowUpThreads from "../components/meeting-details/FollowUpThreads";
-import ClipManager from "../components/meeting-details/ClipManager";
-import SpeakerAttribution from "../components/meeting-details/SpeakerAttribution";
-import NoteVersionHistory from "../components/NoteVersionHistory";
 
 const MeetingDetails = () => {
   const { id } = useParams();
@@ -37,9 +21,7 @@ const MeetingDetails = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [shareModalOpen, setShareModalOpen] = useState(false);
-  const [inviteModalOpen, setInviteModalOpen] = useState(false);
   const [isPresentModeOpen, setIsPresentModeOpen] = useState(false);
-  const [historyField, setHistoryField] = useState(null); // 'summary' or 'collaborativeNotes'
 
   useEffect(() => {
     const fetchMeetingDetails = async () => {
@@ -177,100 +159,22 @@ const MeetingDetails = () => {
     <div className="min-h-screen bg-gray-50 p-6">
       <div className="max-w-6xl mx-auto">
         <MeetingFollowUpBanner meeting={meeting} />
-        <SeriesNavigation meeting={meeting} />
         <MeetingHeader
           meeting={meeting}
           onShare={() => setShareModalOpen(true)}
-          onShareInvite={() => setInviteModalOpen(true)}
           onPresent={() => setIsPresentModeOpen(true)}
         />
-
-        {/* Conditional rendering for Agenda Timer vs Pacing Report */}
-        {meeting.status !== "completed" &&
-        meeting.agendaProgress !== "completed" ? (
-          <AgendaTimer meeting={meeting} />
-        ) : (
-          <AgendaPacingReport meetingId={meeting._id} />
-        )}
-
-        <div className="relative">
-          <div className="absolute top-4 right-4 z-10">
-            <button
-              onClick={() => setHistoryField("summary")}
-              className="text-xs px-2 py-1 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded border border-gray-300 transition flex items-center gap-1"
-            >
-              <svg
-                className="w-3.5 h-3.5"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
-                />
-              </svg>
-              History
-            </button>
-          </div>
-          <MeetingSummary meeting={meeting} />
-        </div>
-
-        {meeting.status === "completed" && (
-          <HealthScoreCard meetingId={meeting._id} />
-        )}
-        <ReactionSummaryCard meetingId={meeting._id} />
-        <PersonalNotes meeting={meeting} />
-        <div className="relative">
-          <div className="absolute top-4 right-4 z-10">
-            <button
-              onClick={() => setHistoryField("collaborativeNotes")}
-              className="text-xs px-2 py-1 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded border border-gray-300 transition flex items-center gap-1"
-            >
-              <svg
-                className="w-3.5 h-3.5"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
-                />
-              </svg>
-              History
-            </button>
-          </div>
-          <MeetingCollaborativeNotes meeting={meeting} />
-        </div>
+        <MeetingSummary meeting={meeting} />
+        <MeetingCollaborativeNotes meeting={meeting} />
         <MeetingTranscript meeting={meeting} />
-        <SpeakerAttribution
-          meetingId={meeting._id}
-          participants={meeting.participants}
-        />
-        <ClipManager meetingId={meeting._id} />
         <MeetingParticipants meeting={meeting} />
+        <MeetingAgenda meeting={meeting} />
         <MeetingMetadata meeting={meeting} />
-        <div className="mb-6 flex justify-end gap-2 items-center">
-          <CompareButton meetingId={meeting._id} />
-          <DigestActions meetingId={meeting._id} />
-        </div>
         <MeetingActions
           meeting={meeting}
           onDelete={handleDelete}
           onRename={handleRename}
         />
-        <AttachmentPanel meetingId={meeting._id} />
-        <PollSection meetingId={meeting._id} />
-        <CommentSection meetingId={meeting._id} />
-        {meeting.status === "completed" && (
-          <FeedbackForm meetingId={meeting._id} />
-        )}
-        <FollowUpThreads meetingId={meeting._id} />
       </div>
 
       <ShareModal
@@ -281,28 +185,10 @@ const MeetingDetails = () => {
         title={meeting.title}
       />
 
-      <MeetingInviteModal
-        isOpen={inviteModalOpen}
-        onClose={() => setInviteModalOpen(false)}
-        meetingId={meeting._id}
-        title={meeting.title}
-      />
-
       {isPresentModeOpen && (
         <PresentMode
           meeting={meeting}
           onClose={() => setIsPresentModeOpen(false)}
-        />
-      )}
-
-      {historyField && (
-        <NoteVersionHistory
-          meetingId={meeting._id}
-          field={historyField}
-          onClose={() => setHistoryField(null)}
-          onRestored={(updatedMeeting) => {
-            setMeeting(updatedMeeting);
-          }}
         />
       )}
     </div>
