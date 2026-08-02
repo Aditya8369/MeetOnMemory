@@ -16,7 +16,17 @@ export const meetingApi = {
 
   getMeetingById: (id) => apiClient.get(`/api/meetings/${id}`),
 
-  deleteMeeting: (id) => apiClient.delete(`/api/meetings/delete/${id}`),
+  deleteMeeting: (id, reason) =>
+    apiClient.delete(`/api/meetings/delete/${id}`, { data: { reason } }),
+
+  getDeletedMeetings: (params = {}) =>
+    apiClient.get("/api/meetings/trash", { params }),
+
+  restoreDeletedMeeting: (id) =>
+    apiClient.post(`/api/meetings/${id}/restore-deleted`),
+
+  permanentlyDeleteMeeting: (id) =>
+    apiClient.delete(`/api/meetings/${id}/permanent`),
 
   updateMeeting: (id, data) => apiClient.patch(`/api/meetings/${id}`, data),
 

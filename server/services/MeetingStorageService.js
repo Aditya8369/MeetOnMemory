@@ -1,15 +1,16 @@
 import Meeting from "../models/meetingModel.js";
+import { withActiveMeetings } from "../utils/meetingSoftDelete.js";
 
 export const createMeetingRecord = async (data) => {
   return await Meeting.create(data);
 };
 
 export const findMeetingById = async (id) => {
-  return await Meeting.findById(id);
+  return await Meeting.findOne(withActiveMeetings({ _id: id }));
 };
 
 export const findMeetingByQuery = async (query) => {
-  return await Meeting.findOne(query);
+  return await Meeting.findOne(withActiveMeetings(query));
 };
 
 export const getMeetingsQuery = async (
@@ -18,7 +19,7 @@ export const getMeetingsQuery = async (
   limit,
   sort = { createdAt: -1 },
 ) => {
-  return await Meeting.find(query)
+  return await Meeting.find(withActiveMeetings(query))
     .sort(sort)
     .skip(skip)
     .limit(limit)
@@ -29,7 +30,7 @@ export const getMeetingsQuery = async (
 };
 
 export const countMeetingsQuery = async (query) => {
-  return await Meeting.countDocuments(query);
+  return await Meeting.countDocuments(withActiveMeetings(query));
 };
 
 export const deleteMeetingById = async (id) => {
@@ -37,10 +38,12 @@ export const deleteMeetingById = async (id) => {
 };
 
 export const searchMeetingsRecords = async (searchQuery, filter = {}) => {
-  return await Meeting.find({
-    $text: { $search: searchQuery },
-    ...filter,
-  })
+  return await Meeting.find(
+    withActiveMeetings({
+      $text: { $search: searchQuery },
+      ...filter,
+    }),
+  )
     .sort({ createdAt: -1 })
     .select("title summary createdAt date meetingType organization uploadedBy");
 };
