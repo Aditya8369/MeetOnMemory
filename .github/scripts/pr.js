@@ -11,7 +11,11 @@ import {
 } from "./helpers.js";
 import { processPrActivityRefresh } from "./activity.js";
 import { extractLinkedIssueNumbers, hasMarker } from "./utils.js";
-import { AUTOMATION, ALLOWED_BRANCH_PREFIXES, REQUIRED_CHECK_NAMES } from "./constants.js";
+import {
+  AUTOMATION,
+  ALLOWED_BRANCH_PREFIXES,
+  REQUIRED_CHECK_NAMES,
+} from "./constants.js";
 
 function isMeaningfulDescription(text) {
   const value = String(text || "").trim();
@@ -73,7 +77,10 @@ export async function processPrValidation({ github, context, core }) {
   lines.push(
     checklistLine("PR description present", isMeaningfulDescription(body)),
   );
-  const branchPattern = new RegExp(`^(${ALLOWED_BRANCH_PREFIXES.join("|")})\\/[a-z0-9._-]+$`, "i");
+  const branchPattern = new RegExp(
+    `^(${ALLOWED_BRANCH_PREFIXES.join("|")})\\/[a-z0-9._-]+$`,
+    "i",
+  );
   lines.push(
     checklistLine(
       "Branch naming valid",
@@ -146,7 +153,7 @@ export async function processPrValidation({ github, context, core }) {
   );
   const checkSummary = summarizeRequiredCheckStates(
     checkRunsResponse?.data?.check_runs || [],
-    REQUIRED_CHECK_NAMES
+    REQUIRED_CHECK_NAMES,
   );
   lines.push(
     checklistLine(
