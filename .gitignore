@@ -41,3 +41,6 @@ server/uploads/
 *.patch
 *.orig
 *.rej
+
+# Merge-conflict scratch dumps (e.g. cm_check.txt, cm_upstream*.txt)
+cm_*.txt
