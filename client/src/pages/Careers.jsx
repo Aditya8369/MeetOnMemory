@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { toast } from "react-toastify";
 import Navbar from "../components/Navbar.jsx";
@@ -276,6 +276,30 @@ const Careers = () => {
     coverLetter: "",
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Accessibility Enhancement: Close modal on Escape key press
+  useEffect(() => {
+    if (!isModalOpen) return;
+
+    const handleKeyDown = (e) => {
+      if (e.key === "Escape") {
+        setIsModalOpen(false);
+        setActiveJobForModal(null);
+        setFormData({
+          name: "",
+          email: "",
+          portfolio: "",
+          resume: "",
+          coverLetter: "",
+        });
+      }
+    };
+
+    document.addEventListener("keydown", handleKeyDown);
+    return () => {
+      document.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [isModalOpen]);
 
   // Dynamic filter collections
   const departments = useMemo(() => {
@@ -573,11 +597,10 @@ const Careers = () => {
 
                     {/* Expandable Panel */}
                     <div
-                      className={`transition-all duration-300 ease-in-out overflow-hidden ${
-                        isOpen
-                          ? "max-h-[800px] border-t border-slate-100 dark:border-slate-800/60"
-                          : "max-h-0"
-                      }`}
+                      className={`transition-all duration-300 ease-in-out overflow-hidden ${isOpen
+                        ? "max-h-[800px] border-t border-slate-100 dark:border-slate-800/60"
+                        : "max-h-0"
+                        }`}
                     >
                       <div className="p-6 bg-slate-50/30 dark:bg-slate-800/10 space-y-6">
                         <div>
@@ -734,11 +757,10 @@ const Careers = () => {
                   )}
                 </button>
                 <div
-                  className={`transition-all duration-300 ease-in-out overflow-hidden ${
-                    isOpen
-                      ? "max-h-60 border-t border-slate-100 dark:border-slate-800/60"
-                      : "max-h-0"
-                  }`}
+                  className={`transition-all duration-300 ease-in-out overflow-hidden ${isOpen
+                    ? "max-h-60 border-t border-slate-100 dark:border-slate-800/60"
+                    : "max-h-0"
+                    }`}
                 >
                   <div className="px-6 py-5 text-sm leading-relaxed text-slate-600 dark:text-slate-300 bg-slate-50/50 dark:bg-slate-800/30">
                     {faq.a}
@@ -793,6 +815,7 @@ const Careers = () => {
             <button
               onClick={closeModal}
               className="absolute top-4 right-4 p-2 rounded-full text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800/80 transition-colors cursor-pointer"
+              aria-label="Close modal"
             >
               <X className="w-5 h-5" />
             </button>
