@@ -36,6 +36,12 @@ const MeetingTranscript = ({ meeting }) => {
 
   const shouldShowExpandButton = transcript.length > 1000;
 
+  const truncateAtWord = (text, maxLength) => {
+    if (text.length <= maxLength) return text;
+    const lastSpace = text.lastIndexOf(" ", maxLength);
+    return text.substring(0, lastSpace > 0 ? lastSpace : maxLength) + "...";
+  };
+
   return (
     <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-6">
       <div className="flex items-center justify-between mb-4">
@@ -64,9 +70,7 @@ const MeetingTranscript = ({ meeting }) => {
         <div className="text-gray-700 text-sm whitespace-pre-wrap leading-relaxed">
           {shouldShowExpandButton && !isExpanded ? (
             <>
-              <GlossaryHighlighter
-                text={transcript.substring(0, 1000) + "..."}
-              />
+              <GlossaryHighlighter text={truncateAtWord(transcript, 1000)} />
               <button
                 onClick={() => setIsExpanded(true)}
                 className="ml-2 text-blue-600 hover:text-blue-800 font-medium"

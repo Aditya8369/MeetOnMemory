@@ -46,13 +46,38 @@ export const approveTerm = async (id) => {
   return data;
 };
 
+const detectCache = new Map();
+
 /**
  * Detect terms in a given text
  * @param {string} text
  */
 export const detectTerms = async (text) => {
+  if (!text) return [];
+
+  // Create a simple hash/key (can just use the text itself if it's not huge, or a truncated version for safety)
+  // Since text can be up to 15000 chars, let's just use it as key, JS Map can handle it fine for a single page session
+  if (detectCache.has(text)) {
+    return detectCache.get(text);
+  }
+
   const { data } = await api.post("/glossary/detect", { text });
+
+  detectCache.set(text, data);
+  // Optional: keep cache size bounded if needed, but for a single meeting session it's fine.
+  if (detectCache.size > 50) {
+    const firstKey = detectCache.keys().next().value;
+    detectCache.delete(firstKey);
+  }
+
   return data;
+};
+
+/**
+ * Helper to check if cache already has the text (for synchronous checking)
+ */
+export const getCachedDetection = (text) => {
+  return detectCache.get(text);
 };
 
 /**

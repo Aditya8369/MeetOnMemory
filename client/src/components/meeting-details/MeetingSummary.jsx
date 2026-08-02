@@ -290,6 +290,12 @@ const MeetingSummary = ({ meeting }) => {
   const summaryText = typeof summary === "string" ? summary : null;
   const shouldShowExpandButton = summaryText && summaryText.length > 500;
 
+  const truncateAtWord = (text, maxLength) => {
+    if (text.length <= maxLength) return text;
+    const lastSpace = text.lastIndexOf(" ", maxLength);
+    return text.substring(0, lastSpace > 0 ? lastSpace : maxLength) + "...";
+  };
+
   return (
     <>
       <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-6">
@@ -318,7 +324,7 @@ const MeetingSummary = ({ meeting }) => {
               {shouldShowExpandButton && !isExpanded ? (
                 <>
                   <GlossaryHighlighter
-                    text={summaryText.substring(0, 500) + "..."}
+                    text={truncateAtWord(summaryText, 500)}
                   />
                   <button
                     onClick={() => setIsExpanded(true)}

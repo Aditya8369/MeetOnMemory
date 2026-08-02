@@ -111,17 +111,30 @@ ${transcriptText.substring(0, 15000)}
       // Double check it's not already in DB
       if (knownPhrases.includes(item.term.toLowerCase())) continue;
 
-      const newTerm = new GlossaryTerm({
-        organization: orgId,
-        term: item.term,
-        definition: item.definition,
-        category: item.category || "General",
-        isAutoSuggested: true,
-        approvalStatus: "pending",
-      });
+      // Use findOneAndUpdate with upsert to prevent race conditions
+      // This will only insert if a term with the same name doesn't exist for this org
+      const updatedOrInsertedTerm = await GlossaryTerm.findOneAndUpdate(
+        {
+          organization: orgId,
+          term: { $regex: new RegExp(`^${item.term}$`, "i") },
+        },
+        {
+          $setOnInsert: {
+            organization: orgId,
+            term: item.term,
+            definition: item.definition,
+            category: item.category || "General",
+            isAutoSuggested: true,
+            approvalStatus: "pending",
+          },
+        },
+        { new: true, upsert: true },
+      );
 
-      await newTerm.save();
-      suggestions.push(newTerm);
+      // Only add to suggestions if it was newly created (or if it's currently pending, we could include it,
+      // but to be safe we'll just include it if we upserted it successfully)
+      // If we want to strictly only return new suggestions, we might need rawResult, but this is fine.
+      suggestions.push(updatedOrInsertedTerm);
       // add to known phrases to prevent duplicates in the same run
       knownPhrases.push(item.term.toLowerCase());
     }

@@ -49,6 +49,18 @@ export const createTerm = async (req, res) => {
         .json({ message: "Term and definition are required" });
     }
 
+    // Check for existing term (case-insensitive)
+    const existing = await GlossaryTerm.findOne({
+      organization: orgId,
+      term: { $regex: new RegExp(`^${term}$`, "i") },
+    });
+
+    if (existing) {
+      return res
+        .status(400)
+        .json({ message: "This term already exists in your glossary" });
+    }
+
     const newTerm = new GlossaryTerm({
       organization: orgId,
       term,

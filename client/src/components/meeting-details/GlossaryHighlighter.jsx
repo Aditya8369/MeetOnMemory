@@ -1,9 +1,12 @@
 import React, { useState, useEffect } from "react";
-import { detectTerms } from "../../services/glossaryApi";
+import { detectTerms, getCachedDetection } from "../../services/glossaryApi";
 
 const GlossaryHighlighter = ({ text }) => {
-  const [matches, setMatches] = useState([]);
-  const [loading, setLoading] = useState(true);
+  // Check cache synchronously for initial state to prevent flicker
+  const cached = getCachedDetection(text);
+
+  const [matches, setMatches] = useState(cached || []);
+  const [loading, setLoading] = useState(!cached && !!text);
 
   useEffect(() => {
     const fetchMatches = async () => {
@@ -11,6 +14,15 @@ const GlossaryHighlighter = ({ text }) => {
         setLoading(false);
         return;
       }
+
+      // If we already have it from cache on mount, skip fetching
+      if (getCachedDetection(text)) {
+        setMatches(getCachedDetection(text));
+        setLoading(false);
+        return;
+      }
+
+      setLoading(true);
       try {
         const detected = await detectTerms(text);
         setMatches(detected || []);
