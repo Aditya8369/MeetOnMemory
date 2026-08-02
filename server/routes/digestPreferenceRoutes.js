@@ -2,9 +2,9 @@
 
 import express from "express";
 import {
-    getPreferences,
-    updatePreferences,
-    sendTestDigest
+  getPreferences,
+  updatePreferences,
+  sendTestDigest,
 } from "../controllers/digestPreferenceController.js";
 import { protect } from "../middleware/authMiddleware.js";
 import { validateDigestPreferences } from "../middleware/validationMiddleware.js";

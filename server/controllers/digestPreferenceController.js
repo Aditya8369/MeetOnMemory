@@ -52,7 +52,7 @@ export const updatePreferences = async (req, res) => {
     const preferences = await DigestPreference.findOneAndUpdate(
       { userId },
       { frequency, includeSections, enabled },
-      { new: true, upsert: true, runValidators: true }
+      { new: true, upsert: true, runValidators: true },
     );
 
     return res.status(200).json({
@@ -107,7 +107,10 @@ export const previewDigest = async (req, res) => {
       `;
     }
 
-    if (sections.includes("action_items") || sections.includes("action-items")) {
+    if (
+      sections.includes("action_items") ||
+      sections.includes("action-items")
+    ) {
       html += `
         <div style="margin-bottom: 24px;">
           <h3 style="color: #111827; border-bottom: 2px solid #f3f4f6; padding-bottom: 8px; margin-bottom: 16px; font-size: 18px;">Action Items</h3>
@@ -202,7 +205,7 @@ export const sendTestDigest = async (req, res) => {
     } catch (htmlError) {
       console.error(
         "Error generating digest HTML for test, using fallback:",
-        htmlError
+        htmlError,
       );
       htmlContent = `
         <div style="font-family: sans-serif; padding: 24px; color: #334155; max-width: 600px; margin: 0 auto;">
@@ -210,10 +213,12 @@ export const sendTestDigest = async (req, res) => {
           <p>Hello ${user.name || "User"},</p>
           <p>This is a test of your configured digest preferences to ensure delivery is working correctly.</p>
           <div style="background: #f8fafc; padding: 16px; border-radius: 8px; margin: 16px 0; border: 1px solid #e2e8f0;">
-            <p style="margin: 0 0 8px 0;"><strong>Frequency:</strong> ${preferences.frequency || "Weekly"
-        }</p>
-            <p style="margin: 0;"><strong>Sections:</strong> ${(preferences.includeSections || []).join(", ") || "None"
-        }</p>
+            <p style="margin: 0 0 8px 0;"><strong>Frequency:</strong> ${
+              preferences.frequency || "Weekly"
+            }</p>
+            <p style="margin: 0;"><strong>Sections:</strong> ${
+              (preferences.includeSections || []).join(", ") || "None"
+            }</p>
           </div>
           <p style="margin-top: 24px; color: #64748b; font-size: 12px; border-top: 1px solid #e2e8f0; padding-top: 16px;">
             Sent by MeetOnMemory Digest System
@@ -230,15 +235,13 @@ export const sendTestDigest = async (req, res) => {
     };
 
     console.log(
-      `[Digest Test] Attempting to send test digest to ${user.email}...`
+      `[Digest Test] Attempting to send test digest to ${user.email}...`,
     );
 
     // Execute the email send. This will throw if the email service fails.
     await sendEmail(emailOptions);
 
-    console.log(
-      `[Digest Test] Test digest successfully sent to ${user.email}`
-    );
+    console.log(`[Digest Test] Test digest successfully sent to ${user.email}`);
 
     // 4. Return success ONLY after the email request completes successfully
     return res.status(200).json({
@@ -246,18 +249,14 @@ export const sendTestDigest = async (req, res) => {
       message: `Test digest sent successfully to ${user.email}. Please check your inbox.`,
     });
   } catch (error) {
-    console.error(
-      "[Digest Test] CRITICAL: Error sending test digest:",
-      error
-    );
+    console.error("[Digest Test] CRITICAL: Error sending test digest:", error);
 
     // Return a meaningful error to the frontend
     return res.status(500).json({
       success: false,
       message:
         "Failed to send test digest. Please check your email configuration or try again later.",
-      error:
-        process.env.NODE_ENV === "development" ? error.message : undefined,
+      error: process.env.NODE_ENV === "development" ? error.message : undefined,
     });
   }
 };
