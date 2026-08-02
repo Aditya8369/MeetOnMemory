@@ -41,6 +41,8 @@ import noteVersionRoutes from "./noteVersionRoutes.js";
 import reportRoutes from "./reportRoutes.js";
 import agendaSuggestionRoutes from "./agendaSuggestionRoutes.js";
 import translationRoutes from "./translationRoutes.js";
+import personalNoteRoutes from "./personalNoteRoutes.js";
+import templateLibraryRoutes from "./templateLibraryRoutes.js";
 
 const router = express.Router();
 
@@ -89,5 +91,7 @@ router.use("/api/note-versions", noteVersionRoutes);
 router.use("/api/reports", reportRoutes);
 router.use("/api/agenda-suggestions", agendaSuggestionRoutes);
 router.use("/api/translations", translationRoutes);
+router.use("/api/personal-notes", personalNoteRoutes);
+router.use("/api/template-library", templateLibraryRoutes);
 
 export default router;

@@ -41,6 +41,22 @@ const apiClient = axios.create({
  */
 export const requestDeduplicator = createRequestDeduplicator();
 
+export function getRequestReference(error) {
+  return (
+    error?.response?.data?.requestId ||
+    error?.response?.headers?.["x-request-id"] ||
+    error?.response?.headers?.["X-Request-ID"] ||
+    null
+  );
+}
+
+export function appendRequestReference(message, requestId) {
+  if (!requestId) return message;
+
+  const shortReference = String(requestId).slice(0, 12);
+  return `${message} Reference: ${shortReference}`;
+}
+
 function applyFriendlyMessage(error, friendlyMessage) {
   if (!error.response) {
     error.response = { data: { message: friendlyMessage }, status: 0 };
@@ -221,6 +237,13 @@ apiClient.interceptors.response.use(
           }
           break;
       }
+    }
+
+    const status = error.response?.status;
+    const requestId = getRequestReference(error);
+
+    if (status >= 500) {
+      friendlyMessage = appendRequestReference(friendlyMessage, requestId);
     }
 
     applyFriendlyMessage(error, friendlyMessage);

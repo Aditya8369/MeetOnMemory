@@ -141,6 +141,40 @@ describe("apiClient interceptors", () => {
       });
     });
 
+    it("adds a short request reference to unexpected server errors", async () => {
+      mockErrorResponse(apiClient, {
+        status: 500,
+        data: {
+          message: "Internal Server Error",
+          requestId: "7e4de5f1-1234-4567-8901-abcdefabcdef",
+        },
+      });
+
+      await expect(apiClient.get("/test")).rejects.toMatchObject({
+        message:
+          "Server unavailable. Please try again later. Reference: 7e4de5f1-123",
+        response: {
+          data: {
+            requestId: "7e4de5f1-1234-4567-8901-abcdefabcdef",
+          },
+        },
+      });
+    });
+
+    it("does not append a request reference to expected authorization errors", async () => {
+      mockErrorResponse(apiClient, {
+        status: 403,
+        data: {
+          message: "You do not have permission to perform this action.",
+          requestId: "authorization-request-id",
+        },
+      });
+
+      await expect(apiClient.get("/test")).rejects.toMatchObject({
+        message: "You do not have permission to perform this action.",
+      });
+    });
+
     it("handles network errors when offline", async () => {
       Object.defineProperty(navigator, "onLine", {
         configurable: true,
