@@ -3,9 +3,7 @@
 import DigestPreference from "../models/digestPreferenceModel.js";
 import User from "../models/userModel.js";
 import transporter from "../config/nodeMailer.js";
-const buildDigestHtml = async (user, preferences) => {
-  throw new Error("Not implemented yet, using fallback HTML for test digest");
-};
+import MeetingDigestService from "../services/MeetingDigestService.js";
 
 /**
  * @desc Get user digest preferences
@@ -203,7 +201,10 @@ export const sendTestDigest = async (req, res) => {
     // 2. Generate the actual HTML content based on the provided preferences
     let htmlContent = "";
     try {
-      htmlContent = await buildDigestHtml(user, preferences);
+      htmlContent = await MeetingDigestService.buildDigestHtml(
+        user,
+        preferences,
+      );
     } catch (htmlError) {
       console.error(
         "Error generating digest HTML for test, using fallback:",

@@ -20,6 +20,19 @@ const zodPassthroughSchema = {
   parse: (value) => value,
   safeParse: (value) => ({ success: true, data: value }),
 };
+
+const coerceMock = new Proxy(
+  {},
+  {
+    get(target, prop) {
+      if (prop === "number") {
+        return () => zodChain;
+      }
+      return undefined;
+    },
+  },
+);
+
 const zodChain = new Proxy(zodPassthroughSchema, {
   get(target, prop) {
     if (prop in target) return target[prop];
@@ -28,9 +41,10 @@ const zodChain = new Proxy(zodPassthroughSchema, {
 });
 jest.unstable_mockModule("zod", () => ({
   z: new Proxy(
-    {},
+    { coerce: coerceMock },
     {
-      get() {
+      get(target, prop) {
+        if (prop in target) return target[prop];
         return (..._args) => zodChain;
       },
     },
