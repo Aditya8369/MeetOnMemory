@@ -84,4 +84,28 @@ describe("Decision Graph Optimization (#834)", () => {
       confidence: 90,
     });
   });
+
+  it("escapes regex metacharacters in search (ReDoS / regex injection)", async () => {
+    const req = {
+      user: { organization: "org123" },
+      query: { search: "(a+)+$" },
+    };
+    const res = { status: vi.fn().mockReturnThis(), json: vi.fn() };
+
+    Decision.countDocuments.mockResolvedValue(0);
+    Decision.find.mockReturnValue({
+      select: vi.fn().mockReturnThis(),
+      sort: vi.fn().mockReturnThis(),
+      skip: vi.fn().mockReturnThis(),
+      limit: vi.fn().mockReturnThis(),
+      lean: vi.fn().mockResolvedValue([]),
+    });
+
+    await getDecisionGraph(req, res);
+
+    const filterArg = Decision.countDocuments.mock.calls[0][0];
+    // Every metacharacter must be backslash-escaped — not the live pattern.
+    expect(filterArg.text.$regex).toBe("\\(a\\+\\)\\+\\$");
+    expect(filterArg.text.$options).toBe("i");
+  });
 });
