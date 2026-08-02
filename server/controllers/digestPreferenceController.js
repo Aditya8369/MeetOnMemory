@@ -2,7 +2,7 @@
 
 import DigestPreference from "../models/digestPreferenceModel.js";
 import User from "../models/userModel.js";
-import { sendEmail } from "../config/nodeMailer.js";
+import transporter from "../config/nodeMailer.js";
 import MeetingDigestService from "../services/MeetingDigestService.js";
 
 /**
@@ -242,7 +242,7 @@ export const sendTestDigest = async (req, res) => {
     );
 
     // Execute the email send. This will throw if the email service fails.
-    await sendEmail(emailOptions);
+    await transporter.sendMail(emailOptions);
 
     console.log(`[Digest Test] Test digest successfully sent to ${user.email}`);
 
