@@ -19,6 +19,7 @@ const CreateMeeting = () => {
   const [loadingDuplicate, setLoadingDuplicate] = useState(false);
 
   const scheduleMeetingHooks = useScheduleMeeting();
+  const { hydrateDuplicateMeeting } = scheduleMeetingHooks;
   const liveMeetingHooks = useLiveMeeting();
   const sessionCardsHooks = useSessionCards();
 
@@ -36,7 +37,7 @@ const CreateMeeting = () => {
         if (!data?.success || !data?.duplicateData) {
           throw new Error(data?.message || "Unable to load meeting details");
         }
-        scheduleMeetingHooks.hydrateDuplicateMeeting(data.duplicateData);
+        hydrateDuplicateMeeting(data.duplicateData);
         toast.success("Meeting details copied. Choose a new date and time.");
       })
       .catch((error) => {
@@ -54,7 +55,7 @@ const CreateMeeting = () => {
     return () => {
       cancelled = true;
     };
-  }, [duplicateFrom, scheduleMeetingHooks.hydrateDuplicateMeeting]);
+  }, [duplicateFrom, hydrateDuplicateMeeting]);
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-950 text-slate-800 dark:text-slate-200">

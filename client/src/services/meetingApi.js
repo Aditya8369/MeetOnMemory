@@ -16,9 +16,6 @@ export const meetingApi = {
 
   getMeetingById: (id) => apiClient.get(`/api/meetings/${id}`),
 
-  getDuplicateMeetingData: (id) =>
-    apiClient.get(`/api/meetings/${id}/duplicate-data`),
-
   deleteMeeting: (id) => apiClient.delete(`/api/meetings/delete/${id}`),
 
   updateMeeting: (id, data) => apiClient.patch(`/api/meetings/${id}`, data),
@@ -28,4 +25,26 @@ export const meetingApi = {
       responseType: "blob",
       timeout: 60000,
     }),
+
+  getReactionSummary: (id) =>
+    apiClient.get(`/api/meetings/${id}/reactions/summary`),
+  getReactionTimeline: (id) =>
+    apiClient.get(`/api/meetings/${id}/reactions/timeline`),
+
+  // Agenda Timer Endpoints
+  startAgendaItem: (meetingId, itemId) =>
+    apiClient.put(`/api/meetings/timer/${meetingId}/agenda/${itemId}/start`),
+  stopAgendaItem: (meetingId, itemId) =>
+    apiClient.put(`/api/meetings/timer/${meetingId}/agenda/${itemId}/stop`),
+  skipAgendaItem: (meetingId, itemId) =>
+    apiClient.put(`/api/meetings/timer/${meetingId}/agenda/${itemId}/skip`),
+  getAgendaPacingReport: (meetingId) =>
+    apiClient.get(`/api/meetings/timer/${meetingId}/pacing`),
+
+  getInvite: (meetingId) => apiClient.get(`/api/meetings/${meetingId}/invite`),
+  regenerateInvite: (meetingId) =>
+    apiClient.post(`/api/meetings/${meetingId}/invite/regenerate`),
+  updateInvite: (meetingId, data) =>
+    apiClient.patch(`/api/meetings/${meetingId}/invite`, data),
+  resolveInvite: (code) => apiClient.get(`/api/meetings/invite/${code}`),
 };
