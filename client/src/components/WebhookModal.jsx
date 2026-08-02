@@ -1,5 +1,13 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
-import { X, Globe, Lock, Shield, RefreshCw, Loader2, Activity } from "lucide-react";
+import {
+  X,
+  Globe,
+  Lock,
+  Shield,
+  RefreshCw,
+  Loader2,
+  Activity,
+} from "lucide-react";
 import { toast } from "react-toastify";
 import { webhookApi } from "../services";
 
@@ -51,7 +59,7 @@ const WebhookModal = ({
     if (webhook) {
       setTargetUrl(webhook.targetUrl || "");
       setSelectedEvents(webhook.events || ["meeting.created"]);
-      
+
       // SECURITY FIX: Do NOT pre-fill the actual secret on edit.
       // Show a masked placeholder if it exists, otherwise generate a new one.
       if (webhook.hasSecret) {
@@ -59,7 +67,7 @@ const WebhookModal = ({
       } else {
         setSecret(generateRandomSecret());
       }
-      
+
       setIsActive(webhook.isActive !== false);
     } else {
       setTargetUrl("");
@@ -372,7 +380,11 @@ const WebhookModal = ({
                 type="text"
                 value={secret}
                 onChange={(e) => setSecret(e.target.value)}
-                placeholder={isEdit && webhook?.hasSecret ? "Enter new secret to overwrite (or leave hidden)" : "Secret key for signing payloads"}
+                placeholder={
+                  isEdit && webhook?.hasSecret
+                    ? "Enter new secret to overwrite (or leave hidden)"
+                    : "Secret key for signing payloads"
+                }
                 className="w-full pl-10 pr-4 py-2.5 bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-900 dark:text-white text-xs font-mono focus:outline-hidden focus:ring-2 focus:ring-blue-500 transition-all"
                 // Disable copy-paste of the masked value to prevent confusion
                 readOnly={isEdit && secret === SECRET_MASK}
