@@ -1,9 +1,9 @@
 // server/controllers/digestPreferenceController.js
 
-import DigestPreference from "../models/DigestPreference.js";
-import User from "../models/User.js";
-import { sendEmail } from "../config/nodeMailer.js";
-import { buildDigestHtml } from "../services/digestService.js";
+import DigestPreference from "../models/digestPreferenceModel.js";
+import User from "../models/userModel.js";
+import transporter from "../config/nodeMailer.js";
+import MeetingDigestService from "../services/MeetingDigestService.js";
 
 /**
  * @desc Get user digest preferences
@@ -201,7 +201,10 @@ export const sendTestDigest = async (req, res) => {
     // 2. Generate the actual HTML content based on the provided preferences
     let htmlContent = "";
     try {
-      htmlContent = await buildDigestHtml(user, preferences);
+      htmlContent = await MeetingDigestService.buildDigestHtml(
+        user,
+        preferences,
+      );
     } catch (htmlError) {
       console.error(
         "Error generating digest HTML for test, using fallback:",
@@ -239,7 +242,7 @@ export const sendTestDigest = async (req, res) => {
     );
 
     // Execute the email send. This will throw if the email service fails.
-    await sendEmail(emailOptions);
+    await transporter.sendMail(emailOptions);
 
     console.log(`[Digest Test] Test digest successfully sent to ${user.email}`);
 
