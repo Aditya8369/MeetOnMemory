@@ -527,7 +527,7 @@ export const getAllMeetings = async (userId, orgId, queryParams = {}) => {
     baseConditions.push({ date: dateFilter });
   }
 
-  if (search.trim()) {
+  if (search && search.trim()) {
     const searchRegex = escapeRegExp(search.trim());
     baseConditions.push({
       $or: [
