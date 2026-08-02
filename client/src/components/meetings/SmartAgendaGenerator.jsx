@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import {
   generateAgendaSuggestions,
   updateSuggestionItemStatus,
@@ -16,13 +16,7 @@ const SmartAgendaGenerator = ({
   const [editingItemId, setEditingItemId] = useState(null);
   const [editText, setEditText] = useState("");
 
-  useEffect(() => {
-    if (meetingId) {
-      loadExistingSuggestions();
-    }
-  }, [meetingId]);
-
-  const loadExistingSuggestions = async () => {
+  const loadExistingSuggestions = useCallback(async () => {
     try {
       const data = await getMeetingSuggestions(meetingId);
       if (data && data.length > 0) {
@@ -31,7 +25,13 @@ const SmartAgendaGenerator = ({
     } catch (error) {
       console.error("Failed to load existing suggestions:", error);
     }
-  };
+  }, [meetingId]);
+
+  useEffect(() => {
+    if (meetingId) {
+      loadExistingSuggestions();
+    }
+  }, [loadExistingSuggestions, meetingId]);
 
   const handleGenerate = async () => {
     setLoading(true);

@@ -35,6 +35,7 @@ const ScheduleMeeting = ({ hookProps, loadingDuplicate = false }) => {
     draftStatus,
     restoreDraft,
     discardDraft,
+    isFollowUpDraft = false,
   } = hookProps;
 
   return (

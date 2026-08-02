@@ -1,7 +1,6 @@
-import { useContext, useMemo, useState } from "react";
 import { toast } from "react-toastify";
 import { meetingApi, meetingTemplateApi } from "../../../services";
-import { useEffect } from "react";
+import { useCallback, useContext, useEffect, useMemo, useState } from "react";
 import AppContent from "../../../context/AppContent";
 import {
   buildMeetingDraftKey,
@@ -37,7 +36,6 @@ export const buildDuplicateScheduleState = (duplicateData = {}) => ({
   },
 });
 
-export const useScheduleMeeting = () => {
 export const useScheduleMeeting = ({
   mode = "create",
   meetingId = null,
