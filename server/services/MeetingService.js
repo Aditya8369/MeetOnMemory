@@ -456,29 +456,59 @@ export const getAllMeetings = async (userId, orgId, queryParams = {}) => {
     startDate,
     endDate,
     includeArchived,
+    search,
+    meetingType,
+    sortBy = "createdAt",
+    sortOrder = "desc",
   } = queryParams;
 
+  const baseQuery = {};
   const queryOptions = [{ uploadedBy: userId }];
   if (orgId) {
     queryOptions.push({ organization: orgId });
   }
 
-  const query = { $or: queryOptions };
+  baseQuery.$or = queryOptions;
 
   if (!includeArchived) {
-    query.archived = { $ne: true };
+    baseQuery.archived = { $ne: true };
   }
 
   if (startDate || endDate) {
-    query.date = {};
-    if (startDate) query.date.$gte = new Date(startDate);
-    if (endDate) query.date.$lte = new Date(endDate);
+    baseQuery.date = {};
+    if (startDate) baseQuery.date.$gte = new Date(startDate);
+    if (endDate) baseQuery.date.$lte = new Date(endDate);
   }
+
+  const $and = [baseQuery];
+
+  if (meetingType) {
+    $and.push({ meetingType });
+  }
+
+  if (search) {
+    const escapedSearch = search.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    $and.push({
+      $or: [
+        { title: { $regex: escapedSearch, $options: "i" } },
+        { summary: { $regex: escapedSearch, $options: "i" } },
+      ],
+    });
+  }
+
+  const query = { $and };
+
+  const validSortFields = ["createdAt", "date", "title"];
+  const finalSortField = validSortFields.includes(sortBy)
+    ? sortBy
+    : "createdAt";
+  const finalSortOrder = sortOrder === "asc" ? 1 : -1;
+  const sort = { [finalSortField]: finalSortOrder };
 
   const skip = (parseInt(page) - 1) * parseInt(limit);
 
   const [meetings, total] = await Promise.all([
-    MeetingStorageService.getMeetingsQuery(query, skip, parseInt(limit)),
+    MeetingStorageService.getMeetingsQuery(query, skip, parseInt(limit), sort),
     MeetingStorageService.countMeetingsQuery(query),
   ]);
 

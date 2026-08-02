@@ -1,9 +1,11 @@
 // server/controllers/digestPreferenceController.js
 
-import DigestPreference from "../models/DigestPreference.js";
-import User from "../models/User.js";
-import { sendEmail } from "../config/nodeMailer.js";
-import { buildDigestHtml } from "../services/digestService.js";
+import DigestPreference from "../models/digestPreferenceModel.js";
+import User from "../models/userModel.js";
+import transporter from "../config/nodeMailer.js";
+const buildDigestHtml = async (user, preferences) => {
+  throw new Error("Not implemented yet, using fallback HTML for test digest");
+};
 
 /**
  * @desc Get user digest preferences
@@ -239,7 +241,7 @@ export const sendTestDigest = async (req, res) => {
     );
 
     // Execute the email send. This will throw if the email service fails.
-    await sendEmail(emailOptions);
+    await transporter.sendMail(emailOptions);
 
     console.log(`[Digest Test] Test digest successfully sent to ${user.email}`);
 
