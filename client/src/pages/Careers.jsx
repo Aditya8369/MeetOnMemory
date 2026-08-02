@@ -597,10 +597,11 @@ const Careers = () => {
 
                     {/* Expandable Panel */}
                     <div
-                      className={`transition-all duration-300 ease-in-out overflow-hidden ${isOpen
-                        ? "max-h-[800px] border-t border-slate-100 dark:border-slate-800/60"
-                        : "max-h-0"
-                        }`}
+                      className={`transition-all duration-300 ease-in-out overflow-hidden ${
+                        isOpen
+                          ? "max-h-[800px] border-t border-slate-100 dark:border-slate-800/60"
+                          : "max-h-0"
+                      }`}
                     >
                       <div className="p-6 bg-slate-50/30 dark:bg-slate-800/10 space-y-6">
                         <div>
@@ -757,10 +758,11 @@ const Careers = () => {
                   )}
                 </button>
                 <div
-                  className={`transition-all duration-300 ease-in-out overflow-hidden ${isOpen
-                    ? "max-h-60 border-t border-slate-100 dark:border-slate-800/60"
-                    : "max-h-0"
-                    }`}
+                  className={`transition-all duration-300 ease-in-out overflow-hidden ${
+                    isOpen
+                      ? "max-h-60 border-t border-slate-100 dark:border-slate-800/60"
+                      : "max-h-0"
+                  }`}
                 >
                   <div className="px-6 py-5 text-sm leading-relaxed text-slate-600 dark:text-slate-300 bg-slate-50/50 dark:bg-slate-800/30">
                     {faq.a}
