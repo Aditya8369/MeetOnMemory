@@ -158,10 +158,10 @@ export async function processPrValidation({ github, context, core }) {
   lines.push(
     checklistLine(
       "Required CI Checks",
-      checkSummary.failedCount === 0,
+      checkSummary.allCompleted && checkSummary.failedCount === 0,
       checkSummary.failedCount
         ? `failing checks: ${checkSummary.failedRuns.map((r) => r.name).join(", ")}`
-        : checkSummary.pendingCount
+        : !checkSummary.allCompleted || checkSummary.pendingCount
           ? "checks pending"
           : "all required checks passing",
     ),
