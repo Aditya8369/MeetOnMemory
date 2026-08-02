@@ -111,6 +111,59 @@ describe("PersonalNote API", () => {
     expect(res.body.notes[0].isPinned).toBe(true);
   });
 
+  it("rejects a non-ObjectId meetingId with 400 instead of 500", async () => {
+    const res = await request(app)
+      .post(`/api/personal-notes/not-an-object-id`)
+      .set(authHeader(token))
+      .send({ content: "x" });
+
+    expect(res.statusCode).toBe(400);
+    expect(res.body.success).toBe(false);
+  });
+
+  it("returns 404 for a meeting that does not exist", async () => {
+    const missingId = "5f9f1b9b9c9d440000000000";
+    const res = await request(app)
+      .post(`/api/personal-notes/${missingId}`)
+      .set(authHeader(token))
+      .send({ content: "x" });
+
+    expect(res.statusCode).toBe(404);
+  });
+
+  it("returns 403 for a meeting the user cannot access", async () => {
+    const otherUser = await User.create({
+      name: "Other Org User",
+      email: "otherorg@test.com",
+      password: "password123",
+      role: "member",
+    });
+    const foreignMeeting = await Meeting.create({
+      title: "Foreign Meeting",
+      date: new Date(),
+      uploadedBy: otherUser._id,
+      participants: [],
+    });
+
+    const res = await request(app)
+      .post(`/api/personal-notes/${foreignMeeting._id}`)
+      .set(authHeader(token))
+      .send({ content: "trying to attach to a foreign meeting" });
+
+    expect(res.statusCode).toBe(403);
+    expect(res.body.success).toBe(false);
+  });
+
+  it("rejects content over the max length with 400", async () => {
+    const res = await request(app)
+      .post(`/api/personal-notes/${meeting._id}`)
+      .set(authHeader(token))
+      .send({ content: "a".repeat(50001) });
+
+    expect(res.statusCode).toBe(400);
+    expect(res.body.success).toBe(false);
+  });
+
   it("should search notes", async () => {
     await PersonalNote.create({
       userId: user._id,
