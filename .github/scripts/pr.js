@@ -8,6 +8,7 @@ import {
   safeCall,
   summarizeCheckStates,
 } from "./helpers.js";
+import { processPrActivityRefresh } from "./activity.js";
 import { extractLinkedIssueNumbers, hasMarker } from "./utils.js";
 import { AUTOMATION } from "./constants.js";
 
@@ -36,6 +37,31 @@ export async function processPrValidation({ github, context, core }) {
 
   const pr = context.payload.pull_request;
   if (!pr) return;
+
+  if (action === "opened") {
+    const existingWelcomeComment = await findCommentByMarker(
+      github,
+      context,
+      core,
+      pr.number,
+      AUTOMATION.prOpenedMarker,
+    );
+
+    if (!existingWelcomeComment) {
+      await createComment(
+        github,
+        context,
+        core,
+        pr.number,
+        comments.prOpened({
+          user: pr.user.login,
+        }),
+      );
+    }
+  }
+
+  // Refresh assignee inactivity timers for linked issues (drafts included).
+  await processPrActivityRefresh({ github, context, core });
 
   const prNumber = pr.number;
   const body = pr.body || "";

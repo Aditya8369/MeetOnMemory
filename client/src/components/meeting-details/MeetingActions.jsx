@@ -1,7 +1,10 @@
-import React, { useState } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import AppContent from "../../context/AppContent.js";
 import useExport from "../../hooks/useExport.js";
+import { Mic, MicOff, Loader2 } from "lucide-react";
+import { toast } from "react-toastify";
+import apiClient from "../../services/apiClient";
 
 const MeetingActions = ({ meeting, onDelete, onRename }) => {
   const navigate = useNavigate();
@@ -11,7 +14,12 @@ const MeetingActions = ({ meeting, onDelete, onRename }) => {
   const [showExportMenu, setShowExportMenu] = useState(false);
   const { exportMeeting, isExporting } = useExport();
 
-  if (!meeting) return null;
+  // Recording state
+  const [isRecording, setIsRecording] = useState(false);
+  const [isProcessing, setIsProcessing] = useState(false);
+  const mediaRecorderRef = useRef(null);
+  const chunksRef = useRef([]);
+  const recordingIntervalRef = useRef(null);
 
   const handleDownloadTranscript = () => {
     if (!meeting.transcript) {
@@ -51,6 +59,27 @@ const MeetingActions = ({ meeting, onDelete, onRename }) => {
     setShowDeleteModal(true);
   };
 
+  // Accessibility & Escape key handler (#838)
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (e.key === "Escape") {
+        if (showDeleteModal) setShowDeleteModal(false);
+        if (showRenameModal) setShowRenameModal(false);
+      }
+    };
+
+    if (showDeleteModal || showRenameModal) {
+      window.addEventListener("keydown", handleKeyDown);
+    }
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [showDeleteModal, showRenameModal]);
+
+  const handleBackdropClick = (e, closeModal) => {
+    if (e.target === e.currentTarget) {
+      closeModal();
+    }
+  };
+
   const confirmDelete = () => {
     onDelete(meeting._id);
     setShowDeleteModal(false);
@@ -59,6 +88,168 @@ const MeetingActions = ({ meeting, onDelete, onRename }) => {
   const handleBack = () => {
     navigate("/summaries");
   };
+
+  // Recording handlers
+  const startRecording = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+
+      // Start recording session on server
+      const { data } = await apiClient.post(
+        `/api/meetings/${meeting._id}/recording/start`,
+        {},
+        { withCredentials: true },
+      );
+
+      if (!data.success) {
+        throw new Error(data.message || "Failed to start recording");
+      }
+
+      mediaRecorderRef.current = new MediaRecorder(stream);
+      chunksRef.current = [];
+
+      mediaRecorderRef.current.ondataavailable = (event) => {
+        if (event.data.size > 0) {
+          chunksRef.current.push(event.data);
+        }
+      };
+
+      mediaRecorderRef.current.start();
+      setIsRecording(true);
+      toast.success("Recording started");
+
+      // Upload chunks every 10 seconds
+      recordingIntervalRef.current = setInterval(async () => {
+        if (chunksRef.current.length > 0) {
+          const blob = new Blob(chunksRef.current, { type: "audio/webm" });
+          const formData = new FormData();
+          formData.append("audio", blob, "audio.webm");
+
+          try {
+            await apiClient.post(
+              `/api/meetings/${meeting._id}/transcript/upload`,
+              formData,
+              { withCredentials: true },
+            );
+            chunksRef.current = [];
+          } catch (error) {
+            console.error("Error uploading audio chunk:", error);
+          }
+        }
+      }, 10000);
+    } catch (error) {
+      console.error("Error starting recording:", error);
+      toast.error(error.message || "Failed to start recording");
+    }
+  };
+
+  const stopRecording = async () => {
+    if (!mediaRecorderRef.current) return;
+
+    // Stop media recorder
+    mediaRecorderRef.current.stop();
+    mediaRecorderRef.current.stream
+      .getTracks()
+      .forEach((track) => track.stop());
+
+    // Clear upload interval
+    if (recordingIntervalRef.current) {
+      clearInterval(recordingIntervalRef.current);
+    }
+
+    // Upload final chunk
+    if (chunksRef.current.length > 0) {
+      const blob = new Blob(chunksRef.current, { type: "audio/webm" });
+      const formData = new FormData();
+      formData.append("audio", blob, "audio.webm");
+
+      try {
+        await apiClient.post(
+          `/api/meetings/${meeting._id}/transcript/upload`,
+          formData,
+          { withCredentials: true },
+        );
+      } catch (error) {
+        console.error("Error uploading final audio chunk:", error);
+      }
+    }
+
+    // Stop recording on server
+    try {
+      const { data } = await apiClient.post(
+        `/api/meetings/${meeting._id}/recording/stop`,
+        {},
+        { withCredentials: true },
+      );
+
+      if (!data.success) {
+        throw new Error(data.message || "Failed to stop recording");
+      }
+
+      setIsRecording(false);
+      setIsProcessing(true);
+      toast.success("Recording stopped, transcription started");
+
+      // Poll for transcript completion
+      const pollInterval = setInterval(async () => {
+        try {
+          const { data: transcriptData } = await apiClient.get(
+            `/api/meetings/${meeting._id}/transcript`,
+            { withCredentials: true },
+          );
+
+          if (
+            transcriptData.success &&
+            transcriptData.transcript.status === "completed"
+          ) {
+            clearInterval(pollInterval);
+            setIsProcessing(false);
+            toast.success("Transcription completed!");
+            // Refresh meeting data to show updated transcript
+            window.location.reload();
+          } else if (
+            transcriptData.success &&
+            transcriptData.transcript.status === "failed"
+          ) {
+            clearInterval(pollInterval);
+            setIsProcessing(false);
+            toast.error("Transcription failed. Please try again.");
+          }
+        } catch (error) {
+          console.error("Error polling transcript status:", error);
+        }
+      }, 5000);
+    } catch (error) {
+      console.error("Error stopping recording:", error);
+      toast.error(error.message || "Failed to stop recording");
+      setIsRecording(false);
+    }
+  };
+
+  const toggleRecording = () => {
+    if (isRecording) {
+      stopRecording();
+    } else {
+      startRecording();
+    }
+  };
+
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      if (recordingIntervalRef.current) {
+        clearInterval(recordingIntervalRef.current);
+      }
+      if (mediaRecorderRef.current && isRecording) {
+        mediaRecorderRef.current.stop();
+        mediaRecorderRef.current.stream
+          .getTracks()
+          .forEach((track) => track.stop());
+      }
+    };
+  }, [isRecording]);
+
+  if (!meeting) return null;
 
   return (
     <>
@@ -81,6 +272,35 @@ const MeetingActions = ({ meeting, onDelete, onRename }) => {
         </h2>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+          <button
+            onClick={toggleRecording}
+            disabled={isProcessing}
+            className={`flex items-center justify-center gap-2 px-4 py-2 rounded-lg transition-colors text-sm font-medium ${
+              isRecording
+                ? "bg-red-500 hover:bg-red-600 text-white"
+                : isProcessing
+                  ? "bg-gray-100 text-gray-400 cursor-not-allowed"
+                  : "bg-blue-600 hover:bg-blue-700 text-white"
+            }`}
+          >
+            {isProcessing ? (
+              <>
+                <Loader2 className="w-4 h-4 animate-spin" />
+                Processing...
+              </>
+            ) : isRecording ? (
+              <>
+                <MicOff className="w-4 h-4" />
+                Stop Recording
+              </>
+            ) : (
+              <>
+                <Mic className="w-4 h-4" />
+                Start Recording
+              </>
+            )}
+          </button>
+
           <button
             onClick={handleDownloadTranscript}
             className="flex items-center justify-center gap-2 px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition-colors text-sm font-medium"
@@ -232,25 +452,38 @@ const MeetingActions = ({ meeting, onDelete, onRename }) => {
 
       {/* Delete Confirmation Modal */}
       {showDeleteModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
-            <h3 className="text-lg font-semibold text-gray-900 mb-2">
+        <div
+          onClick={(e) =>
+            handleBackdropClick(e, () => setShowDeleteModal(false))
+          }
+          className="fixed inset-0 bg-black/60 backdrop-blur-xs flex items-center justify-center z-50 p-4"
+        >
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="delete-modal-title"
+            className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 max-w-md w-full shadow-2xl space-y-4"
+          >
+            <h3
+              id="delete-modal-title"
+              className="text-lg font-bold text-slate-900 dark:text-white"
+            >
               Delete Meeting
             </h3>
-            <p className="text-gray-600 mb-6">
+            <p className="text-sm text-slate-600 dark:text-slate-300">
               Are you sure you want to delete this meeting? This action cannot
               be undone.
             </p>
-            <div className="flex gap-3 justify-end">
+            <div className="flex gap-3 justify-end pt-2">
               <button
                 onClick={() => setShowDeleteModal(false)}
-                className="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition-colors text-sm font-medium"
+                className="px-4 py-2 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 rounded-xl transition-colors text-xs font-semibold cursor-pointer"
               >
                 Cancel
               </button>
               <button
                 onClick={confirmDelete}
-                className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg transition-colors text-sm font-medium"
+                className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-xl transition-colors text-xs font-semibold cursor-pointer shadow-xs"
               >
                 Delete
               </button>
@@ -261,29 +494,47 @@ const MeetingActions = ({ meeting, onDelete, onRename }) => {
 
       {/* Rename Modal */}
       {showRenameModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
-            <h3 className="text-lg font-semibold text-gray-900 mb-2">
+        <div
+          onClick={(e) =>
+            handleBackdropClick(e, () => setShowRenameModal(false))
+          }
+          className="fixed inset-0 bg-black/60 backdrop-blur-xs flex items-center justify-center z-50 p-4"
+        >
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="rename-modal-title"
+            className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 max-w-md w-full shadow-2xl space-y-4"
+          >
+            <h3
+              id="rename-modal-title"
+              className="text-lg font-bold text-slate-900 dark:text-white"
+            >
               Rename Meeting
             </h3>
             <input
               type="text"
               value={newTitle}
               onChange={(e) => setNewTitle(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 mb-4"
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  confirmRename();
+                }
+              }}
+              className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white text-xs focus:ring-2 focus:ring-blue-500 focus:outline-none"
               placeholder="Enter new title"
               autoFocus
             />
-            <div className="flex gap-3 justify-end">
+            <div className="flex gap-3 justify-end pt-2">
               <button
                 onClick={() => setShowRenameModal(false)}
-                className="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition-colors text-sm font-medium"
+                className="px-4 py-2 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 rounded-xl transition-colors text-xs font-semibold cursor-pointer"
               >
                 Cancel
               </button>
               <button
                 onClick={confirmRename}
-                className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors text-sm font-medium"
+                className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl transition-colors text-xs font-semibold cursor-pointer shadow-xs"
               >
                 Save
               </button>
