@@ -43,6 +43,7 @@ import agendaSuggestionRoutes from "./agendaSuggestionRoutes.js";
 import translationRoutes from "./translationRoutes.js";
 import personalNoteRoutes from "./personalNoteRoutes.js";
 import templateLibraryRoutes from "./templateLibraryRoutes.js";
+import aiSummaryTemplateRoutes from "./aiSummaryTemplateRoutes.js";
 
 const router = express.Router();
 
@@ -93,5 +94,6 @@ router.use("/api/agenda-suggestions", agendaSuggestionRoutes);
 router.use("/api/translations", translationRoutes);
 router.use("/api/personal-notes", personalNoteRoutes);
 router.use("/api/template-library", templateLibraryRoutes);
+router.use("/api/ai-summary-templates", aiSummaryTemplateRoutes);
 
 export default router;
