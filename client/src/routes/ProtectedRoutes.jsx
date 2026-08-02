@@ -26,6 +26,7 @@ import ReportBuilder from "../pages/ReportBuilder.jsx";
 import AiSearch from "../pages/AiSearch.jsx";
 import AiAssistant from "../pages/AiAssistant.jsx";
 import MeetingDetails from "../pages/MeetingDetails.jsx";
+import MeetingRecycleBin from "../pages/MeetingRecycleBin.jsx";
 import MeetingRoom from "../pages/MeetingRoom.jsx";
 import TranscriptViewer from "../pages/TranscriptViewer.jsx";
 import TeamMembers from "../pages/TeamMembers.jsx";
@@ -61,6 +62,14 @@ const ProtectedRoutes = (
       element={
         <ProtectedRoute resource="meetings" action="view">
           <MeetingListPage />
+        </ProtectedRoute>
+      }
+    />
+    <Route
+      path="/meetings/recycle-bin"
+      element={
+        <ProtectedRoute resource="meetings" action="view">
+          <MeetingRecycleBin />
         </ProtectedRoute>
       }
     />

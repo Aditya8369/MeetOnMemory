@@ -125,6 +125,24 @@ const meetingSchema = new mongoose.Schema(
       default: false,
     },
 
+    // Soft-delete lifecycle (Issue #1013)
+    deletedAt: {
+      type: Date,
+      default: null,
+      index: true,
+    },
+    deletedBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+      default: null,
+    },
+    deletionReason: {
+      type: String,
+      trim: true,
+      maxlength: 500,
+      default: null,
+    },
+
     // Google Calendar integration
     googleEventId: {
       type: String,
@@ -157,6 +175,7 @@ meetingSchema.pre("validate", function normalizeAgendaOrder(next) {
 
 // Indexes for query performance
 meetingSchema.index({ organization: 1, createdAt: -1 });
+meetingSchema.index({ organization: 1, deletedAt: 1, createdAt: -1 });
 meetingSchema.index({ uploadedBy: 1, createdAt: -1 });
 meetingSchema.index({ status: 1 });
 meetingSchema.index({ title: "text", summary: "text" });

@@ -149,7 +149,7 @@ const MeetingRepository = () => {
 
   // Meeting actions
   const handleDelete = async (meetingId) => {
-    if (!window.confirm("Are you sure you want to delete this meeting?")) {
+    if (!window.confirm("Move this meeting to the recycle bin?")) {
       return;
     }
 
