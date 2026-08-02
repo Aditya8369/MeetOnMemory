@@ -1,4 +1,4 @@
-import api from "./api"; // Assuming there is a base api config in this folder
+import api from "./apiClient";
 
 /**
  * Fetch glossary terms
