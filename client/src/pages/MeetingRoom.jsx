@@ -69,7 +69,16 @@ const MeetingRoom = () => {
   const [isScreenSharing, setIsScreenSharing] = useState(false);
 
   const [peers, setPeers] = useState([]);
-  const [duration, setDuration] = useState(0);
+  
+  // Shared Timer State
+  const [timerState, setTimerState] = useState({
+    isRunning: false,
+    elapsed: 0,
+    remaining: 0,
+    currentAgendaItem: null,
+  });
+  const timerStateRef = useRef(timerState);
+  
   const [showNotes, setShowNotes] = useState(false);
   const [showCaptions] = useState(true);
   const [showTranscript, setShowTranscript] = useState(false);
@@ -101,15 +110,24 @@ const MeetingRoom = () => {
     return `${mins.toString().padStart(2, "0")}:${secs.toString().padStart(2, "0")}`;
   };
 
+  // Local timer tick for smooth UI updates
   useEffect(() => {
-    let timer;
-    if (joined && !meetingEnded) {
-      timer = setInterval(() => {
-        setDuration((prev) => prev + 1);
+    let interval;
+    if (timerState.isRunning && !meetingEnded) {
+      interval = setInterval(() => {
+        setTimerState((prev) => {
+          const next = {
+            ...prev,
+            elapsed: prev.elapsed + 1,
+            remaining: Math.max(0, prev.remaining - 1),
+          };
+          timerStateRef.current = next;
+          return next;
+        });
       }, 1000);
     }
-    return () => clearInterval(timer);
-  }, [joined, meetingEnded]);
+    return () => clearInterval(interval);
+  }, [timerState.isRunning, meetingEnded]);
 
   const joinMeeting = async () => {
     try {
@@ -163,6 +181,12 @@ const MeetingRoom = () => {
         });
 
         setPeers([...peersRef.current]);
+      });
+
+      // Timer synchronization event
+      socketRef.current.on("timer-sync", (serverState) => {
+        setTimerState(prev => ({ ...prev, ...serverState }));
+        timerStateRef.current = { ...timerStateRef.current, ...serverState };
       });
 
       socketRef.current.on("user-joined-signal", (payload) => {
@@ -488,7 +512,7 @@ const MeetingRoom = () => {
               </h2>
               <div className="flex items-center gap-2 text-gray-300 bg-gray-800 px-3 py-1 rounded-full text-sm font-mono">
                 <Clock size={14} />
-                <span>{formatTime(duration)}</span>
+                <span>{formatTime(timerState.elapsed)}</span>
               </div>
               <div className="flex items-center gap-2 text-gray-300 bg-gray-800 px-3 py-1 rounded-full text-sm">
                 <Users size={16} />
