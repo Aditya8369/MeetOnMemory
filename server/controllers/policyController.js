@@ -20,6 +20,7 @@ import { ValidationError, UnauthorizedError } from "../utils/errors.js";
 import AuditService from "../services/AuditService.js";
 import { sendSuccess } from "../utils/responseHandler.js";
 import * as activityService from "../services/activityService.js";
+import { getContentDispositionHeader } from "../utils/fileUtils.js";
 // ═══════════════════════════════════════════════════════════════
 // Zod validation schemas
 // ═══════════════════════════════════════════════════════════════
@@ -182,7 +183,9 @@ export const downloadPolicy = async (req, res, next) => {
       "public, max-age=3600, stale-while-revalidate=86400",
     );
 
-    return res.download(safeFilePath, fileName);
+    res.setHeader("Content-Disposition", getContentDispositionHeader(fileName));
+
+    return res.sendFile(safeFilePath);
   } catch (err) {
     next(err);
   }
