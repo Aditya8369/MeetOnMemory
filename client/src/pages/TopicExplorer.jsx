@@ -1,6 +1,7 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useContext, useMemo } from "react";
 import { useAuth } from "@clerk/clerk-react";
 import axios from "axios";
+import AppContent from "../context/AppContent.js";
 import {
   ScatterChart,
   Scatter,
@@ -23,22 +24,23 @@ const COLORS = [
 
 const TopicExplorer = () => {
   const { getToken } = useAuth();
+  const { userData } = useContext(AppContent);
   const [clusters, setClusters] = useState([]);
   const [loading, setLoading] = useState(true);
   const [selectedCluster, setSelectedCluster] = useState(null);
 
+  const orgId = userData?.organization?._id || userData?.organization;
+
   useEffect(() => {
-    fetchClusters();
+    if (orgId) {
+      fetchClusters();
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [orgId]);
 
   const fetchClusters = async () => {
     try {
       const token = await getToken();
-      // Default to organization 1234 or use org mapping logic from app
-      // Assuming server gets orgId from auth context, or we can use a dummy orgId for this demo if not
-      // Typically the route needs orgId: `/api/topics/clusters/org/${orgId}`
-      const orgId = localStorage.getItem("currentOrgId"); // Replace with proper context
       if (!orgId) return;
 
       const res = await axios.get(`/api/topics/clusters/org/${orgId}`, {
@@ -69,15 +71,17 @@ const TopicExplorer = () => {
   };
 
   // Prepare data for bubble chart
-  const chartData = clusters.map((c, index) => ({
-    name: c.label,
-    count: c.meetingCount,
-    // Assign random x/y for scatter plot visualization to spread them out
-    x: Math.random() * 100,
-    y: Math.random() * 100,
-    fill: COLORS[index % COLORS.length],
-    ...c,
-  }));
+  const chartData = useMemo(() => {
+    return clusters.map((c, index) => ({
+      name: c.label,
+      count: c.meetingCount,
+      // Assign random x/y for scatter plot visualization to spread them out
+      x: Math.random() * 100,
+      y: Math.random() * 100,
+      fill: COLORS[index % COLORS.length],
+      ...c,
+    }));
+  }, [clusters]);
 
   return (
     <div className="p-6 max-w-7xl mx-auto">

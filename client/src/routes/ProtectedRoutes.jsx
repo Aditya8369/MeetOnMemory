@@ -222,7 +222,7 @@ const ProtectedRoutes = (
     <Route
       path="/topics"
       element={
-        <ProtectedRoute>
+        <ProtectedRoute resource="reports" action="view">
           <TopicExplorer />
         </ProtectedRoute>
       }

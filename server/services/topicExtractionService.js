@@ -11,9 +11,13 @@ const CLUSTER_SIMILARITY_THRESHOLD = 0.85;
 /**
  * Extracts 3-8 topics from a meeting's transcript using Generative AI.
  */
-export const extractTopics = async (meetingId) => {
+export const extractTopics = async (meetingId, userOrgId) => {
   const meeting = await Meeting.findById(meetingId);
   if (!meeting) throw new Error("Meeting not found");
+
+  if (meeting.organization.toString() !== userOrgId.toString()) {
+    throw new Error("Unauthorized access to meeting");
+  }
 
   const transcript = await Transcript.findOne({ meeting: meetingId });
   if (!transcript || !transcript.segments || transcript.segments.length === 0) {
@@ -69,16 +73,18 @@ Return ONLY a JSON array matching this format exactly:
     );
   }
 
-  // Save to database (replace existing if any)
-  await MeetingTopic.deleteMany({ meeting: meetingId });
+  // Save to database (replace existing if any) atomically
+  const meetingTopic = await MeetingTopic.findOneAndUpdate(
+    { meeting: meetingId },
+    {
+      $set: {
+        organization: meeting.organization,
+        topics: topicsToSave,
+      },
+    },
+    { upsert: true, new: true },
+  );
 
-  const meetingTopic = new MeetingTopic({
-    meeting: meetingId,
-    organization: meeting.organization,
-    topics: topicsToSave,
-  });
-
-  await meetingTopic.save();
   return meetingTopic;
 };
 

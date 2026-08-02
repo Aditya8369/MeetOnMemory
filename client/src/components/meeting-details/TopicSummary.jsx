@@ -2,6 +2,7 @@ import React from "react";
 import { Badge } from "@headlessui/react"; // if available, or just standard div
 
 const formatTime = (seconds) => {
+  if (seconds == null || isNaN(seconds)) return "0:00";
   const m = Math.floor(seconds / 60);
   const s = Math.floor(seconds % 60);
   return `${m}:${s < 10 ? "0" : ""}${s}`;
@@ -15,7 +16,8 @@ const TopicSummary = ({ topics, onTopicClick }) => {
       <h3 className="text-lg font-semibold mb-2">Discussion Topics</h3>
       <div className="flex flex-wrap gap-2">
         {topics.map((topic, index) => (
-          <div
+          <button
+            type="button"
             key={topic._id || index}
             className="flex items-center space-x-2 bg-gray-100 dark:bg-gray-800 rounded-full px-3 py-1 text-sm cursor-pointer hover:bg-gray-200 dark:hover:bg-gray-700 transition"
             onClick={() => onTopicClick && onTopicClick(topic)}
@@ -32,7 +34,7 @@ const TopicSummary = ({ topics, onTopicClick }) => {
                     : "bg-red-100 text-red-800"
               }`}
             >
-              {topic.confidence}%
+              {topic.confidence != null ? `${topic.confidence}%` : "N/A"}
             </span>
             {topic.timeRanges && topic.timeRanges.length > 0 && (
               <span className="text-xs text-gray-500 flex gap-1">
@@ -49,7 +51,7 @@ const TopicSummary = ({ topics, onTopicClick }) => {
                 )}
               </span>
             )}
-          </div>
+          </button>
         ))}
       </div>
     </div>

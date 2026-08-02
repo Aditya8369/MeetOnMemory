@@ -36,8 +36,17 @@ describe("Topic Extraction Service", () => {
         .spyOn(Meeting, "findById")
         .mockResolvedValue({ _id: "mockId", organization: "org1" });
       jest.spyOn(Transcript, "findOne").mockResolvedValue(null);
-      await expect(extractTopics("mockId")).rejects.toThrow(
+      await expect(extractTopics("mockId", "org1")).rejects.toThrow(
         "No transcript found for meeting",
+      );
+    });
+
+    it("throws error if unauthorized", async () => {
+      jest
+        .spyOn(Meeting, "findById")
+        .mockResolvedValue({ _id: "mockId", organization: "org1" });
+      await expect(extractTopics("mockId", "org2")).rejects.toThrow(
+        "Unauthorized access to meeting",
       );
     });
 
@@ -67,16 +76,16 @@ describe("Topic Extraction Service", () => {
       GenerativeAIService.parseJsonOutput.mockReturnValue(mockAiOutput);
       embeddingUtils.embedText.mockResolvedValue([0.1, 0.2, 0.3]);
 
-      jest.spyOn(MeetingTopic, "deleteMany").mockResolvedValue({});
-      jest.spyOn(MeetingTopic.prototype, "save").mockResolvedValue({});
+      jest.spyOn(MeetingTopic, "findOneAndUpdate").mockResolvedValue({});
 
-      await extractTopics("meeting1");
+      await extractTopics("meeting1", "org1");
 
-      expect(MeetingTopic.deleteMany).toHaveBeenCalledWith({
-        meeting: "meeting1",
-      });
+      expect(MeetingTopic.findOneAndUpdate).toHaveBeenCalledWith(
+        { meeting: "meeting1" },
+        expect.anything(),
+        expect.objectContaining({ upsert: true }),
+      );
       expect(embeddingUtils.embedText).toHaveBeenCalledTimes(1);
-      expect(MeetingTopic.prototype.save).toHaveBeenCalledTimes(1);
     });
   });
 
@@ -115,18 +124,49 @@ describe("Topic Extraction Service", () => {
         },
       ];
 
+      const mockExistingClusters = [];
       jest.spyOn(MeetingTopic, "find").mockResolvedValue(mockTopics);
-      jest.spyOn(TopicCluster, "find").mockResolvedValue([]);
-      jest.spyOn(TopicCluster, "insertMany").mockResolvedValue([]);
+      jest
+        .spyOn(TopicCluster, "find")
+        .mockImplementation(() => Promise.resolve([...mockExistingClusters]));
+      jest
+        .spyOn(TopicCluster, "insertMany")
+        .mockImplementation(async (docs) => {
+          docs.forEach((d) => {
+            d._id = d.id || `cluster_${Math.random()}`;
+            mockExistingClusters.push(d);
+          });
+          return docs;
+        });
       jest
         .spyOn(TopicCluster.prototype, "save")
         .mockImplementation(function () {
           return Promise.resolve(this);
         });
 
-      await clusterTopics("org1");
+      const clusters = await clusterTopics("org1");
       expect(MeetingTopic.find).toHaveBeenCalled();
       expect(TopicCluster.insertMany).toHaveBeenCalled();
+
+      // t1 and t3 have very similar embeddings and should end up in the same cluster. t2 is different.
+      expect(clusters.length).toBe(2);
+      const aiCluster = clusters.find(
+        (c) =>
+          c.canonicalTopicNames.includes("AI Topic") ||
+          c.canonicalTopicNames.includes("Machine Learning"),
+      );
+      expect(aiCluster).toBeDefined();
+      expect(aiCluster.meetingCount).toBe(2); // From mt1 and mt2
+      expect(aiCluster.canonicalTopicNames.length).toBe(2);
+
+      const salesCluster = clusters.find((c) =>
+        c.canonicalTopicNames.includes("Sales Topic"),
+      );
+      expect(salesCluster).toBeDefined();
+      expect(salesCluster.meetingCount).toBe(1);
+
+      // Verify topics were updated
+      expect(mockTopics[0].save).toHaveBeenCalled();
     });
   });
 });
