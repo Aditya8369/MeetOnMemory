@@ -1,10 +1,30 @@
 // server/utils/logger.js
 
 const SENSITIVE_KEY_PATTERN =
-  /authorization|cookie|password|passwd|secret|token|api[-_]?key|access[-_]?token|refresh[-_]?token|file|upload/i;
+  /authorization|cookie|password|passwd|secret|token|api[-_]?key|access[-_]?token|refresh[-_]?token|file|upload|buffer|binary/i;
 const MAX_REDACTION_DEPTH = 5;
+const MAX_STRING_LENGTH = 2000;
+const MAX_ARRAY_ITEMS = 50;
+const MAX_OBJECT_KEYS = 100;
 
-function sanitizeLogValue(value, depth = 0, seen = new WeakSet()) {
+function isBinaryValue(value) {
+  return (
+    (typeof Buffer !== "undefined" && Buffer.isBuffer(value)) ||
+    value instanceof ArrayBuffer ||
+    ArrayBuffer.isView(value)
+  );
+}
+
+function isFileLike(value) {
+  return (
+    value &&
+    typeof value === "object" &&
+    ("originalname" in value || "mimetype" in value || "fieldname" in value) &&
+    ("buffer" in value || "path" in value || "stream" in value)
+  );
+}
+
+export function sanitizeLogValue(value, depth = 0, seen = new WeakSet()) {
   if (
     value == null ||
     typeof value === "boolean" ||
@@ -14,33 +34,46 @@ function sanitizeLogValue(value, depth = 0, seen = new WeakSet()) {
   }
 
   if (typeof value === "string") {
-    return value.length > 2000 ? `${value.slice(0, 2000)}…` : value;
+    return value.length > MAX_STRING_LENGTH
+      ? `${value.slice(0, MAX_STRING_LENGTH)}…[TRUNCATED]`
+      : value;
   }
 
-  if (depth >= MAX_REDACTION_DEPTH) return "[MAX_DEPTH]";
   if (typeof value !== "object") return String(value);
+  if (isBinaryValue(value) || isFileLike(value)) return "[REDACTED_BINARY]";
+  if (depth >= MAX_REDACTION_DEPTH) return "[MAX_DEPTH]";
   if (seen.has(value)) return "[CIRCULAR]";
+
   seen.add(value);
 
   if (Array.isArray(value)) {
-    return value
-      .slice(0, 50)
+    const items = value
+      .slice(0, MAX_ARRAY_ITEMS)
       .map((item) => sanitizeLogValue(item, depth + 1, seen));
+
+    if (value.length > MAX_ARRAY_ITEMS) {
+      items.push(`[${value.length - MAX_ARRAY_ITEMS} MORE ITEMS]`);
+    }
+
+    return items;
   }
 
+  const entries = Object.entries(value);
   const sanitized = {};
-  for (const [key, nestedValue] of Object.entries(value)) {
+
+  for (const [key, nestedValue] of entries.slice(0, MAX_OBJECT_KEYS)) {
     sanitized[key] = SENSITIVE_KEY_PATTERN.test(key)
       ? "[REDACTED]"
       : sanitizeLogValue(nestedValue, depth + 1, seen);
   }
+
+  if (entries.length > MAX_OBJECT_KEYS) {
+    sanitized.__truncatedKeys = entries.length - MAX_OBJECT_KEYS;
+  }
+
   return sanitized;
 }
 
-/**
- * Lightweight structured JSON logger with request-scoped child loggers and
- * recursive sensitive-field redaction.
- */
 class Logger {
   constructor(context = {}) {
     this.context = sanitizeLogValue(context);
@@ -86,5 +119,5 @@ class Logger {
   }
 }
 
-export { Logger, sanitizeLogValue };
+export { Logger };
 export default new Logger();

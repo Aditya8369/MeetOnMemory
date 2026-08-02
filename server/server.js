@@ -25,8 +25,6 @@ import knowledgeRoutes from "./routes/knowledgeRoutes.js";
 import policyComplianceRoutes from "./routes/policyComplianceRoutes.js";
 import sessionRoutes from "./routes/sessionRoutes.js";
 import assistantRoutes from "./routes/assistantRoutes.js";
-import webhookRoutes from "./routes/webhookRoutes.js";
-import slackRoutes from "./routes/slackRoutes.js";
 import transcriptRoutes from "./routes/transcriptRoutes.js";
 import { configureExpress, configureErrorHandling } from "./config/express.js";
 import { configureSocket } from "./config/socket.js";
@@ -54,7 +52,6 @@ import {
   initConflictScanWorker, // eslint-disable-line no-unused-vars
 } from "./services/queueService.js";
 import { initWebhookWorker } from "./services/webhookDispatcherService.js"; // eslint-disable-line no-unused-vars
-import { globalLimiter } from "./middleware/rateLimiter.js"; // eslint-disable-line no-unused-vars
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -95,23 +92,11 @@ app.use("/api/notifications", notificationRoutes);
 app.use("/api/knowledge", knowledgeRoutes);
 app.use("/api/calendar", calendarRoutes);
 app.use("/api/compliance", policyComplianceRoutes);
-import { slackWebhookParser } from "./middleware/slackWebhookParser.js";
 
 app.use("/api/sessions", sessionRoutes);
 app.use("/api/assistant", assistantRoutes);
-app.use("/api/webhooks", webhookRoutes);
-app.use("/api/slack", slackWebhookParser, slackRoutes);
 app.use("/api/transcripts", transcriptRoutes);
 
-// Health check endpoint — registered BEFORE the global rate limiter so
-// keep-alive pings (e.g. from GitHub Actions cron job) are never blocked.
-app.get(["/health", "/api/health"], (req, res) => {
-  res.status(200).json({
-    status: "UP",
-    timestamp: new Date().toISOString(),
-    env: process.env.NODE_ENV,
-  });
-});
 app.use(routes);
 
 // ERROR HANDLING (Must be after routes)

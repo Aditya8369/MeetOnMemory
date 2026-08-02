@@ -8,11 +8,20 @@ function isZodError(err) {
   );
 }
 
+function isMalformedJsonError(err) {
+  return (
+    err instanceof SyntaxError &&
+    err.status === 400 &&
+    err.type === "entity.parse.failed"
+  );
+}
+
+function isPayloadTooLargeError(err) {
+  return err?.status === 413 || err?.type === "entity.too.large";
+}
+
 function withRequestId(req, payload) {
-  return {
-    ...payload,
-    requestId: req?.requestId,
-  };
+  return { ...payload, requestId: req?.requestId };
 }
 
 function getRequestLogger(req) {
@@ -23,13 +32,29 @@ function getRequestLogger(req) {
 const errorHandler = (err, req, res, next) => {
   const requestLog = getRequestLogger(req);
 
-  if (err.code === "EBADCSRFTOKEN") {
-    requestLog.warn("CSRF validation failed", {
-      method: req?.method,
-      path: req?.originalUrl,
-      statusCode: 403,
-    });
+  if (err?.code === "EBADCSRFTOKEN") {
+    requestLog.warn("CSRF validation failed", { statusCode: 403 });
     return sendCsrfInvalid(res, req?.requestId);
+  }
+
+  if (isMalformedJsonError(err)) {
+    requestLog.warn("Malformed JSON request body", { statusCode: 400 });
+    return res.status(400).json(
+      withRequestId(req, {
+        success: false,
+        message: "Invalid JSON payload.",
+      }),
+    );
+  }
+
+  if (isPayloadTooLargeError(err)) {
+    requestLog.warn("Request payload too large", { statusCode: 413 });
+    return res.status(413).json(
+      withRequestId(req, {
+        success: false,
+        message: "Request payload is too large.",
+      }),
+    );
   }
 
   if (isZodError(err)) {
@@ -37,12 +62,7 @@ const errorHandler = (err, req, res, next) => {
       field: issue.path.join("."),
       message: issue.message,
     }));
-    requestLog.warn("Request validation failed", {
-      method: req?.method,
-      path: req?.originalUrl,
-      statusCode: 400,
-      details,
-    });
+    requestLog.warn("Request validation failed", { statusCode: 400, details });
     return res.status(400).json(
       withRequestId(req, {
         success: false,
@@ -53,31 +73,21 @@ const errorHandler = (err, req, res, next) => {
   }
 
   if (err instanceof AppError) {
-    const payload = {
-      success: false,
-      message: err.message,
-    };
+    const payload = { success: false, message: err.message };
     if (err.details) payload.details = err.details;
     requestLog.warn("Handled application error", {
-      method: req?.method,
-      path: req?.originalUrl,
       statusCode: err.statusCode,
       errorName: err.name,
     });
     return res.status(err.statusCode).json(withRequestId(req, payload));
   }
 
-  if (err.name === "ValidationError" && err.errors) {
-    const details = Object.values(err.errors).map((e) => ({
-      field: e.path,
-      message: e.message,
+  if (err?.name === "ValidationError" && err.errors) {
+    const details = Object.values(err.errors).map((error) => ({
+      field: error.path,
+      message: error.message,
     }));
-    requestLog.warn("Mongoose validation failed", {
-      method: req?.method,
-      path: req?.originalUrl,
-      statusCode: 400,
-      details,
-    });
+    requestLog.warn("Mongoose validation failed", { statusCode: 400, details });
     return res.status(400).json(
       withRequestId(req, {
         success: false,
@@ -87,10 +97,8 @@ const errorHandler = (err, req, res, next) => {
     );
   }
 
-  if (err.name === "CastError") {
+  if (err?.name === "CastError") {
     requestLog.warn("Invalid database identifier", {
-      method: req?.method,
-      path: req?.originalUrl,
       statusCode: 400,
       field: err.path,
     });
@@ -102,11 +110,7 @@ const errorHandler = (err, req, res, next) => {
     );
   }
 
-  requestLog.error("Unhandled request error", err, {
-    method: req?.method,
-    path: req?.originalUrl,
-    statusCode: 500,
-  });
+  requestLog.error("Unhandled request error", err, { statusCode: 500 });
 
   const isProd = process.env.NODE_ENV === "production";
   return res.status(500).json(
@@ -114,8 +118,8 @@ const errorHandler = (err, req, res, next) => {
       success: false,
       message: isProd
         ? "Internal Server Error"
-        : err.message || "Internal Server Error",
-      ...(isProd ? {} : { stack: err.stack }),
+        : err?.message || "Internal Server Error",
+      ...(isProd ? {} : { stack: err?.stack }),
     }),
   );
 };

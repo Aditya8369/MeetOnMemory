@@ -12,6 +12,7 @@ import { Logger, sanitizeLogValue } from "../utils/logger.js";
 function createApp() {
   const app = express();
   app.use(requestContext);
+  app.use(express.json({ limit: "1kb" }));
   app.get("/ok", (req, res) => res.json({ ok: true }));
   app.get("/validation", () => {
     throw new ValidationError("Invalid input");
@@ -19,6 +20,13 @@ function createApp() {
   app.get("/boom", () => {
     throw new Error("Database internals should remain private");
   });
+  app.get("/auth-failure", (_req, res) => {
+    res.status(401).json({ success: false, message: "Unauthorized" });
+  });
+  app.get("/forbidden", (_req, res) => {
+    res.status(403).json({ success: false, message: "Forbidden" });
+  });
+  app.post("/echo", (req, res) => res.json(req.body));
   app.use((req, res) => {
     res.status(404).json({
       success: false,
@@ -78,6 +86,45 @@ describe("request correlation middleware", () => {
     expect(validation.headers["x-request-id"]).toBe("validation-ref-1");
     expect(missing.status).toBe(404);
     expect(missing.body.requestId).toBe("missing-ref-1");
+  });
+
+  it("adds matching request IDs to direct authentication and authorization errors", async () => {
+    for (const [path, status] of [
+      ["/auth-failure", 401],
+      ["/forbidden", 403],
+    ]) {
+      const response = await request(createApp())
+        .get(path)
+        .set("X-Request-ID", `direct-${status}`);
+
+      expect(response.status).toBe(status);
+      expect(response.headers["x-request-id"]).toBe(`direct-${status}`);
+      expect(response.body.requestId).toBe(`direct-${status}`);
+    }
+  });
+
+  it("preserves request IDs for malformed JSON and oversized payloads", async () => {
+    const malformed = await request(createApp())
+      .post("/echo")
+      .set("Content-Type", "application/json")
+      .set("X-Request-ID", "malformed-json-ref")
+      .send('{"broken":');
+
+    expect(malformed.status).toBe(400);
+    expect(malformed.body).toMatchObject({
+      success: false,
+      message: "Invalid JSON payload.",
+      requestId: "malformed-json-ref",
+    });
+
+    const oversized = await request(createApp())
+      .post("/echo")
+      .set("Content-Type", "application/json")
+      .set("X-Request-ID", "payload-ref")
+      .send({ value: "x".repeat(2048) });
+
+    expect(oversized.status).toBe(413);
+    expect(oversized.body.requestId).toBe("payload-ref");
   });
 
   it("does not expose stack traces for production 500 responses", async () => {
@@ -144,5 +191,23 @@ describe("structured logger redaction", () => {
     const parsed = JSON.parse(logger.formatMessage("info", "test", {}));
 
     expect(parsed.requestId).toBe("req-child");
+  });
+
+  it("redacts binary values, handles circular data, and bounds large payloads", () => {
+    const circular = { title: "Meeting" };
+    circular.self = circular;
+
+    const sanitized = sanitizeLogValue({
+      requestId: "req-binary",
+      payload: circular,
+      body: Buffer.from("private"),
+      values: Array.from({ length: 60 }, (_, index) => index),
+      longText: "x".repeat(2500),
+    });
+
+    expect(sanitized.body).toBe("[REDACTED]");
+    expect(sanitized.payload.self).toBe("[CIRCULAR]");
+    expect(sanitized.values).toHaveLength(51);
+    expect(sanitized.longText).toContain("[TRUNCATED]");
   });
 });

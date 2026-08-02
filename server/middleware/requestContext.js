@@ -1,19 +1,11 @@
 import { randomUUID } from "node:crypto";
-import logger from "../utils/logger.js";
+import logger, { sanitizeLogValue } from "../utils/logger.js";
 
 export const REQUEST_ID_HEADER = "X-Request-ID";
 export const MAX_REQUEST_ID_LENGTH = 128;
 
 const SAFE_REQUEST_ID_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._:-]*$/;
 
-/**
- * Validate an externally supplied request ID before using it in logs or
- * response headers. Control characters, whitespace, and unbounded values are
- * rejected to prevent log/header injection.
- *
- * @param {unknown} value
- * @returns {value is string}
- */
 export function isValidRequestId(value) {
   return (
     typeof value === "string" &&
@@ -23,67 +15,15 @@ export function isValidRequestId(value) {
   );
 }
 
-/**
- * Resolve a valid incoming request ID or generate a cryptographically strong
- * UUID for this request.
- *
- * @param {unknown} incomingId
- * @returns {string}
- */
 export function resolveRequestId(incomingId) {
   return isValidRequestId(incomingId) ? incomingId : randomUUID();
 }
 
-/**
- * Recursively redact sensitive values before writing request metadata to logs.
- * Kept here as a compatibility export for the existing security-health tests.
- */
+/** Compatibility export used by security regression tests. */
 export function redact(value) {
-  if (
-    value == null ||
-    typeof value === "boolean" ||
-    typeof value === "number" ||
-    typeof value === "string"
-  ) {
-    return value;
-  }
-
-  const seen = new WeakSet();
-  const sensitiveKey =
-    /authorization|cookie|password|passwd|secret|token|api[-_]?key|access[-_]?token|refresh[-_]?token|file|upload/i;
-
-  const visit = (input, depth = 0) => {
-    if (
-      input == null ||
-      typeof input === "boolean" ||
-      typeof input === "number" ||
-      typeof input === "string"
-    ) {
-      return input;
-    }
-    if (typeof input !== "object") return String(input);
-    if (depth >= 5) return "[MAX_DEPTH]";
-    if (seen.has(input)) return "[CIRCULAR]";
-    seen.add(input);
-
-    if (Array.isArray(input)) {
-      return input.slice(0, 50).map((item) => visit(item, depth + 1));
-    }
-
-    return Object.fromEntries(
-      Object.entries(input).map(([key, nestedValue]) => [
-        key,
-        sensitiveKey.test(key) ? "[REDACTED]" : visit(nestedValue, depth + 1),
-      ]),
-    );
-  };
-
-  return visit(value);
+  return sanitizeLogValue(value);
 }
 
-/**
- * Build the minimal request context needed to correlate a failed request.
- */
 export function buildLogContext(req) {
   if (!req) return {};
 
@@ -100,9 +40,25 @@ export function buildLogContext(req) {
   };
 }
 
-/**
- * Attach request-scoped correlation data and structured completion logging.
- */
+function attachRequestIdToErrorJson(res, requestId) {
+  const originalJson = res.json.bind(res);
+
+  res.json = (payload) => {
+    if (
+      res.statusCode >= 400 &&
+      payload &&
+      typeof payload === "object" &&
+      !Array.isArray(payload) &&
+      payload.requestId == null
+    ) {
+      return originalJson({ ...payload, requestId });
+    }
+
+    return originalJson(payload);
+  };
+}
+
+/** Attach request-scoped correlation data before any route can respond. */
 export function requestContext(req, res, next) {
   const requestId = resolveRequestId(req.get(REQUEST_ID_HEADER));
   const startedAt = process.hrtime.bigint();
@@ -111,7 +67,9 @@ export function requestContext(req, res, next) {
   req.id = requestId;
   req.startedAt = Date.now();
   req.log = logger.child(buildLogContext(req));
+
   res.setHeader(REQUEST_ID_HEADER, requestId);
+  attachRequestIdToErrorJson(res, requestId);
 
   res.on("finish", () => {
     const durationMs = Number(process.hrtime.bigint() - startedAt) / 1_000_000;

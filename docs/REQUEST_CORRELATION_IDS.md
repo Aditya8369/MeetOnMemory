@@ -55,3 +55,20 @@ message includes the first 12 characters:
 ```text
 Server unavailable. Please try again later. Reference: 7e4de5f1-123
 ```
+
+## Regression coverage
+
+The correlation middleware is registered before parsers, health probes, public
+webhooks, CSRF protection, rate limiting, authentication, and application
+routes. The response header is therefore available on every Express response.
+For JSON responses with an HTTP status of 400 or greater, the middleware also
+adds the matching `requestId` when the responding middleware did not include it.
+
+Automated tests cover successful requests, direct 401/403 responses, application
+validation, malformed JSON, oversized payloads, CSRF handling, 404 and 500
+responses, request-ID validation, concurrent requests, binary redaction, circular
+references, oversized metadata, and frontend 5xx references.
+
+Infrastructure changes are limited to establishing request context early,
+propagating it through existing error contracts, safely logging it, and exposing
+a shortened reference for unexpected frontend errors.
