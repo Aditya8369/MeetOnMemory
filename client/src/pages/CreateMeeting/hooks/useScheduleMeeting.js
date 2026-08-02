@@ -1,7 +1,12 @@
-import { useCallback, useState } from "react";
+import { useContext, useMemo, useState } from "react";
 import { toast } from "react-toastify";
 import { meetingApi, meetingTemplateApi } from "../../../services";
 import { useEffect } from "react";
+import AppContent from "../../../context/AppContent";
+import {
+  buildMeetingDraftKey,
+  useFormDraft,
+} from "../../../hooks/useFormDraft";
 
 export const buildDuplicateScheduleState = (duplicateData = {}) => ({
   scheduleData: {
@@ -33,6 +38,12 @@ export const buildDuplicateScheduleState = (duplicateData = {}) => ({
 });
 
 export const useScheduleMeeting = () => {
+export const useScheduleMeeting = ({
+  mode = "create",
+  meetingId = null,
+  serverUpdatedAt = null,
+} = {}) => {
+  const { userData } = useContext(AppContent);
   const [scheduleData, setScheduleData] = useState({
     title: "",
     description: "",
@@ -56,6 +67,51 @@ export const useScheduleMeeting = () => {
     tags: [],
     policyDetails: null,
     recordingType: "upload",
+  });
+
+  const userId = userData?._id || userData?.id;
+  const organizationId =
+    userData?.organization?._id || userData?.organization || null;
+  const draftKey = buildMeetingDraftKey({
+    userId,
+    organizationId,
+    mode,
+    meetingId,
+  });
+
+  const draftValues = useMemo(
+    () => ({
+      scheduleData,
+      participants,
+      agendaItems,
+      selectedTemplateId,
+    }),
+    [agendaItems, participants, scheduleData, selectedTemplateId],
+  );
+
+  const restoreDraftValues = (draft) => {
+    if (draft?.scheduleData) setScheduleData(draft.scheduleData);
+    if (Array.isArray(draft?.participants)) setParticipants(draft.participants);
+    if (Array.isArray(draft?.agendaItems)) setAgendaItems(draft.agendaItems);
+    if (typeof draft?.selectedTemplateId === "string") {
+      setSelectedTemplateId(draft.selectedTemplateId);
+    }
+  };
+
+  const {
+    recoverableDraft,
+    lastSavedAt,
+    status: draftStatus,
+    restoreDraft,
+    discardDraft,
+    clearDraft,
+  } = useFormDraft({
+    key: draftKey,
+    values: draftValues,
+    enabled: Boolean(draftKey) && !loading,
+    maxAgeMs: 7 * 24 * 60 * 60 * 1000,
+    serverUpdatedAt,
+    onRestore: restoreDraftValues,
   });
 
   useEffect(() => {
@@ -194,6 +250,8 @@ export const useScheduleMeeting = () => {
           policyDetails: null,
           recordingType: "upload",
         });
+        setSelectedTemplateId("");
+        clearDraft();
       } else {
         toast.error(response.data?.message || "Failed to schedule meeting");
       }
@@ -230,5 +288,11 @@ export const useScheduleMeeting = () => {
     removeAttachment,
     handleScheduleSubmit,
     hydrateDuplicateMeeting,
+    recoverableDraft,
+    lastSavedAt,
+    draftStatus,
+    restoreDraft,
+    discardDraft,
+    setAgendaItems,
   };
 };
