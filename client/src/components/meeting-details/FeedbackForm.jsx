@@ -42,6 +42,8 @@ const StarRating = ({ label, value, onChange }) => {
 
 const FeedbackForm = ({ meetingId }) => {
   const [feedback, setFeedback] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [fetchError, setFetchError] = useState(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [formData, setFormData] = useState({
     overallRating: 0,
@@ -54,16 +56,25 @@ const FeedbackForm = ({ meetingId }) => {
   useEffect(() => {
     const fetchFeedback = async () => {
       try {
+        setLoading(true);
+        setFetchError(null);
         const { data } =
-          await meetingFeedbackApi.getFeedbackForMeeting(meetingId);
-        if (data.success && data.feedback.length > 0) {
-          // Assuming we show the first one or we filter by user in a real scenario
-          // But actually, we only care about the CURRENT user's feedback if we want them to edit it.
-          // Wait, the API returns all feedback. The backend should ideally have a `/feedback/me/:meetingId`.
-          // For now, let's just leave it blank to create a new one, or if they have submitted, they can submit again (upsert will overwrite).
+          await meetingFeedbackApi.getUserFeedbackForMeeting(meetingId);
+        if (data.success && data.feedback) {
+          setFeedback(data.feedback);
+          setFormData({
+            overallRating: data.feedback.overallRating || 0,
+            summaryAccuracy: data.feedback.summaryAccuracy || 0,
+            transcriptQuality: data.feedback.transcriptQuality || 0,
+            comment: data.feedback.comment || "",
+            tags: data.feedback.tags || [],
+          });
         }
       } catch (error) {
         console.error("Failed to fetch feedback", error);
+        setFetchError("Unable to check previous feedback submission.");
+      } finally {
+        setLoading(false);
       }
     };
     fetchFeedback();
@@ -97,7 +108,11 @@ const FeedbackForm = ({ meetingId }) => {
       });
 
       if (data.success) {
-        toast.success("Feedback submitted successfully!");
+        toast.success(
+          feedback
+            ? "Feedback updated successfully!"
+            : "Feedback submitted successfully!",
+        );
         setFeedback(data.feedback);
       }
     } catch (error) {
@@ -107,11 +122,37 @@ const FeedbackForm = ({ meetingId }) => {
     }
   };
 
+  if (loading) {
+    return (
+      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6 mt-6 flex justify-center items-center py-10">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 dark:border-blue-400"></div>
+      </div>
+    );
+  }
+
   return (
     <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6 mt-6">
       <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
         Meeting Feedback
       </h3>
+
+      {fetchError && (
+        <div className="mb-4 p-3 bg-amber-50 dark:bg-amber-900/30 border border-amber-200 dark:border-amber-800 text-amber-800 dark:text-amber-200 rounded-md text-xs">
+          {fetchError}
+        </div>
+      )}
+
+      {feedback && (
+        <div className="mb-4 p-3 bg-blue-50 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-800 text-blue-800 dark:text-blue-200 rounded-md text-sm flex items-center justify-between">
+          <span>
+            You have already submitted feedback for this meeting. You can update
+            your responses below.
+          </span>
+          <span className="text-xs bg-blue-200 dark:bg-blue-800 text-blue-900 dark:text-blue-100 px-2 py-0.5 rounded font-medium ml-2 shrink-0">
+            Previously Submitted
+          </span>
+        </div>
+      )}
       <form onSubmit={handleSubmit} className="space-y-4">
         <div className="space-y-2">
           <StarRating

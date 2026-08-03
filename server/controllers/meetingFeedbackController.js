@@ -121,6 +121,31 @@ export const getFeedbackForMeeting = async (req, res) => {
   }
 };
 
+// @desc    Get user's own feedback for a specific meeting
+// @route   GET /api/feedback/meeting/:meetingId/user
+// @access  Private
+export const getUserFeedbackForMeeting = async (req, res) => {
+  try {
+    const { meetingId } = req.params;
+    const userId = req.user._id;
+
+    if (!mongoose.isValidObjectId(meetingId)) {
+      return res
+        .status(400)
+        .json({ success: false, message: "Invalid meeting ID" });
+    }
+
+    const feedback = await MeetingFeedback.findOne({ meetingId, userId });
+
+    res.status(200).json({ success: true, feedback: feedback || null });
+  } catch (error) {
+    console.error("Error fetching user meeting feedback:", error);
+    res
+      .status(500)
+      .json({ success: false, message: "Server Error", error: error.message });
+  }
+};
+
 // @desc    Get aggregate feedback for an organization
 // @route   GET /api/feedback/aggregate/:orgId
 // @access  Private

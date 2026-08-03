@@ -182,6 +182,32 @@ describe("Meeting Feedback Controller", () => {
     });
   });
 
+  describe("getUserFeedbackForMeeting", () => {
+    it("returns user feedback when found", async () => {
+      const meetingId = new mongoose.Types.ObjectId().toString();
+      req.params.meetingId = meetingId;
+
+      jest.spyOn(MeetingFeedback, "findOne").mockResolvedValue({
+        _id: "f1",
+        meetingId,
+        userId: req.user._id,
+        overallRating: 4,
+      });
+
+      const { getUserFeedbackForMeeting } =
+        await import("../controllers/meetingFeedbackController.js");
+      await getUserFeedbackForMeeting(req, res);
+
+      expect(res.status).toHaveBeenCalledWith(200);
+      expect(res.json).toHaveBeenCalledWith(
+        expect.objectContaining({
+          success: true,
+          feedback: expect.objectContaining({ overallRating: 4 }),
+        }),
+      );
+    });
+  });
+
   describe("deleteFeedback", () => {
     it("should delete feedback if owned by user", async () => {
       const feedbackId = new mongoose.Types.ObjectId().toString();
