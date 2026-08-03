@@ -4,7 +4,58 @@ import Policy from "../models/policyModel.js";
 import crypto from "crypto";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
+import mongoose from "mongoose";
 import { hasPermission } from "../utils/rbacPermissions.js";
+
+/**
+ * The shareable resource types and the model each one resolves against.
+ *
+ * A single map, rather than an `includes()` check in one place and an
+ * `if/else` on the same string in another. The version this replaces had those
+ * two drift apart: inside the type guard, the `resourceType === "Meeting"` arm
+ * was unreachable — the enclosing condition had already excluded `"Meeting"` —
+ * so an unknown type was looked up as a Policy and reported as
+ * `"<type> not found"` instead of "invalid resource type", which also told the
+ * caller whether an arbitrary ObjectId existed as a Policy. Keeping the
+ * type→model relationship in one place removes that class of mismatch.
+ *
+ * Keys must stay in sync with the `resourceModel` enum on sharedLinkModel.
+ */
+export const SHARE_MODELS_BY_TYPE = Object.freeze({
+  Meeting,
+  Policy,
+});
+
+export const SHAREABLE_RESOURCE_TYPES = Object.freeze(
+  Object.keys(SHARE_MODELS_BY_TYPE),
+);
+
+/**
+ * Validates the optional `expirationDate`.
+ *
+ * `new Date(garbage)` yields `Invalid Date`, which Mongoose stores as null and
+ * silently turns a link the caller believed was time-boxed into one that never
+ * expires. A past date is rejected too — a link that is born expired is a
+ * request the caller got wrong, not a link worth creating.
+ *
+ * @returns {{ok: true, value: Date|null} | {ok: false, message: string}}
+ */
+export const parseExpirationDate = (raw) => {
+  if (raw === undefined || raw === null || raw === "") {
+    return { ok: true, value: null };
+  }
+
+  const parsed = new Date(raw);
+  if (Number.isNaN(parsed.getTime())) {
+    return { ok: false, message: "Invalid expiration date" };
+  }
+
+  if (parsed.getTime() <= Date.now()) {
+    return { ok: false, message: "Expiration date must be in the future" };
+  }
+
+  return { ok: true, value: parsed };
+};
 
 const generateHash = () => {
   return crypto.randomBytes(16).toString("hex");
@@ -68,33 +119,63 @@ export const createLink = async (req, res) => {
         .json({ success: false, message: "Missing required fields" });
     }
 
-    if (!["Meeting", "Policy"].includes(resourceType)) {
-      let resource;
-
-      if (resourceType === "Meeting") {
-        resource = await Meeting.findById(resourceId);
-      } else {
-        resource = await Policy.findById(resourceId);
-      }
-
-      if (!resource) {
-        return res.status(404).json({
-          success: false,
-          message: `${resourceType} not found`,
-        });
-      }
-
-      if (
-        resource.organization.toString() !== req.user.organization.toString()
-      ) {
-        return res.status(403).json({
-          success: false,
-          message: "Forbidden: Resource does not belong to your organization",
-        });
-      }
+    // Issue #1070: the ownership check used to live inside
+    // `if (!["Meeting", "Policy"].includes(resourceType))` — the branch that is
+    // only entered when the type is *invalid*, and which then returned 400 a
+    // few lines later regardless. Every real request (`"Meeting"` / `"Policy"`)
+    // skipped it entirely, so any authenticated user could mint a public link
+    // for any resource in any organization given only its ObjectId. The guards
+    // below run on the path requests actually take.
+    if (!SHARE_MODELS_BY_TYPE[resourceType]) {
       return res
         .status(400)
         .json({ success: false, message: "Invalid resource type" });
+    }
+
+    if (!mongoose.isValidObjectId(resourceId)) {
+      // Previously a malformed id reached `findById` and surfaced as a CastError
+      // 500 rather than a validation error.
+      return res
+        .status(400)
+        .json({ success: false, message: "Invalid resource ID" });
+    }
+
+    const callerOrg = req.user?.organization;
+    if (!callerOrg) {
+      // A session with no organization used to blow up on `.toString()` of
+      // undefined; it cannot own a shareable resource either way.
+      return res.status(403).json({
+        success: false,
+        message: "Forbidden: Resource does not belong to your organization",
+      });
+    }
+
+    const resource = await SHARE_MODELS_BY_TYPE[resourceType]
+      .findById(String(resourceId))
+      .select("organization");
+
+    if (!resource) {
+      return res.status(404).json({
+        success: false,
+        message: `${resourceType} not found`,
+      });
+    }
+
+    if (
+      !resource.organization ||
+      resource.organization.toString() !== callerOrg.toString()
+    ) {
+      return res.status(403).json({
+        success: false,
+        message: "Forbidden: Resource does not belong to your organization",
+      });
+    }
+
+    const expiration = parseExpirationDate(expirationDate);
+    if (!expiration.ok) {
+      return res
+        .status(400)
+        .json({ success: false, message: expiration.message });
     }
 
     let hashedPasscode = null;
@@ -109,7 +190,7 @@ export const createLink = async (req, res) => {
       resourceId,
       resourceModel: resourceType,
       hash,
-      expirationDate: expirationDate ? new Date(expirationDate) : null,
+      expirationDate: expiration.value,
       passcode: hashedPasscode,
       createdBy: req.user._id,
       organizationId: req.user.organization,
