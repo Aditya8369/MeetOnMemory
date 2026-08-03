@@ -51,7 +51,7 @@ export const startAgendaItem = async (req, res) => {
 
     const io = req.app.get("io");
     if (io) {
-      io.to(`meeting_${meetingId}`).emit("agenda_timer_updated", {
+      io.to(meetingId.toString()).emit("agenda_timer_updated", {
         meetingId,
         item,
         action: "start",
@@ -116,7 +116,7 @@ export const stopAgendaItem = async (req, res) => {
 
     const io = req.app.get("io");
     if (io) {
-      io.to(`meeting_${meetingId}`).emit("agenda_timer_updated", {
+      io.to(meetingId.toString()).emit("agenda_timer_updated", {
         meetingId,
         item,
         action: "stop",
@@ -176,7 +176,7 @@ export const skipAgendaItem = async (req, res) => {
 
     const io = req.app.get("io");
     if (io) {
-      io.to(`meeting_${meetingId}`).emit("agenda_timer_updated", {
+      io.to(meetingId.toString()).emit("agenda_timer_updated", {
         meetingId,
         item,
         action: "skip",
