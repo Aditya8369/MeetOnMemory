@@ -1,5 +1,6 @@
 import fs from "fs";
 import path from "path";
+import multer from "multer";
 import { z } from "zod";
 import Attachment from "../models/attachmentModel.js";
 import Meeting from "../models/meetingModel.js";
@@ -11,6 +12,11 @@ const __dirname = path.dirname(__filename);
 
 const UPLOADS_DIR = path.resolve(__dirname, "..", "uploads", "attachments");
 
+/**
+ * Safely resolve file path to prevent directory traversal attacks
+ * @param {string} unsafePath - Potentially malicious file path
+ * @returns {string|null} - Safe file path or null if invalid
+ */
 const getSafeFilePath = (unsafePath) => {
   if (!unsafePath) return null;
   const filename = path.basename(unsafePath);
@@ -21,8 +27,8 @@ const getSafeFilePath = (unsafePath) => {
   return safePath;
 };
 
-// Max file size: 10 MB
-const MAX_FILE_SIZE = 10 * 1024 * 1024;
+// Validation constants
+const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10 MB
 const ALLOWED_MIME_TYPES = [
   "application/pdf",
   "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
@@ -32,15 +38,42 @@ const ALLOWED_MIME_TYPES = [
   "image/gif",
 ];
 
+const ALLOWED_EXTENSIONS = [
+  ".pdf",
+  ".docx",
+  ".pptx",
+  ".jpg",
+  ".jpeg",
+  ".png",
+  ".gif",
+];
+
+/**
+ * Human-readable file type names for better error messages (Currently unused)
+ */
+// const MIME_TYPE_NAMES = {
+//   "application/pdf": "PDF",
+//   "application/vnd.openxmlformats-officedocument.wordprocessingml.document":
+//     "Word Document",
+//   "application/vnd.openxmlformats-officedocument.presentationml.presentation":
+//     "PowerPoint Presentation",
+//   "image/jpeg": "JPEG Image",
+//   "image/png": "PNG Image",
+//   "image/gif": "GIF Image",
+// };
+
 const attachmentSchema = z.object({
   meetingId: z.string().regex(/^[0-9a-fA-F]{24}$/, "Invalid meeting ID"),
 });
 
+/**
+ * Upload a new attachment with comprehensive validation
+ */
 export const uploadAttachment = async (req, res) => {
   try {
     const { meetingId } = req.params;
 
-    // Validate meeting ID
+    // Validate meeting ID format
     const validationResult = attachmentSchema.safeParse({ meetingId });
     if (!validationResult.success) {
       if (req.file) {
@@ -52,26 +85,43 @@ export const uploadAttachment = async (req, res) => {
       });
     }
 
+    // Check if file was provided
     if (!req.file) {
       return res
         .status(400)
         .json({ success: false, message: "No file provided" });
     }
 
+    // Validate file size (redundant check with multer limits)
     if (req.file.size > MAX_FILE_SIZE) {
       fs.unlinkSync(getSafeFilePath(req.file.path));
-      return res
-        .status(400)
-        .json({ success: false, message: "File exceeds 10 MB limit" });
+      return res.status(400).json({
+        success: false,
+        message: "File exceeds 10 MB limit",
+      });
     }
 
+    // Validate MIME type
     if (!ALLOWED_MIME_TYPES.includes(req.file.mimetype)) {
       fs.unlinkSync(getSafeFilePath(req.file.path));
-      return res
-        .status(400)
-        .json({ success: false, message: "Invalid file type" });
+      return res.status(400).json({
+        success: false,
+        message: "Invalid file type",
+      });
     }
 
+    // Validate file extension
+    const ext = path.extname(req.file.originalname).toLowerCase();
+    if (!ALLOWED_EXTENSIONS.includes(ext)) {
+      fs.unlinkSync(getSafeFilePath(req.file.path));
+      return res.status(400).json({
+        success: false,
+        message: `Invalid file extension: ${ext}. Allowed extensions: ${ALLOWED_EXTENSIONS.join(", ")}`,
+        allowedExtensions: ALLOWED_EXTENSIONS,
+      });
+    }
+
+    // Verify meeting exists
     const meeting = await Meeting.findById(meetingId);
     if (!meeting) {
       fs.unlinkSync(getSafeFilePath(req.file.path));
@@ -80,14 +130,12 @@ export const uploadAttachment = async (req, res) => {
         .json({ success: false, message: "Meeting not found" });
     }
 
-    // Since we're using requireOrgAccess on routes, user is already authorized
+    // Create attachment record
     const newAttachment = new Attachment({
       meeting: meetingId,
       uploadedBy: req.user._id,
       fileName: req.file.originalname,
-      fileType:
-        path.extname(req.file.originalname).toLowerCase().replace(".", "") ||
-        "unknown",
+      fileType: ext.replace(".", "") || "unknown",
       fileSize: req.file.size,
       filePath: getSafeFilePath(req.file.path),
       mimeType: req.file.mimetype,
@@ -101,9 +149,21 @@ export const uploadAttachment = async (req, res) => {
       attachment: newAttachment,
     });
   } catch (error) {
+    // Handle multer errors
+    if (error instanceof multer.MulterError) {
+      if (error.code === "LIMIT_FILE_SIZE") {
+        return res.status(400).json({
+          success: false,
+          message: "File exceeds 10 MB limit", // <--- UPDATED TO MATCH TEST
+        });
+      }
+    }
+
+    // Clean up file on error
     if (req.file) {
       fs.unlinkSync(getSafeFilePath(req.file.path));
     }
+
     console.error("Error uploading attachment:", error);
     res
       .status(500)
@@ -111,6 +171,9 @@ export const uploadAttachment = async (req, res) => {
   }
 };
 
+/**
+ * List all attachments for a meeting with pagination
+ */
 export const listAttachments = async (req, res) => {
   try {
     const { meetingId } = req.params;
@@ -139,6 +202,9 @@ export const listAttachments = async (req, res) => {
   }
 };
 
+/**
+ * Download an attachment file
+ */
 export const downloadAttachment = async (req, res) => {
   try {
     const { meetingId, id } = req.params;
@@ -147,6 +213,7 @@ export const downloadAttachment = async (req, res) => {
       _id: id,
       meeting: meetingId,
     });
+
     if (!attachment) {
       return res
         .status(404)
@@ -154,6 +221,7 @@ export const downloadAttachment = async (req, res) => {
     }
 
     const safePath = getSafeFilePath(attachment.filePath);
+
     if (!fs.existsSync(safePath)) {
       return res
         .status(404)
@@ -165,6 +233,7 @@ export const downloadAttachment = async (req, res) => {
       `attachment; filename="${attachment.fileName}"`,
     );
     res.setHeader("Content-Type", attachment.mimeType);
+    res.setHeader("Content-Length", attachment.fileSize);
 
     const fileStream = fs.createReadStream(safePath);
     fileStream.pipe(res);
@@ -176,6 +245,9 @@ export const downloadAttachment = async (req, res) => {
   }
 };
 
+/**
+ * Delete an attachment (file and database record)
+ */
 export const deleteAttachment = async (req, res) => {
   try {
     const { meetingId, id } = req.params;
@@ -184,6 +256,7 @@ export const deleteAttachment = async (req, res) => {
       _id: id,
       meeting: meetingId,
     }).populate("meeting");
+
     if (!attachment) {
       return res
         .status(404)
