@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 
 import useExport from "../../hooks/useExport.js";
+import ConfirmModal from "../ConfirmModal.jsx";
 
 const MeetingCard = ({ meeting, onDelete, onRename, onView }) => {
   const { exportMeeting, isExporting } = useExport();
@@ -19,6 +20,7 @@ const MeetingCard = ({ meeting, onDelete, onRename, onView }) => {
   const [showExportSubMenu, setShowExportSubMenu] = useState(false);
   const [isRenaming, setIsRenaming] = useState(false);
   const [newTitle, setNewTitle] = useState(meeting.title);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
 
   const handleRenameSubmit = (e) => {
     e.preventDefault();
@@ -166,7 +168,7 @@ const MeetingCard = ({ meeting, onDelete, onRename, onView }) => {
 
                 <button
                   onClick={() => {
-                    onDelete(meeting._id);
+                    setShowDeleteModal(true);
                     setShowMenu(false);
                   }}
                   className="w-full px-4 py-2 text-left hover:bg-red-50 text-red-600 flex items-center gap-2 text-sm"
@@ -265,6 +267,17 @@ const MeetingCard = ({ meeting, onDelete, onRename, onView }) => {
           View Details
         </button>
       </div>
+      {/* Delete Confirmation Modal */}
+      <ConfirmModal
+        isOpen={showDeleteModal}
+        onClose={() => setShowDeleteModal(false)}
+        onConfirm={() => {
+          onDelete(meeting._id);
+          setShowDeleteModal(false);
+        }}
+        title="Delete Meeting Notes"
+        message={`Are you sure you want to delete "${meeting.title || "this meeting"}"? All associated notes, transcripts, and summaries will be permanently deleted.`}
+      />
     </div>
   );
 };
