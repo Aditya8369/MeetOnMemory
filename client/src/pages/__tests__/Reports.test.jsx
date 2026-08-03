@@ -12,6 +12,17 @@ vi.mock("../../services", () => ({
   },
 }));
 
+vi.mock("../../services/reportApi.js", () => ({
+  default: {
+    getTemplates: vi.fn().mockResolvedValue({ data: [] }),
+    getTemplateById: vi.fn(),
+    createTemplate: vi.fn(),
+    updateTemplate: vi.fn(),
+    deleteTemplate: vi.fn(),
+    generateReport: vi.fn(),
+  },
+}));
+
 vi.mock("../../components/Navbar.jsx", () => ({
   default: () => <div data-testid="navbar">Navbar</div>,
 }));
@@ -73,7 +84,8 @@ describe("Reports Component (Issue #914)", () => {
     analyticsApi.askAnalyticsChat.mockResolvedValueOnce({
       data: {
         success: true,
-        insight: "Your meeting completion rate is 80%. Great productivity trend!",
+        insight:
+          "Your meeting completion rate is 80%. Great productivity trend!",
       },
     });
 
@@ -84,10 +96,14 @@ describe("Reports Component (Issue #914)", () => {
     );
 
     await waitFor(() => {
-      expect(screen.getByRole("button", { name: /Generate AI Insights/i })).toBeInTheDocument();
+      expect(
+        screen.getByRole("button", { name: /Generate AI Insights/i }),
+      ).toBeInTheDocument();
     });
 
-    const generateButton = screen.getByRole("button", { name: /Generate AI Insights/i });
+    const generateButton = screen.getByRole("button", {
+      name: /Generate AI Insights/i,
+    });
     fireEvent.click(generateButton);
 
     await waitFor(() => {
@@ -95,7 +111,9 @@ describe("Reports Component (Issue #914)", () => {
         summary: mockAnalyticsData.data.summary,
       });
       expect(
-        screen.getByText("Your meeting completion rate is 80%. Great productivity trend!"),
+        screen.getByText(
+          "Your meeting completion rate is 80%. Great productivity trend!",
+        ),
       ).toBeInTheDocument();
     });
   });

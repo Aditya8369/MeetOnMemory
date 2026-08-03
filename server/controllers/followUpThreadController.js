@@ -1,7 +1,6 @@
 import followUpThreadModel from "../models/followUpThreadModel.js";
 import threadReplyModel from "../models/threadReplyModel.js";
 import notificationModel from "../models/notificationModel.js";
-import userModel from "../models/userModel.js";
 
 export const createThread = async (req, res) => {
   try {

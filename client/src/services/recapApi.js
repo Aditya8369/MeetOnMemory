@@ -1,4 +1,4 @@
-import axios from "axios";
+import apiClient from "./apiClient";
 
 // Base URL for the recap API routes
 const API_URL = "/api/recap";
@@ -7,7 +7,7 @@ const API_URL = "/api/recap";
  * Fetch current user's recap preferences
  */
 export const getRecapPreferences = async () => {
-  const response = await axios.get(`${API_URL}/preferences`);
+  const response = await apiClient.get(`${API_URL}/preferences`);
   return response.data;
 };
 
@@ -15,7 +15,10 @@ export const getRecapPreferences = async () => {
  * Update current user's recap preferences
  */
 export const updateRecapPreferences = async (preferencesData) => {
-  const response = await axios.put(`${API_URL}/preferences`, preferencesData);
+  const response = await apiClient.put(
+    `${API_URL}/preferences`,
+    preferencesData,
+  );
   return response.data;
 };
 
@@ -24,7 +27,7 @@ export const updateRecapPreferences = async (preferencesData) => {
  * Returns raw HTML string
  */
 export const previewRecapEmail = async (preferencesData) => {
-  const response = await axios.post(`${API_URL}/preview`, preferencesData, {
+  const response = await apiClient.post(`${API_URL}/preview`, preferencesData, {
     responseType: "text", // Since the endpoint returns raw HTML
   });
   return response.data;

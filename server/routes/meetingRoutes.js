@@ -23,7 +23,10 @@ import {
   getAllMeetings,
   getMeetingById, // NEW: Get single meeting details
   updateMeeting, // NEW: Update meeting (rename)
-  deleteMeeting, // EXISTING: Delete meeting
+  deleteMeeting, // Soft-delete meeting
+  getDeletedMeetings,
+  restoreDeletedMeeting,
+  permanentlyDeleteMeeting,
   searchMeetingsByText, // 🆕 NEW: Voice/Text Search
   archiveMeeting,
   restoreMeeting,
@@ -188,6 +191,31 @@ router.patch(
   requireOrgAccess(Meeting),
   requirePermission("meetings", "edit"),
   updateMeetingInvite,
+);
+
+// Recycle bin routes must be registered before /:id.
+router.get(
+  "/trash",
+  userAuth,
+  requireOrgMembership,
+  requirePermission("meetings", "view"),
+  getDeletedMeetings,
+);
+router.post(
+  "/:id/restore-deleted",
+  userAuth,
+  writeLimiter,
+  requireOrgMembership,
+  requirePermission("meetings", "edit"),
+  restoreDeletedMeeting,
+);
+router.delete(
+  "/:id/permanent",
+  userAuth,
+  writeLimiter,
+  requireAdminOrOwner,
+  requireOrgMembership,
+  permanentlyDeleteMeeting,
 );
 
 // ✅ Get Single Meeting Details (for Meeting Details Page)

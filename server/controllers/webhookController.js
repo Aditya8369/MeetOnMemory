@@ -79,7 +79,7 @@ const updateWebhookSchema = z.object({
     .refine((url) => url.startsWith("http://") || url.startsWith("https://"), {
       message: "Target URL must start with http:// or https://.",
     })
-    .refine((url) => isSafeWebhookUrl(url), {
+    .refine(async (url) => await isSafeWebhookUrl(url), {
       message:
         "Target URL must be a public, safe address. Local/private addresses are not permitted.",
     })
@@ -139,7 +139,10 @@ export const createWebhook = async (req, res, next) => {
     const webhook = await Webhook.create(webhookData);
 
     const webhookResponse = webhook.toObject();
+    // SECURITY FIX: Ensure secret is never returned in creation response
     delete webhookResponse.secret;
+    // Add metadata flag for UI consistency
+    webhookResponse.hasSecret = !!webhook.secret;
 
     return sendSuccess(
       res,
@@ -180,7 +183,20 @@ export const getWebhooks = async (req, res, next) => {
       createdAt: -1,
     });
 
-    return sendSuccess(res, { webhooks });
+    // SECURITY FIX: Sanitize the response to prevent secret exposure
+    const sanitizedWebhooks = webhooks.map((webhook) => {
+      const webhookObj = webhook.toObject();
+
+      // Remove the secret field entirely from the list response
+      delete webhookObj.secret;
+
+      // Add a metadata flag to indicate a secret is configured without exposing it
+      webhookObj.hasSecret = webhook.secret ? true : false;
+
+      return webhookObj;
+    });
+
+    return sendSuccess(res, { webhooks: sanitizedWebhooks });
   } catch (error) {
     next(error);
   }
@@ -238,7 +254,10 @@ export const updateWebhook = async (req, res, next) => {
     await webhook.save();
 
     const webhookResponse = webhook.toObject();
+    // SECURITY FIX: Ensure secret is never returned in update response
     delete webhookResponse.secret;
+    // Add metadata flag for UI consistency
+    webhookResponse.hasSecret = !!webhook.secret;
 
     return sendSuccess(
       res,

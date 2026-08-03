@@ -27,7 +27,10 @@ export const getDecisionGraph = async (req, res) => {
     }
 
     if (search && typeof search === "string") {
-      filter.text = { $regex: search, $options: "i" };
+      // Escape regex metacharacters so user input can't be compiled as a live
+      // regex (ReDoS / regex injection), matching tagController's escaping.
+      const escapedSearch = search.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+      filter.text = { $regex: escapedSearch, $options: "i" };
     }
 
     const total = await Decision.countDocuments(filter);

@@ -10,6 +10,7 @@ import {
   resolveFollowUpThread,
 } from "../../services/followUpThreadApi";
 import { toast } from "react-toastify";
+import { createClerkSocketOptions } from "../../services/apiClient.js";
 
 const FollowUpThreads = ({ meetingId }) => {
   const { userData, backendUrl } = useContext(AppContent);
@@ -37,55 +38,62 @@ const FollowUpThreads = ({ meetingId }) => {
     };
     fetchThreads();
 
-    socketRef.current = io(backendUrl, {
-      withCredentials: true,
-      transports: ["websocket"],
-    });
+    let cancelled = false;
 
-    socketRef.current.on("connect", () => {
-      socketRef.current.emit("join-meeting", {
-        roomId: meetingId,
-        userInfo: { name: userData?.name },
+    (async () => {
+      const opts = await createClerkSocketOptions({
+        transports: ["websocket"],
       });
-    });
+      if (cancelled) return;
 
-    socketRef.current.on("thread:created", ({ thread, reply }) => {
-      setThreads((prev) => {
-        const exists = prev.find((t) => t._id === thread._id);
-        if (exists) return prev;
-        return [...prev, { ...thread, replies: [reply] }];
+      socketRef.current = io(backendUrl, opts);
+
+      socketRef.current.on("connect", () => {
+        socketRef.current.emit("join-meeting", {
+          roomId: meetingId,
+          userInfo: { name: userData?.name },
+        });
       });
-    });
 
-    socketRef.current.on("thread:reply", ({ reply }) => {
-      setThreads((prev) =>
-        prev.map((t) => {
-          if (t._id === reply.threadId) {
-            // Check if reply already exists
-            const replyExists = t.replies.find((r) => r._id === reply._id);
-            if (replyExists) {
-              return {
-                ...t,
-                replies: t.replies.map((r) =>
-                  r._id === reply._id ? reply : r,
-                ),
-              };
+      socketRef.current.on("thread:created", ({ thread, reply }) => {
+        setThreads((prev) => {
+          const exists = prev.find((t) => t._id === thread._id);
+          if (exists) return prev;
+          return [...prev, { ...thread, replies: [reply] }];
+        });
+      });
+
+      socketRef.current.on("thread:reply", ({ reply }) => {
+        setThreads((prev) =>
+          prev.map((t) => {
+            if (t._id === reply.threadId) {
+              // Check if reply already exists
+              const replyExists = t.replies.find((r) => r._id === reply._id);
+              if (replyExists) {
+                return {
+                  ...t,
+                  replies: t.replies.map((r) =>
+                    r._id === reply._id ? reply : r,
+                  ),
+                };
+              }
+              return { ...t, replies: [...t.replies, reply] };
             }
-            return { ...t, replies: [...t.replies, reply] };
-          }
-          return t;
-        }),
-      );
-    });
+            return t;
+          }),
+        );
+      });
 
-    socketRef.current.on("thread:resolved", ({ thread }) => {
-      setThreads((prev) =>
-        prev.map((t) => (t._id === thread._id ? { ...t, ...thread } : t)),
-      );
-    });
+      socketRef.current.on("thread:resolved", ({ thread }) => {
+        setThreads((prev) =>
+          prev.map((t) => (t._id === thread._id ? { ...t, ...thread } : t)),
+        );
+      });
+    })();
 
     return () => {
-      socketRef.current.disconnect();
+      cancelled = true;
+      socketRef.current?.disconnect();
     };
   }, [meetingId, backendUrl, userData]);
 

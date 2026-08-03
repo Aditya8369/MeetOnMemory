@@ -1,10 +1,10 @@
 import request from "supertest";
-import jwt from "jsonwebtoken";
 import mongoose from "mongoose";
 import axios from "axios";
 import dns from "dns/promises";
 import { jest } from "@jest/globals";
 import { app } from "../server.js";
+import { createClerkTestToken } from "./helpers/clerkTestAuth.js";
 import User from "../models/userModel.js";
 import Organization from "../models/organizationModel.js";
 import Membership from "../models/membershipModel.js";
@@ -75,10 +75,12 @@ describe("Webhook Endpoints & Dispatcher", () => {
       organization: organization._id,
       role: "member",
     });
-    userToken = jwt.sign(
-      { id: user._id },
-      process.env.JWT_SECRET || "fallback_secret",
-    );
+    user.clerkUserId = `user_test_${user._id}`;
+    await user.save();
+    userToken = createClerkTestToken({
+      clerkUserId: user.clerkUserId,
+      email: user.email,
+    });
 
     // Create admin user (owner of organization)
     adminUser = await User.create({
@@ -88,10 +90,12 @@ describe("Webhook Endpoints & Dispatcher", () => {
       organization: organization._id,
       role: "admin",
     });
-    adminToken = jwt.sign(
-      { id: adminUser._id },
-      process.env.JWT_SECRET || "fallback_secret",
-    );
+    adminUser.clerkUserId = `user_test_${adminUser._id}`;
+    await adminUser.save();
+    adminToken = createClerkTestToken({
+      clerkUserId: adminUser.clerkUserId,
+      email: adminUser.email,
+    });
 
     // Update organization owner to the adminUser
     organization.owner = adminUser._id;

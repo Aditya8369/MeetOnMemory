@@ -59,7 +59,10 @@ describe("actionItemReminderService", () => {
       userId.toString(),
       expect.stringContaining("Due Soon"),
       expect.stringContaining("Submit financial report"),
-      "meetings",
+      // Issue #977: action-item reminders moved from "meetings" to their own
+      // "tasks" category, so the pushTaskAssignments preference actually
+      // governs them instead of pushMeetingReminders silently killing them.
+      "tasks",
       "/tasks",
       "View Action Items",
       expect.any(Object),
@@ -103,7 +106,7 @@ describe("actionItemReminderService", () => {
       userId.toString(),
       expect.stringContaining("Overdue"),
       expect.stringContaining("Fix login bug"),
-      "meetings",
+      "tasks",
       "/tasks",
       "View Action Items",
       expect.any(Object),
