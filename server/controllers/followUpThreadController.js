@@ -1,6 +1,45 @@
 import followUpThreadModel from "../models/followUpThreadModel.js";
 import threadReplyModel from "../models/threadReplyModel.js";
 import notificationModel from "../models/notificationModel.js";
+import Meeting from "../models/meetingModel.js";
+import User from "../models/userModel.js";
+
+// Keep only the mentioned user IDs that belong to the same organization, so a
+// client-supplied mentions array can't spam notifications to arbitrary users.
+async function filterOrgMembers(mentions, organizationId) {
+  if (!Array.isArray(mentions) || mentions.length === 0 || !organizationId) {
+    return [];
+  }
+  const members = await User.find({
+    _id: { $in: mentions },
+    organization: organizationId,
+  }).select("_id");
+  return members.map((m) => m._id);
+}
+
+// Resolve a thread to its meeting and confirm the caller shares its org.
+// Returns { thread, meeting } on success or { error: { status, message } }.
+async function resolveThreadOrgAccess(threadId, user) {
+  const thread = await followUpThreadModel.findById(threadId);
+  if (!thread) {
+    return { error: { status: 404, message: "Thread not found" } };
+  }
+  const meeting = await Meeting.findById(thread.meetingId);
+  if (!meeting) {
+    return { error: { status: 404, message: "Meeting not found" } };
+  }
+  const isOwner = meeting.uploadedBy?.toString() === user._id.toString();
+  const isInSameOrg =
+    meeting.organization &&
+    user.organization &&
+    meeting.organization.toString() === user.organization.toString();
+  if (!isOwner && !isInSameOrg) {
+    return {
+      error: { status: 403, message: "You don't have access to this thread" },
+    };
+  }
+  return { thread, meeting };
+}
 
 export const createThread = async (req, res) => {
   try {
@@ -16,11 +55,17 @@ export const createThread = async (req, res) => {
       createdBy,
     });
 
+    // Only notify mentioned users who are members of the caller's org.
+    const validMentions = await filterOrgMembers(
+      mentions,
+      req.user.organization,
+    );
+
     const reply = await threadReplyModel.create({
       threadId: thread._id,
       author: createdBy,
       content,
-      mentions: mentions || [],
+      mentions: validMentions,
     });
 
     const populatedReply = await threadReplyModel
@@ -28,8 +73,8 @@ export const createThread = async (req, res) => {
       .populate("author", "name avatar");
 
     // Notifications for mentions
-    if (mentions && mentions.length > 0) {
-      const notifications = mentions.map((userId) => ({
+    if (validMentions.length > 0) {
+      const notifications = validMentions.map((userId) => ({
         user: userId,
         title: "You were mentioned in a thread",
         description: `${populatedReply.author.name} mentioned you in a follow-up thread.`,
@@ -87,14 +132,29 @@ export const getThreadsByMeetingId = async (req, res) => {
 export const createReply = async (req, res) => {
   try {
     const { threadId } = req.params;
-    const { content, mentions, meetingId } = req.body;
+    const { content, mentions } = req.body;
     const author = req.user._id;
+
+    const access = await resolveThreadOrgAccess(threadId, req.user);
+    if (access.error) {
+      return res
+        .status(access.error.status)
+        .json({ success: false, message: access.error.message });
+    }
+    // Derive the meeting from the thread instead of trusting req.body.meetingId.
+    const meetingId = access.thread.meetingId.toString();
+
+    // Only notify mentioned users who are members of the caller's org.
+    const validMentions = await filterOrgMembers(
+      mentions,
+      req.user.organization,
+    );
 
     const reply = await threadReplyModel.create({
       threadId,
       author,
       content,
-      mentions: mentions || [],
+      mentions: validMentions,
     });
 
     const populatedReply = await threadReplyModel
@@ -103,8 +163,8 @@ export const createReply = async (req, res) => {
       .populate("mentions", "name avatar");
 
     // Notifications for mentions
-    if (mentions && mentions.length > 0) {
-      const notifications = mentions.map((userId) => ({
+    if (validMentions.length > 0) {
+      const notifications = validMentions.map((userId) => ({
         user: userId,
         title: "You were mentioned in a reply",
         description: `${populatedReply.author.name} mentioned you in a follow-up thread reply.`,
@@ -214,12 +274,13 @@ export const resolveThread = async (req, res) => {
     const { threadId } = req.params;
     const resolvedBy = req.user._id;
 
-    const thread = await followUpThreadModel.findById(threadId);
-    if (!thread) {
+    const access = await resolveThreadOrgAccess(threadId, req.user);
+    if (access.error) {
       return res
-        .status(404)
-        .json({ success: false, message: "Thread not found" });
+        .status(access.error.status)
+        .json({ success: false, message: access.error.message });
     }
+    const thread = access.thread;
 
     thread.status = "resolved";
     thread.resolvedBy = resolvedBy;

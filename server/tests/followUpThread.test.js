@@ -1,3 +1,4 @@
+import mongoose from "mongoose";
 import request from "supertest";
 import { app } from "../server.js";
 import { createClerkTestToken, authHeader } from "./helpers/clerkTestAuth.js";
@@ -6,16 +7,24 @@ import ThreadReply from "../models/threadReplyModel.js";
 import Notification from "../models/notificationModel.js";
 import User from "../models/userModel.js";
 import Meeting from "../models/meetingModel.js";
+import Organization from "../models/organizationModel.js";
 
 describe("FollowUpThread API", () => {
-  let user1, user2, meeting, user1Token;
+  let user1, user2, meeting, user1Token, organization;
 
   beforeEach(async () => {
+    organization = await Organization.create({
+      name: "Test Org",
+      slug: "test-org-" + Math.random().toString(36).substring(7),
+      owner: new mongoose.Types.ObjectId(),
+    });
+
     user1 = await User.create({
       name: "Test User 1",
       email: "user1@test.com",
       password: "password",
       role: "member",
+      organization: organization._id,
     });
     user1.clerkUserId = `user_test_${user1._id}`;
     await user1.save();
@@ -25,6 +34,7 @@ describe("FollowUpThread API", () => {
       email: "user2@test.com",
       password: "password",
       role: "member",
+      organization: organization._id,
     });
     user2.clerkUserId = `user_test_${user2._id}`;
     await user2.save();
@@ -34,6 +44,7 @@ describe("FollowUpThread API", () => {
       date: new Date(),
       uploadedBy: user1._id,
       status: "completed",
+      organization: organization._id,
     });
 
     user1Token = createClerkTestToken({
@@ -148,6 +159,80 @@ describe("FollowUpThread API", () => {
       expect(res.body.thread.resolvedBy._id.toString()).toBe(
         user1._id.toString(),
       );
+    });
+  });
+
+  describe("authorization", () => {
+    // A meeting owned by another org that user1 must not be able to touch.
+    async function makeForeignMeeting() {
+      const otherOrg = await Organization.create({
+        name: "Other Org",
+        slug: "other-org-" + Math.random().toString(36).substring(7),
+        owner: new mongoose.Types.ObjectId(),
+      });
+      return Meeting.create({
+        title: "Foreign Meeting",
+        date: new Date(),
+        uploadedBy: new mongoose.Types.ObjectId(),
+        status: "completed",
+        organization: otherOrg._id,
+      });
+    }
+
+    it("returns 403 reading threads for a meeting in another org", async () => {
+      const foreign = await makeForeignMeeting();
+
+      const res = await request(app)
+        .get(`/api/follow-up-threads/meeting/${foreign._id}`)
+        .set(authHeader(user1Token));
+
+      expect(res.statusCode).toBe(403);
+    });
+
+    it("returns 403 resolving a thread on a meeting in another org", async () => {
+      const foreign = await makeForeignMeeting();
+      const thread = await FollowUpThread.create({
+        meetingId: foreign._id,
+        anchorType: "general",
+        createdBy: new mongoose.Types.ObjectId(),
+      });
+
+      const res = await request(app)
+        .put(`/api/follow-up-threads/${thread._id}/resolve`)
+        .set(authHeader(user1Token));
+
+      expect(res.statusCode).toBe(403);
+    });
+
+    it("does not notify a mentioned user who is outside the org", async () => {
+      const outsider = await User.create({
+        name: "Outsider",
+        email: "outsider@test.com",
+        password: "password",
+        role: "member",
+        organization: (
+          await Organization.create({
+            name: "Outsider Org",
+            slug: "outsider-org-" + Math.random().toString(36).substring(7),
+            owner: new mongoose.Types.ObjectId(),
+          })
+        )._id,
+      });
+
+      const thread = await FollowUpThread.create({
+        meetingId: meeting._id,
+        anchorType: "general",
+        createdBy: user1._id,
+      });
+
+      const res = await request(app)
+        .post(`/api/follow-up-threads/${thread._id}/replies`)
+        .set(authHeader(user1Token))
+        .send({ content: "hi", mentions: [outsider._id] });
+
+      expect(res.statusCode).toBe(201);
+      const notifs = await Notification.find({ user: outsider._id });
+      expect(notifs.length).toBe(0);
     });
   });
 });

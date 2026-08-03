@@ -1,5 +1,7 @@
 import express from "express";
 import userAuth from "../middleware/userAuth.js";
+import { requireOrgAccess } from "../middleware/rbac.js";
+import Meeting from "../models/meetingModel.js";
 import {
   createThread,
   getThreadsByMeetingId,
@@ -11,8 +13,18 @@ import {
 
 const router = express.Router();
 
-router.post("/meeting/:meetingId", userAuth, createThread);
-router.get("/meeting/:meetingId", userAuth, getThreadsByMeetingId);
+router.post(
+  "/meeting/:meetingId",
+  userAuth,
+  requireOrgAccess(Meeting),
+  createThread,
+);
+router.get(
+  "/meeting/:meetingId",
+  userAuth,
+  requireOrgAccess(Meeting),
+  getThreadsByMeetingId,
+);
 
 router.post("/:threadId/replies", userAuth, createReply);
 router.put("/replies/:replyId", userAuth, updateReply);
