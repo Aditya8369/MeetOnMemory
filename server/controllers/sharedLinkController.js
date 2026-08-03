@@ -69,6 +69,29 @@ export const createLink = async (req, res) => {
     }
 
     if (!["Meeting", "Policy"].includes(resourceType)) {
+      let resource;
+
+      if (resourceType === "Meeting") {
+        resource = await Meeting.findById(resourceId);
+      } else {
+        resource = await Policy.findById(resourceId);
+      }
+
+      if (!resource) {
+        return res.status(404).json({
+          success: false,
+          message: `${resourceType} not found`,
+        });
+      }
+
+      if (
+        resource.organization.toString() !== req.user.organization.toString()
+      ) {
+        return res.status(403).json({
+          success: false,
+          message: "Forbidden: Resource does not belong to your organization",
+        });
+      }
       return res
         .status(400)
         .json({ success: false, message: "Invalid resource type" });
