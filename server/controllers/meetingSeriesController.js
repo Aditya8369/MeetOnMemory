@@ -2,6 +2,15 @@ import { z } from "zod";
 import MeetingSeries from "../models/meetingSeriesModel.js";
 import Meeting from "../models/meetingModel.js";
 import { parseISO, addDays, addWeeks, addMonths } from "date-fns";
+import { parsePagination } from "../utils/pagination.js";
+
+/**
+ * Hard ceiling for the `limit=0` / `limit=all` whole-series response
+ * (Issue #1071). Weekly for ~19 years — comfortably above any real recurrence
+ * schedule, and low enough that a corrupt or malicious series cannot exhaust
+ * the heap.
+ */
+const SERIES_MAX_UNPAGINATED = 1000;
 
 const createSeriesSchema = z.object({
   title: z.string().min(1, "Title is required"),
@@ -170,12 +179,14 @@ export const getSeriesById = async (req, res) => {
 
 export const getSeriesMeetings = async (req, res) => {
   try {
-    const page = parseInt(req.query.page) || 1;
-    let limit =
-      req.query.limit === "0" || req.query.limit === "all"
-        ? 0
-        : parseInt(req.query.limit);
-    if (isNaN(limit)) limit = 20;
+    // `limit=0` / `limit=all` is the deliberate "give me the whole series"
+    // escape hatch added for #915 — a series timeline is not useful a page at a
+    // time. It is kept, but it is no longer *unbounded*: a series with a
+    // runaway occurrence count would otherwise stream every document into
+    // memory. SERIES_MAX_UNPAGINATED is far above any real recurrence schedule
+    // (weekly for ~19 years), so nothing legitimate is truncated.
+    const wantsWholeSeries =
+      req.query.limit === "0" || req.query.limit === "all";
 
     const orgId = req.user?.organization || req.user?.organizationId || null;
     const query = { series: req.params.id };
@@ -185,13 +196,30 @@ export const getSeriesMeetings = async (req, res) => {
 
     const total = await Meeting.countDocuments(query);
 
-    let meetingsQuery = Meeting.find(query).sort({ seriesOccurrence: 1 });
-    if (limit > 0) {
-      const skip = (page - 1) * limit;
-      meetingsQuery = meetingsQuery.skip(skip).limit(limit);
-    }
+    let meetings;
+    let page = 1;
+    let limit = 0;
 
-    const meetings = await meetingsQuery;
+    if (wantsWholeSeries) {
+      meetings = await Meeting.find(query)
+        .sort({ seriesOccurrence: 1 })
+        .limit(SERIES_MAX_UNPAGINATED);
+
+      if (total > SERIES_MAX_UNPAGINATED) {
+        console.warn(
+          `⚠️ Series ${req.params.id} has ${total} meetings; truncating the unpaginated response at ${SERIES_MAX_UNPAGINATED}.`,
+        );
+      }
+    } else {
+      // `parseInt(req.query.limit)` used to be passed straight to `.limit()`,
+      // so `?limit=10000000` was honoured verbatim, and `?page=0` produced a
+      // negative skip that MongoDB rejected as a 500.
+      ({ page, limit } = parsePagination(req.query, { defaultLimit: 20 }));
+      meetings = await Meeting.find(query)
+        .sort({ seriesOccurrence: 1 })
+        .skip((page - 1) * limit)
+        .limit(limit);
+    }
 
     res.json({
       success: true,
