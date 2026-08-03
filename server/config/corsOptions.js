@@ -1,8 +1,10 @@
 export const allowedOrigins = [
   "http://localhost:5173",
   "http://localhost:5174",
+  "http://localhost:4173",
   "http://127.0.0.1:5173",
   "http://127.0.0.1:5174",
+  "http://127.0.0.1:4173",
   process.env.CLIENT_URL,
 ].filter(Boolean);
 
@@ -17,5 +19,5 @@ export const corsOptions = {
   },
   credentials: true,
   methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
-  allowedHeaders: ["Content-Type", "Authorization", "X-CSRF-Token"],
+  allowedHeaders: ["Content-Type", "Authorization"],
 };
