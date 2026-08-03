@@ -155,6 +155,35 @@ const PollSection = ({ meetingId }) => {
     }
   };
 
+  const handleClosePoll = async (pollId) => {
+    try {
+      await closePoll(pollId);
+    } catch (err) {
+      console.error(err);
+      alert(err.response?.data?.message || "Error closing poll");
+    }
+  };
+
+  // `deletePoll` and `closePoll` were the only two actions in this component
+  // fired without a `.catch()`. While the server was answering 500 for every
+  // delete (#1069) that meant the button did nothing at all: no error, no
+  // removal, no console output — indistinguishable from an unresponsive UI.
+  // These now report failures the same way every other action here does.
+  const handleDeletePoll = async (pollId) => {
+    if (!window.confirm("Delete this poll?")) return;
+
+    try {
+      await deletePoll(pollId);
+      // The `poll:deleted` socket event normally removes it. Drop it locally
+      // too so the poll disappears even if the socket is down or the client
+      // never joined the room.
+      setPolls((prev) => prev.filter((p) => p._id !== pollId));
+    } catch (err) {
+      console.error(err);
+      alert(err.response?.data?.message || "Error deleting poll");
+    }
+  };
+
   // Multiple choice voting component
   const MultipleChoiceVoteForm = ({ poll }) => {
     const [selected, setSelected] = useState([]);
@@ -242,7 +271,7 @@ const PollSection = ({ meetingId }) => {
           <div className="flex gap-2">
             {!poll.isClosed && canManage && (
               <button
-                onClick={() => closePoll(poll._id)}
+                onClick={() => handleClosePoll(poll._id)}
                 className="text-xs text-orange-600 dark:text-orange-400 hover:underline"
               >
                 Close Poll
@@ -250,9 +279,7 @@ const PollSection = ({ meetingId }) => {
             )}
             {canManage && (
               <button
-                onClick={() => {
-                  if (window.confirm("Delete this poll?")) deletePoll(poll._id);
-                }}
+                onClick={() => handleDeletePoll(poll._id)}
                 className="text-xs text-red-600 dark:text-red-400 hover:underline"
               >
                 Delete

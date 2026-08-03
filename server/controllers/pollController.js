@@ -3,6 +3,55 @@ import Meeting from "../models/meetingModel.js";
 import { hasPermission } from "../utils/rbacPermissions.js";
 import mongoose from "mongoose";
 
+/**
+ * Loads a poll for a mutating request and runs the shared guards in the one
+ * order that works (Issue #1069).
+ *
+ * `deletePoll` dereferenced `poll` one statement above `const poll = await
+ * Poll.findById(...)`. Reading a `const` inside its temporal dead zone throws
+ * `ReferenceError: Cannot access 'poll' before initialization`, the catch block
+ * turned that into a generic 500, and so *every* `DELETE /api/polls/:id` failed
+ * — for the creator, for admins, for polls that did not exist. `closePoll`
+ * received the same organization guard in the same commit and got the ordering
+ * right, which is exactly why this is worth centralising rather than fixing in
+ * place: the guards can no longer be reordered independently per handler.
+ *
+ * @returns {{ok: true, poll: object} | {ok: false, status: number, message: string}}
+ */
+const loadPollForMutation = async (pollId, user) => {
+  if (!mongoose.isValidObjectId(pollId)) {
+    return { ok: false, status: 400, message: "Invalid poll ID" };
+  }
+
+  const poll = await Poll.findById(String(pollId));
+  if (!poll) {
+    return { ok: false, status: 404, message: "Poll not found" };
+  }
+
+  // A session with no organization used to blow up on `.toString()` of
+  // undefined and surface as a 500. It is a 403: the caller is not in the
+  // poll's organization, because they are not in one at all.
+  const callerOrg = user?.organization;
+  if (!callerOrg || poll.organization.toString() !== callerOrg.toString()) {
+    return {
+      ok: false,
+      status: 403,
+      message: "Forbidden: Not part of organization",
+    };
+  }
+
+  return { ok: true, poll };
+};
+
+/** Creator-or-admin check shared by close and delete. */
+const canManagePoll = (poll, user) => {
+  const callerId = user?.id ?? user?._id;
+  const isCreator =
+    Boolean(callerId) && poll.createdBy.toString() === callerId.toString();
+  const isAdmin = user?.role === "admin" || user?.role === "owner";
+  return isCreator || isAdmin;
+};
+
 // Helper function to strip voter IDs if poll is anonymous
 const stripVotersIfAnonymous = (poll) => {
   if (poll.isAnonymous) {
@@ -219,25 +268,13 @@ export const closePoll = async (req, res) => {
   try {
     const { id } = req.params;
 
-    if (!mongoose.isValidObjectId(id)) {
-      return res.status(400).json({ message: "Invalid poll ID" });
+    const loaded = await loadPollForMutation(id, req.user);
+    if (!loaded.ok) {
+      return res.status(loaded.status).json({ message: loaded.message });
     }
+    const { poll } = loaded;
 
-    const poll = await Poll.findById(String(id));
-    if (!poll) {
-      return res.status(404).json({ message: "Poll not found" });
-    }
-
-    if (poll.organization.toString() !== req.user.organization.toString()) {
-      return res.status(403).json({
-        message: "Forbidden: Not part of organization",
-      });
-    }
-
-    const isCreator = poll.createdBy.toString() === req.user.id.toString();
-    const isAdmin = req.user.role === "admin" || req.user.role === "owner";
-
-    if (!isCreator && !isAdmin) {
+    if (!canManagePoll(poll, req.user)) {
       return res
         .status(403)
         .json({ message: "Forbidden: Only creator or admin can close poll" });
@@ -271,35 +308,27 @@ export const deletePoll = async (req, res) => {
   try {
     const { id } = req.params;
 
-    if (!mongoose.isValidObjectId(id)) {
-      return res.status(400).json({ message: "Invalid poll ID" });
+    const loaded = await loadPollForMutation(id, req.user);
+    if (!loaded.ok) {
+      return res.status(loaded.status).json({ message: loaded.message });
     }
+    const { poll } = loaded;
 
-    if (poll.organization.toString() !== req.user.organization.toString()) {
-      return res.status(403).json({
-        message: "Forbidden: Not part of organization",
-      });
-    }
-
-    const poll = await Poll.findById(String(id));
-    if (!poll) {
-      return res.status(404).json({ message: "Poll not found" });
-    }
-
-    const isCreator = poll.createdBy.toString() === req.user.id.toString();
-    const isAdmin = req.user.role === "admin" || req.user.role === "owner";
-
-    if (!isCreator && !isAdmin) {
+    if (!canManagePoll(poll, req.user)) {
       return res
         .status(403)
         .json({ message: "Forbidden: Only creator or admin can delete poll" });
     }
 
+    // Read the room off the document before it goes away — after `deleteOne`
+    // there is nothing left to read `meeting` from.
+    const meetingRoom = poll.meeting.toString();
+
     await Poll.deleteOne({ _id: String(id) });
 
     const io = req.app.get("io");
     if (io) {
-      io.to(poll.meeting.toString()).emit("poll:deleted", { id });
+      io.to(meetingRoom).emit("poll:deleted", { id });
     }
 
     res.status(200).json({ message: "Poll deleted successfully", id });
