@@ -1,4 +1,10 @@
-import React, { createContext, useContext, useState, useEffect, useRef } from "react";
+import React, {
+  createContext,
+  useContext,
+  useState,
+  useEffect,
+  useRef,
+} from "react";
 
 const TimerContext = createContext(null);
 
@@ -14,7 +20,7 @@ export const TimerProvider = ({ children, socket, roomId }) => {
 
   useEffect(() => {
     if (!socket) return;
-    
+
     const handleSync = (serverState) => {
       setTimerState((prev) => ({ ...prev, ...serverState }));
       stateRef.current = { ...stateRef.current, ...serverState };
@@ -45,12 +51,33 @@ export const TimerProvider = ({ children, socket, roomId }) => {
     return () => clearInterval(interval);
   }, [timerState.isRunning]);
 
-  const startTimer = () => socket?.emit("timer-control", { action: "start", roomId });
-  const pauseTimer = () => socket?.emit("timer-control", { action: "pause", roomId });
-  const resumeTimer = () => socket?.emit("timer-control", { action: "resume", roomId });
-  const resetTimer = (remaining = 0) => socket?.emit("timer-control", { action: "reset", roomId, payload: { remaining } });
-  const setAgenda = (agendaItem, remaining) => socket?.emit("timer-control", { action: "set-agenda", roomId, payload: { agendaItem, remaining } });
-  const syncTimer = () => socket?.emit("timer-control", { action: "sync", roomId, payload: { elapsed: stateRef.current.elapsed, remaining: stateRef.current.remaining } });
+  const startTimer = () =>
+    socket?.emit("timer-control", { action: "start", roomId });
+  const pauseTimer = () =>
+    socket?.emit("timer-control", { action: "pause", roomId });
+  const resumeTimer = () =>
+    socket?.emit("timer-control", { action: "resume", roomId });
+  const resetTimer = (remaining = 0) =>
+    socket?.emit("timer-control", {
+      action: "reset",
+      roomId,
+      payload: { remaining },
+    });
+  const setAgenda = (agendaItem, remaining) =>
+    socket?.emit("timer-control", {
+      action: "set-agenda",
+      roomId,
+      payload: { agendaItem, remaining },
+    });
+  const syncTimer = () =>
+    socket?.emit("timer-control", {
+      action: "sync",
+      roomId,
+      payload: {
+        elapsed: stateRef.current.elapsed,
+        remaining: stateRef.current.remaining,
+      },
+    });
 
   const value = {
     ...timerState,
@@ -63,9 +90,7 @@ export const TimerProvider = ({ children, socket, roomId }) => {
   };
 
   return (
-    <TimerContext.Provider value={value}>
-      {children}
-    </TimerContext.Provider>
+    <TimerContext.Provider value={value}>{children}</TimerContext.Provider>
   );
 };
 
