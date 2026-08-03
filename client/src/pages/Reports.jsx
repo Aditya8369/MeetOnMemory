@@ -2,7 +2,6 @@ import React, { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import Navbar from "../components/Navbar.jsx";
 import { toast } from "react-toastify";
-import AppContent from "../context/AppContent";
 import { analyticsApi } from "../services";
 import reportApi from "../services/reportApi";
 import { Bar, Line, Pie } from "react-chartjs-2";
@@ -12,6 +11,8 @@ import {
   Brain,
   BarChart4,
   PieChart,
+  Sparkles,
+  RefreshCw,
   Plus,
   FileText,
 } from "lucide-react";
@@ -25,24 +26,11 @@ const Reports = () => {
   const [loading, setLoading] = useState(true);
   const [data, setData] = useState(null);
   const [aiInsights, setAiInsights] = useState("");
+  const [aiLoading, setAiLoading] = useState(false);
+  const [aiError, setAiError] = useState("");
   const [templates, setTemplates] = useState([]);
 
   useEffect(() => {
-    // 🧠 Generate Gemini-based insights
-    const fetchAIInsights = async (summary) => {
-      try {
-        const aiRes = await analyticsApi.askAnalyticsChat({ summary });
-        if (aiRes.data.success) {
-          setAiInsights(aiRes.data.insight);
-        } else {
-          setAiInsights(t("reports.aiInsightsUnavailable"));
-        }
-      } catch (err) {
-        console.error("AI Insights error:", err);
-        setAiInsights(t("reports.aiInsightsUnavailable"));
-      }
-    };
-
     const fetchAnalytics = async () => {
       try {
         const [res, templatesRes] = await Promise.all([
@@ -50,9 +38,8 @@ const Reports = () => {
           reportApi.getTemplates().catch(() => ({ data: [] })),
         ]);
 
-        if (res.data.success) {
+        if (res?.data?.success) {
           setData(res.data);
-          await fetchAIInsights(res.data.summary);
         } else {
           toast.error(t("reports.failedToLoad"));
         }
@@ -67,8 +54,36 @@ const Reports = () => {
         setLoading(false);
       }
     };
+
     fetchAnalytics();
   }, [t]);
+
+  // 🧠 Generate Gemini-based insights on demand
+  const generateAIInsights = async () => {
+    if (aiLoading || !data?.summary) return;
+
+    setAiLoading(true);
+    setAiError("");
+    try {
+      const aiRes = await analyticsApi.askAnalyticsChat({
+        summary: data.summary,
+      });
+      if (aiRes.data?.success && aiRes.data?.insight) {
+        setAiInsights(aiRes.data.insight);
+      } else {
+        const errorMsg = t("reports.aiInsightsUnavailable");
+        setAiError(errorMsg);
+        toast.error(errorMsg);
+      }
+    } catch (err) {
+      console.error("AI Insights error:", err);
+      const errorMsg = t("reports.aiInsightsUnavailable");
+      setAiError(errorMsg);
+      toast.error(errorMsg);
+    } finally {
+      setAiLoading(false);
+    }
+  };
 
   if (loading)
     return (
@@ -246,13 +261,64 @@ const Reports = () => {
 
         {/* AI Insights Section */}
         <div className="bg-white dark:bg-gray-900 p-6 rounded-xl shadow-md border dark:border-gray-800 text-left">
-          <h2 className="text-xl font-semibold dark:text-white mb-3 flex items-center gap-2">
-            <Brain className="text-purple-600 dark:text-purple-400 w-6 h-6" />{" "}
-            {t("reports.aiInsights")}
-          </h2>
-          <p className="text-gray-700 dark:text-gray-300 leading-relaxed whitespace-pre-wrap">
-            {aiInsights}
-          </p>
+          {!aiInsights && !aiLoading && (
+            <div className="flex flex-col items-center justify-center p-8 text-center bg-purple-50/50 dark:bg-purple-950/20 rounded-lg border border-purple-100 dark:border-purple-900/30">
+              <Brain className="w-10 h-10 text-purple-600 dark:text-purple-400 mb-3" />
+              <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-1">
+                {t("reports.aiInsights", "AI Insights")}
+              </h2>
+              <p className="text-sm text-gray-600 dark:text-gray-400 mb-5 max-w-md">
+                {t(
+                  "reports.aiInsightsPlaceholder",
+                  "Generate AI-powered analysis and recommendations based on your meeting and policy analytics.",
+                )}
+              </p>
+              {aiError && (
+                <p className="text-xs text-red-600 dark:text-red-400 mb-3 font-medium">
+                  {aiError}
+                </p>
+              )}
+              <button
+                onClick={generateAIInsights}
+                disabled={aiLoading}
+                className="inline-flex items-center gap-2 px-5 py-2.5 bg-purple-600 hover:bg-purple-700 text-white font-medium text-sm rounded-lg shadow-sm transition-colors disabled:opacity-50 cursor-pointer"
+              >
+                <Sparkles className="w-4 h-4" />
+                {t("reports.generateAiInsights", "Generate AI Insights")}
+              </button>
+            </div>
+          )}
+
+          {aiLoading && (
+            <div className="flex flex-col items-center justify-center p-8 text-center bg-purple-50/50 dark:bg-purple-950/20 rounded-lg border border-purple-100 dark:border-purple-900/30">
+              <Loader2 className="animate-spin w-8 h-8 text-purple-600 dark:text-purple-400 mb-3" />
+              <p className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                {t("reports.generatingAiInsights", "Generating AI Insights...")}
+              </p>
+            </div>
+          )}
+
+          {aiInsights && !aiLoading && (
+            <div>
+              <div className="flex items-center justify-between mb-4 border-b border-gray-100 dark:border-gray-800 pb-3">
+                <h2 className="text-xl font-semibold dark:text-white flex items-center gap-2">
+                  <Brain className="text-purple-600 dark:text-purple-400 w-6 h-6" />{" "}
+                  {t("reports.aiInsights")}
+                </h2>
+                <button
+                  onClick={generateAIInsights}
+                  disabled={aiLoading}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-purple-600 dark:text-purple-400 hover:bg-purple-50 dark:hover:bg-purple-950/40 rounded-md border border-purple-200 dark:border-purple-800 transition-colors disabled:opacity-50 cursor-pointer"
+                >
+                  <RefreshCw className="w-3.5 h-3.5" />
+                  {t("reports.regenerateAiInsights", "Regenerate")}
+                </button>
+              </div>
+              <p className="text-gray-700 dark:text-gray-300 leading-relaxed whitespace-pre-wrap">
+                {aiInsights}
+              </p>
+            </div>
+          )}
         </div>
       </div>
     </div>
