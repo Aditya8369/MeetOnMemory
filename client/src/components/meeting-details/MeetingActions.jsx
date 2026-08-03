@@ -5,6 +5,7 @@ import useExport from "../../hooks/useExport.js";
 import { Mic, MicOff, Loader2 } from "lucide-react";
 import { toast } from "react-toastify";
 import apiClient from "../../services/apiClient";
+import ConfirmModal from "../ConfirmModal.jsx";
 
 const MeetingActions = ({ meeting, onDelete, onRename }) => {
   const navigate = useNavigate();
@@ -59,7 +60,6 @@ const MeetingActions = ({ meeting, onDelete, onRename }) => {
     setShowDeleteModal(true);
   };
 
-  // Accessibility & Escape key handler (#838)
   useEffect(() => {
     const handleKeyDown = (e) => {
       if (e.key === "Escape") {
@@ -94,7 +94,6 @@ const MeetingActions = ({ meeting, onDelete, onRename }) => {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
 
-      // Start recording session on server
       const { data } = await apiClient.post(
         `/api/meetings/${meeting._id}/recording/start`,
         {},
@@ -118,7 +117,6 @@ const MeetingActions = ({ meeting, onDelete, onRename }) => {
       setIsRecording(true);
       toast.success("Recording started");
 
-      // Upload chunks every 10 seconds
       recordingIntervalRef.current = setInterval(async () => {
         if (chunksRef.current.length > 0) {
           const blob = new Blob(chunksRef.current, { type: "audio/webm" });
@@ -146,18 +144,15 @@ const MeetingActions = ({ meeting, onDelete, onRename }) => {
   const stopRecording = async () => {
     if (!mediaRecorderRef.current) return;
 
-    // Stop media recorder
     mediaRecorderRef.current.stop();
     mediaRecorderRef.current.stream
       .getTracks()
       .forEach((track) => track.stop());
 
-    // Clear upload interval
     if (recordingIntervalRef.current) {
       clearInterval(recordingIntervalRef.current);
     }
 
-    // Upload final chunk
     if (chunksRef.current.length > 0) {
       const blob = new Blob(chunksRef.current, { type: "audio/webm" });
       const formData = new FormData();
@@ -174,7 +169,6 @@ const MeetingActions = ({ meeting, onDelete, onRename }) => {
       }
     }
 
-    // Stop recording on server
     try {
       const { data } = await apiClient.post(
         `/api/meetings/${meeting._id}/recording/stop`,
@@ -190,7 +184,6 @@ const MeetingActions = ({ meeting, onDelete, onRename }) => {
       setIsProcessing(true);
       toast.success("Recording stopped, transcription started");
 
-      // Poll for transcript completion
       const pollInterval = setInterval(async () => {
         try {
           const { data: transcriptData } = await apiClient.get(
@@ -205,7 +198,6 @@ const MeetingActions = ({ meeting, onDelete, onRename }) => {
             clearInterval(pollInterval);
             setIsProcessing(false);
             toast.success("Transcription completed!");
-            // Refresh meeting data to show updated transcript
             window.location.reload();
           } else if (
             transcriptData.success &&
@@ -234,7 +226,6 @@ const MeetingActions = ({ meeting, onDelete, onRename }) => {
     }
   };
 
-  // Cleanup on unmount
   useEffect(() => {
     return () => {
       if (recordingIntervalRef.current) {
@@ -451,46 +442,13 @@ const MeetingActions = ({ meeting, onDelete, onRename }) => {
       </div>
 
       {/* Delete Confirmation Modal */}
-      {showDeleteModal && (
-        <div
-          onClick={(e) =>
-            handleBackdropClick(e, () => setShowDeleteModal(false))
-          }
-          className="fixed inset-0 bg-black/60 backdrop-blur-xs flex items-center justify-center z-50 p-4"
-        >
-          <div
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="delete-modal-title"
-            className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 max-w-md w-full shadow-2xl space-y-4"
-          >
-            <h3
-              id="delete-modal-title"
-              className="text-lg font-bold text-slate-900 dark:text-white"
-            >
-              Delete Meeting
-            </h3>
-            <p className="text-sm text-slate-600 dark:text-slate-300">
-              Are you sure you want to delete this meeting? This action cannot
-              be undone.
-            </p>
-            <div className="flex gap-3 justify-end pt-2">
-              <button
-                onClick={() => setShowDeleteModal(false)}
-                className="px-4 py-2 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 rounded-xl transition-colors text-xs font-semibold cursor-pointer"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={confirmDelete}
-                className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-xl transition-colors text-xs font-semibold cursor-pointer shadow-xs"
-              >
-                Delete
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      <ConfirmModal
+        isOpen={showDeleteModal}
+        onClose={() => setShowDeleteModal(false)}
+        onConfirm={confirmDelete}
+        title="Delete Meeting Notes"
+        message="Are you sure you want to delete this meeting? All associated notes, transcripts, and summaries will be permanently deleted."
+      />
 
       {/* Rename Modal */}
       {showRenameModal && (
