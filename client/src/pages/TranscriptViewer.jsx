@@ -321,7 +321,17 @@ const TranscriptViewer = () => {
           {/* Transcript Content */}
           <div className="lg:col-span-2 space-y-4">
             {/* Sentiment Chart */}
-            <MeetingSentimentChart transcript={transcript} />
+            <MeetingSentimentChart
+              transcript={transcript}
+              onPointClick={(segmentData) => {
+                const index = transcript.segments.findIndex(
+                  (s) => s.startTime === segmentData.startTime,
+                );
+                if (index !== -1) {
+                  scrollToSegment(index);
+                }
+              }}
+            />
 
             {transcript.segments?.length === 0 ? (
               <div className="bg-white dark:bg-slate-800 rounded-lg p-8 text-center">
