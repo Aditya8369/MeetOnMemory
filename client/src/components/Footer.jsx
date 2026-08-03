@@ -2,6 +2,7 @@ import React, { useCallback } from "react";
 import { useTranslation } from "react-i18next";
 import { Link, useLocation } from "react-router-dom";
 import { Github, ArrowUp } from "lucide-react";
+import ThemeToggle from "./ThemeToggle.jsx";
 
 const Footer = () => {
   const { t } = useTranslation();
@@ -471,15 +472,18 @@ const Footer = () => {
             {t("footer.madeWith")} ❤️ {t("footer.by")}{" "}
             {t("footer.meetOnMemoryTeam")}.
           </p>
-          {/* Back to top */}
-          <button
-            onClick={scrollToTop}
-            aria-label="Scroll back to top"
-            className="flex items-center gap-1.5 text-sm text-gray-400 dark:text-gray-500 hover:text-blue-600 dark:hover:text-blue-400 transition-colors duration-200 group focus-visible:ring-2 focus-visible:ring-blue-500 rounded-md px-1"
-          >
-            <ArrowUp className="w-4 h-4 group-hover:-translate-y-0.5 transition-transform duration-200" />
-            {t("footer.backToTop")}
-          </button>
+          <div className="flex items-center gap-3">
+            <ThemeToggle showLabel={false} />
+            {/* Back to top */}
+            <button
+              onClick={scrollToTop}
+              aria-label="Scroll back to top"
+              className="flex items-center gap-1.5 text-sm text-gray-400 dark:text-gray-500 hover:text-blue-600 dark:hover:text-blue-400 transition-colors duration-200 group focus-visible:ring-2 focus-visible:ring-blue-500 rounded-md px-1"
+            >
+              <ArrowUp className="w-4 h-4 group-hover:-translate-y-0.5 transition-transform duration-200" />
+              {t("footer.backToTop")}
+            </button>
+          </div>
         </div>
       </div>
     </footer>
