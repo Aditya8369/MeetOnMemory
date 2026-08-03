@@ -228,6 +228,12 @@ export const closePoll = async (req, res) => {
       return res.status(404).json({ message: "Poll not found" });
     }
 
+    if (poll.organization.toString() !== req.user.organization.toString()) {
+      return res.status(403).json({
+        message: "Forbidden: Not part of organization",
+      });
+    }
+
     const isCreator = poll.createdBy.toString() === req.user.id.toString();
     const isAdmin = req.user.role === "admin" || req.user.role === "owner";
 
@@ -267,6 +273,12 @@ export const deletePoll = async (req, res) => {
 
     if (!mongoose.isValidObjectId(id)) {
       return res.status(400).json({ message: "Invalid poll ID" });
+    }
+
+    if (poll.organization.toString() !== req.user.organization.toString()) {
+      return res.status(403).json({
+        message: "Forbidden: Not part of organization",
+      });
     }
 
     const poll = await Poll.findById(String(id));
