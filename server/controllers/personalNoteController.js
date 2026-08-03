@@ -1,4 +1,67 @@
+import mongoose from "mongoose";
+import { z } from "zod";
 import PersonalNote from "../models/personalNoteModel.js";
+import Meeting from "../models/meetingModel.js";
+
+const MAX_CONTENT_LENGTH = 50000;
+const MAX_ANNOTATION_LENGTH = 5000;
+
+const noteContentSchema = z.object({
+  content: z
+    .string()
+    .max(
+      MAX_CONTENT_LENGTH,
+      `Content must be at most ${MAX_CONTENT_LENGTH} characters`,
+    )
+    .optional(),
+});
+
+const annotationSchema = z.object({
+  annotationText: z
+    .string()
+    .max(
+      MAX_ANNOTATION_LENGTH,
+      `Annotation must be at most ${MAX_ANNOTATION_LENGTH} characters`,
+    )
+    .optional(),
+  sourceField: z.string().optional(),
+  offsets: z.any().optional(),
+  color: z.string().optional(),
+});
+
+// Verify the caller may attach personal notes to meetingId. Returns
+// { meeting } on success or { error: { status, message } } otherwise.
+async function resolveAccessibleMeeting(meetingId, user) {
+  if (!mongoose.isValidObjectId(meetingId)) {
+    return { error: { status: 400, message: "Invalid meeting ID" } };
+  }
+
+  const meeting = await Meeting.findById(meetingId);
+  if (!meeting) {
+    return { error: { status: 404, message: "Meeting not found" } };
+  }
+
+  const userId = user._id.toString();
+  const isOwner = meeting.uploadedBy?.toString() === userId;
+  const isParticipant = meeting.participants?.some(
+    (p) => p.user?.toString() === userId,
+  );
+  const sameOrg =
+    meeting.organization &&
+    user.organization &&
+    meeting.organization.toString() === user.organization.toString();
+
+  if (!isOwner && !isParticipant && !sameOrg) {
+    return {
+      error: {
+        status: 403,
+        message: "Not authorized to add notes for this meeting",
+      },
+    };
+  }
+
+  return { meeting };
+}
 
 // @desc    Get personal note for a specific meeting
 // @route   GET /api/personal-notes/:meetingId
@@ -39,7 +102,21 @@ export const upsertNote = async (req, res) => {
   try {
     const { meetingId } = req.params;
     const userId = req.user._id;
-    const { content } = req.body;
+
+    const access = await resolveAccessibleMeeting(meetingId, req.user);
+    if (access.error) {
+      return res
+        .status(access.error.status)
+        .json({ success: false, message: access.error.message });
+    }
+
+    const parsed = noteContentSchema.safeParse(req.body);
+    if (!parsed.success) {
+      return res
+        .status(400)
+        .json({ success: false, message: parsed.error.issues[0].message });
+    }
+    const content = parsed.data.content ?? "";
 
     let note = await PersonalNote.findOne({ userId, meetingId });
 
@@ -71,7 +148,21 @@ export const addAnnotation = async (req, res) => {
   try {
     const { meetingId } = req.params;
     const userId = req.user._id;
-    const { annotationText, sourceField, offsets, color } = req.body;
+
+    const access = await resolveAccessibleMeeting(meetingId, req.user);
+    if (access.error) {
+      return res
+        .status(access.error.status)
+        .json({ success: false, message: access.error.message });
+    }
+
+    const parsed = annotationSchema.safeParse(req.body);
+    if (!parsed.success) {
+      return res
+        .status(400)
+        .json({ success: false, message: parsed.error.issues[0].message });
+    }
+    const { annotationText, sourceField, offsets, color } = parsed.data;
 
     let note = await PersonalNote.findOne({ userId, meetingId });
 
@@ -142,6 +233,13 @@ export const togglePin = async (req, res) => {
     const { meetingId } = req.params;
     const userId = req.user._id;
     const { isPinned } = req.body;
+
+    const access = await resolveAccessibleMeeting(meetingId, req.user);
+    if (access.error) {
+      return res
+        .status(access.error.status)
+        .json({ success: false, message: access.error.message });
+    }
 
     let note = await PersonalNote.findOne({ userId, meetingId });
 
