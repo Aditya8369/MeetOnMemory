@@ -173,7 +173,9 @@ describe("services/graphSnapshotService", () => {
       });
 
       expect(olderSnapshots.length).toBe(1);
-      expect(olderSnapshots[0]._id.toString()).toBe(allSnapshots[1]._id.toString());
+      expect(olderSnapshots[0]._id.toString()).toBe(
+        allSnapshots[1]._id.toString(),
+      );
     });
 
     it("supports page offset pagination", async () => {
@@ -192,7 +194,6 @@ describe("services/graphSnapshotService", () => {
       expect(page1[0]._id.toString()).not.toBe(page2[0]._id.toString());
     });
   });
-
 
   describe("getSnapshotById", () => {
     it("returns the full snapshot including nodes and edges", async () => {

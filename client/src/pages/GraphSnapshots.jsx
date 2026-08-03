@@ -329,7 +329,6 @@ const GraphSnapshots = () => {
                     : totalCount || snapshots.length}{" "}
                   snapshots)
                 </span>
-
               </h2>
               <button
                 onClick={runDiff}

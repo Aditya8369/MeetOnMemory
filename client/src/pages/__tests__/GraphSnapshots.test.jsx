@@ -35,13 +35,23 @@ describe("GraphSnapshots Component with Pagination", () => {
             _id: "snap-1",
             createdAt: "2026-07-31T10:00:00.000Z",
             trigger: "manual",
-            metadata: { nodeCount: 10, edgeCount: 5, decisionCount: 3, actionItemCount: 2 },
+            metadata: {
+              nodeCount: 10,
+              edgeCount: 5,
+              decisionCount: 3,
+              actionItemCount: 2,
+            },
           },
           {
             _id: "snap-2",
             createdAt: "2026-07-30T10:00:00.000Z",
             trigger: "meeting_processed",
-            metadata: { nodeCount: 8, edgeCount: 4, decisionCount: 2, actionItemCount: 1 },
+            metadata: {
+              nodeCount: 8,
+              edgeCount: 4,
+              decisionCount: 2,
+              actionItemCount: 1,
+            },
           },
         ],
       },
@@ -58,13 +68,23 @@ describe("GraphSnapshots Component with Pagination", () => {
             _id: "snap-3",
             createdAt: "2026-07-29T10:00:00.000Z",
             trigger: "consolidation",
-            metadata: { nodeCount: 5, edgeCount: 2, decisionCount: 1, actionItemCount: 0 },
+            metadata: {
+              nodeCount: 5,
+              edgeCount: 2,
+              decisionCount: 1,
+              actionItemCount: 0,
+            },
           },
           {
             _id: "snap-4",
             createdAt: "2026-07-28T10:00:00.000Z",
             trigger: "scheduled",
-            metadata: { nodeCount: 3, edgeCount: 1, decisionCount: 1, actionItemCount: 0 },
+            metadata: {
+              nodeCount: 3,
+              edgeCount: 1,
+              decisionCount: 1,
+              actionItemCount: 0,
+            },
           },
         ],
       },
@@ -77,7 +97,7 @@ describe("GraphSnapshots Component with Pagination", () => {
     render(
       <MemoryRouter>
         <GraphSnapshots />
-      </MemoryRouter>
+      </MemoryRouter>,
     );
 
     expect(screen.getByText("Memory Graph History")).toBeInTheDocument();
@@ -86,7 +106,9 @@ describe("GraphSnapshots Component with Pagination", () => {
       expect(screen.getByText(/2 of 4/i)).toBeInTheDocument();
     });
 
-    const loadMoreButton = screen.getByRole("button", { name: /Load older snapshots/i });
+    const loadMoreButton = screen.getByRole("button", {
+      name: /Load older snapshots/i,
+    });
     expect(loadMoreButton).toBeInTheDocument();
 
     fireEvent.click(loadMoreButton);

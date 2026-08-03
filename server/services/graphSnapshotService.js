@@ -164,7 +164,10 @@ export async function captureSnapshot(organization, options = {}) {
  * Lists snapshots for an organization, newest first, with metadata only
  * (no node/edge payload) so the timeline view stays cheap to load.
  */
-export async function listSnapshots(organization, { limit = 20, before, page } = {}) {
+export async function listSnapshots(
+  organization,
+  { limit = 20, before, page } = {},
+) {
   const query = { organization: organization || null };
   if (before) {
     query.createdAt = { $lt: new Date(before) };
@@ -185,7 +188,6 @@ export async function listSnapshots(organization, { limit = 20, before, page } =
     .populate("triggeredBy", "name email")
     .lean();
 }
-
 
 /**
  * Fetches a single full snapshot (nodes + edges included) for rendering or

@@ -49,7 +49,6 @@ export const getSnapshots = async (req, res) => {
   }
 };
 
-
 /**
  * GET /api/knowledge/graph/snapshots/:id
  * Full snapshot (nodes + edges) for rendering a historical graph.
