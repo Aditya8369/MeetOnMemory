@@ -18,6 +18,10 @@ import {
   restoreMemory,
   transitionLifecycleState,
 } from "../services/memoryLifecycleService.js";
+import {
+  ALLOWED_ARCHIVE_TYPES,
+  getArchivedMemoriesPage,
+} from "../services/archivedKnowledgeService.js";
 import AuditLog from "../models/auditLogModel.js";
 import eventBus from "../services/eventBus.js";
 
@@ -289,6 +293,53 @@ export const getDecisions = async (req, res) => {
   } catch (error) {
     console.error("getDecisions error:", error);
     sendError(res, 500, "Failed to fetch decisions");
+  }
+};
+
+/**
+ * Unified Knowledge Archive listing (#901).
+ *
+ * The archive browser previously fetched page N of decisions and page N of
+ * action items independently, then merged them on the client. That produced
+ * the wrong page size, wrong totalPages (max of the two), and could skip or
+ * duplicate records. This endpoint paginates the combined set once.
+ */
+export const getArchivedMemories = async (req, res) => {
+  try {
+    const { type = "all", search } = req.query || {};
+    const organization = sanitizeOrg(req.user?.organization);
+
+    if (!organization) {
+      return sendError(res, 400, "Organization required");
+    }
+
+    if (typeof type !== "string" || !ALLOWED_ARCHIVE_TYPES.includes(type)) {
+      return sendError(
+        res,
+        400,
+        `Invalid type. Allowed values: ${ALLOWED_ARCHIVE_TYPES.join(", ")}`,
+      );
+    }
+
+    if (search !== undefined && search !== null && typeof search !== "string") {
+      return sendError(res, 400, "Invalid search");
+    }
+
+    const result = await getArchivedMemoriesPage({
+      organization,
+      type,
+      search,
+      page: req.query.page,
+      limit: req.query.limit,
+    });
+
+    sendSuccess(res, result);
+  } catch (error) {
+    if (error.statusCode) {
+      return sendError(res, error.statusCode, error.message);
+    }
+    console.error("getArchivedMemories error:", error);
+    sendError(res, 500, "Failed to fetch archived memories");
   }
 };
 

@@ -54,74 +54,31 @@ const KnowledgeArchive = () => {
   const loadArchivedMemories = useCallback(async () => {
     setLoading(true);
     try {
-      let decisionList = [];
-      let actionList = [];
-      let totalDecisions = 0;
-      let totalActions = 0;
-      let dPages = 1;
-      let aPages = 1;
-
-      const queryOpts = {
-        includeArchived: true,
-        lifecycleState: "archived",
+      const res = await knowledgeApi.getArchivedMemories({
+        type: selectedType,
         page,
         limit,
         ...(searchQuery ? { search: searchQuery } : {}),
-      };
+      });
 
-      if (selectedType === "all" || selectedType === "decision") {
-        const dRes = await knowledgeApi.getDecisions(
-          "createdAt",
-          null,
-          queryOpts,
+      if (res.data?.success) {
+        setArchivedMemories(res.data.memories || []);
+        setTotalCount(res.data.pagination?.total || 0);
+        setTotalPages(Math.max(1, res.data.pagination?.totalPages || 1));
+      } else {
+        setArchivedMemories([]);
+        setTotalCount(0);
+        setTotalPages(1);
+        toast.error(
+          res.data?.message || "Failed to fetch archived knowledge items.",
         );
-        if (dRes.data?.success) {
-          decisionList = (dRes.data.decisions || []).map((d) => ({
-            ...d,
-            type: "decision",
-          }));
-          totalDecisions = dRes.data.pagination?.total || decisionList.length;
-          dPages = dRes.data.pagination?.totalPages || 1;
-        }
       }
-
-      if (selectedType === "all" || selectedType === "action-item") {
-        const aRes = await knowledgeApi.getActionItems(
-          "all",
-          "createdAt",
-          queryOpts,
-        );
-        if (aRes.data?.success) {
-          actionList = (aRes.data.actionItems || []).map((a) => ({
-            ...a,
-            type: "action-item",
-          }));
-          totalActions = aRes.data.pagination?.total || actionList.length;
-          aPages = aRes.data.pagination?.totalPages || 1;
-        }
-      }
-
-      const combined = [...decisionList, ...actionList].sort(
-        (a, b) =>
-          new Date(b.archivedAt || b.updatedAt) -
-          new Date(a.archivedAt || a.updatedAt),
-      );
-
-      setArchivedMemories(combined);
-
-      const computedTotal =
-        selectedType === "decision"
-          ? totalDecisions
-          : selectedType === "action-item"
-            ? totalActions
-            : totalDecisions + totalActions;
-      setTotalCount(computedTotal);
-
-      const maxPages = Math.max(dPages, aPages);
-      setTotalPages(maxPages > 0 ? maxPages : 1);
     } catch (err) {
       console.error("Failed to load archived memories:", err);
       toast.error("Failed to fetch archived knowledge items.");
+      setArchivedMemories([]);
+      setTotalCount(0);
+      setTotalPages(1);
     } finally {
       setLoading(false);
     }
@@ -241,7 +198,10 @@ const KnowledgeArchive = () => {
                 type="text"
                 placeholder="Search archived decisions, action items, or keywords..."
                 value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
+                onChange={(e) => {
+                  setSearchQuery(e.target.value);
+                  setPage(1);
+                }}
                 className="w-full pl-9 pr-4 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-xs focus:ring-2 focus:ring-indigo-500 focus:outline-none"
               />
             </div>
@@ -251,7 +211,10 @@ const KnowledgeArchive = () => {
               <Filter className="w-4 h-4 text-slate-400" />
               <select
                 value={selectedType}
-                onChange={(e) => setSelectedType(e.target.value)}
+                onChange={(e) => {
+                  setSelectedType(e.target.value);
+                  setPage(1);
+                }}
                 className="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-3 py-2 text-xs font-medium cursor-pointer"
               >
                 {TYPE_OPTIONS.map((t) => (
@@ -312,7 +275,7 @@ const KnowledgeArchive = () => {
             <div className="space-y-4">
               {filteredMemories.map((mem) => (
                 <div
-                  key={mem._id}
+                  key={`${mem.type}-${mem._id}`}
                   className="bg-white dark:bg-slate-900 border border-indigo-100 dark:border-slate-800/80 rounded-2xl p-5 shadow-xs hover:border-indigo-300 dark:hover:border-indigo-800 transition-all flex flex-col md:flex-row md:items-center justify-between gap-4"
                 >
                   <div className="space-y-2 flex-1">

@@ -6,6 +6,7 @@ import {
   getDecisionLineageController,
   getOpenActionItems,
   getDecisions,
+  getArchivedMemories,
   submitMemoryFeedback,
   recalculateImportance,
   updateActionItemStatus,
@@ -73,6 +74,12 @@ router.get(
   requireOrgMembership,
   requirePermission("knowledge", "view"),
   getDecisions,
+);
+router.get(
+  "/archive",
+  requireOrgMembership,
+  requirePermission("knowledge", "view"),
+  getArchivedMemories,
 );
 router.get(
   "/decisions/:id/lineage",
