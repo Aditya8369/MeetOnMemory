@@ -1,4 +1,4 @@
-import Comment from "../models/commentModel.js";
+import Comment, { MAX_COMMENT_LENGTH } from "../models/commentModel.js";
 import Meeting from "../models/meetingModel.js";
 import { hasPermission } from "../utils/rbacPermissions.js";
 import mongoose from "mongoose";
@@ -30,6 +30,14 @@ export const createComment = async (req, res) => {
     }
     if (parentComment && !mongoose.isValidObjectId(parentComment)) {
       return res.status(400).json({ message: "Invalid parent comment ID" });
+    }
+    if (!body || typeof body !== "string" || !body.trim()) {
+      return res.status(400).json({ message: "Comment body is required" });
+    }
+    if (body.trim().length > MAX_COMMENT_LENGTH) {
+      return res.status(400).json({
+        message: `Comment content exceeds maximum length of ${MAX_COMMENT_LENGTH} characters`,
+      });
     }
 
     // RBAC Check
@@ -171,6 +179,14 @@ export const updateComment = async (req, res) => {
 
     if (!mongoose.isValidObjectId(id)) {
       return res.status(400).json({ message: "Invalid comment ID" });
+    }
+    if (!body || typeof body !== "string" || !body.trim()) {
+      return res.status(400).json({ message: "Comment body is required" });
+    }
+    if (body.trim().length > MAX_COMMENT_LENGTH) {
+      return res.status(400).json({
+        message: `Comment content exceeds maximum length of ${MAX_COMMENT_LENGTH} characters`,
+      });
     }
 
     const comment = await Comment.findById(String(id));

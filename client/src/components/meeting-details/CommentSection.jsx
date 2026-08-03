@@ -249,6 +249,7 @@ const CommentSection = ({ meetingId }) => {
             <textarea
               value={editBody}
               onChange={(e) => setEditBody(e.target.value)}
+              maxLength={2000}
               className="w-full p-2 border rounded-md dark:bg-gray-700 dark:border-gray-600 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
               rows="2"
             />
@@ -316,6 +317,7 @@ const CommentSection = ({ meetingId }) => {
             <textarea
               value={replyBody}
               onChange={(e) => setReplyBody(e.target.value)}
+              maxLength={2000}
               placeholder="Write a reply..."
               className="w-full p-2 border rounded-md dark:bg-gray-700 dark:border-gray-600 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
               rows="2"
@@ -358,6 +360,7 @@ const CommentSection = ({ meetingId }) => {
         <textarea
           value={newComment}
           onChange={(e) => setNewComment(e.target.value)}
+          maxLength={2000}
           placeholder="Leave a comment..."
           className="w-full p-3 border rounded-md dark:bg-gray-800 dark:border-gray-700 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
           rows="3"
