@@ -107,4 +107,37 @@ describe("knowledgeApi - Archive Browser queries", () => {
       expect.stringContaining("limit=10"),
     );
   });
+
+  it("should call the unified archive endpoint with type, search, and pagination (#901)", async () => {
+    apiClient.get.mockResolvedValue({
+      data: {
+        success: true,
+        memories: [],
+        pagination: { total: 25, page: 2, limit: 10, totalPages: 3 },
+      },
+    });
+
+    await knowledgeApi.getArchivedMemories({
+      type: "all",
+      search: "budget review",
+      page: 2,
+      limit: 10,
+    });
+
+    expect(apiClient.get).toHaveBeenCalledWith(
+      expect.stringContaining("/api/knowledge/archive?"),
+    );
+    expect(apiClient.get).toHaveBeenCalledWith(
+      expect.stringContaining("type=all"),
+    );
+    expect(apiClient.get).toHaveBeenCalledWith(
+      expect.stringMatching(/search=budget(\+|%20)review/),
+    );
+    expect(apiClient.get).toHaveBeenCalledWith(
+      expect.stringContaining("page=2"),
+    );
+    expect(apiClient.get).toHaveBeenCalledWith(
+      expect.stringContaining("limit=10"),
+    );
+  });
 });
