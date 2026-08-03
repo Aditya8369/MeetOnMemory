@@ -120,10 +120,11 @@ describe("useFormDraft", () => {
       ),
     );
 
+    const initialValues = { title: "" };
     const { result } = renderHook(() =>
       useFormDraft({
         key: KEY,
-        values: { title: "" },
+        values: initialValues,
         maxAgeMs: 24 * 60 * 60 * 1000,
       }),
     );
@@ -141,10 +142,11 @@ describe("useFormDraft", () => {
       ),
     );
 
+    const initialValues = { title: "Server title" };
     const { result } = renderHook(() =>
       useFormDraft({
         key: KEY,
-        values: { title: "Server title" },
+        values: initialValues,
         serverUpdatedAt: "2026-08-01T11:00:00.000Z",
       }),
     );
@@ -159,8 +161,9 @@ describe("useFormDraft", () => {
       JSON.stringify(makeDraft({ title: "Submitted meeting" })),
     );
 
+    const initialValues = { title: "Submitted meeting" };
     const { result } = renderHook(() =>
-      useFormDraft({ key: KEY, values: { title: "Submitted meeting" } }),
+      useFormDraft({ key: KEY, values: initialValues }),
     );
 
     act(() => result.current.clearDraft());

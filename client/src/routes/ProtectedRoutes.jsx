@@ -55,6 +55,7 @@ import MeetingCostAnalytics from "../pages/MeetingCostAnalytics.jsx";
 import RecapScheduleDashboard from "../pages/RecapScheduleDashboard.jsx";
 import MeetingHealthDashboard from "../pages/MeetingHealthDashboard.jsx";
 import AutomationRules from "../pages/AutomationRules.jsx";
+import TopicExplorer from "../pages/TopicExplorer.jsx";
 
 const ProtectedRoutes = (
   <React.Fragment>
@@ -215,6 +216,14 @@ const ProtectedRoutes = (
       element={
         <ProtectedRoute>
           <Dashboard />
+        </ProtectedRoute>
+      }
+    />
+    <Route
+      path="/topics"
+      element={
+        <ProtectedRoute resource="reports" action="view">
+          <TopicExplorer />
         </ProtectedRoute>
       }
     />
