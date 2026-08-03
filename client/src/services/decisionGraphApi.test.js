@@ -76,4 +76,19 @@ describe("getAllDecisionGraphPages", () => {
     });
     expect(apiClient.get).toHaveBeenCalledTimes(1);
   });
+
+  it("preserves distinct edges when IDs contain colons", async () => {
+    apiClient.get.mockResolvedValueOnce({
+      data: {
+        edges: [
+          { source: "decision:one", target: "two", type: "relatesTo" },
+          { source: "decision", target: "one:two", type: "relatesTo" },
+        ],
+      },
+    });
+
+    const graph = await getAllDecisionGraphPages();
+
+    expect(graph.edges).toHaveLength(2);
+  });
 });

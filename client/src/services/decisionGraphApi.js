@@ -5,7 +5,8 @@ export const getDecisionGraph = async (params = {}) => {
   return response.data;
 };
 
-const edgeKey = ({ source, target, type }) => `${source}:${target}:${type}`;
+const edgeKey = ({ source, target, type }) =>
+  JSON.stringify([source, target, type]);
 
 // The graph endpoint returns a window of nodes, so collect every window before
 // handing data to the canvas. A larger page size keeps the number of requests
