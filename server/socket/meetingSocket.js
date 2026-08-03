@@ -6,6 +6,7 @@ import authenticateSocket from "../middleware/socketAuth.js";
 export default (io) => {
   const usersInRoom = {}; // roomId -> Array of { socketId, ...userInfo }
   const socketToRoom = {}; // socketId -> roomId
+  const roomTimers = {}; // roomId -> { isRunning: boolean, elapsed: number, remaining: number, currentAgendaItem: null | string, lastUpdate: number }
 
   // Authentication Middleware with Clerk & Dual Auth support
   io.use(authenticateSocket);
@@ -95,6 +96,32 @@ export default (io) => {
         );
         socket.emit("all-users", usersInThisRoom);
 
+        // Initialize timer state if it doesn't exist
+        if (!roomTimers[roomId]) {
+          roomTimers[roomId] = {
+            isRunning: false,
+            elapsed: 0,
+            remaining: 0,
+            currentAgendaItem: null,
+            lastUpdate: Date.now(),
+          };
+        }
+
+        // Update elapsed time if running before sending to newly joined user
+        if (roomTimers[roomId].isRunning) {
+          const now = Date.now();
+          const diff = Math.floor((now - roomTimers[roomId].lastUpdate) / 1000);
+          // We don't mutate elapsed here, just send the calculated value
+          const syncState = {
+            ...roomTimers[roomId],
+            elapsed: roomTimers[roomId].elapsed + diff,
+            remaining: Math.max(0, roomTimers[roomId].remaining - diff),
+          };
+          socket.emit("timer-sync", syncState);
+        } else {
+          socket.emit("timer-sync", roomTimers[roomId]);
+        }
+
         // Tell everyone else that a new user joined
         socket.to(roomId).emit("user-joined", user);
         console.log(`User ${socket.id} joined room: ${roomId}`);
@@ -142,6 +169,7 @@ export default (io) => {
         usersInRoom[roomId] = room;
         if (room.length === 0) {
           delete usersInRoom[roomId];
+          delete roomTimers[roomId];
           // End transcription session when last user leaves
           streamingTranscriptionService.endSession(roomId);
         }
@@ -203,6 +231,59 @@ export default (io) => {
       } catch (error) {
         console.error("Error processing audio data:", error);
       }
+    });
+
+    // Timer synchronization
+    socket.on("timer-control", ({ roomId, action, payload }) => {
+      if (!roomTimers[roomId]) {
+        roomTimers[roomId] = {
+          isRunning: false,
+          elapsed: 0,
+          remaining: 0,
+          currentAgendaItem: null,
+          lastUpdate: Date.now(),
+        };
+      }
+
+      const timer = roomTimers[roomId];
+      const now = Date.now();
+
+      if (timer.isRunning) {
+        const diff = Math.floor((now - timer.lastUpdate) / 1000);
+        timer.elapsed += diff;
+        timer.remaining = Math.max(0, timer.remaining - diff);
+      }
+      timer.lastUpdate = now;
+
+      switch (action) {
+        case "start":
+        case "resume":
+          timer.isRunning = true;
+          break;
+        case "pause":
+          timer.isRunning = false;
+          break;
+        case "reset":
+          timer.isRunning = false;
+          timer.elapsed = 0;
+          timer.remaining = payload?.remaining || 0;
+          break;
+        case "set-agenda":
+          timer.currentAgendaItem = payload?.agendaItem;
+          if (payload?.remaining !== undefined) {
+            timer.remaining = payload.remaining;
+            timer.elapsed = 0;
+          }
+          break;
+        case "sync":
+          if (payload) {
+            timer.elapsed = payload.elapsed;
+            timer.remaining = payload.remaining;
+          }
+          break;
+      }
+
+      io.to(roomId).emit("timer-sync", timer);
     });
   });
 };

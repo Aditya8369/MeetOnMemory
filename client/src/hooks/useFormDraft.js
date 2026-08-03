@@ -158,8 +158,8 @@ export const useFormDraft = ({
       return undefined;
     }
 
-    setStatus("saving");
     const timeoutId = window.setTimeout(() => {
+      setStatus("saving");
       const savedAt = new Date().toISOString();
       const draft = {
         version: DRAFT_VERSION,
