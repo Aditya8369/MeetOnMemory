@@ -126,6 +126,91 @@ export const getPollsByMeeting = async (req, res) => {
   }
 };
 
+/**
+ * Matches a poll that is currently open — closed flag down, expiry in the
+ * future or absent (Issue #1072).
+ *
+ * Used as the *filter* of the vote update rather than as a preceding `if`, so
+ * a poll that closes between the read and the write rejects the vote instead
+ * of silently accepting it.
+ */
+const openPollFilter = (pollId, organizationId, now = new Date()) => ({
+  _id: String(pollId),
+  organization: organizationId,
+  isClosed: false,
+  $or: [
+    { expiresAt: null },
+    { expiresAt: { $exists: false } },
+    { expiresAt: { $gt: now } },
+  ],
+});
+
+/**
+ * The vote itself, expressed as an aggregation-pipeline update so MongoDB
+ * applies "clear my previous votes, then record my new ones" server-side
+ * against current state (Issue #1072).
+ *
+ * The handler used to load the poll, rebuild `options[].votes` in memory and
+ * `save()` the whole array back. Because the filter step reassigns the array,
+ * Mongoose emits a `$set` of the entire array as it looked at *read* time —
+ * no `$push`, no version guard, no unique index — so two people voting in the
+ * same event-loop window overwrote each other:
+ *
+ *     t0  Alice reads  votes: []
+ *     t1  Bob   reads  votes: []
+ *     t2  Alice writes votes: [alice]
+ *     t3  Bob   writes votes: [bob]        <- Alice's vote is gone
+ *
+ * Both callers got a 200 and both clients rendered their own vote as
+ * recorded, so the loss was invisible until someone read the tally. In a live
+ * meeting where a room votes on a countdown, that is most of the votes.
+ *
+ * A pipeline update runs under the document lock, so concurrent votes
+ * serialize and each one sees its predecessor's result. The `$filter` before
+ * the append is what makes it idempotent: a retry can never leave the same
+ * voter in an option twice.
+ */
+const buildVotePipeline = (voterId, selectedOptionIds) => [
+  {
+    $set: {
+      options: {
+        $map: {
+          input: "$options",
+          as: "opt",
+          in: {
+            $mergeObjects: [
+              "$$opt",
+              {
+                votes: {
+                  $let: {
+                    vars: {
+                      // Everyone except this voter, in their original order.
+                      others: {
+                        $filter: {
+                          input: "$$opt.votes",
+                          as: "v",
+                          cond: { $ne: ["$$v", voterId] },
+                        },
+                      },
+                    },
+                    in: {
+                      $cond: [
+                        { $in: ["$$opt._id", selectedOptionIds] },
+                        { $concatArrays: ["$$others", [voterId]] },
+                        "$$others",
+                      ],
+                    },
+                  },
+                },
+              },
+            ],
+          },
+        },
+      },
+    },
+  },
+];
+
 // @desc    Cast a vote
 // @route   POST /api/polls/:id/vote
 // @access  Private
@@ -133,31 +218,9 @@ export const castVote = async (req, res) => {
   try {
     const { id } = req.params;
     const { optionIds } = req.body; // Array of option IDs
-    const userId = req.user.id;
 
     if (!mongoose.isValidObjectId(id)) {
       return res.status(400).json({ message: "Invalid poll ID" });
-    }
-
-    const poll = await Poll.findById(String(id));
-    if (!poll) {
-      return res.status(404).json({ message: "Poll not found" });
-    }
-
-    if (poll.isClosed) {
-      return res.status(400).json({ message: "Poll is closed" });
-    }
-
-    if (poll.expiresAt && new Date(poll.expiresAt) <= new Date()) {
-      poll.isClosed = true;
-      await poll.save();
-      return res.status(400).json({ message: "Poll has expired" });
-    }
-
-    if (poll.organization.toString() !== req.user.organization.toString()) {
-      return res
-        .status(403)
-        .json({ message: "Forbidden: Not part of organization" });
     }
 
     if (!Array.isArray(optionIds) || optionIds.length === 0) {
@@ -166,43 +229,94 @@ export const castVote = async (req, res) => {
         .json({ message: "Must provide at least one option to vote for" });
     }
 
-    if (poll.pollType === "single" && optionIds.length > 1) {
+    const callerOrg = req.user?.organization;
+    const callerId = req.user?.id ?? req.user?._id;
+    if (!callerOrg || !callerId) {
+      return res
+        .status(403)
+        .json({ message: "Forbidden: Not part of organization" });
+    }
+
+    const poll = await Poll.findById(String(id));
+    if (!poll) {
+      return res.status(404).json({ message: "Poll not found" });
+    }
+
+    if (poll.organization.toString() !== callerOrg.toString()) {
+      return res
+        .status(403)
+        .json({ message: "Forbidden: Not part of organization" });
+    }
+
+    if (poll.isClosed) {
+      return res.status(400).json({ message: "Poll is closed" });
+    }
+
+    if (poll.expiresAt && new Date(poll.expiresAt) <= new Date()) {
+      // Guarded so a vote landing in the same instant cannot be clobbered by
+      // this bookkeeping write.
+      await Poll.updateOne(
+        { _id: String(id), isClosed: false },
+        { $set: { isClosed: true } },
+      );
+      return res.status(400).json({ message: "Poll has expired" });
+    }
+
+    // Deduplicate before the arity check: `{ optionIds: [x, x, x] }` used to
+    // push the same voter into one option three times, so `voteCount` counted
+    // one person as three.
+    const requestedIds = [...new Set(optionIds.map((o) => String(o)))];
+
+    if (poll.pollType === "single" && requestedIds.length > 1) {
       return res
         .status(400)
         .json({ message: "This poll only allows a single vote" });
     }
 
-    // Remove user's previous votes for this poll
-    poll.options.forEach((option) => {
-      option.votes = option.votes.filter(
-        (v) => v.toString() !== userId.toString(),
-      );
-    });
+    const pollOptionIds = new Set(poll.options.map((o) => o._id.toString()));
+    const selectedIds = requestedIds.filter((optionId) =>
+      pollOptionIds.has(optionId),
+    );
 
-    // Add new votes
-    let validVotesCast = 0;
-    poll.options.forEach((option) => {
-      if (optionIds.includes(option._id.toString())) {
-        option.votes.push(userId);
-        validVotesCast++;
-      }
-    });
-
-    if (validVotesCast === 0) {
+    // Every id must belong to this poll. Previously unknown ids were silently
+    // dropped and the vote still counted as long as one id happened to match.
+    if (
+      selectedIds.length !== requestedIds.length ||
+      selectedIds.length === 0
+    ) {
       return res.status(400).json({ message: "Invalid option(s) provided" });
     }
 
-    const savedPoll = await poll.save();
-    await savedPoll.populate("createdBy", "name email profilePicture");
-    if (!poll.isAnonymous) {
-      await savedPoll.populate("options.votes", "name email profilePicture");
+    const voterId = new mongoose.Types.ObjectId(String(callerId));
+    const selectedObjectIds = selectedIds.map(
+      (optionId) => new mongoose.Types.ObjectId(optionId),
+    );
+
+    const updatedPoll = await Poll.findOneAndUpdate(
+      openPollFilter(id, poll.organization),
+      buildVotePipeline(voterId, selectedObjectIds),
+      { new: true },
+    );
+
+    if (!updatedPoll) {
+      // The filter no longer matches — the poll closed or expired between the
+      // validation read and the write. Reject rather than resurrect it.
+      return res.status(400).json({ message: "Poll is closed" });
     }
 
-    const pollResponse = stripVotersIfAnonymous(savedPoll);
+    await updatedPoll.populate("createdBy", "name email profilePicture");
+    if (!updatedPoll.isAnonymous) {
+      await updatedPoll.populate("options.votes", "name email profilePicture");
+    }
+
+    const pollResponse = stripVotersIfAnonymous(updatedPoll);
 
     const io = req.app.get("io");
     if (io) {
-      io.to(poll.meeting.toString()).emit("poll:vote", pollResponse);
+      // Broadcast the committed document, so every client converges on the
+      // same tally instead of on whichever snapshot its own request happened
+      // to build.
+      io.to(updatedPoll.meeting.toString()).emit("poll:vote", pollResponse);
     }
 
     res.status(200).json(pollResponse);
