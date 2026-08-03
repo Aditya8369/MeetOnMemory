@@ -1,7 +1,9 @@
 // server/controllers/digestPreferenceController.js
 
+import mongoose from "mongoose";
 import DigestPreference from "../models/digestPreferenceModel.js";
 import User from "../models/userModel.js";
+import Tag from "../models/tagModel.js";
 import transporter from "../config/nodeMailer.js";
 import MeetingDigestService from "../services/MeetingDigestService.js";
 
@@ -13,7 +15,9 @@ import MeetingDigestService from "../services/MeetingDigestService.js";
 export const getPreferences = async (req, res) => {
   try {
     const userId = req.user._id;
-    const preferences = await DigestPreference.findOne({ userId });
+    const preferences = await DigestPreference.findOne({
+      $or: [{ user: userId }, { userId }],
+    });
 
     if (!preferences) {
       return res.status(200).json({
@@ -22,6 +26,7 @@ export const getPreferences = async (req, res) => {
           frequency: "weekly",
           includeSections: ["decisions", "action-items"],
           enabled: true,
+          filterByTags: [],
         },
       });
     }
@@ -47,11 +52,72 @@ export const getPreferences = async (req, res) => {
 export const updatePreferences = async (req, res) => {
   try {
     const userId = req.user._id;
-    const { frequency, includeSections, enabled } = req.body;
+    const {
+      frequency,
+      includeSections,
+      enabled,
+      filterByTags,
+      deliveryDay,
+      deliveryHour,
+      maxItems,
+    } = req.body;
+
+    const userOrgId = req.user.organization;
+
+    let validTagIds = [];
+    if (
+      filterByTags &&
+      Array.isArray(filterByTags) &&
+      filterByTags.length > 0
+    ) {
+      if (!userOrgId) {
+        return res.status(400).json({
+          success: false,
+          message: "User must belong to an organization to filter by tags.",
+        });
+      }
+
+      // Check format of tag IDs
+      for (const tagId of filterByTags) {
+        if (!mongoose.Types.ObjectId.isValid(tagId)) {
+          return res.status(400).json({
+            success: false,
+            message: `Invalid tag ID format: ${tagId}`,
+          });
+        }
+      }
+
+      // Find organization-owned tags matching all passed IDs
+      const foundTags = await Tag.find({
+        _id: { $in: filterByTags },
+        organization: userOrgId,
+      }).select("_id");
+
+      if (foundTags.length !== filterByTags.length) {
+        return res.status(400).json({
+          success: false,
+          message:
+            "One or more tag IDs are invalid or do not belong to your organization.",
+        });
+      }
+
+      validTagIds = foundTags.map((t) => t._id);
+    }
+
+    const updateFields = {
+      user: userId,
+      ...(frequency !== undefined && { frequency }),
+      ...(includeSections !== undefined && { includeSections }),
+      ...(enabled !== undefined && { enabled }),
+      ...(deliveryDay !== undefined && { deliveryDay }),
+      ...(deliveryHour !== undefined && { deliveryHour }),
+      ...(maxItems !== undefined && { maxItems }),
+      ...(filterByTags !== undefined && { filterByTags: validTagIds }),
+    };
 
     const preferences = await DigestPreference.findOneAndUpdate(
-      { userId },
-      { frequency, includeSections, enabled },
+      { $or: [{ user: userId }, { userId }] },
+      updateFields,
       { new: true, upsert: true, runValidators: true },
     );
 
