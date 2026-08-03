@@ -48,6 +48,9 @@ import glossaryRoutes from "./glossaryRoutes.js";
 import aiSummaryTemplateRoutes from "./aiSummaryTemplateRoutes.js";
 import topicRoutes from "./topicRoutes.js";
 
+import calendarRoutes from "./calendarRoutes.js";
+import assistantRoutes from "./assistantRoutes.js";
+
 const router = express.Router();
 
 // ==========================================
@@ -55,7 +58,7 @@ const router = express.Router();
 // ==========================================
 router.use("/api/auth", authRoutes);
 router.use(["/api/organization", "/api/organizations"], organizationRoutes);
-router.use("/api/membership", membershipRoutes);
+router.use(["/api/membership", "/api/memberships"], membershipRoutes);
 router.use("/api/membership-request", membershipRequestRoutes);
 router.use("/api/invitation", invitationRoutes);
 router.use("/api/meetings/timer", agendaTimerRoutes);
@@ -68,8 +71,10 @@ router.use("/api/gemini", geminiRoutes);
 router.use("/api/user", userRoutes);
 router.use("/api/notifications", notificationRoutes);
 router.use("/api/knowledge", knowledgeRoutes);
+router.use("/api/calendar", calendarRoutes);
 router.use("/api/compliance", policyComplianceRoutes);
 router.use("/api/sessions", sessionRoutes);
+router.use("/api/assistant", assistantRoutes);
 router.use("/api/transcripts", transcriptRoutes);
 router.use("/api/shared-links", sharedLinkRoutes);
 router.use("/api/templates", meetingTemplateRoutes);
