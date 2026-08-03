@@ -23,6 +23,26 @@ const RecapPreferences = () => {
   const [previewHtml, setPreviewHtml] = useState("");
   const [isPreviewOpen, setIsPreviewOpen] = useState(false);
 
+  const formatHour = (hour) => {
+    if (hour === 0) return "12:00 AM";
+    if (hour < 12) return `${hour}:00 AM`;
+    if (hour === 12) return "12:00 PM";
+    return `${hour - 12}:00 PM`;
+  };
+
+  const hoursOptions = Array.from({ length: 24 }, (_, i) => i);
+
+  const quietHoursError = (() => {
+    const { quietHoursStart: start, quietHoursEnd: end } = preferences;
+    if ((start === "" && end !== "") || (start !== "" && end === "")) {
+      return "Both start and end times must be selected to enable quiet hours.";
+    }
+    if (start !== "" && end !== "" && Number(start) === Number(end)) {
+      return "Start and end times cannot be the same.";
+    }
+    return null;
+  })();
+
   useEffect(() => {
     fetchPreferences();
   }, []);
@@ -51,6 +71,10 @@ const RecapPreferences = () => {
   };
 
   const handleSave = async () => {
+    if (quietHoursError) {
+      toast.error(quietHoursError);
+      return;
+    }
     setSaving(true);
     try {
       const payload = {
@@ -74,6 +98,10 @@ const RecapPreferences = () => {
   };
 
   const handlePreview = async () => {
+    if (quietHoursError) {
+      toast.error("Please fix quiet hours configuration to preview.");
+      return;
+    }
     try {
       const payload = {
         ...preferences,
@@ -165,40 +193,59 @@ const RecapPreferences = () => {
         <h3 className="text-lg font-medium mb-2">Quiet Hours (Optional)</h3>
         <p className="text-sm text-gray-500 mb-2">
           Emails won't be sent during these hours. They'll be delayed until the
-          next batch.
+          next batch. You can set overnight ranges (e.g. 10:00 PM to 7:00 AM).
         </p>
-        <div className="flex space-x-4 items-center">
-          <div>
-            <label className="block text-sm text-gray-700 mb-1">
-              Start Hour (0-23)
+        <div className="flex flex-col sm:flex-row space-y-4 sm:space-y-0 sm:space-x-4 items-start sm:items-center">
+          <div className="w-full sm:w-auto">
+            <label
+              htmlFor="quietHoursStart"
+              className="block text-sm text-gray-700 mb-1"
+            >
+              Start Time
             </label>
-            <input
-              type="number"
+            <select
+              id="quietHoursStart"
               name="quietHoursStart"
-              min="0"
-              max="23"
               value={preferences.quietHoursStart}
               onChange={handleChange}
-              className="border border-gray-300 rounded px-3 py-2 w-24"
-              placeholder="e.g. 22"
-            />
+              className={`w-full sm:w-32 bg-white border rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 ${quietHoursError ? "border-red-500" : "border-gray-300"}`}
+            >
+              <option value="">None</option>
+              {hoursOptions.map((hour) => (
+                <option key={hour} value={hour}>
+                  {formatHour(hour)}
+                </option>
+              ))}
+            </select>
           </div>
-          <div>
-            <label className="block text-sm text-gray-700 mb-1">
-              End Hour (0-23)
+          <div className="w-full sm:w-auto">
+            <label
+              htmlFor="quietHoursEnd"
+              className="block text-sm text-gray-700 mb-1"
+            >
+              End Time
             </label>
-            <input
-              type="number"
+            <select
+              id="quietHoursEnd"
               name="quietHoursEnd"
-              min="0"
-              max="23"
               value={preferences.quietHoursEnd}
               onChange={handleChange}
-              className="border border-gray-300 rounded px-3 py-2 w-24"
-              placeholder="e.g. 8"
-            />
+              className={`w-full sm:w-32 bg-white border rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 ${quietHoursError ? "border-red-500" : "border-gray-300"}`}
+            >
+              <option value="">None</option>
+              {hoursOptions.map((hour) => (
+                <option key={hour} value={hour}>
+                  {formatHour(hour)}
+                </option>
+              ))}
+            </select>
           </div>
         </div>
+        {quietHoursError && (
+          <p className="text-sm text-red-500 mt-2 font-medium">
+            {quietHoursError}
+          </p>
+        )}
         <p className="text-xs text-gray-500 mt-2">
           Timezone: {preferences.timezone}
         </p>
