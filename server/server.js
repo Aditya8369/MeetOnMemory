@@ -6,26 +6,7 @@ import { fileURLToPath } from "url";
 
 import connectDB from "./config/mongodb.js";
 
-import authRoutes from "./routes/authRoutes.js";
-import organizationRoutes from "./routes/organizationRoutes.js";
-import membershipRoutes from "./routes/membershipRoutes.js";
-import membershipRequestRoutes from "./routes/membershipRequestRoutes.js";
-import invitationRoutes from "./routes/invitationRoutes.js";
-import meetingRoutes from "./routes/meetingRoutes.js";
-import searchRoutes from "./routes/searchRoutes.js";
-import aiRoutes from "./routes/aiRoutes.js";
-import policyRoutes from "./routes/policyRoutes.js";
-import analyticsRoutes from "./routes/analyticsRoutes.js";
-import geminiRoutes from "./routes/geminiRoutes.js";
-import userRoutes from "./routes/userRoutes.js";
-import notificationRoutes from "./routes/notificationRoutes.js";
-import calendarRoutes from "./routes/calendarRoutes.js";
 import { initCalendarSyncCron } from "./services/calendarSyncService.js";
-import knowledgeRoutes from "./routes/knowledgeRoutes.js";
-import policyComplianceRoutes from "./routes/policyComplianceRoutes.js";
-import sessionRoutes from "./routes/sessionRoutes.js";
-import assistantRoutes from "./routes/assistantRoutes.js";
-import transcriptRoutes from "./routes/transcriptRoutes.js";
 import { configureExpress, configureErrorHandling } from "./config/express.js";
 import { configureSocket } from "./config/socket.js";
 import { startWorkers } from "./config/workers.js";
@@ -76,27 +57,6 @@ await connectDB();
 configureExpress(app);
 
 // ROUTES
-app.use("/api/auth", authRoutes);
-app.use(["/api/organization", "/api/organizations"], organizationRoutes);
-app.use(["/api/membership", "/api/memberships"], membershipRoutes);
-app.use("/api/membership-request", membershipRequestRoutes);
-app.use("/api/invitation", invitationRoutes);
-app.use("/api/meetings", meetingRoutes);
-app.use("/api/search", searchRoutes);
-app.use("/api/ai", aiRoutes);
-app.use("/api/policies", policyRoutes);
-app.use("/api/analytics", analyticsRoutes);
-app.use("/api/gemini", geminiRoutes);
-app.use("/api/user", userRoutes);
-app.use("/api/notifications", notificationRoutes);
-app.use("/api/knowledge", knowledgeRoutes);
-app.use("/api/calendar", calendarRoutes);
-app.use("/api/compliance", policyComplianceRoutes);
-
-app.use("/api/sessions", sessionRoutes);
-app.use("/api/assistant", assistantRoutes);
-app.use("/api/transcripts", transcriptRoutes);
-
 app.use(routes);
 
 // ERROR HANDLING (Must be after routes)

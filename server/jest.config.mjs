@@ -35,5 +35,6 @@ export default {
     "sharedLinkAnalytics.test.js",
     "ragAssistantSocketScope.test.js",
     "dashboardController.test.js",
+    "routeRegistration.test.js",
   ],
 };
