@@ -211,7 +211,6 @@ export const getSeriesMeetings = async (req, res) => {
   }
 };
 
-
 export const cancelSeries = async (req, res) => {
   try {
     const series = await MeetingSeries.findOneAndUpdate(

@@ -5,7 +5,6 @@ import MeetingSeries from "../models/meetingSeriesModel.js";
 import User from "../models/userModel.js";
 import { getSeriesMeetings } from "../controllers/meetingSeriesController.js";
 
-
 describe("controllers/meetingSeriesController (Issue #915)", () => {
   beforeAll(async () => {
     await mongoose.connect(process.env.TEST_MONGODB_URI);

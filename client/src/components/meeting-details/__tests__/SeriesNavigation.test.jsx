@@ -75,8 +75,14 @@ describe("SeriesNavigation Component (Issue #915)", () => {
     );
 
     await waitFor(() => {
-      expect(meetingSeriesApi.getSeriesMeetings).toHaveBeenCalledWith(mockSeriesId, 1, 0);
-      expect(screen.getByText(/Engineering Sync \(Recurring Series\)/i)).toBeInTheDocument();
+      expect(meetingSeriesApi.getSeriesMeetings).toHaveBeenCalledWith(
+        mockSeriesId,
+        1,
+        0,
+      );
+      expect(
+        screen.getByText(/Engineering Sync \(Recurring Series\)/i),
+      ).toBeInTheDocument();
       expect(screen.getByText(/Meeting 105 of 120/i)).toBeInTheDocument();
     });
 
