@@ -11,6 +11,30 @@ export default (io) => {
   io.use(authenticateSocket);
 
   io.on("connection", (socket) => {
+    const canAccessMeeting = async (meetingId) => {
+      if (
+        !socket.userRole ||
+        !hasPermission(socket.userRole, "meetings", "view")
+      ) {
+        return false;
+      }
+
+      const meeting = await Meeting.findById(meetingId);
+
+      if (!meeting) {
+        return false;
+      }
+
+      const isOwner =
+        meeting.uploadedBy?.toString() === socket.userId.toString();
+
+      const isInSameOrg =
+        meeting.organization &&
+        socket.userOrganization &&
+        meeting.organization.toString() === socket.userOrganization.toString();
+
+      return isOwner || isInSameOrg;
+    };
     console.log("🟢 User connected:", socket.id, "User ID:", socket.userId);
 
     // Join a personal room for notifications
@@ -130,6 +154,13 @@ export default (io) => {
     // Start transcription session
     socket.on("start-transcription", async ({ roomId }) => {
       try {
+        if (!(await canAccessMeeting(roomId))) {
+          socket.emit("transcription-error", {
+            message: "Forbidden: You don't have access to this meeting",
+          });
+          return;
+        }
+
         if (!streamingTranscriptionService.isSessionActive(roomId)) {
           await streamingTranscriptionService.startSession(roomId, io);
           socket.emit("transcription-started", { roomId });
@@ -143,6 +174,13 @@ export default (io) => {
     // Stop transcription session
     socket.on("stop-transcription", async ({ roomId }) => {
       try {
+        if (!(await canAccessMeeting(roomId))) {
+          socket.emit("transcription-error", {
+            message: "Forbidden: You don't have access to this meeting",
+          });
+          return;
+        }
+
         await streamingTranscriptionService.endSession(roomId);
         socket.emit("transcription-stopped", { roomId });
       } catch (error) {
@@ -152,8 +190,15 @@ export default (io) => {
     });
 
     // Process audio data for transcription
-    socket.on("audio-data", ({ roomId, audioData }) => {
+    socket.on("audio-data", async ({ roomId, audioData }) => {
       try {
+        if (!(await canAccessMeeting(roomId))) {
+          socket.emit("transcription-error", {
+            message: "Forbidden: You don't have access to this meeting",
+          });
+          return;
+        }
+
         streamingTranscriptionService.processAudio(roomId, audioData);
       } catch (error) {
         console.error("Error processing audio data:", error);
