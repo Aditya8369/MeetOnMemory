@@ -71,7 +71,7 @@ export default (io) => {
           (id) => id.socketId !== socket.id,
         );
         socket.emit("all-users", usersInThisRoom);
-        
+
         // Initialize timer state if it doesn't exist
         if (!roomTimers[roomId]) {
           roomTimers[roomId] = {
@@ -79,10 +79,10 @@ export default (io) => {
             elapsed: 0,
             remaining: 0,
             currentAgendaItem: null,
-            lastUpdate: Date.now()
+            lastUpdate: Date.now(),
           };
         }
-        
+
         // Update elapsed time if running before sending to newly joined user
         if (roomTimers[roomId].isRunning) {
           const now = Date.now();
@@ -91,7 +91,7 @@ export default (io) => {
           const syncState = {
             ...roomTimers[roomId],
             elapsed: roomTimers[roomId].elapsed + diff,
-            remaining: Math.max(0, roomTimers[roomId].remaining - diff)
+            remaining: Math.max(0, roomTimers[roomId].remaining - diff),
           };
           socket.emit("timer-sync", syncState);
         } else {
@@ -191,12 +191,18 @@ export default (io) => {
     // Timer synchronization
     socket.on("timer-control", ({ roomId, action, payload }) => {
       if (!roomTimers[roomId]) {
-        roomTimers[roomId] = { isRunning: false, elapsed: 0, remaining: 0, currentAgendaItem: null, lastUpdate: Date.now() };
+        roomTimers[roomId] = {
+          isRunning: false,
+          elapsed: 0,
+          remaining: 0,
+          currentAgendaItem: null,
+          lastUpdate: Date.now(),
+        };
       }
-      
+
       const timer = roomTimers[roomId];
       const now = Date.now();
-      
+
       if (timer.isRunning) {
         const diff = Math.floor((now - timer.lastUpdate) / 1000);
         timer.elapsed += diff;
@@ -231,7 +237,7 @@ export default (io) => {
           }
           break;
       }
-      
+
       io.to(roomId).emit("timer-sync", timer);
     });
   });

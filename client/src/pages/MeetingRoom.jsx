@@ -1,7 +1,19 @@
-import React, { useEffect, useState } from "react";
-import { useParams } from "react-router-dom";
+import React, { useEffect, useState, useRef } from "react";
+import { useParams, useNavigate } from "react-router-dom";
+import { io } from "socket.io-client";
+import Peer from "simple-peer";
 import { toast } from "react-toastify";
-import { Loader2, CheckCircle2 } from "lucide-react";
+import {
+  Loader2,
+  CheckCircle2,
+  Clock,
+  Users,
+  Copy,
+  PanelRightClose,
+  NotebookPen,
+  Captions,
+  FileText,
+} from "lucide-react";
 import CollaborativeEditor from "../components/meetings/CollaborativeEditor.jsx";
 import PeerVideo from "../components/meetings/PeerVideo.jsx";
 import MeetingHeader from "../components/meetings/MeetingHeader.jsx";
@@ -20,9 +32,21 @@ const MeetingRoom = () => {
   const { roomId } = useParams();
   const navigate = useNavigate();
 
+  const screenTrackRef = useRef();
+  const peersRef = useRef([]);
+  const backendUrl = import.meta.env.VITE_BACKEND_URL;
+
+  const formatTime = (seconds) => {
+    const hrs = Math.floor(seconds / 3600);
+    const mins = Math.floor((seconds % 3600) / 60);
+    const secs = seconds % 60;
+    return `${hrs > 0 ? hrs + ":" : ""}${mins.toString().padStart(2, "0")}:${secs.toString().padStart(2, "0")}`;
+  };
+
   const [joined, setJoined] = useState(false);
   const [loading, setLoading] = useState(false);
   const [meetingEnded, setMeetingEnded] = useState(false);
+  // eslint-disable-next-line no-unused-vars
   const [mediaError, setMediaError] = useState(null);
 
   const [micOn, setMicOn] = useState(true);
@@ -30,7 +54,7 @@ const MeetingRoom = () => {
   const [isScreenSharing, setIsScreenSharing] = useState(false);
 
   const [peers, setPeers] = useState([]);
-  
+
   // Shared Timer State
   const [timerState, setTimerState] = useState({
     isRunning: false,
@@ -39,7 +63,8 @@ const MeetingRoom = () => {
     currentAgendaItem: null,
   });
   const timerStateRef = useRef(timerState);
-  
+
+  // eslint-disable-next-line no-unused-vars
   const [duration, setDuration] = useState(0);
   const [showNotes, setShowNotes] = useState(false);
 
@@ -55,23 +80,7 @@ const MeetingRoom = () => {
   const permission = useDevicePermission();
 
   // WebRTC
-  const {
-    joined,
-    loading,
-    meetingEnded,
-    micOn,
-    cameraOn,
-    isScreenSharing,
-    peers,
-    socketRef,
-    userVideoRef,
-    streamRef,
-    joinMeeting,
-    leaveMeeting,
-    toggleMic,
-    toggleCamera,
-    toggleScreenShare,
-  } = useWebRTC(roomId, {
+  const { socketRef, userVideoRef, streamRef } = useWebRTC(roomId, {
     showCaptions,
     setCaptions,
     setTranscriptSegments,
@@ -166,7 +175,7 @@ const MeetingRoom = () => {
 
       // Timer synchronization event
       socketRef.current.on("timer-sync", (serverState) => {
-        setTimerState(prev => ({ ...prev, ...serverState }));
+        setTimerState((prev) => ({ ...prev, ...serverState }));
         timerStateRef.current = { ...timerStateRef.current, ...serverState };
       });
 
@@ -210,7 +219,12 @@ const MeetingRoom = () => {
         const { segment } = data;
         setCaptions((prev) => [
           ...prev.slice(-4),
-          { text: segment.text, speaker: segment.speaker, isFinal: true, timestamp: data.timestamp },
+          {
+            text: segment.text,
+            speaker: segment.speaker,
+            isFinal: true,
+            timestamp: data.timestamp,
+          },
         ]);
         setTranscriptSegments((prev) => [...prev, segment]);
       });
@@ -450,7 +464,11 @@ const MeetingRoom = () => {
                   ? "bg-green-600 text-white hover:bg-green-700"
                   : "bg-gray-800 text-gray-300 hover:text-white hover:bg-gray-700"
               }`}
-              title={transcriptionEnabled ? "Stop transcription" : "Start live transcription"}
+              title={
+                transcriptionEnabled
+                  ? "Stop transcription"
+                  : "Start live transcription"
+              }
             >
               <Captions size={16} />
               <span className="hidden sm:inline">
