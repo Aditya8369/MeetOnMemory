@@ -57,11 +57,18 @@ describe("PolicyCompliance Component (Issue #911)", () => {
     );
 
     await waitFor(() => {
-      expect(policyComplianceApi.getFlags).toHaveBeenCalledWith("unresolved", "all");
+      expect(policyComplianceApi.getFlags).toHaveBeenCalledWith(
+        "unresolved",
+        "all",
+      );
     });
 
-    expect(await screen.findByText("Use third-party encryption key")).toBeInTheDocument();
-    expect(await screen.findByText("Enforce MFA for all admin logins")).toBeInTheDocument();
+    expect(
+      await screen.findByText("Use third-party encryption key"),
+    ).toBeInTheDocument();
+    expect(
+      await screen.findByText("Enforce MFA for all admin logins"),
+    ).toBeInTheDocument();
     expect(screen.getByText("Potential Conflict")).toBeInTheDocument();
   });
 
@@ -80,7 +87,10 @@ describe("PolicyCompliance Component (Issue #911)", () => {
     );
 
     await waitFor(() => {
-      expect(policyComplianceApi.getFlags).toHaveBeenCalledWith("unresolved", "all");
+      expect(policyComplianceApi.getFlags).toHaveBeenCalledWith(
+        "unresolved",
+        "all",
+      );
     });
 
     policyComplianceApi.getFlags.mockResolvedValueOnce({
@@ -91,13 +101,18 @@ describe("PolicyCompliance Component (Issue #911)", () => {
     });
 
     const alignedButtons = screen.getAllByRole("button");
-    const alignedTab = alignedButtons.find((btn) => btn.textContent.includes("Aligned"));
+    const alignedTab = alignedButtons.find((btn) =>
+      btn.textContent.includes("Aligned"),
+    );
     expect(alignedTab).toBeTruthy();
 
     fireEvent.click(alignedTab);
 
     await waitFor(() => {
-      expect(policyComplianceApi.getFlags).toHaveBeenCalledWith("unresolved", "aligned");
+      expect(policyComplianceApi.getFlags).toHaveBeenCalledWith(
+        "unresolved",
+        "aligned",
+      );
     });
   });
 });

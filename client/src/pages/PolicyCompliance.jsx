@@ -65,7 +65,11 @@ const CLASSIFICATION_STYLES = {
 
 const CLASSIFICATION_TABS = [
   { value: "all", label: "All Classifications", icon: Shield },
-  { value: "potential_conflict", label: "Potential Conflicts", icon: ShieldAlert },
+  {
+    value: "potential_conflict",
+    label: "Potential Conflicts",
+    icon: ShieldAlert,
+  },
   { value: "aligned", label: "Aligned", icon: ShieldCheck },
   { value: "references", label: "References", icon: Link2 },
   { value: "unrelated", label: "Unrelated", icon: ShieldQuestion },
@@ -169,8 +173,9 @@ const PolicyCompliance = () => {
             Policy Compliance
           </h1>
           <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
-            Meeting decisions evaluated against organizational policies. Explore all policy
-            compliance classifications including potential conflicts, aligned decisions, references, and unclassified items.
+            Meeting decisions evaluated against organizational policies. Explore
+            all policy compliance classifications including potential conflicts,
+            aligned decisions, references, and unclassified items.
           </p>
         </div>
 
@@ -210,13 +215,16 @@ const PolicyCompliance = () => {
                     : "text-slate-600 dark:text-slate-400 hover:bg-slate-200/50 dark:hover:bg-slate-800/50"
                 }`}
               >
-                <Icon className={`w-3.5 h-3.5 ${isSelected ? "text-indigo-600 dark:text-indigo-400" : ""}`} />
+                <Icon
+                  className={`w-3.5 h-3.5 ${isSelected ? "text-indigo-600 dark:text-indigo-400" : ""}`}
+                />
                 {tab.label}
-                {classificationTab === "all" && countsByClassification[tab.value] !== undefined && (
-                  <span className="ml-1 px-1.5 py-0.5 rounded-full bg-slate-200 dark:bg-slate-700 text-[10px] font-semibold text-slate-700 dark:text-slate-300">
-                    {countsByClassification[tab.value]}
-                  </span>
-                )}
+                {classificationTab === "all" &&
+                  countsByClassification[tab.value] !== undefined && (
+                    <span className="ml-1 px-1.5 py-0.5 rounded-full bg-slate-200 dark:bg-slate-700 text-[10px] font-semibold text-slate-700 dark:text-slate-300">
+                      {countsByClassification[tab.value]}
+                    </span>
+                  )}
               </button>
             );
           })}
@@ -236,7 +244,10 @@ const PolicyCompliance = () => {
         {!loading && !error && flags.length === 0 && (
           <div className="text-center py-16 text-slate-400 dark:text-slate-500">
             <ShieldCheck className="w-10 h-10 mx-auto mb-3 text-emerald-400" />
-            No {classificationTab !== "all" ? classificationTab.replace("_", " ") : ""}{" "}
+            No{" "}
+            {classificationTab !== "all"
+              ? classificationTab.replace("_", " ")
+              : ""}{" "}
             {statusTab === "all" ? "" : statusTab} compliance records found.
           </div>
         )}
