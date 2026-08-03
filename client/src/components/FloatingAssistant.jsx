@@ -9,12 +9,23 @@ import {
   X,
   GripHorizontal,
   Pin,
+  PanelLeftClose,
+  PanelLeftOpen,
 } from "lucide-react";
 import useAssistant from "../context/useAssistant";
 import AppContent from "../context/AppContent";
 import ChatSessionSidebar from "./ChatSessionSidebar";
 import SourceCitation from "./SourceCitation";
 
+/**
+ * FloatingAssistant - Redesigned AI Assistant workspace with balanced split layout
+ * Features:
+ * - Optimized sidebar width (14rem) for better space utilization
+ * - Expanded chat area as primary workspace
+ * - Improved visual hierarchy and spacing
+ * - Collapsible sidebar for maximum chat space
+ * - Better responsive design
+ */
 const FloatingAssistant = () => {
   const { isLoggedin } = useContext(AppContent);
   const {
@@ -46,20 +57,25 @@ const FloatingAssistant = () => {
   const dragRef = useRef(null);
   const [showSidebar, setShowSidebar] = useState(true);
 
+  // Auto-scroll to bottom when new messages arrive
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, ui.isOpen, ui.isMinimized]);
 
+  // Handle window resize to keep panel within viewport
   useEffect(() => {
     const onResize = () => {
       if (!ui.isOpen || ui.isMaximized || ui.isMinimized) return;
+
       const maxX = Math.max(8, window.innerWidth - ui.size.width - 8);
       const maxY = Math.max(8, window.innerHeight - ui.size.height - 8);
+
       setPosition({
         x: Math.min(Math.max(8, ui.position.x), maxX),
         y: Math.min(Math.max(8, ui.position.y), maxY),
       });
     };
+
     window.addEventListener("resize", onResize);
     return () => window.removeEventListener("resize", onResize);
   }, [
@@ -73,11 +89,25 @@ const FloatingAssistant = () => {
     setPosition,
   ]);
 
+  // Auto-resize textarea based on content
+  useEffect(() => {
+    const textarea = document.getElementById("assistant-input");
+    if (textarea) {
+      textarea.style.height = "auto";
+      textarea.style.height = Math.min(textarea.scrollHeight, 120) + "px";
+    }
+  }, [inputValue]);
+
   if (!isLoggedin) return null;
 
+  /**
+   * Handle drag functionality for floating panel positioning
+   */
   const startDrag = (event) => {
     if (ui.isMaximized || event.button !== 0) return;
+
     event.preventDefault();
+
     const startX = event.clientX;
     const startY = event.clientY;
     const originX = ui.position.x;
@@ -86,10 +116,13 @@ const FloatingAssistant = () => {
     const onMove = (moveEvent) => {
       const width = ui.size.width;
       const height = ui.size.height;
+
       const nextX = originX + (moveEvent.clientX - startX);
       const nextY = originY + (moveEvent.clientY - startY);
+
       const maxX = Math.max(8, window.innerWidth - width - 8);
       const maxY = Math.max(8, window.innerHeight - height - 8);
+
       setPosition({
         x: Math.min(Math.max(8, nextX), maxX),
         y: Math.min(Math.max(8, nextY), maxY),
@@ -105,6 +138,19 @@ const FloatingAssistant = () => {
     window.addEventListener("pointerup", onUp);
   };
 
+  /**
+   * Handle form submission with Enter key (Shift+Enter for newline)
+   */
+  const handleKeyDown = (e) => {
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault();
+      if (inputValue.trim() && !isStreaming && isSocketConnected) {
+        handleSendMessage(e);
+      }
+    }
+  };
+
+  // Collapsed FAB button when assistant is closed
   if (!ui.isOpen) {
     return (
       <button
@@ -121,6 +167,7 @@ const FloatingAssistant = () => {
     );
   }
 
+  // Minimized state with compact restore button
   if (ui.isMinimized) {
     return (
       <button
@@ -150,6 +197,7 @@ const FloatingAssistant = () => {
     );
   }
 
+  // Main workspace panel with optimized layout
   const panelStyle = ui.isMaximized
     ? {
         left: 12,
@@ -171,32 +219,52 @@ const FloatingAssistant = () => {
       role="dialog"
       aria-label="AI Assistant workspace"
     >
+      {/* Enhanced header with improved controls */}
       <div
         ref={dragRef}
         onPointerDown={startDrag}
-        className={`flex items-center justify-between gap-2 border-b border-gray-200 bg-gray-50 px-3 py-2 dark:border-gray-700 dark:bg-gray-800/80 ${
+        className={`flex items-center justify-between gap-2 border-b border-gray-200 bg-gradient-to-r from-gray-50 to-white px-4 py-2.5 dark:border-gray-700 dark:from-gray-800 dark:to-gray-900 ${
           ui.isMaximized
             ? "cursor-default"
             : "cursor-grab active:cursor-grabbing"
         }`}
       >
-        <div className="flex min-w-0 items-center gap-2 text-gray-700 dark:text-gray-200">
-          <GripHorizontal className="h-4 w-4 shrink-0 text-gray-400" />
-          <MessageSquare className="h-4 w-4 shrink-0 text-indigo-600" />
+        <div className="flex min-w-0 items-center gap-2.5 text-gray-700 dark:text-gray-200">
+          {!ui.isMaximized && (
+            <GripHorizontal className="h-4 w-4 shrink-0 text-gray-400" />
+          )}
+          <div className="flex h-6 w-6 items-center justify-center rounded-lg bg-indigo-100 dark:bg-indigo-950">
+            <MessageSquare className="h-3.5 w-3.5 text-indigo-600 dark:text-indigo-400" />
+          </div>
           <span className="truncate text-sm font-semibold">AI Assistant</span>
         </div>
+
         <div
           className="flex items-center gap-1"
           onPointerDown={(e) => e.stopPropagation()}
         >
+          {/* Sidebar toggle */}
           <button
             type="button"
             onClick={() => setShowSidebar((v) => !v)}
-            className="hidden sm:inline-flex rounded-lg px-2 py-1.5 text-xs font-medium text-gray-600 hover:bg-gray-200/70 dark:text-gray-300 dark:hover:bg-gray-700"
+            className="hidden sm:inline-flex items-center gap-1 rounded-lg px-2 py-1.5 text-xs font-medium text-gray-600 hover:bg-gray-200/70 dark:text-gray-300 dark:hover:bg-gray-700"
             aria-pressed={showSidebar}
+            title={showSidebar ? "Hide sidebar" : "Show sidebar"}
           >
-            Chats
+            {showSidebar ? (
+              <>
+                <PanelLeftClose className="h-3.5 w-3.5" />
+                <span>Hide</span>
+              </>
+            ) : (
+              <>
+                <PanelLeftOpen className="h-3.5 w-3.5" />
+                <span>Chats</span>
+              </>
+            )}
           </button>
+
+          {/* Minimize button */}
           <button
             type="button"
             onClick={minimizeAssistant}
@@ -206,6 +274,8 @@ const FloatingAssistant = () => {
           >
             <Minus className="h-4 w-4" />
           </button>
+
+          {/* Maximize/Restore button */}
           <button
             type="button"
             onClick={() =>
@@ -223,6 +293,8 @@ const FloatingAssistant = () => {
               <Maximize2 className="h-4 w-4" />
             )}
           </button>
+
+          {/* Close button */}
           <button
             type="button"
             onClick={closeAssistant}
@@ -235,7 +307,9 @@ const FloatingAssistant = () => {
         </div>
       </div>
 
+      {/* Main content area with balanced split layout */}
       <div className="flex min-h-0 flex-1 overflow-hidden">
+        {/* Sidebar with optimized width */}
         {showSidebar && (
           <div className="hidden h-full w-56 shrink-0 border-r border-gray-200 dark:border-gray-700 sm:block">
             <ChatSessionSidebar
@@ -248,7 +322,9 @@ const FloatingAssistant = () => {
           </div>
         )}
 
+        {/* Expanded chat workspace - primary focus area */}
         <div className="flex min-w-0 flex-1 flex-col bg-gray-50/40 dark:bg-gray-950/40">
+          {/* Connection status indicator */}
           {!isSocketConnected && (
             <div className="flex items-center justify-center gap-2 border-b border-yellow-200 bg-yellow-50 px-3 py-2 text-xs font-medium text-yellow-800 dark:border-yellow-900/50 dark:bg-yellow-950/40 dark:text-yellow-200">
               <RefreshCw className="h-3.5 w-3.5 animate-spin" />
@@ -256,6 +332,7 @@ const FloatingAssistant = () => {
             </div>
           )}
 
+          {/* Pinned context banner */}
           {pinnedContext && (
             <div className="flex items-center justify-between gap-2 border-b border-indigo-100 bg-indigo-50/70 px-3 py-2 dark:border-indigo-900/40 dark:bg-indigo-950/30">
               <div className="flex min-w-0 items-center gap-1.5 text-xs text-indigo-900 dark:text-indigo-200">
@@ -280,29 +357,32 @@ const FloatingAssistant = () => {
             </div>
           )}
 
-          <div className="custom-scrollbar flex-1 overflow-y-auto p-3 sm:p-4">
+          {/* Messages area with improved spacing */}
+          <div className="custom-scrollbar flex-1 overflow-y-auto px-4 py-4 sm:px-6 sm:py-5">
             {!currentSessionId && messages.length === 0 ? (
-              <div className="mx-auto flex h-full max-w-md flex-col items-center justify-center text-center">
-                <div className="mb-3 flex h-12 w-12 items-center justify-center rounded-2xl bg-indigo-100 text-indigo-600 dark:bg-indigo-950 dark:text-indigo-300">
-                  <MessageSquare className="h-6 w-6" />
+              /* Welcome screen with suggestions */
+              <div className="mx-auto flex h-full max-w-2xl flex-col items-center justify-center text-center">
+                <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-indigo-100 to-indigo-200 text-indigo-600 dark:from-indigo-950 dark:to-indigo-900 dark:text-indigo-300">
+                  <MessageSquare className="h-7 w-7" />
                 </div>
-                <h2 className="mb-1 text-lg font-semibold text-gray-900 dark:text-gray-100">
+                <h2 className="mb-2 text-xl font-bold text-gray-900 dark:text-gray-100">
                   How can I help?
                 </h2>
-                <p className="mb-5 text-sm text-gray-500 dark:text-gray-400">
+                <p className="mb-6 max-w-md text-sm text-gray-600 dark:text-gray-400">
                   Ask about meetings, decisions, and policies without leaving
                   this page.
                 </p>
-                <div className="grid w-full gap-2">
+                <div className="grid w-full max-w-lg gap-2.5">
                   {[
                     "What were the main decisions in the last engineering meeting?",
                     "Summarize the remote work policy updates.",
+                    "Show me action items from the quarterly review.",
                   ].map((suggestion) => (
                     <button
                       key={suggestion}
                       type="button"
                       onClick={() => setInputValue(suggestion)}
-                      className="rounded-xl border border-gray-200 bg-white px-3 py-2 text-left text-xs text-gray-700 transition hover:border-indigo-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300"
+                      className="rounded-xl border border-gray-200 bg-white px-4 py-3 text-left text-sm text-gray-700 transition hover:border-indigo-300 hover:shadow-sm dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300"
                     >
                       "{suggestion}"
                     </button>
@@ -310,14 +390,17 @@ const FloatingAssistant = () => {
                 </div>
               </div>
             ) : (
-              <div className="space-y-4 pb-2">
+              /* Messages list with improved layout */
+              <div className="mx-auto max-w-3xl space-y-5 pb-2">
                 {messages.map((msg, idx) => (
                   <div
                     key={idx}
-                    className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}
+                    className={`flex ${
+                      msg.role === "user" ? "justify-end" : "justify-start"
+                    }`}
                   >
                     <div
-                      className={`max-w-[90%] rounded-2xl px-3.5 py-2.5 text-sm shadow-sm ${
+                      className={`max-w-[85%] rounded-2xl px-4 py-3 text-sm shadow-sm ${
                         msg.role === "user"
                           ? "rounded-br-none bg-indigo-600 text-white"
                           : "rounded-bl-none border border-gray-200 bg-white text-gray-800 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100"
@@ -329,7 +412,7 @@ const FloatingAssistant = () => {
                       {msg.role === "assistant" &&
                         msg.sources &&
                         msg.sources.length > 0 && (
-                          <div className="mt-3 flex flex-wrap border-t border-gray-100 pt-2 dark:border-gray-800">
+                          <div className="mt-3 flex flex-wrap border-t border-gray-100 pt-2.5 dark:border-gray-800">
                             {msg.sources.map((src, i) => (
                               <SourceCitation key={i} source={src} index={i} />
                             ))}
@@ -339,10 +422,11 @@ const FloatingAssistant = () => {
                   </div>
                 ))}
 
+                {/* Streaming indicator */}
                 {isStreaming &&
                   messages[messages.length - 1]?.role === "user" && (
                     <div className="flex justify-start">
-                      <div className="flex items-center gap-2 rounded-2xl rounded-bl-none border border-gray-200 bg-white px-3.5 py-3 text-sm text-gray-500 dark:border-gray-700 dark:bg-gray-900">
+                      <div className="flex items-center gap-2 rounded-2xl rounded-bl-none border border-gray-200 bg-white px-4 py-3 text-sm text-gray-500 dark:border-gray-700 dark:bg-gray-900">
                         <span className="h-2 w-2 rounded-full bg-indigo-400 animate-bounce" />
                         <span
                           className="h-2 w-2 rounded-full bg-indigo-400 animate-bounce"
@@ -363,41 +447,56 @@ const FloatingAssistant = () => {
             )}
           </div>
 
-          <div className="border-t border-gray-200 bg-white p-3 dark:border-gray-700 dark:bg-gray-900">
+          {/* Enhanced input area with auto-resize */}
+          <div className="border-t border-gray-200 bg-white px-4 py-3 dark:border-gray-700 dark:bg-gray-900">
             {error && (
-              <div className="mb-2 rounded-lg border border-red-100 bg-red-50 p-2 text-xs text-red-600 dark:border-red-900/40 dark:bg-red-950/30 dark:text-red-300">
+              <div className="mb-2 rounded-lg border border-red-100 bg-red-50 p-2.5 text-xs text-red-600 dark:border-red-900/40 dark:bg-red-950/30 dark:text-red-300">
                 {error}
               </div>
             )}
+
             {isRateLimited && (
-              <div className="mb-2 rounded-lg border border-orange-100 bg-orange-50 p-2 text-xs text-orange-700 dark:border-orange-900/40 dark:bg-orange-950/30 dark:text-orange-300">
+              <div className="mb-2 rounded-lg border border-orange-100 bg-orange-50 p-2.5 text-xs text-orange-700 dark:border-orange-900/40 dark:bg-orange-950/30 dark:text-orange-300">
                 Too many messages sent recently. Please wait a moment before
                 trying again.
               </div>
             )}
-            <form
-              onSubmit={handleSendMessage}
-              className="relative flex items-center"
-            >
-              <input
-                type="text"
+
+            <form onSubmit={handleSendMessage} className="relative">
+              <textarea
+                id="assistant-input"
                 value={inputValue}
                 onChange={(e) => setInputValue(e.target.value)}
+                onKeyDown={handleKeyDown}
                 placeholder="Ask about meetings, decisions, or policies..."
                 disabled={isStreaming || !isSocketConnected}
-                className="w-full rounded-xl border border-gray-300 bg-gray-50 py-2.5 pl-3.5 pr-12 text-sm shadow-sm transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500 disabled:opacity-60 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100"
+                rows={1}
+                className="w-full resize-none rounded-xl border border-gray-300 bg-gray-50 px-4 py-2.5 pr-12 text-sm shadow-sm transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500 disabled:opacity-60 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100"
+                style={{ minHeight: "40px", maxHeight: "120px" }}
               />
               <button
                 type="submit"
                 disabled={
                   !inputValue.trim() || isStreaming || !isSocketConnected
                 }
-                className="absolute right-1.5 rounded-lg bg-indigo-600 p-2 text-white transition hover:bg-indigo-700 disabled:opacity-50"
+                className="absolute right-2 top-1/2 -translate-y-1/2 rounded-lg bg-indigo-600 p-2 text-white transition hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed"
                 aria-label="Send message"
               >
                 <Send className="h-4 w-4" />
               </button>
             </form>
+
+            <p className="mt-1.5 text-center text-xs text-gray-400 dark:text-gray-500">
+              Press{" "}
+              <kbd className="rounded bg-gray-200 px-1 py-0.5 text-[10px] font-semibold dark:bg-gray-800">
+                Enter
+              </kbd>{" "}
+              to send,{" "}
+              <kbd className="rounded bg-gray-200 px-1 py-0.5 text-[10px] font-semibold dark:bg-gray-800">
+                Shift+Enter
+              </kbd>{" "}
+              for new line
+            </p>
           </div>
         </div>
       </div>
