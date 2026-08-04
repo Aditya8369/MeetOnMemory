@@ -1,22 +1,50 @@
 import Transcript from "../models/transcriptModel.js";
 import Meeting from "../models/meetingModel.js";
 import ActionItem from "../models/actionItemModel.js";
+import { wordBoundaryRegExp } from "../utils/regexUtils.js";
 
 class SpeakerIdentificationService {
   /**
    * Applies a speaker mapping to a meeting's transcript, summary, and action items.
+   *
+   * `originalLabel` arrives verbatim in the body of
+   * `POST /api/speaker-mappings/:meetingId` and used to be interpolated into
+   * `new RegExp(`\\b${originalLabel}\\b`, "g")` before being handed to
+   * `String.replace` over `meeting.summary` (Issue #1157).
+   *
+   * That made the endpoint destructive. `{"originalLabel": ".*"}` compiles to
+   * `/\b.*\b/g`, matches the whole summary, and `meeting.save()` commits the
+   * replacement — the minutes become the mapped name and the original text is
+   * gone. `revertMapping` calls back into here with the arguments swapped,
+   * which cannot reconstruct it, and `applyMapping` writes no `NoteVersion`
+   * snapshot, so there is nothing to restore from either.
+   *
+   * The label is now treated as a literal, and an empty or whitespace-only
+   * label is refused rather than being used to rewrite the document.
    *
    * @param {string} meetingId
    * @param {string} originalLabel
    * @param {string} mappedName
    */
   async applyMapping(meetingId, originalLabel, mappedName) {
+    const label = String(originalLabel ?? "");
+    if (!label.trim()) {
+      throw new Error("Speaker label must not be empty");
+    }
+
+    // Built once and reused for both the summary and the action item pass.
+    // `lastIndex` on a `/g` regex is per-object state, so sharing one instance
+    // across `String.replace` calls is safe (replace resets it) but sharing it
+    // with an `exec` loop would not be — hence a helper rather than a module
+    // constant.
+    const labelPattern = wordBoundaryRegExp(label, "g");
+
     // 1. Update Transcript Segments
     const transcript = await Transcript.findOne({ meeting: meetingId });
     if (transcript) {
       let isTranscriptModified = false;
       for (const segment of transcript.segments) {
-        if (segment.speaker === originalLabel) {
+        if (segment.speaker === label) {
           segment.speaker = mappedName;
           isTranscriptModified = true;
         }
@@ -31,18 +59,24 @@ class SpeakerIdentificationService {
     if (meeting) {
       let isMeetingModified = false;
 
-      if (meeting.summary && meeting.summary.includes(originalLabel)) {
+      if (meeting.summary && meeting.summary.includes(label)) {
         // Use regex for word boundary to avoid partial matches
-        const regex = new RegExp(`\\b${originalLabel}\\b`, "g");
-        meeting.summary = meeting.summary.replace(regex, mappedName);
-        isMeetingModified = true;
+        const replaced = meeting.summary.replace(labelPattern, mappedName);
+        // `includes` finds the label as a substring; the boundary pattern may
+        // still match nothing (e.g. the label appears only inside a longer
+        // word). Only mark the document dirty if something actually changed,
+        // so an unchanged summary is not rewritten and re-saved.
+        if (replaced !== meeting.summary) {
+          meeting.summary = replaced;
+          isMeetingModified = true;
+        }
       }
 
       // Update structuredMoM attendees if exists
       if (meeting.structuredMoM && meeting.structuredMoM.attendees) {
         const attendees = meeting.structuredMoM.attendees;
         const index = attendees.findIndex(
-          (a) => a === originalLabel || (a.name && a.name === originalLabel),
+          (a) => a === label || (a.name && a.name === label),
         );
         if (index !== -1) {
           if (typeof attendees[index] === "string") {
@@ -68,15 +102,17 @@ class SpeakerIdentificationService {
       let isModified = false;
       let updateDoc = {};
 
-      if (item.owner === originalLabel) {
+      if (item.owner === label) {
         updateDoc.owner = mappedName;
         isModified = true;
       }
 
-      if (item.text && item.text.includes(originalLabel)) {
-        const regex = new RegExp(`\\b${originalLabel}\\b`, "g");
-        updateDoc.text = item.text.replace(regex, mappedName);
-        isModified = true;
+      if (item.text && item.text.includes(label)) {
+        const replacedText = item.text.replace(labelPattern, mappedName);
+        if (replacedText !== item.text) {
+          updateDoc.text = replacedText;
+          isModified = true;
+        }
       }
 
       if (isModified) {

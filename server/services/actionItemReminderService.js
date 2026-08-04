@@ -2,9 +2,23 @@ import ActionItem from "../models/actionItemModel.js";
 import userModel from "../models/userModel.js";
 import { createNotification } from "./notificationService.js";
 import mongoose from "mongoose";
+import { CASE_INSENSITIVE_COLLATION } from "../utils/regexUtils.js";
 
 /**
  * Resolves target user ID for an action item owner.
+ *
+ * `owner` is free text — the model extracts it from a transcript and nothing
+ * validates it on the way in. It used to be interpolated straight into
+ * `new RegExp(`^${owner.trim()}$`, "i")` (Issue #1157), which made this the
+ * most exposed of the seven sites: it runs inside a `node-cron` sweep every
+ * fifteen minutes, in-process, once per open action item with a due date. An
+ * owner string of `(a+)+$` backtracks exponentially against every user name in
+ * the organization and stalls the event loop on a schedule. The `try/catch`
+ * below does not help, because a hang is not an exception.
+ *
+ * The lookup wants case-insensitive *equality* on the name, so it is now an
+ * equality query with a collation: same semantics, no compilation step, and it
+ * can use an index on `name`.
  */
 const resolveTargetUserId = async (owner, organizationId, meetingOrganizer) => {
   if (!owner || owner === "Unassigned") {
@@ -17,14 +31,17 @@ const resolveTargetUserId = async (owner, organizationId, meetingOrganizer) => {
 
   // Try finding user by email or name within the organization
   try {
+    const trimmedOwner = String(owner).trim();
+    if (!trimmedOwner) {
+      return meetingOrganizer ? meetingOrganizer.toString() : null;
+    }
+
     const user = await userModel
       .findOne({
         organization: organizationId,
-        $or: [
-          { email: owner.trim().toLowerCase() },
-          { name: new RegExp(`^${owner.trim()}$`, "i") },
-        ],
+        $or: [{ email: trimmedOwner.toLowerCase() }, { name: trimmedOwner }],
       })
+      .collation(CASE_INSENSITIVE_COLLATION)
       .select("_id");
 
     if (user) return user._id.toString();
