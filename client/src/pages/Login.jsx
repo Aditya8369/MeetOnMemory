@@ -6,6 +6,7 @@ import { toast } from "react-toastify";
 import { assets } from "../assets/assets";
 import { Eye, EyeOff, Loader2 } from "lucide-react";
 import { authApi } from "../services";
+import { validateRedirect } from "../utils/validateRedirect";
 
 const Login = () => {
   const navigate = useNavigate();
@@ -48,13 +49,11 @@ const Login = () => {
 
     toast.success(`Welcome, ${welcomeName || user.name}!`);
 
+    const defaultRedirect = user.hasCompletedOnboarding ? "/dashboard" : "/organizations";
     const from = location.state?.from?.pathname;
-    if (from) {
-      navigate(from, { replace: true });
-      return;
-    }
-
-    navigate(user.hasCompletedOnboarding ? "/dashboard" : "/organizations");
+    
+    const safeRedirect = validateRedirect(from, defaultRedirect);
+    navigate(safeRedirect, { replace: true });
   };
 
   const onSubmitHandler = async (e) => {
