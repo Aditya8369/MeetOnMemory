@@ -82,14 +82,17 @@ export const logout = async (req, res) => {
 export const sendVerifyOtp = async (req, res) => {
   try {
     const { userId } = req;
-    
+
     await AuthService.sendVerifyOtp(userId);
 
     res.json({ success: true, message: "Verification OTP sent on email" });
   } catch (error) {
     console.error("SendVerifyOtp error:", error.message);
     // Maintain old generic error for sendVerifyOtp to not break tests if it relies on exact string
-    if (error.message === "Authentication failed" || error.message === "Account already verified") {
+    if (
+      error.message === "Authentication failed" ||
+      error.message === "Account already verified"
+    ) {
       res.json({ success: false, message: error.message });
     } else {
       res.json({ success: false, message: "Failed to send verification OTP" });
@@ -107,15 +110,6 @@ export const verifyEmail = async (req, res) => {
     await AuthService.verifyEmail({ userId, otp });
 
     return res.json({ success: true, message: "Email verified successfully!" });
-  } catch (error) {
-    res.json({ success: false, message: error.message });
-  }
-};
-
-// --------------------------- CHECK AUTH ---------------------------
-export const isAuthenticated = async (req, res) => {
-  try {
-    return res.json({ success: true });
   } catch (error) {
     res.json({ success: false, message: error.message });
   }
@@ -151,6 +145,12 @@ export const resetPassword = async (req, res) => {
       success: true,
       message: "Password has been reset successfully",
     });
+  } catch (error) {
+    res.json({ success: false, message: error.message });
+  }
+};
+
+// --------------------------- CHECK AUTH ---------------------------
 export const isAuthenticated = async (req, res) => {
   try {
     return sendSuccess(res);
@@ -202,13 +202,6 @@ export const syncClerkUser = async (req, res) => {
       bodyEmail: email || null,
     });
 
-    res.redirect(`${process.env.CLIENT_URL || "http://localhost:5173"}/profile?sync=success`);
-  } catch (error) {
-    console.error("Google Calendar Callback error:", error.message);
-    if (error.statusCode === 401) {
-      return res.status(401).json({ success: false, message: "Not authenticated" });
-    } else if (error.statusCode === 404) {
-      return res.status(404).json({ success: false, message: "User not found" });
     if (!targetClerkId) {
       console.error(`${DIAG} FAIL early: clerkUserId missing`);
       return sendError(res, 400, "clerkUserId is required for sync");

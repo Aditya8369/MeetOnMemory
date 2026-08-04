@@ -44,7 +44,6 @@ const extractBearerToken = (req) => {
  * Resolves MongoDB `req.user` via authLinkingService (RBAC source of truth).
  */
 const userAuth = async (req, res, next) => {
-  try {
   const safeRequest = sanitizeAuthRequestForLog(req);
   const isSyncRoute =
     typeof (req.originalUrl || req.url) === "string" &&

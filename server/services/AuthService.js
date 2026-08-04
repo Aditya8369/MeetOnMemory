@@ -1,5 +1,15 @@
 import userModel from "../models/userModel.js";
-import { NotFoundError } from "../utils/errors.js";
+import { NotFoundError, AppError } from "../utils/errors.js";
+import bcrypt from "bcryptjs";
+import jwt from "jsonwebtoken";
+import { randomInt } from "crypto";
+import transporter from "../config/nodeMailer.js";
+import {
+  EMAIL_VERIFY_TEMPLATE,
+  PASSWORD_RESET_TEMPLATE,
+} from "../config/emailTemplates.js";
+
+const normalizeEmail = (email) => email?.trim().toLowerCase();
 
 /**
  * AuthService — post-cutover surface.
@@ -29,14 +39,19 @@ class AuthService {
       expiresIn: "7d",
     });
 
-    transporter.sendMail({
-      from: process.env.SENDER_EMAIL,
-      to: cleanEmail,
-      subject: "Welcome to MeetOnMemory!",
-      text: `Welcome to MeetOnMemory, ${name}! Your account has been successfully created.`,
-    }).catch((err) => {
-      console.error(`Background email transmission failed [Register]:`, err.message);
-    });
+    transporter
+      .sendMail({
+        from: process.env.SENDER_EMAIL,
+        to: cleanEmail,
+        subject: "Welcome to MeetOnMemory!",
+        text: `Welcome to MeetOnMemory, ${name}! Your account has been successfully created.`,
+      })
+      .catch((err) => {
+        console.error(
+          `Background email transmission failed [Register]:`,
+          err.message,
+        );
+      });
 
     return { user, token };
   }
