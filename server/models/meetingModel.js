@@ -105,6 +105,29 @@ const meetingSchema = new mongoose.Schema(
       default: "uploaded",
     },
     tags: [String], // e.g., ["policy", "finance", "staff"]
+
+    // ── Meeting series membership (Issue #1160) ──────────────────────────────
+    // `createSeries` has always built its occurrences with `series` and
+    // `seriesOccurrence` set and handed them to `Meeting.insertMany`. Neither
+    // was a schema path, so Mongoose stripped both — the meetings were created
+    // and then orphaned.
+    //
+    // Everything downstream reads the link: `getSeriesMeetings` queries
+    // `{ series: id }` and returned zero rows for every series ever created,
+    // and `cancelSeries` ran a `deleteMany` on the same filter and deleted
+    // nothing while reporting success.
+    series: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "MeetingSeries",
+      default: null,
+    },
+    // 1-based index of this meeting within its series; the sort key for
+    // `getSeriesMeetings`.
+    seriesOccurrence: {
+      type: Number,
+      default: null,
+      min: 1,
+    },
     externalCalendarRefs: [
       {
         provider: { type: String, enum: ["google", "outlook"], required: true },
@@ -162,29 +185,6 @@ const meetingSchema = new mongoose.Schema(
     collaborativeNotes: {
       type: String, // Plain-text snapshot for read-only views and semantic search
       default: "",
-    },
-
-    // ── Meeting series membership (Issue #1160) ──────────────────────────────
-    // `createSeries` has always built its occurrences with `series` and
-    // `seriesOccurrence` set and handed them to `Meeting.insertMany`. Neither
-    // was a schema path, so Mongoose stripped both — the meetings were created
-    // and then orphaned.
-    //
-    // Everything downstream reads the link: `getSeriesMeetings` queries
-    // `{ series: id }` and returned zero rows for every series ever created,
-    // and `cancelSeries` ran a `deleteMany` on the same filter and deleted
-    // nothing while reporting success.
-    series: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "MeetingSeries",
-      default: null,
-    },
-    // 1-based index of this meeting within its series; the sort key for
-    // `getSeriesMeetings`.
-    seriesOccurrence: {
-      type: Number,
-      default: null,
-      min: 1,
     },
   },
   { timestamps: true },
