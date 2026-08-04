@@ -41,7 +41,7 @@ class AuthService {
       subject: "Welcome to MeetOnMemory!",
       text: `Welcome to MeetOnMemory, ${name}! Your account has been successfully created.`,
     }).catch((err) => {
-      console.error(`Background email transmission failed [Register]:`, err);
+      console.error(`Background email transmission failed [Register]:`, err.message);
     });
 
     return { user, token };

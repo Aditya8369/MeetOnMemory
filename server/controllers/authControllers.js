@@ -30,7 +30,7 @@ export const register = async (req, res) => {
       .status(201)
       .json({ success: true, message: "Registration successful" });
   } catch (error) {
-    console.error("Register error:", error);
+    console.error("Register error:", error.message);
     res.json({ success: false, message: error.message });
   }
 };
@@ -52,7 +52,7 @@ export const login = async (req, res) => {
 
     return res.json({ success: true, message: "Login successful" });
   } catch (error) {
-    console.error("Login error:", error);
+    console.error("Login error:", error.message);
     res.json({ success: false, message: error.message });
   }
 };
@@ -80,7 +80,7 @@ export const sendVerifyOtp = async (req, res) => {
 
     res.json({ success: true, message: "Verification OTP sent on email" });
   } catch (error) {
-    console.error("SendVerifyOtp error:", error);
+    console.error("SendVerifyOtp error:", error.message);
     // Maintain old generic error for sendVerifyOtp to not break tests if it relies on exact string
     if (error.message === "Authentication failed" || error.message === "Account already verified") {
       res.json({ success: false, message: error.message });
@@ -124,7 +124,7 @@ export const sendResetOtp = async (req, res) => {
 
     res.json({ success: true, message: "OTP sent to your email" });
   } catch (error) {
-    console.error("SendResetOtp error:", error);
+    console.error("SendResetOtp error:", error.message);
     res.json({
       success: false,
       message: "Failed to process password reset request",
@@ -156,7 +156,7 @@ export const getUserData = async (req, res) => {
 
     res.status(200).json({ success: true, user });
   } catch (error) {
-    console.error("Error fetching user data:", error);
+    console.error("Error fetching user data:", error.message);
     if (error.statusCode === 404) {
       res.status(404).json({ success: false, message: "User not found" });
     } else {
@@ -179,7 +179,7 @@ export const googleCalendarCallback = async (req, res) => {
 
     res.redirect(`${process.env.CLIENT_URL || "http://localhost:5173"}/profile?sync=success`);
   } catch (error) {
-    console.error("Google Calendar Callback error:", error);
+    console.error("Google Calendar Callback error:", error.message);
     if (error.statusCode === 401) {
       return res.status(401).json({ success: false, message: "Not authenticated" });
     } else if (error.statusCode === 404) {

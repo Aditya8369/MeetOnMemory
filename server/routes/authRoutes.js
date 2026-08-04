@@ -20,7 +20,6 @@ import {
 } from "../middleware/rateLimiter.js";
 
 const router = express.Router();
-console.log("HELLOOOOO AUTH ROUTES LOADED", new Date());
 
 // ✅ Auth routes with rate limiting
 router.post("/register", registerLimiter, register);

@@ -3,16 +3,10 @@ import userModel from "../models/userModel.js";
 
 const userAuth = async (req, res, next) => {
   try {
-    console.log("=================================");
-    console.log("Origin:", req.headers.origin);
-    console.log("Cookies:", req.cookies);
-    console.log("Authorization:", req.headers.authorization);
-    console.log("=================================");
 
     const token =
       req.cookies?.token || req.header("Authorization")?.replace("Bearer ", "");
 
-    console.log("Token Found:", token ? "YES" : "NO");
 
     if (!token) {
       return res.status(401).json({
@@ -23,7 +17,6 @@ const userAuth = async (req, res, next) => {
 
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
 
-    console.log("Decoded JWT:", decoded);
 
     const user = await userModel.findById(decoded.id).select("-password");
 
@@ -38,7 +31,7 @@ const userAuth = async (req, res, next) => {
 
     next();
   } catch (error) {
-    console.error("Auth middleware error:", error);
+    console.error("Auth middleware error:", error.message);
 
     return res.status(401).json({
       success: false,
