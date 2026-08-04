@@ -13,6 +13,7 @@ import TaskFilterPanel from "../components/tasks/TaskFilterPanel";
 import TaskSortBar from "../components/tasks/TaskSortBar";
 import TaskCard from "../components/tasks/TaskCard";
 import TaskDetailsModal from "../components/tasks/TaskDetailsModal";
+import Pagination from "../components/meetings/Pagination";
 
 const Tasks = () => {
   const navigate = useNavigate();
@@ -65,7 +66,7 @@ const Tasks = () => {
             </h3>
             <p className="text-red-700">{taskState.error}</p>
             <button
-              onClick={() => window.location.reload()}
+              onClick={() => taskState.refetch()}
               className="mt-4 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
             >
               Retry
@@ -97,18 +98,26 @@ const Tasks = () => {
             )}
           </div>
         ) : (
-          <div className="grid gap-4 fade-in-up stagger-3">
-            {taskState.sortedTasks.map((task) => (
-              <TaskCard
-                key={task.id}
-                task={task}
-                setSelectedTask={taskState.setSelectedTask}
-                navigate={navigate}
-                updateTaskStatus={taskState.updateTaskStatus}
-                toggleTaskReminder={taskState.toggleTaskReminder}
-              />
-            ))}
-          </div>
+          <>
+            <div className="grid gap-4 fade-in-up stagger-3">
+              {taskState.sortedTasks.map((task) => (
+                <TaskCard
+                  key={task.id}
+                  task={task}
+                  setSelectedTask={taskState.setSelectedTask}
+                  navigate={navigate}
+                  updateTaskStatus={taskState.updateTaskStatus}
+                  toggleTaskReminder={taskState.toggleTaskReminder}
+                />
+              ))}
+            </div>
+
+            <Pagination
+              currentPage={taskState.page}
+              totalPages={taskState.totalPages}
+              onPageChange={taskState.setPage}
+            />
+          </>
         )}
 
         <TaskDetailsModal

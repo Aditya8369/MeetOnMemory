@@ -1,6 +1,8 @@
 import mongoose from "mongoose";
 import ActionItem from "../models/actionItemModel.js";
 import Decision from "../models/decisionModel.js";
+import Meeting from "../models/meetingModel.js";
+import Organization from "../models/organizationModel.js";
 import { getDecisionLineage } from "../services/knowledgeGraphService.js";
 import {
   recalculateAllImportanceScores,
@@ -24,11 +26,58 @@ import {
 } from "../services/archivedKnowledgeService.js";
 import AuditLog from "../models/auditLogModel.js";
 import eventBus from "../services/eventBus.js";
+import { buildPaginationMeta, parsePagination } from "../utils/pagination.js";
+import { escapeRegExp } from "../utils/regexUtils.js";
 
 const ALLOWED_SORT_FIELDS = {
   importance: { importanceScore: -1 },
   createdAt: { createdAt: -1 },
   dueDate: { dueDate: 1 },
+};
+
+/** Sort keys accepted by the Tasks board / action-items list (#903). */
+const ACTION_ITEM_SORT_FIELDS = new Set([
+  "dueDate",
+  "createdDate",
+  "createdAt",
+  "importance",
+  "alphabetical",
+  "status",
+  "priority",
+]);
+
+const STATUS_WEIGHT = {
+  open: 0,
+  "in-progress": 1,
+  resolved: 2,
+  superseded: 3,
+};
+
+const MEETING_POPULATE = {
+  path: "sourceMeetingId",
+  select: "title date organization",
+  populate: { path: "organization", select: "name" },
+};
+
+const resolveActionItemSort = (sortBy, sortOrder) => {
+  const direction = sortOrder === "desc" ? -1 : 1;
+
+  switch (sortBy) {
+    case "dueDate":
+      return { dueDate: direction, createdAt: -1 };
+    case "createdDate":
+    case "createdAt":
+      return { createdAt: direction };
+    case "importance":
+      return { importanceScore: direction, createdAt: -1 };
+    case "alphabetical":
+      return { text: direction, createdAt: -1 };
+    case "priority":
+      // Priority is not persisted on ActionItem; keep a stable secondary order.
+      return { createdAt: direction };
+    default:
+      return { createdAt: direction };
+  }
 };
 
 /**
@@ -89,9 +138,13 @@ export const getOpenActionItems = async (req, res) => {
     const {
       status = "open",
       sortBy = "createdAt",
+      sortOrder = "desc",
       includeArchived,
       lifecycleState,
       search,
+      owner,
+      priority,
+      organization: organizationName,
     } = req.query || {};
     const organization = sanitizeOrg(req.user?.organization);
 
@@ -107,79 +160,196 @@ export const getOpenActionItems = async (req, res) => {
       return sendError(res, 400, "Invalid status");
     }
 
+    if (typeof sortBy !== "string" || !ACTION_ITEM_SORT_FIELDS.has(sortBy)) {
+      return sendError(
+        res,
+        400,
+        `Invalid sortBy. Allowed values: ${[...ACTION_ITEM_SORT_FIELDS].join(", ")}`,
+      );
+    }
+
     if (
-      typeof sortBy !== "string" ||
-      !Object.prototype.hasOwnProperty.call(ALLOWED_SORT_FIELDS, sortBy)
+      sortOrder !== undefined &&
+      sortOrder !== null &&
+      sortOrder !== "" &&
+      sortOrder !== "asc" &&
+      sortOrder !== "desc"
     ) {
       return sendError(
         res,
         400,
-        `Invalid sortBy. Allowed values: ${Object.keys(ALLOWED_SORT_FIELDS).join(", ")}`,
+        "Invalid sortOrder. Allowed values: asc, desc",
       );
     }
 
-    let query;
-    if (status === "all") {
-      query = ActionItem.find({ organization });
-    } else if (status === "open") {
-      query = ActionItem.find({
-        organization,
-        status: "open",
-      });
-    } else if (status === "in-progress") {
-      query = ActionItem.find({
-        organization,
-        status: "in-progress",
-      });
-    } else if (status === "resolved") {
-      query = ActionItem.find({
-        organization,
-        status: "resolved",
-      });
-    } else if (status === "superseded") {
-      query = ActionItem.find({
-        organization,
-        status: "superseded",
-      });
+    const { page, limit, skip } = parsePagination(req.query, {
+      defaultLimit: 20,
+      maxLimit: 100,
+    });
+
+    // Preserve legacy defaults when sortOrder is omitted (dueDate asc, others desc).
+    const effectiveSortOrder =
+      sortOrder === "asc" || sortOrder === "desc"
+        ? sortOrder
+        : sortBy === "dueDate"
+          ? "asc"
+          : "desc";
+
+    const filter = {};
+    if (organization) {
+      filter.organization = mongoose.Types.ObjectId.isValid(organization)
+        ? new mongoose.Types.ObjectId(organization)
+        : organization;
     }
 
-    if (search && typeof search === "string") {
-      query = query.where({ text: { $regex: search, $options: "i" } });
+    if (status !== "all") {
+      filter.status = status;
+    }
+
+    if (typeof owner === "string" && owner && owner !== "all") {
+      filter.owner = owner;
+    }
+
+    // Priority is not a persisted ActionItem field. Preserve prior client UX:
+    // "medium" matches everything (default), high/low match nothing.
+    if (priority === "high" || priority === "low") {
+      filter.priority = priority;
+    }
+
+    if (
+      typeof organizationName === "string" &&
+      organizationName &&
+      organizationName !== "all"
+    ) {
+      if (organizationName === "Personal") {
+        filter.organization = null;
+      } else {
+        const orgDoc = await Organization.findOne({
+          name: organizationName,
+        })
+          .select("_id")
+          .lean();
+        if (!orgDoc) {
+          return sendSuccess(res, {
+            actionItems: [],
+            pagination: buildPaginationMeta({ total: 0, page, limit }),
+            facets: { owners: [], organizations: [] },
+          });
+        }
+        filter.organization = orgDoc._id;
+      }
     }
 
     if (
       lifecycleState &&
       ["active", "dormant", "archived", "expired"].includes(lifecycleState)
     ) {
-      query = query.where({ lifecycleState });
+      filter.lifecycleState = lifecycleState;
     } else if (includeArchived !== "true") {
-      query = query.where({
-        lifecycleState: { $nin: ["archived", "expired"] },
-      });
+      filter.lifecycleState = { $nin: ["archived", "expired"] };
     }
 
-    const page = parseInt(req.query.page, 10) || 1;
-    const limit = Math.min(parseInt(req.query.limit, 10) || 10, 100);
-    const skip = (page - 1) * limit;
+    const searchTerm =
+      typeof search === "string" && search.trim() ? search.trim() : "";
+    if (searchTerm) {
+      const escaped = escapeRegExp(searchTerm);
+      const meetingTitleFilter = {
+        title: { $regex: escaped, $options: "i" },
+      };
+      if (filter.organization !== undefined) {
+        meetingTitleFilter.organization = filter.organization;
+      }
 
-    const total =
-      typeof ActionItem.countDocuments === "function" &&
-      typeof query.getFilter === "function"
-        ? await ActionItem.countDocuments(query.getFilter())
-        : 0;
+      const matchingMeetings = await Meeting.find(meetingTitleFilter)
+        .select("_id")
+        .lean();
 
-    let itemsQuery = query
-      .populate("sourceMeetingId", "title date")
-      .sort(ALLOWED_SORT_FIELDS[sortBy]);
-
-    if (typeof itemsQuery.skip === "function") {
-      itemsQuery = itemsQuery.skip(skip).limit(limit);
+      filter.$or = [
+        { text: { $regex: escaped, $options: "i" } },
+        { owner: { $regex: escaped, $options: "i" } },
+        {
+          sourceMeetingId: {
+            $in: matchingMeetings.map((meeting) => meeting._id),
+          },
+        },
+      ];
     }
 
-    const items = await itemsQuery;
+    // Facets for filter dropdowns (scoped to org + lifecycle, not page-local)
+    const facetFilter = {
+      ...(organization ? { organization } : {}),
+      ...(filter.lifecycleState
+        ? { lifecycleState: filter.lifecycleState }
+        : {}),
+    };
+    if (status !== "all") {
+      facetFilter.status = status;
+    }
 
-    // Retrieving this list counts as accessing each memory in it; refresh
-    // their importance scores in the background without blocking the response.
+    const [total, ownerFacets, organizationIds, hasPersonal] =
+      await Promise.all([
+        ActionItem.countDocuments(filter),
+        ActionItem.distinct("owner", facetFilter),
+        ActionItem.distinct("organization", {
+          ...facetFilter,
+          organization: { $ne: null },
+        }),
+        ActionItem.exists({ ...facetFilter, organization: null }),
+      ]);
+
+    let organizationFacets = [];
+    if (organizationIds.length > 0) {
+      const orgs = await Organization.find({
+        _id: { $in: organizationIds.filter(Boolean) },
+      })
+        .select("name")
+        .lean();
+      organizationFacets = orgs.map((org) => org.name).filter(Boolean);
+    }
+    if (hasPersonal) {
+      organizationFacets.push("Personal");
+    }
+    organizationFacets = [...new Set(organizationFacets)].sort((a, b) =>
+      a.localeCompare(b),
+    );
+
+    const direction = effectiveSortOrder === "desc" ? -1 : 1;
+    let items;
+
+    if (sortBy === "status") {
+      // Semantic status order (open → in-progress → resolved → superseded)
+      const pipeline = [
+        { $match: filter },
+        {
+          $addFields: {
+            statusWeight: {
+              $switch: {
+                branches: Object.entries(STATUS_WEIGHT).map(
+                  ([value, weight]) => ({
+                    case: { $eq: ["$status", value] },
+                    then: weight,
+                  }),
+                ),
+                default: 0,
+              },
+            },
+          },
+        },
+        { $sort: { statusWeight: direction, createdAt: -1 } },
+        { $skip: skip },
+        { $limit: limit },
+      ];
+
+      items = await ActionItem.aggregate(pipeline);
+      items = await ActionItem.populate(items, MEETING_POPULATE);
+    } else {
+      items = await ActionItem.find(filter)
+        .populate(MEETING_POPULATE)
+        .sort(resolveActionItemSort(sortBy, effectiveSortOrder))
+        .skip(skip)
+        .limit(limit);
+    }
+
     recordMemoryAccessBatch(
       "actionItem",
       items.map((item) => item._id),
@@ -187,11 +357,10 @@ export const getOpenActionItems = async (req, res) => {
 
     sendSuccess(res, {
       actionItems: items,
-      pagination: {
-        total,
-        page,
-        limit,
-        totalPages: Math.ceil(total / limit),
+      pagination: buildPaginationMeta({ total, page, limit }),
+      facets: {
+        owners: ownerFacets.filter(Boolean).sort((a, b) => a.localeCompare(b)),
+        organizations: organizationFacets,
       },
     });
   } catch (error) {
