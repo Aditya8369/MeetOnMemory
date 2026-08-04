@@ -27,6 +27,10 @@ import useLiveTranscription from "../hooks/useLiveTranscription";
 import useReactions from "../hooks/useReactions.js";
 import ReactionBar from "../components/meetings/ReactionBar.jsx";
 import ReactionOverlay from "../components/meetings/ReactionOverlay.jsx";
+import {
+  getMeetingVideoGridClass,
+  MEETING_VIDEO_TILE_CLASS,
+} from "../utils/meetingVideoGrid.js";
 
 const MeetingRoom = () => {
   const { roomId } = useParams();
@@ -509,15 +513,19 @@ const MeetingRoom = () => {
 
           {/* Main content area: video grid + notes panel */}
           <div className="flex-1 flex min-h-0 overflow-hidden">
-            {/* Video Grid */}
+            {/* Video Grid — responsive by participant count + viewport (#907) */}
             <div
-              className={`flex-1 p-6 overflow-y-auto bg-gray-900 flex items-center justify-center transition-all duration-300 ${
-                showNotes ? "hidden md:flex" : "flex"
+              className={`flex-1 min-h-0 min-w-0 overflow-y-auto overflow-x-hidden bg-gray-900 transition-all duration-300 ${
+                showNotes ? "hidden md:block" : "block"
               }`}
             >
-              <div className="w-full h-full max-w-5xl flex flex-col md:flex-row gap-6 items-center justify-center min-h-[300px]">
+              <div
+                className={`grid gap-2 sm:gap-3 md:gap-4 p-2 sm:p-4 md:p-6 content-center justify-items-stretch min-h-full ${getMeetingVideoGridClass(
+                  peers.length + 1,
+                )}`}
+              >
                 {/* Local Stream */}
-                <div className="relative bg-black rounded-2xl overflow-hidden shadow-lg aspect-video flex-1 min-w-[280px] max-w-[600px] border border-gray-800">
+                <div className={MEETING_VIDEO_TILE_CLASS}>
                   <video
                     ref={userVideoRef}
                     autoPlay
@@ -527,16 +535,21 @@ const MeetingRoom = () => {
                   />
                   {!cameraOn && (
                     <div className="absolute inset-0 flex items-center justify-center bg-gray-800">
-                      <div className="w-20 h-20 bg-indigo-600 rounded-full flex items-center justify-center text-3xl font-bold text-white shadow-xl">
+                      <div className="w-16 h-16 sm:w-20 sm:h-20 bg-indigo-600 rounded-full flex items-center justify-center text-2xl sm:text-3xl font-bold text-white shadow-xl">
                         You
                       </div>
                     </div>
                   )}
-                  <div className="absolute bottom-4 left-4 bg-black/60 px-3 py-1.5 rounded-lg backdrop-blur-sm text-white text-sm flex items-center gap-2">
+                  <div className="absolute bottom-2 left-2 sm:bottom-4 sm:left-4 bg-black/60 px-2 py-1 sm:px-3 sm:py-1.5 rounded-lg backdrop-blur-sm text-white text-xs sm:text-sm flex items-center gap-2 max-w-[calc(100%-1rem)]">
                     <span
-                      className={`w-2 h-2 rounded-full ${micOn ? "bg-green-500" : "bg-red-500"}`}
+                      className={`w-2 h-2 rounded-full shrink-0 ${micOn ? "bg-green-500" : "bg-red-500"}`}
                     />
-                    <span>You</span>
+                    <span className="truncate">You</span>
+                    {isScreenSharing && (
+                      <span className="text-[10px] sm:text-xs text-indigo-300 shrink-0">
+                        Sharing
+                      </span>
+                    )}
                   </div>
                 </div>
 
