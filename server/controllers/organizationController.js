@@ -162,7 +162,10 @@ export const browsePublicOrganizations = async (req, res) => {
       });
     }
 
+    const userId = req.user?.id || req.user?._id || null;
+
     const result = await OrganizationService.browsePublicOrganizations({
+      userId,
       page,
       limit,
       search,
@@ -191,6 +194,7 @@ export const searchOrganizations = async (req, res) => {
     const { q } = req.query;
     const page = parseInt(req.query.page) || 1;
     const limit = parseInt(req.query.limit) || 12;
+    const userId = req.user?.id || req.user?._id || null;
 
     if (!q || !q.trim()) {
       return res.status(400).json({
@@ -218,6 +222,7 @@ export const searchOrganizations = async (req, res) => {
       q,
       page,
       limit,
+      userId,
     );
 
     sendSuccess(res, result);
