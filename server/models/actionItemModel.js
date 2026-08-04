@@ -177,6 +177,10 @@ const actionItemSchema = new mongoose.Schema(
   { timestamps: true },
 );
 
+actionItemSchema.index({ organization: 1, status: 1, createdAt: -1 });
+actionItemSchema.index({ organization: 1, dueDate: 1 });
+actionItemSchema.index({ organization: 1, owner: 1 });
+
 const ActionItem =
   mongoose.models.ActionItem || mongoose.model("ActionItem", actionItemSchema);
 

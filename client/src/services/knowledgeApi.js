@@ -9,6 +9,13 @@ export const knowledgeApi = {
     if (options.search) url += `&search=${encodeURIComponent(options.search)}`;
     if (options.page) url += `&page=${options.page}`;
     if (options.limit) url += `&limit=${options.limit}`;
+    if (options.owner) url += `&owner=${encodeURIComponent(options.owner)}`;
+    if (options.priority)
+      url += `&priority=${encodeURIComponent(options.priority)}`;
+    if (options.organization)
+      url += `&organization=${encodeURIComponent(options.organization)}`;
+    if (options.sortOrder)
+      url += `&sortOrder=${encodeURIComponent(options.sortOrder)}`;
     return apiClient.get(url);
   },
   updateActionItemStatus: (id, status) =>
