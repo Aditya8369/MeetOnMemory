@@ -2,6 +2,7 @@ import { describe, it, expect } from "vitest";
 import {
   formatClock,
   getItemTiming,
+  readAgendaElapsedMs,
   summarizeAgendaTiming,
 } from "../agendaTiming.js";
 
@@ -110,5 +111,80 @@ describe("summarizeAgendaTiming", () => {
       isOverrun: false,
       overrunMs: 0,
     });
+  });
+});
+
+describe("readAgendaElapsedMs (Issue #1159)", () => {
+  const T0 = new Date("2026-08-04T10:00:00.000Z").getTime();
+
+  it("returns zero for a missing item", () => {
+    expect(readAgendaElapsedMs(null, T0)).toBe(0);
+    expect(readAgendaElapsedMs(undefined, T0)).toBe(0);
+  });
+
+  it("returns only the banked total for a stopped item", () => {
+    const item = {
+      status: "completed",
+      actualDuration: 7 * MINUTE,
+      startedAt: new Date(T0 - 99 * MINUTE).toISOString(),
+    };
+
+    // `startedAt` is stale bookkeeping once the item is no longer running; it
+    // must not be added a second time.
+    expect(readAgendaElapsedMs(item, T0)).toBe(7 * MINUTE);
+  });
+
+  it("adds the time on the clock for a running item", () => {
+    const item = {
+      status: "active",
+      actualDuration: 4 * MINUTE,
+      startedAt: new Date(T0 - 3 * MINUTE).toISOString(),
+    };
+
+    // Banked plus live — the server only folds the current interval into
+    // `actualDuration` on stop, skip, or a switch to another item.
+    expect(readAgendaElapsedMs(item, T0)).toBe(7 * MINUTE);
+  });
+
+  it("does not drift when ticks are dropped", () => {
+    // This is the whole point of deriving rather than counting. A backgrounded
+    // tab is clamped to roughly one tick a minute, so a counter would be four
+    // minutes behind after four minutes hidden; a derived value is exact
+    // whenever it next runs.
+    const item = {
+      status: "active",
+      actualDuration: 0,
+      startedAt: new Date(T0).toISOString(),
+    };
+
+    expect(readAgendaElapsedMs(item, T0 + 1000)).toBe(1000);
+    // ...no ticks at all for the next four minutes...
+    expect(readAgendaElapsedMs(item, T0 + 4 * MINUTE)).toBe(4 * MINUTE);
+  });
+
+  it("treats an active item with no start marker as banked-only", () => {
+    expect(
+      readAgendaElapsedMs({ status: "active", actualDuration: 2 * MINUTE }, T0),
+    ).toBe(2 * MINUTE);
+  });
+
+  it("ignores an unparseable startedAt rather than reporting NaN", () => {
+    const elapsed = readAgendaElapsedMs(
+      { status: "active", actualDuration: 60_000, startedAt: "not a date" },
+      T0,
+    );
+
+    expect(elapsed).toBe(60_000);
+  });
+
+  it("never goes negative on a future startedAt", () => {
+    const item = {
+      status: "active",
+      actualDuration: 0,
+      startedAt: new Date(T0 + 5 * MINUTE).toISOString(),
+    };
+
+    // Clock skew between instances must not produce a negative clock.
+    expect(readAgendaElapsedMs(item, T0)).toBe(0);
   });
 });

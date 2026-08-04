@@ -5,6 +5,17 @@ const getAgendaText = (item) =>
       ? item.title.trim()
       : "";
 
+/**
+ * Reorders agenda items and assigns contiguous `position` values.
+ *
+ * This runs from `meetingSchema.pre("validate")` on every modification, so it
+ * sees the live subdocuments — including the timer fields added for
+ * Issue #1159 (`status`, `startedAt`, `completedAt`, `actualDuration`). It must
+ * therefore preserve every field it does not own. The `...item` spread below is
+ * what guarantees that; replacing it with an explicit field list would strip
+ * the timer state on every save, reproducing the original bug from the other
+ * direction.
+ */
 export const normalizeAgendaItems = (items = []) => {
   if (!Array.isArray(items)) return [];
 

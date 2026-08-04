@@ -15,6 +15,35 @@ export const formatClock = (ms) => {
 };
 
 /**
+ * Total time an agenda item has used, in milliseconds, as of `now`.
+ *
+ * `actualDuration` is the time banked by previous sittings — the server only
+ * folds the current interval into it on stop, skip, or a switch to another
+ * item. So a *running* item's true elapsed time is that total plus whatever is
+ * on the clock since `startedAt`.
+ *
+ * Deriving this rather than counting up from a `setInterval` is the point
+ * (Issue #1159): browsers clamp timers to roughly once a minute in a
+ * backgrounded tab, and a live meeting timer is very often in one. A counter
+ * loses that time permanently; a derived value merely repaints late.
+ *
+ * @param {object|null|undefined} item
+ * @param {number} [now] epoch millis, injectable for tests
+ * @returns {number}
+ */
+export const readAgendaElapsedMs = (item, now = Date.now()) => {
+  if (!item) return 0;
+
+  const banked = Math.max(0, item.actualDuration || 0);
+  if (item.status !== "active" || !item.startedAt) return banked;
+
+  const startedAt = new Date(item.startedAt).getTime();
+  if (Number.isNaN(startedAt)) return banked;
+
+  return banked + Math.max(0, now - startedAt);
+};
+
+/**
  * Compares an agenda item's planned duration against the time it has actually
  * used. `liveElapsedMs` is the ticking value for the currently active item.
  *

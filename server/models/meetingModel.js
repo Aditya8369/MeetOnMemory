@@ -58,8 +58,36 @@ const meetingSchema = new mongoose.Schema(
       {
         text: { type: String, required: true },
         description: { type: String, default: "" },
+        // Planned length, in MINUTES. Named `duration` for backwards
+        // compatibility; see `actualDuration` below for the unit mismatch this
+        // creates and why it is deliberate.
         duration: { type: Number, default: null },
         position: { type: Number, min: 0, default: 0 },
+
+        // ── Live agenda timer (Issue #1159) ────────────────────────────────
+        // `agendaTimerController` has always written these four fields. None
+        // of them existed on the schema, and Mongoose is strict by default, so
+        // every assignment was discarded before the document was saved — the
+        // start/stop/skip endpoints returned 200 and persisted nothing, `stop`
+        // returned 400 unconditionally because `status` was always `undefined`
+        // on reload, and the pacing report was structurally all zeros.
+        status: {
+          type: String,
+          enum: ["pending", "active", "completed", "skipped"],
+          default: "pending",
+        },
+        startedAt: { type: Date, default: null },
+        completedAt: { type: Date, default: null },
+        // Accumulated elapsed time, in MILLISECONDS.
+        //
+        // The unit differs from `duration` above, which is minutes. That is not
+        // an oversight: `getAgendaPacingReport` already divides this by 60000
+        // to report minutes, and `client/src/utils/agendaTiming.js` already
+        // multiplies `duration` by 60 * 1000 to compare them. Both sides were
+        // written against milliseconds; storing minutes here would silently
+        // break both. It accumulates across start/stop cycles, so an item that
+        // is paused and resumed reports its total.
+        actualDuration: { type: Number, default: 0, min: 0 },
       },
     ],
     policyDetails: {
@@ -162,6 +190,18 @@ const meetingSchema = new mongoose.Schema(
     collaborativeNotes: {
       type: String, // Plain-text snapshot for read-only views and semantic search
       default: "",
+    },
+
+    // Overall progress through the agenda (Issue #1159).
+    //
+    // `agendaTimerController` set this on the document and
+    // `getAgendaPacingReport` selected and returned it, but it was never a
+    // schema path — so the write was dropped and the read was always
+    // `undefined`.
+    agendaProgress: {
+      type: String,
+      enum: ["not_started", "in_progress", "completed"],
+      default: "not_started",
     },
   },
   { timestamps: true },
