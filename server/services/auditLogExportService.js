@@ -3,6 +3,7 @@ import fs from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
 import AuditLog from "../models/auditLogModel.js";
+import { neutralizeFormula } from "../utils/csvSafety.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 export const AUDIT_EXPORT_DIRECTORY = path.join(
@@ -48,7 +49,13 @@ export const toExportRow = (log) => ({
   details: log.details ? JSON.stringify(log.details) : "",
 });
 
-const csvValue = (value) => `"${String(value ?? "").replaceAll('"', '""')}"`;
+// Doubling quotes and wrapping is correct *CSV escaping*, and that is exactly
+// the problem: a value beginning with `=`, `+`, `-`, `@`, tab or CR is
+// well-formed CSV that Excel, Calc and Sheets evaluate as a formula on open.
+// `actorName` and `details` are user-controlled, so the value has to be
+// neutralized before it is quoted (Issue #1161).
+const csvValue = (value) =>
+  `"${String(neutralizeFormula(value) ?? "").replaceAll('"', '""')}"`;
 const csvLine = (row) =>
   columns.map(({ key }) => csvValue(row[key])).join(",") + "\n";
 const csvHeader = () =>
