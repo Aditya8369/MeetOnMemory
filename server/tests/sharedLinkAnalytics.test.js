@@ -137,6 +137,14 @@ describe("Shared link analytics (#723)", () => {
       active: true,
       passcode: "hashed-pass",
       expirationDate: null,
+      failedPasscodeAttempts: 0,
+      passcodeLockUntil: null,
+      organizationId: "org-1",
+      resourceModel: "Meeting",
+    });
+    mockFindByIdAndUpdate.mockResolvedValue({
+      _id: "link-3",
+      failedPasscodeAttempts: 1,
     });
     bcrypt.compare.mockResolvedValue(false);
 
@@ -150,11 +158,66 @@ describe("Shared link analytics (#723)", () => {
 
     expect(res.statusCode).toBe(401);
     expect(res.body.message).toBe("Incorrect passcode");
+    expect(mockFindByIdAndUpdate).toHaveBeenCalledWith(
+      "link-3",
+      { $inc: { failedPasscodeAttempts: 1 } },
+      { new: true },
+    );
+  });
 
-    await vi.waitFor(() => {
-      expect(mockFindByIdAndUpdate).toHaveBeenCalledWith("link-3", {
-        $inc: { failedPasscodeAttempts: 1 },
-      });
+  it("rejects verification while locked without running bcrypt", async () => {
+    mockFindOne.mockResolvedValue({
+      _id: "link-locked",
+      hash: "locked-hash",
+      active: true,
+      passcode: "hashed-pass",
+      expirationDate: null,
+      failedPasscodeAttempts: 5,
+      passcodeLockUntil: new Date(Date.now() + 60_000),
+    });
+
+    const req = {
+      params: { hash: "locked-hash" },
+      body: { passcode: "anything" },
+    };
+    const res = mockRes();
+
+    await verifyPasscode(req, res);
+
+    expect(res.statusCode).toBe(401);
+    expect(res.body.message).toBe("Incorrect passcode");
+    expect(bcrypt.compare).not.toHaveBeenCalled();
+    expect(mockFindByIdAndUpdate).not.toHaveBeenCalled();
+  });
+
+  it("clears expired lockout and resets counters on successful verify", async () => {
+    mockFindOne.mockResolvedValue({
+      _id: "link-expired-lock",
+      hash: "expired-lock",
+      active: true,
+      passcode: "hashed-pass",
+      expirationDate: null,
+      failedPasscodeAttempts: 5,
+      passcodeLockUntil: new Date(Date.now() - 1000),
+      organizationId: "org-1",
+    });
+    mockFindByIdAndUpdate.mockResolvedValue({});
+    bcrypt.compare.mockResolvedValue(true);
+
+    const req = {
+      params: { hash: "expired-lock" },
+      body: { passcode: "correct" },
+    };
+    const res = mockRes();
+
+    await verifyPasscode(req, res);
+
+    expect(res.statusCode).toBe(200);
+    expect(mockFindByIdAndUpdate).toHaveBeenCalledWith("link-expired-lock", {
+      $set: {
+        failedPasscodeAttempts: 0,
+        passcodeLockUntil: null,
+      },
     });
   });
 

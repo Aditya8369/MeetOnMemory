@@ -53,6 +53,11 @@ const sharedLinkSchema = new mongoose.Schema(
       default: 0,
       min: 0,
     },
+    // Temporary lockout after consecutive failed passcode attempts (#1111)
+    passcodeLockUntil: {
+      type: Date,
+      default: null,
+    },
   },
   { timestamps: true },
 );

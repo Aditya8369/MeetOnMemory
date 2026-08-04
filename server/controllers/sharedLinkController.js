@@ -6,6 +6,14 @@ import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import mongoose from "mongoose";
 import { hasPermission } from "../utils/rbacPermissions.js";
+import logger from "../utils/logger.js";
+import {
+  SHARED_LINK_PASSCODE_AUTH_FAILURE_MESSAGE,
+  SHARED_LINK_PASSCODE_LOCKOUT_MS,
+  SHARED_LINK_PASSCODE_MAX_ATTEMPTS,
+  hasPasscodeLockExpired,
+  isPasscodeLocked,
+} from "../utils/sharedLinkSecurity.js";
 
 /**
  * The shareable resource types and the model each one resolves against.
@@ -101,13 +109,73 @@ const recordSuccessfulAccess = (linkId) => {
   );
 };
 
-const recordFailedPasscodeAttempt = (linkId) => {
+const clearPasscodeLockout = (linkId) =>
   SharedLink.findByIdAndUpdate(linkId, {
-    $inc: { failedPasscodeAttempts: 1 },
-  }).catch((err) =>
-    console.error("Failed to record failed passcode attempt:", err.message),
-  );
+    $set: {
+      failedPasscodeAttempts: 0,
+      passcodeLockUntil: null,
+    },
+  });
+
+/**
+ * Records a failed attempt and engages lockout once the threshold is reached.
+ * Returns the updated document (or null if the update failed).
+ */
+const recordFailedPasscodeAttempt = async (link) => {
+  try {
+    const updated = await SharedLink.findByIdAndUpdate(
+      link._id,
+      { $inc: { failedPasscodeAttempts: 1 } },
+      { new: true },
+    );
+
+    if (!updated) return null;
+
+    if (updated.failedPasscodeAttempts >= SHARED_LINK_PASSCODE_MAX_ATTEMPTS) {
+      const passcodeLockUntil = new Date(
+        Date.now() + SHARED_LINK_PASSCODE_LOCKOUT_MS,
+      );
+      await SharedLink.findByIdAndUpdate(link._id, {
+        $set: { passcodeLockUntil },
+      });
+
+      logger.warn("Shared link passcode lockout engaged", {
+        linkId: String(link._id),
+        organizationId: link.organizationId
+          ? String(link.organizationId)
+          : null,
+        resourceModel: link.resourceModel,
+        failedPasscodeAttempts: updated.failedPasscodeAttempts,
+        passcodeLockUntil: passcodeLockUntil.toISOString(),
+      });
+    } else if (
+      updated.failedPasscodeAttempts >=
+      Math.max(1, SHARED_LINK_PASSCODE_MAX_ATTEMPTS - 1)
+    ) {
+      // One attempt remaining before lockout — useful signal without leaking
+      // lockout details to the client.
+      logger.warn("Shared link passcode nearing lockout threshold", {
+        linkId: String(link._id),
+        organizationId: link.organizationId
+          ? String(link.organizationId)
+          : null,
+        failedPasscodeAttempts: updated.failedPasscodeAttempts,
+        maxAttempts: SHARED_LINK_PASSCODE_MAX_ATTEMPTS,
+      });
+    }
+
+    return updated;
+  } catch (err) {
+    console.error("Failed to record failed passcode attempt:", err.message);
+    return null;
+  }
 };
+
+const sendPasscodeAuthFailure = (res) =>
+  res.status(401).json({
+    success: false,
+    message: SHARED_LINK_PASSCODE_AUTH_FAILURE_MESSAGE,
+  });
 
 export const createLink = async (req, res) => {
   try {
@@ -318,6 +386,19 @@ export const verifyPasscode = async (req, res) => {
         .json({ success: true, message: "No passcode required" });
     }
 
+    // Active lockout: reject without running bcrypt (Issue #1111).
+    // Same generic message as a wrong passcode so callers cannot probe state.
+    if (isPasscodeLocked(link)) {
+      return sendPasscodeAuthFailure(res);
+    }
+
+    // Expired lockout clears automatically on the next verification attempt.
+    if (hasPasscodeLockExpired(link)) {
+      await clearPasscodeLockout(link._id);
+      link.failedPasscodeAttempts = 0;
+      link.passcodeLockUntil = null;
+    }
+
     if (!passcode) {
       return res
         .status(400)
@@ -326,11 +407,12 @@ export const verifyPasscode = async (req, res) => {
 
     const isMatch = await bcrypt.compare(passcode, link.passcode);
     if (!isMatch) {
-      recordFailedPasscodeAttempt(link._id);
-      return res
-        .status(401)
-        .json({ success: false, message: "Incorrect passcode" });
+      await recordFailedPasscodeAttempt(link);
+      return sendPasscodeAuthFailure(res);
     }
+
+    // Successful verification resets consecutive failures / lockout.
+    await clearPasscodeLockout(link._id);
 
     // Generate a short-lived token to access the resource
     const token = jwt.sign(
