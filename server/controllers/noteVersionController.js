@@ -1,9 +1,19 @@
 import crypto from "crypto";
+import mongoose from "mongoose";
 import * as diff from "diff";
 import NoteVersion from "../models/noteVersionModel.js";
-import Meeting from "../models/meetingModel.js";
 import { sendSuccess } from "../utils/responseHandler.js";
-import { NotFoundError } from "../utils/errors.js";
+import { NotFoundError, ValidationError } from "../utils/errors.js";
+import { buildPaginationMeta, parsePagination } from "../utils/pagination.js";
+
+/**
+ * `socket/documentSync.js` is imported lazily, on the one code path that needs
+ * it, for two reasons: `documentService.js` already imports `snapshotNoteVersion`
+ * from this file (so a static import would close a cycle), and `documentSync`
+ * performs a top-level `await` on a Redis connection that no other handler in
+ * this controller should be made to wait for.
+ */
+const loadDocumentSync = () => import("../socket/documentSync.js");
 
 // Helper to hash content
 const hashContent = (content) => {
@@ -65,18 +75,45 @@ export const snapshotNoteVersion = async (
 
 // --- HTTP Routes ---
 
+/**
+ * Authorization for every handler below lives in the route definition
+ * (Issue #1158): `requireOrgAccess(Meeting)` for the `/:meetingId` route,
+ * `requireNoteVersionAccess` for the `/version/:versionId` routes. The latter
+ * attaches `req.noteVersion` and `req.meeting`, so these handlers no longer
+ * re-fetch either — and, more to the point, no longer read a document the
+ * caller has not been cleared for.
+ */
+
 export const getVersionHistory = async (req, res, next) => {
   try {
     const { meetingId, field } = req.params;
 
-    // Fetch all versions but exclude the actual content to keep response light
-    const versions = await NoteVersion.find({ meetingId, field })
-      .select("-content")
-      .populate("changedBy", "name email")
-      .sort({ version: -1 })
-      .exec();
+    // The history used to be unbounded. A long collaborative meeting writes a
+    // snapshot per edit burst — `saveDocumentState` calls `snapshotNoteVersion`
+    // on every debounced flush — so this list grows without limit for exactly
+    // the meetings anyone would want to inspect.
+    const { page, limit, skip } = parsePagination(req.query, {
+      defaultLimit: 25,
+      maxLimit: 100,
+    });
 
-    return sendSuccess(res, { versions });
+    const filter = { meetingId, field };
+
+    const [versions, total] = await Promise.all([
+      NoteVersion.find(filter)
+        .select("-content")
+        .populate("changedBy", "name email")
+        .sort({ version: -1 })
+        .skip(skip)
+        .limit(limit)
+        .exec(),
+      NoteVersion.countDocuments(filter),
+    ]);
+
+    return sendSuccess(res, {
+      versions,
+      pagination: buildPaginationMeta({ total, page, limit }),
+    });
   } catch (err) {
     next(err);
   }
@@ -84,15 +121,8 @@ export const getVersionHistory = async (req, res, next) => {
 
 export const getVersionContent = async (req, res, next) => {
   try {
-    const { versionId } = req.params;
-    const version = await NoteVersion.findById(versionId).populate(
-      "changedBy",
-      "name email",
-    );
-
-    if (!version) {
-      throw new NotFoundError("Version not found");
-    }
+    // Loaded and access-checked by `requireNoteVersionAccess`.
+    const version = await req.noteVersion.populate("changedBy", "name email");
 
     return sendSuccess(res, { version });
   } catch (err) {
@@ -102,20 +132,33 @@ export const getVersionContent = async (req, res, next) => {
 
 export const getVersionDiff = async (req, res, next) => {
   try {
-    const { versionId, compareVersionId } = req.params;
+    const { compareVersionId } = req.params;
+    const v1 = req.noteVersion;
 
-    const v1 = await NoteVersion.findById(versionId);
-    const v2 = compareVersionId
-      ? await NoteVersion.findById(compareVersionId)
-      : null;
-
-    if (!v1) throw new NotFoundError("Base version not found");
-
-    // If compareVersionId is provided but not found, we throw error. If not provided, we compare with previous version.
-    let baseContent = v1.content;
     let compareContent = "";
 
-    if (v2) {
+    if (compareVersionId) {
+      if (!mongoose.Types.ObjectId.isValid(compareVersionId)) {
+        throw new ValidationError("Invalid comparison version ID format");
+      }
+
+      const v2 = await NoteVersion.findById(compareVersionId);
+      if (!v2) {
+        throw new NotFoundError("Comparison version not found");
+      }
+
+      // Only `versionId` passes through `requireNoteVersionAccess`, so without
+      // this the endpoint would happily diff one organization's content
+      // against another's — and the diff output contains both sides.
+      if (
+        v2.meetingId.toString() !== v1.meetingId.toString() ||
+        v2.field !== v1.field
+      ) {
+        throw new ValidationError(
+          "Versions must belong to the same meeting and field to be compared",
+        );
+      }
+
       compareContent = v2.content;
     } else {
       // Find the version right before v1
@@ -130,7 +173,7 @@ export const getVersionDiff = async (req, res, next) => {
     }
 
     // diffLines computes differences line by line
-    const diffResult = diff.diffLines(compareContent, baseContent);
+    const diffResult = diff.diffLines(compareContent, v1.content);
 
     return sendSuccess(res, { diff: diffResult });
   } catch (err) {
@@ -140,25 +183,26 @@ export const getVersionDiff = async (req, res, next) => {
 
 export const restoreVersion = async (req, res, next) => {
   try {
-    const { versionId } = req.params;
-    const userId = req.user?.id || req.user?._id;
+    const userId = req.user?._id || req.user?.id;
 
-    const versionToRestore = await NoteVersion.findById(versionId);
-    if (!versionToRestore) {
-      throw new NotFoundError("Version not found");
-    }
-
-    const meeting = await Meeting.findById(versionToRestore.meetingId);
-    if (!meeting) {
-      throw new NotFoundError("Meeting not found");
-    }
+    // Both loaded and access-checked by `requireNoteVersionAccess`.
+    const versionToRestore = req.noteVersion;
+    const meeting = req.meeting;
 
     // Restore content to the meeting
     if (versionToRestore.field === "collaborativeNotes") {
+      // Writing only the plain-text column is what made this restore revert:
+      // `getOrCreateDoc` rehydrates from `crdtState`, so the next client to
+      // open the notes reinstated the pre-restore text and the debounced save
+      // wrote it back. Rebuilding the CRDT is what makes the restore stick.
+      const { restoreCollaborativeNotes } = await loadDocumentSync();
+      const { state } = await restoreCollaborativeNotes(
+        meeting._id.toString(),
+        versionToRestore.content,
+      );
+
       meeting.collaborativeNotes = versionToRestore.content;
-      // Note: we are only updating the plain text here. If CRDT state exists,
-      // it might need to be reset or a new Yjs document created, but for simplicity
-      // and as a fallback we update the plain text.
+      meeting.crdtState = state;
     } else if (versionToRestore.field === "summary") {
       meeting.summary = versionToRestore.content;
     }
