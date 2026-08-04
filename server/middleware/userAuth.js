@@ -184,6 +184,8 @@ const userAuth = async (req, res, next) => {
 
     next();
   } catch (error) {
+    console.error("Auth middleware error:", error.message);
+
     console.error(`${DIAG} userAuth OUTER catch`);
     console.error(error);
     console.error(error?.stack);
