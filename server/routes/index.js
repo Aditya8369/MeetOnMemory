@@ -63,7 +63,10 @@ const router = express.Router();
 router.use("/api/auth", authRoutes);
 router.use(["/api/organization", "/api/organizations"], organizationRoutes);
 router.use(["/api/membership", "/api/memberships"], membershipRoutes);
-router.use(["/api/membership-request", "/api/membership-requests"], membershipRequestRoutes);
+router.use(
+  ["/api/membership-request", "/api/membership-requests"],
+  membershipRequestRoutes,
+);
 router.use(["/api/invitation", "/api/invitations"], invitationRoutes);
 router.use("/api/meetings/timer", agendaTimerRoutes);
 router.use("/api/meetings", meetingRoutes);
