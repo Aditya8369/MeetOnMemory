@@ -2,10 +2,7 @@ import React, { useContext, useEffect, useMemo } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { SignIn, useAuth, useClerk } from "@clerk/clerk-react";
 import AppContent from "../context/AppContent";
-import { toast } from "react-toastify";
-import { assets } from "../assets/assets";
-import { Eye, EyeOff, Loader2 } from "lucide-react";
-import { authApi } from "../services";
+
 import { validateRedirect } from "../utils/validateRedirect";
 import AuthPageShell from "../components/AuthPageShell";
 import {
@@ -18,13 +15,16 @@ const clerkPubKey = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY;
 const resolveReturnUrl = (location, userData) => {
   const from = location.state?.from;
   const redirect = location.state?.redirect;
-  return (
+
+  const rawUrl =
     (from?.pathname ? `${from.pathname}${from.search || ""}` : null) ||
-    redirect ||
-    (userData?.hasCompletedOnboarding === false
+    redirect;
+  const defaultRedirect =
+    userData?.hasCompletedOnboarding === false
       ? "/organizations"
-      : "/dashboard")
-  );
+      : "/dashboard";
+
+  return validateRedirect(rawUrl, defaultRedirect);
 };
 
 const BootstrapPending = ({ title }) => (
@@ -53,85 +53,6 @@ const LoginInner = () => {
     if (!loading && isLoggedin && userData) {
       navigate(resolveReturnUrl(location, userData), { replace: true });
     }
-
-    toast.success(`Welcome, ${welcomeName || user.name}!`);
-
-    const defaultRedirect = user.hasCompletedOnboarding ? "/dashboard" : "/organizations";
-    const from = location.state?.from?.pathname;
-    
-    const safeRedirect = validateRedirect(from, defaultRedirect);
-    navigate(safeRedirect, { replace: true });
-  };
-
-  const onSubmitHandler = async (e) => {
-    e.preventDefault();
-    setIsLoading(true);
-
-    try {
-      if (state === "Sign Up") {
-        const { data } = await authApi.register({
-          name,
-          email,
-          password,
-        });
-
-        if (!data.success) {
-          toast.error(data.message || "Register failed");
-          return;
-        }
-
-        toast.success("Account created successfully!");
-        // Register already sets the session cookie
-        await finishAuth(name);
-        return;
-      }
-
-      const { data: loginData } = await authApi.login({
-        email,
-        password,
-      });
-
-      if (loginData.success) {
-        await finishAuth();
-      } else {
-        toast.error(loginData.message || "Login failed");
-      }
-    } catch (error) {
-      const msg = error.response?.data?.message || "Network or server error.";
-      toast.error(msg);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  return (
-    <div className="relative flex items-center justify-center min-h-screen bg-linear-to-br from-blue-200 to-purple-400 dark:from-gray-900 dark:to-slate-900 overflow-hidden px-4 sm:px-6">
-      {/* Ambient background gradients */}
-      <div className="absolute inset-0 pointer-events-none">
-        <div className="absolute top-[-20%] left-[-10%] w-[600px] h-[600px] bg-indigo-600/15 rounded-full blur-[128px] " />
-        <div
-          className="absolute bottom-[-20%] right-[-10%] w-[600px] h-[600px] bg-purple-600/15 rounded-full blur-[128px] "
-          style={{ animationDelay: "2s" }}
-        />
-        <div className="absolute top-[40%] left-[50%] translate-x-[-50%] w-[400px] h-[400px] bg-blue-500/10 rounded-full blur-[96px]" />
-      </div>
-
-      {/* Logo */}
-      <img
-        onClick={() => navigate("/")}
-        src={assets.logo}
-        alt="Logo"
-        className="absolute left-5 sm:left-20 top-5 w-28 sm:w-32 cursor-pointer transition-all duration-300 hover:scale-105 hover:opacity-90 z-20"
-      />
-
-      {/* Auth Card */}
-      <div className="relative w-full max-w-md bg-slate-900 backdrop-blur-2xl border border-slate-700/40 rounded-2xl shadow-2xl shadow-black/20 p-8 sm:p-10 z-10 transition-all duration-300">
-        {/* Header */}
-        <div className="text-center mb-8">
-          <h1 className="text-3xl sm:text-4xl font-bold text-white tracking-tight mb-2">
-            {state === "Sign Up"
-              ? t("login.createAccount")
-              : t("login.welcomeBack")}
   }, [loading, isLoggedin, userData, navigate, location]);
 
   // Never mount <SignIn /> while Clerk is still loading or Mongo bootstrap runs —
