@@ -196,9 +196,9 @@ export const getAgendaPacingReport = async (req, res) => {
   try {
     const { meetingId } = req.params;
 
-    const meeting = await Meeting.findById(meetingId).select(
-      "agendaItems agendaProgress",
-    );
+    const meeting =
+      req.doc ||
+      (await Meeting.findById(meetingId).select("agendaItems agendaProgress"));
     if (!meeting) {
       return res
         .status(404)
