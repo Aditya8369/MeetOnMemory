@@ -4,6 +4,7 @@ import Meeting from "../models/meetingModel.js";
 import { sendSuccess } from "../utils/responseHandler.js";
 import { ValidationError, NotFoundError } from "../utils/errors.js";
 import { buildPaginationMeta, parsePagination } from "../utils/pagination.js";
+import { caseInsensitiveEquals, escapeRegExp } from "../utils/regexUtils.js";
 
 // Validation schemas
 const createTagSchema = z.object({
@@ -18,16 +19,27 @@ const updateTagSchema = z.object({
   description: z.string().max(200).optional(),
 });
 
+/**
+ * "Is there already a tag called this?" — as an equality query (Issue #1157).
+ *
+ * This used to be `{ $regex: new RegExp(`^${name}$`, "i") }`, which answers a
+ * different question: "is there a tag *matching the pattern* `name`?" A tag
+ * literally called `.*` therefore matched every subsequent lookup and made it
+ * impossible to create any further tag in the organization, while `C++` threw
+ * `SyntaxError: Nothing to repeat` before the query ran and surfaced as a 500.
+ */
+const findTagByName = (orgId, name) => {
+  const { filter, collation } = caseInsensitiveEquals("name", name);
+  return Tag.findOne({ organization: orgId, ...filter }).collation(collation);
+};
+
 export const createTag = async (req, res, next) => {
   try {
     const { name, color, description } = createTagSchema.parse(req.body);
     const orgId = req.user.organization;
 
     // Check uniqueness
-    const existingTag = await Tag.findOne({
-      organization: orgId,
-      name: { $regex: new RegExp(`^${name}$`, "i") },
-    });
+    const existingTag = await findTagByName(orgId, name);
     if (existingTag) {
       throw new ValidationError(
         "Tag with this name already exists in your organization.",
@@ -77,10 +89,7 @@ export const updateTag = async (req, res, next) => {
 
     // If name is changing, check uniqueness
     if (updates.name && updates.name.toLowerCase() !== tag.name.toLowerCase()) {
-      const existingTag = await Tag.findOne({
-        organization: orgId,
-        name: { $regex: new RegExp(`^${updates.name}$`, "i") },
-      });
+      const existingTag = await findTagByName(orgId, updates.name);
       if (existingTag) {
         throw new ValidationError(
           "Tag with this name already exists in your organization.",
@@ -136,10 +145,12 @@ export const autocomplete = async (req, res, next) => {
       return sendSuccess(res, []);
     }
 
-    const escapedQ = q.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    // Prefix matching is a genuine pattern query, so this one stays a regex —
+    // it just uses the shared helper rather than a fourth open-coded copy of
+    // the same character class (Issue #1157).
     const tags = await Tag.find({
       organization: orgId,
-      name: { $regex: new RegExp(`^${escapedQ}`, "i") },
+      name: { $regex: new RegExp(`^${escapeRegExp(q)}`, "i") },
     })
       .limit(10)
       .sort({ usageCount: -1 });

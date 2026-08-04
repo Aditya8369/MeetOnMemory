@@ -1,5 +1,21 @@
 import GlossaryTerm from "../models/glossaryTermModel.js";
 import glossaryService from "../services/glossaryService.js";
+import { caseInsensitiveEquals } from "../utils/regexUtils.js";
+
+/**
+ * Looks up a term by its exact name, ignoring case (Issue #1157).
+ *
+ * Previously `{ $regex: new RegExp(`^${term}$`, "i") }` — so a term stored as
+ * `.*` matched every subsequent lookup and blocked all further term creation,
+ * and a legitimate term like `C++` or `a{2,` threw a `SyntaxError` that
+ * surfaced as "Server error creating glossary term".
+ */
+const findTermByName = (orgId, term) => {
+  const { filter, collation } = caseInsensitiveEquals("term", term);
+  return GlossaryTerm.findOne({ organization: orgId, ...filter }).collation(
+    collation,
+  );
+};
 
 /**
  * Get all glossary terms for an organization
@@ -50,10 +66,7 @@ export const createTerm = async (req, res) => {
     }
 
     // Check for existing term (case-insensitive)
-    const existing = await GlossaryTerm.findOne({
-      organization: orgId,
-      term: { $regex: new RegExp(`^${term}$`, "i") },
-    });
+    const existing = await findTermByName(orgId, term);
 
     if (existing) {
       return res

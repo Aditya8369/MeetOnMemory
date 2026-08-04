@@ -1,6 +1,10 @@
 import GlossaryTerm from "../models/glossaryTermModel.js";
 import { generateText } from "./GenerativeAIService.js";
 import Meeting from "../models/meetingModel.js";
+import {
+  caseInsensitiveEquals,
+  wordBoundaryRegExp,
+} from "../utils/regexUtils.js";
 
 class GlossaryService {
   /**
@@ -24,10 +28,13 @@ class GlossaryService {
       const phrases = [termObj.term, ...termObj.aliases].filter(Boolean);
 
       phrases.forEach((phrase) => {
-        // Escape special characters for regex
-        const escapedPhrase = phrase.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-        // Use word boundaries for exact match
-        const regex = new RegExp(`\\b(${escapedPhrase})\\b`, "gi");
+        // This site already escaped correctly; it now shares the helper so
+        // there is one definition of "match this phrase literally, on word
+        // boundaries" rather than several (Issue #1157). The helper also
+        // handles phrases that start or end with a non-word character — `\b`
+        // before `#` can never match, so terms like `#eng` used to be found
+        // zero times while the caller reported success.
+        const regex = wordBoundaryRegExp(phrase, "gi");
 
         let match;
         while ((match = regex.exec(text)) !== null) {
@@ -113,10 +120,21 @@ ${transcriptText.substring(0, 15000)}
 
       // Use findOneAndUpdate with upsert to prevent race conditions
       // This will only insert if a term with the same name doesn't exist for this org
+      //
+      // The filter is a collated equality match rather than `^term$` with the
+      // `i` flag (Issue #1157). `item.term` comes straight out of the model's
+      // JSON, so it is the least trustworthy input in the file — a returned
+      // term of `.*` would have matched an arbitrary existing term and
+      // upserted onto it, and one containing an unbalanced bracket would have
+      // thrown a `SyntaxError` that aborted the whole extraction run.
+      const { filter: termFilter, collation } = caseInsensitiveEquals(
+        "term",
+        item.term,
+      );
       const updatedOrInsertedTerm = await GlossaryTerm.findOneAndUpdate(
         {
           organization: orgId,
-          term: { $regex: new RegExp(`^${item.term}$`, "i") },
+          ...termFilter,
         },
         {
           $setOnInsert: {
@@ -128,7 +146,7 @@ ${transcriptText.substring(0, 15000)}
             approvalStatus: "pending",
           },
         },
-        { new: true, upsert: true },
+        { new: true, upsert: true, collation },
       );
 
       // Only add to suggestions if it was newly created (or if it's currently pending, we could include it,
