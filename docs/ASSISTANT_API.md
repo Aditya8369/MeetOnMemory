@@ -16,6 +16,7 @@ All Assistant API endpoints require authentication via Clerk (`userAuth` middlew
 ## API Endpoints
 
 ### 1. Create a Chat Session
+
 Creates a new RAG chat session scoped to the authenticated user and their organization.
 
 - **Method**: `POST`
@@ -37,6 +38,7 @@ Creates a new RAG chat session scoped to the authenticated user and their organi
 ---
 
 ### 2. List Chat Sessions
+
 Retrieves all chat sessions for the authenticated user, sorted by most recently updated.
 
 - **Method**: `GET`
@@ -61,6 +63,7 @@ Retrieves all chat sessions for the authenticated user, sorted by most recently 
 ---
 
 ### 3. Get a Specific Chat Session
+
 Fetches a single chat session including full message history and pinned context.
 
 - **Method**: `GET`
@@ -110,6 +113,7 @@ Fetches a single chat session including full message history and pinned context.
 ---
 
 ### 4. Delete a Chat Session
+
 Deletes a specific chat session belonging to the user.
 
 - **Method**: `DELETE`
@@ -119,6 +123,7 @@ Deletes a specific chat session belonging to the user.
 ---
 
 ### 5. Pin / Replace Pinned Context
+
 Pins a resource (`meeting`, `policy`, or `knowledge`) to the session to prioritize its context during retrieval.
 
 - **Method**: `PUT`
@@ -149,6 +154,7 @@ Pins a resource (`meeting`, `policy`, or `knowledge`) to the session to prioriti
 ---
 
 ### 6. Remove Pinned Context
+
 Clears any pinned context associated with the session.
 
 - **Method**: `DELETE`
@@ -164,6 +170,7 @@ Clears any pinned context associated with the session.
 ---
 
 ### 7. Send Message & Stream Response
+
 Submits a user prompt for asynchronous processing and streaming via Socket.IO.
 
 - **Method**: `POST`
@@ -189,9 +196,11 @@ Submits a user prompt for asynchronous processing and streaming via Socket.IO.
 When a message is sent to `/api/assistant/sessions/:id/message`, the backend streams the AI model response back over Socket.IO.
 
 ### Client Socket Subscriptions
+
 Clients should connect to Socket.IO and listen for the following events:
 
 1. **`assistant_message_chunk`**: Emitted sequentially as text chunks arrive from Gemini stream.
+
    ```json
    {
      "sessionId": "66ae5b10f01a2b3c4d5e6f7a",
@@ -200,6 +209,7 @@ Clients should connect to Socket.IO and listen for the following events:
    ```
 
 2. **`assistant_message_done`**: Emitted when the full assistant response and source citations are persisted.
+
    ```json
    {
      "sessionId": "66ae5b10f01a2b3c4d5e6f7a",
