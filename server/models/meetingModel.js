@@ -163,6 +163,29 @@ const meetingSchema = new mongoose.Schema(
       type: String, // Plain-text snapshot for read-only views and semantic search
       default: "",
     },
+
+    // ── Meeting series membership (Issue #1160) ──────────────────────────────
+    // `createSeries` has always built its occurrences with `series` and
+    // `seriesOccurrence` set and handed them to `Meeting.insertMany`. Neither
+    // was a schema path, so Mongoose stripped both — the meetings were created
+    // and then orphaned.
+    //
+    // Everything downstream reads the link: `getSeriesMeetings` queries
+    // `{ series: id }` and returned zero rows for every series ever created,
+    // and `cancelSeries` ran a `deleteMany` on the same filter and deleted
+    // nothing while reporting success.
+    series: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "MeetingSeries",
+      default: null,
+    },
+    // 1-based index of this meeting within its series; the sort key for
+    // `getSeriesMeetings`.
+    seriesOccurrence: {
+      type: Number,
+      default: null,
+      min: 1,
+    },
   },
   { timestamps: true },
 );
@@ -184,6 +207,10 @@ meetingSchema.index({ organization: 1, deletedAt: 1, createdAt: -1 });
 meetingSchema.index({ uploadedBy: 1, createdAt: -1 });
 meetingSchema.index({ status: 1 });
 meetingSchema.index({ title: "text", summary: "text" });
+// `getSeriesMeetings` filters on `series` and sorts on `seriesOccurrence`
+// (Issue #1160); `sparse` keeps the index to the small minority of meetings
+// that actually belong to a series.
+meetingSchema.index({ series: 1, seriesOccurrence: 1 }, { sparse: true });
 
 const Meeting = mongoose.model("Meeting", meetingSchema);
 export default Meeting;
