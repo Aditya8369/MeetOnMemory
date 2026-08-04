@@ -1,4 +1,5 @@
 import mongoose from "mongoose";
+import { normalizeAgendaItems } from "../utils/agendaOrdering.js";
 
 const meetingSchema = new mongoose.Schema(
   {
@@ -56,6 +57,9 @@ const meetingSchema = new mongoose.Schema(
     agendaItems: [
       {
         text: { type: String, required: true },
+        description: { type: String, default: "" },
+        duration: { type: Number, default: null },
+        position: { type: Number, min: 0, default: 0 },
       },
     ],
     policyDetails: {
@@ -90,12 +94,59 @@ const meetingSchema = new mongoose.Schema(
       type: String, // Optional - additional AI notes
       default: "",
     },
+    aiSummaryTemplate: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "AiSummaryTemplate",
+      default: null,
+    },
     status: {
       type: String,
       enum: ["uploaded", "processing", "completed", "failed"],
       default: "uploaded",
     },
     tags: [String], // e.g., ["policy", "finance", "staff"]
+    externalCalendarRefs: [
+      {
+        provider: { type: String, enum: ["google", "outlook"], required: true },
+        eventId: { type: String, required: true },
+      },
+    ],
+
+    // Calendar integration - store external event IDs for both providers
+    calendarEvents: {
+      google: {
+        eventId: { type: String, default: null },
+        syncedAt: { type: Date, default: null },
+      },
+      microsoft: {
+        eventId: { type: String, default: null },
+        syncedAt: { type: Date, default: null },
+      },
+    },
+
+    // Legacy field for backward compatibility
+    archived: {
+      type: Boolean,
+      default: false,
+    },
+
+    // Soft-delete lifecycle (Issue #1013)
+    deletedAt: {
+      type: Date,
+      default: null,
+      index: true,
+    },
+    deletedBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+      default: null,
+    },
+    deletionReason: {
+      type: String,
+      trim: true,
+      maxlength: 500,
+      default: null,
+    },
 
     // Google Calendar integration
     googleEventId: {
@@ -116,8 +167,20 @@ const meetingSchema = new mongoose.Schema(
   { timestamps: true },
 );
 
+meetingSchema.pre("validate", function normalizeAgendaOrder(next) {
+  if (this.isModified("agendaItems") || this.isNew) {
+    this.agendaItems = normalizeAgendaItems(
+      (this.agendaItems || []).map((item) =>
+        typeof item.toObject === "function" ? item.toObject() : item,
+      ),
+    );
+  }
+  next();
+});
+
 // Indexes for query performance
 meetingSchema.index({ organization: 1, createdAt: -1 });
+meetingSchema.index({ organization: 1, deletedAt: 1, createdAt: -1 });
 meetingSchema.index({ uploadedBy: 1, createdAt: -1 });
 meetingSchema.index({ status: 1 });
 meetingSchema.index({ title: "text", summary: "text" });
