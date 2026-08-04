@@ -16,25 +16,62 @@ import {
   Lock,
   ChevronRight,
   Loader2,
+  Calendar,
+  CheckCircle2,
+  XCircle,
+  RefreshCw,
   Zap,
 } from "lucide-react";
+import CalendarIntegrations from "../components/CalendarIntegrations.jsx";
 import useTheme from "../context/useTheme.jsx";
 import WebhooksManager from "../components/WebhooksManager.jsx";
+import DigestPreferences from "../components/DigestPreferences.jsx";
+import RecapPreferences from "../components/RecapPreferences.jsx";
+import { ClerkManageAccountButton } from "../components/ClerkUserControls.jsx";
+import apiClient from "../services/apiClient.js";
+
+const clerkPubKey = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY;
 
 const Settings = () => {
   const { userData, logoutUser } = useContext(AppContent);
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
 
-  // Notification preferences state (UI only - no backend support)
+  // Calendar connection state
+  const [calendarStatus, setCalendarStatus] = useState({
+    google: null,
+    microsoft: null,
+  });
+  const [calendarLoading, setCalendarLoading] = useState(false);
+
+  // Notification preferences state (UI only - no backend support except emailDigestEnabled)
   const [notificationPrefs, setNotificationPrefs] = useState({
     meetingNotifications: true,
     organizationUpdates: true,
     aiProcessingUpdates: true,
     emailNotifications: true,
+    emailDigestEnabled: userData?.emailDigestEnabled !== false,
   });
 
   const { theme, toggleTheme } = useTheme();
+
+  // Fetch calendar connection status
+  useEffect(() => {
+    const fetchCalendarStatus = async () => {
+      try {
+        const response = await apiClient.get("/api/calendar/status");
+        setCalendarStatus(
+          response.data.status || { google: null, microsoft: null },
+        );
+      } catch (error) {
+        console.error("Error fetching calendar status:", error);
+      }
+    };
+
+    if (userData) {
+      fetchCalendarStatus();
+    }
+  }, [userData]);
 
   // Appearance preferences state (UI only - no backend support)
   const [appearancePrefs, setAppearancePrefs] = useState({
@@ -83,17 +120,159 @@ const Settings = () => {
     }
   };
 
-  const handleNotificationChange = (key) => {
+  const handleNotificationChange = async (key) => {
+    const newValue = !notificationPrefs[key];
     setNotificationPrefs((prev) => ({
       ...prev,
-      [key]: !prev[key],
+      [key]: newValue,
     }));
+
+    if (key === "emailDigestEnabled") {
+      try {
+        await apiClient.put("/api/user/update", {
+          emailDigestEnabled: newValue,
+        });
+        toast.success("Email digest preference updated");
+      } catch (error) {
+        console.error("Error updating preference:", error);
+        toast.error("Failed to update preference");
+        // Revert on error
+        setNotificationPrefs((prev) => ({
+          ...prev,
+          [key]: !newValue,
+        }));
+      }
+    }
   };
 
   const handleThemeChange = (newTheme) => {
     if (newTheme !== theme) {
       toggleTheme();
     }
+  };
+
+  // Calendar connection handlers
+  const handleConnectGoogle = async () => {
+    try {
+      setCalendarLoading(true);
+      const response = await apiClient.get("/api/calendar/google/auth-url");
+
+      // Open OAuth popup
+      const authWindow = window.open(
+        response.data.authUrl,
+        "_blank",
+        "width=500,height=600",
+      );
+
+      // Poll for callback (in production, use a proper OAuth flow with redirect)
+      const pollForCallback = setInterval(() => {
+        if (authWindow.closed) {
+          clearInterval(pollForCallback);
+          setCalendarLoading(false);
+          // Refresh status
+          fetchCalendarStatus();
+        }
+      }, 500);
+    } catch (error) {
+      console.error("Error connecting Google Calendar:", error);
+      toast.error("Failed to connect Google Calendar");
+      setCalendarLoading(false);
+    }
+  };
+
+  const handleConnectMicrosoft = async () => {
+    try {
+      setCalendarLoading(true);
+      const response = await apiClient.get("/api/calendar/microsoft/auth-url");
+
+      // Open OAuth popup
+      const authWindow = window.open(
+        response.data.authUrl,
+        "_blank",
+        "width=500,height=600",
+      );
+
+      // Poll for callback
+      const pollForCallback = setInterval(() => {
+        if (authWindow.closed) {
+          clearInterval(pollForCallback);
+          setCalendarLoading(false);
+          // Refresh status
+          fetchCalendarStatus();
+        }
+      }, 500);
+    } catch (error) {
+      console.error("Error connecting Microsoft Calendar:", error);
+      toast.error("Failed to connect Microsoft Calendar");
+      setCalendarLoading(false);
+    }
+  };
+
+  const handleDisconnect = async (provider) => {
+    try {
+      setCalendarLoading(true);
+      await apiClient.delete(`/api/calendar/${provider}/disconnect`);
+      toast.success(
+        `${provider.charAt(0).toUpperCase() + provider.slice(1)} Calendar disconnected`,
+      );
+      // Refresh status
+      const statusResponse = await apiClient.get("/api/calendar/status");
+      setCalendarStatus(
+        statusResponse.data.status || { google: null, microsoft: null },
+      );
+    } catch (error) {
+      console.error("Error disconnecting calendar:", error);
+      toast.error("Failed to disconnect calendar");
+    } finally {
+      setCalendarLoading(false);
+    }
+  };
+
+  const handleResync = async (provider) => {
+    try {
+      setCalendarLoading(true);
+      await apiClient.post(`/api/calendar/${provider}/resync`);
+      toast.success(
+        `${provider.charAt(0).toUpperCase() + provider.slice(1)} Calendar synced`,
+      );
+      // Refresh status
+      const statusResponse = await apiClient.get("/api/calendar/status");
+      setCalendarStatus(
+        statusResponse.data.status || { google: null, microsoft: null },
+      );
+    } catch (error) {
+      console.error("Error resyncing calendar:", error);
+      toast.error("Failed to sync calendar");
+    } finally {
+      setCalendarLoading(false);
+    }
+  };
+
+  const fetchCalendarStatus = async () => {
+    try {
+      const response = await apiClient.get("/api/calendar/status");
+      setCalendarStatus(response.data.status);
+    } catch (error) {
+      console.error("Error fetching calendar status:", error);
+    }
+  };
+
+  const getConnectionStatusIcon = (connection) => {
+    if (!connection) return <XCircle className="w-4 h-4 text-slate-400" />;
+    if (connection.syncStatus === "connected")
+      return <CheckCircle2 className="w-4 h-4 text-green-500" />;
+    if (connection.syncStatus === "needs_reauth")
+      return <XCircle className="w-4 h-4 text-amber-500" />;
+    return <XCircle className="w-4 h-4 text-red-500" />;
+  };
+
+  const getConnectionStatusText = (connection) => {
+    if (!connection) return "Not connected";
+    if (connection.syncStatus === "connected") return "Connected";
+    if (connection.syncStatus === "needs_reauth")
+      return "Re-authentication required";
+    if (connection.syncStatus === "syncing") return "Syncing...";
+    return "Error";
   };
 
   return (
@@ -177,6 +356,15 @@ const Settings = () => {
                     </p>
                   </div>
                 </div>
+                {userData.organization && (
+                  <button
+                    onClick={() => navigate("/organization/settings")}
+                    className="text-xs font-semibold text-blue-600 hover:text-blue-800 dark:hover:text-blue-400 flex items-center gap-1 transition-colors cursor-pointer"
+                  >
+                    Org Settings
+                    <ChevronRight className="w-3 h-3" />
+                  </button>
+                )}
               </div>
 
               <div className="flex items-center justify-between py-3">
@@ -381,6 +569,187 @@ const Settings = () => {
                   />
                 </button>
               </div>
+
+              <div className="flex items-center justify-between py-3">
+                <div>
+                  <p className="text-sm font-semibold text-slate-900 dark:text-slate-200">
+                    Receive email digest after meetings
+                  </p>
+                  <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                    Get an automated summary of completed meetings
+                  </p>
+                </div>
+                <button
+                  onClick={() => handleNotificationChange("emailDigestEnabled")}
+                  className={`relative w-11 h-6 rounded-full transition-colors cursor-pointer ${
+                    notificationPrefs.emailDigestEnabled
+                      ? "bg-blue-600"
+                      : "bg-slate-200 dark:bg-slate-700"
+                  }`}
+                  aria-pressed={notificationPrefs.emailDigestEnabled}
+                >
+                  <span
+                    className={`absolute top-1 left-1 w-4 h-4 bg-white rounded-full shadow-sm transition-transform ${
+                      notificationPrefs.emailDigestEnabled
+                        ? "translate-x-5"
+                        : "translate-x-0"
+                    }`}
+                  />
+                </button>
+              </div>
+            </div>
+          </div>
+
+          {/* Email Digest Section */}
+          <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-2xl p-6 shadow-sm fade-in-up stagger-4">
+            <div className="flex items-center gap-3 mb-6">
+              <div className="p-2 bg-indigo-50 dark:bg-indigo-900/30 rounded-xl">
+                <Mail className="w-5 h-5 text-indigo-600 dark:text-indigo-400" />
+              </div>
+              <div>
+                <h2 className="text-lg font-bold text-slate-900 dark:text-white">
+                  Email Digest
+                </h2>
+                <p className="text-xs text-slate-500 dark:text-slate-400">
+                  Configure your email digest schedule and content
+                </p>
+              </div>
+            </div>
+            <DigestPreferences />
+          </div>
+
+          {/* Meeting Recaps Section */}
+          <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-2xl p-6 shadow-sm fade-in-up stagger-4">
+            <div className="flex items-center gap-3 mb-6">
+              <div className="p-2 bg-blue-50 dark:bg-blue-900/30 rounded-xl">
+                <Mail className="w-5 h-5 text-blue-600 dark:text-blue-400" />
+              </div>
+              <div>
+                <h2 className="text-lg font-bold text-slate-900 dark:text-white">
+                  Meeting Recaps
+                </h2>
+                <p className="text-xs text-slate-500 dark:text-slate-400">
+                  Configure automatic email recaps for processed meetings
+                </p>
+              </div>
+            </div>
+            <RecapPreferences />
+          </div>
+
+          {/* Calendar Integrations */}
+          <CalendarIntegrations />
+          {/* Calendar Integrations Section */}
+          <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-2xl p-6 shadow-sm fade-in-up stagger-5">
+            <div className="flex items-center gap-3 mb-6">
+              <div className="p-2 bg-green-50 dark:bg-green-900/30 rounded-xl">
+                <Calendar className="w-5 h-5 text-green-600 dark:text-green-400" />
+              </div>
+              <div>
+                <h2 className="text-lg font-bold text-slate-900 dark:text-white">
+                  Calendar Integrations
+                </h2>
+                <p className="text-xs text-slate-500 dark:text-slate-400">
+                  Connect your calendars for two-way sync
+                </p>
+              </div>
+            </div>
+
+            <div className="space-y-4">
+              {/* Google Calendar */}
+              <div className="flex items-center justify-between py-3 border-b border-slate-100 dark:border-slate-800">
+                <div className="flex items-center gap-3">
+                  <div className="flex items-center gap-2">
+                    {getConnectionStatusIcon(calendarStatus.google)}
+                    <div>
+                      <p className="text-sm font-semibold text-slate-900 dark:text-slate-200">
+                        Google Calendar
+                      </p>
+                      <p className="text-xs text-slate-500 dark:text-slate-400">
+                        {getConnectionStatusText(calendarStatus.google)}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2">
+                  {calendarStatus.google?.syncStatus === "connected" && (
+                    <button
+                      onClick={() => handleResync("google")}
+                      disabled={calendarLoading}
+                      className="p-2 text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200 transition-colors cursor-pointer"
+                      title="Resync"
+                    >
+                      <RefreshCw
+                        className={`w-4 h-4 ${calendarLoading ? "animate-spin" : ""}`}
+                      />
+                    </button>
+                  )}
+                  {calendarStatus.google ? (
+                    <button
+                      onClick={() => handleDisconnect("google")}
+                      disabled={calendarLoading}
+                      className="px-3 py-1.5 text-xs font-semibold rounded-lg bg-red-50 text-red-600 hover:bg-red-100 dark:bg-red-900/30 dark:text-red-400 dark:hover:bg-red-900/50 transition-colors cursor-pointer"
+                    >
+                      Disconnect
+                    </button>
+                  ) : (
+                    <button
+                      onClick={handleConnectGoogle}
+                      disabled={calendarLoading}
+                      className="px-3 py-1.5 text-xs font-semibold rounded-lg bg-blue-600 text-white hover:bg-blue-700 transition-colors cursor-pointer"
+                    >
+                      Connect
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              {/* Microsoft Calendar */}
+              <div className="flex items-center justify-between py-3">
+                <div className="flex items-center gap-3">
+                  <div className="flex items-center gap-2">
+                    {getConnectionStatusIcon(calendarStatus.microsoft)}
+                    <div>
+                      <p className="text-sm font-semibold text-slate-900 dark:text-slate-200">
+                        Microsoft Outlook
+                      </p>
+                      <p className="text-xs text-slate-500 dark:text-slate-400">
+                        {getConnectionStatusText(calendarStatus.microsoft)}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2">
+                  {calendarStatus.microsoft?.syncStatus === "connected" && (
+                    <button
+                      onClick={() => handleResync("microsoft")}
+                      disabled={calendarLoading}
+                      className="p-2 text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200 transition-colors cursor-pointer"
+                      title="Resync"
+                    >
+                      <RefreshCw
+                        className={`w-4 h-4 ${calendarLoading ? "animate-spin" : ""}`}
+                      />
+                    </button>
+                  )}
+                  {calendarStatus.microsoft ? (
+                    <button
+                      onClick={() => handleDisconnect("microsoft")}
+                      disabled={calendarLoading}
+                      className="px-3 py-1.5 text-xs font-semibold rounded-lg bg-red-50 text-red-600 hover:bg-red-100 dark:bg-red-900/30 dark:text-red-400 dark:hover:bg-red-900/50 transition-colors cursor-pointer"
+                    >
+                      Disconnect
+                    </button>
+                  ) : (
+                    <button
+                      onClick={handleConnectMicrosoft}
+                      disabled={calendarLoading}
+                      className="px-3 py-1.5 text-xs font-semibold rounded-lg bg-blue-600 text-white hover:bg-blue-700 transition-colors cursor-pointer"
+                    >
+                      Connect
+                    </button>
+                  )}
+                </div>
+              </div>
             </div>
           </div>
 
@@ -401,23 +770,36 @@ const Settings = () => {
             </div>
 
             <div className="space-y-4">
-              <button
-                onClick={() => navigate("/reset-password")}
-                className="w-full flex items-center justify-between py-3 px-4 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors cursor-pointer group"
-              >
-                <div className="flex items-center gap-3">
-                  <Lock className="w-4 h-4 text-slate-400 dark:text-slate-500 group-hover:text-slate-600 dark:group-hover:text-slate-300" />
-                  <div className="text-left">
-                    <p className="text-sm font-semibold text-slate-900 dark:text-slate-200">
-                      Change Password
-                    </p>
-                    <p className="text-xs text-slate-500 dark:text-slate-400">
-                      Update your password
-                    </p>
+              {clerkPubKey && clerkPubKey.trim().length > 0 ? (
+                <ClerkManageAccountButton className="w-full flex items-center justify-between py-3 px-4 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors cursor-pointer group">
+                  <div className="flex items-center gap-3">
+                    <Lock className="w-4 h-4 text-slate-400 dark:text-slate-500 group-hover:text-slate-600 dark:group-hover:text-slate-300" />
+                    <div className="text-left">
+                      <p className="text-sm font-semibold text-slate-900 dark:text-slate-200">
+                        Manage account security
+                      </p>
+                      <p className="text-xs text-slate-500 dark:text-slate-400">
+                        Password, email, and connected accounts via Clerk
+                      </p>
+                    </div>
+                  </div>
+                  <ChevronRight className="w-4 h-4 text-slate-400 dark:text-slate-500 group-hover:text-slate-600 dark:group-hover:text-slate-300" />
+                </ClerkManageAccountButton>
+              ) : (
+                <div className="w-full flex items-center justify-between py-3 px-4 rounded-xl opacity-60">
+                  <div className="flex items-center gap-3">
+                    <Lock className="w-4 h-4 text-slate-400" />
+                    <div className="text-left">
+                      <p className="text-sm font-semibold text-slate-900 dark:text-slate-200">
+                        Account security
+                      </p>
+                      <p className="text-xs text-slate-500 dark:text-slate-400">
+                        Configure VITE_CLERK_PUBLISHABLE_KEY to manage security
+                      </p>
+                    </div>
                   </div>
                 </div>
-                <ChevronRight className="w-4 h-4 text-slate-400 dark:text-slate-500 group-hover:text-slate-600 dark:group-hover:text-slate-300" />
-              </button>
+              )}
 
               <div className="w-full flex items-center justify-between py-3 px-4 rounded-xl opacity-50 cursor-not-allowed">
                 <div className="flex items-center gap-3">

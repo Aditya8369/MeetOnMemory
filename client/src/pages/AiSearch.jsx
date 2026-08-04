@@ -141,7 +141,7 @@ const AiSearch = () => {
         });
         setResults(res.data.results || []);
       } else {
-        const res = await apiClient.post("/api/ai-search", { query, filters });
+        const res = await apiClient.post("/api/ai", { query, filters });
         const data = res.data;
 
         let sortedResults = data.results || [];
@@ -187,11 +187,11 @@ const AiSearch = () => {
   };
 
   const handleOpenMeeting = (result) => {
-    window.open(`/meetings/${result.meetingId}`, "_blank");
+    window.open(`/meeting/${result.meetingId}`, "_blank");
   };
 
   const handleOpenMeetingById = (meetingId) => {
-    if (meetingId) window.open(`/meetings/${meetingId}`, "_blank");
+    if (meetingId) window.open(`/meeting/${meetingId}`, "_blank");
   };
 
   const handleCopySummary = async (result) => {

@@ -1,5 +1,6 @@
-import { getAuthUrl } from "../services/calendarService.js";
+import { sendSuccess, sendError } from "../utils/responseHandler.js";
 import AuthService from "../services/AuthService.js";
+import { provisionOrLinkClerkUser } from "../services/authLinkingService.js";
 
 // --------------------------- HELPERS ---------------------------
 const validateFields = (fields, res) => {
@@ -58,6 +59,12 @@ export const login = async (req, res) => {
 };
 
 // --------------------------- LOGOUT ---------------------------
+const DIAG = "[SYNC-CLERK-DIAG]";
+
+/**
+ * Clerk-aware logout acknowledgement.
+ * Client must call Clerk signOut; server clears any residual legacy cookie.
+ */
 export const logout = async (req, res) => {
   try {
     res.clearCookie("token", {
@@ -65,9 +72,9 @@ export const logout = async (req, res) => {
       secure: process.env.NODE_ENV === "production",
       sameSite: process.env.NODE_ENV === "production" ? "none" : "strict",
     });
-    return res.json({ success: true, message: "Logged out successfully" });
+    return sendSuccess(res, {}, "Logged out successfully");
   } catch (error) {
-    res.json({ success: false, message: error.message });
+    sendError(res, 400, error.message);
   }
 };
 
@@ -144,38 +151,56 @@ export const resetPassword = async (req, res) => {
       success: true,
       message: "Password has been reset successfully",
     });
+export const isAuthenticated = async (req, res) => {
+  try {
+    return sendSuccess(res);
   } catch (error) {
-    res.json({ success: false, message: error.message });
+    sendError(res, 400, error.message);
   }
 };
 
-// --------------------------- GET USER DATA (For Dashboard) ---------------------------
 export const getUserData = async (req, res) => {
   try {
-    const user = await AuthService.getUserData(req.user.id);
-
-    res.status(200).json({ success: true, user });
+    const userId = req.user._id || req.user.id;
+    const user = await AuthService.getUserData(userId);
+    sendSuccess(res, { user });
   } catch (error) {
     console.error("Error fetching user data:", error.message);
     if (error.statusCode === 404) {
-      res.status(404).json({ success: false, message: "User not found" });
+      sendError(res, 404, "User not found");
     } else {
-      res.status(500).json({ success: false, message: "Server error" });
+      sendError(res, 500, "Server error");
     }
   }
 };
 
-// --------------------------- GOOGLE CALENDAR AUTH ---------------------------
-export const googleCalendarAuth = (req, res) => {
-  const url = getAuthUrl();
-  res.redirect(url);
-};
+export const syncClerkUser = async (req, res) => {
+  // TEMP DIAGNOSTIC — remove after root-cause confirmed in Render logs
+  console.error(`${DIAG} 1. Request entered syncClerkUser`, {
+    method: req.method,
+    url: req.originalUrl || req.url,
+    hasAuthHeader: Boolean(
+      req.headers?.authorization || req.headers?.Authorization,
+    ),
+    bodyKeys: req.body ? Object.keys(req.body) : [],
+    reqUserId: req.user?._id?.toString?.() || req.user?.id || null,
+    reqUserClerkId: req.user?.clerkUserId || null,
+    reqUserEmail: req.user?.email || null,
+  });
 
-export const googleCalendarCallback = async (req, res) => {
-  const { code } = req.query;
   try {
-    const token = req.cookies?.token;
-    await AuthService.googleCalendarCallback({ code, token });
+    const { clerkUserId, email, name, profilePic } = req.body || {};
+    const targetClerkId = clerkUserId || req.user?.clerkUserId;
+    const targetEmail = email || req.user?.email;
+
+    console.error(`${DIAG} 3/4. Resolved sync inputs`, {
+      targetClerkId: targetClerkId || null,
+      targetEmail: targetEmail || null,
+      name: name || null,
+      hasProfilePic: Boolean(profilePic),
+      bodyClerkUserId: clerkUserId || null,
+      bodyEmail: email || null,
+    });
 
     res.redirect(`${process.env.CLIENT_URL || "http://localhost:5173"}/profile?sync=success`);
   } catch (error) {
@@ -184,7 +209,59 @@ export const googleCalendarCallback = async (req, res) => {
       return res.status(401).json({ success: false, message: "Not authenticated" });
     } else if (error.statusCode === 404) {
       return res.status(404).json({ success: false, message: "User not found" });
+    if (!targetClerkId) {
+      console.error(`${DIAG} FAIL early: clerkUserId missing`);
+      return sendError(res, 400, "clerkUserId is required for sync");
     }
-    res.redirect(`${process.env.CLIENT_URL || "http://localhost:5173"}/profile?sync=error`);
+
+    console.error(`${DIAG} Calling provisionOrLinkClerkUser…`);
+    const user = await provisionOrLinkClerkUser({
+      clerkUserId: targetClerkId,
+      email: targetEmail,
+      name,
+      profilePic,
+    });
+
+    console.error(`${DIAG} provisionOrLinkClerkUser returned`, {
+      mongoUserId: user?._id?.toString?.() || user?.id || null,
+      clerkUserId: user?.clerkUserId || null,
+      email: user?.email || null,
+      role: user?.role ?? null,
+      organization:
+        user?.organization?.toString?.() || user?.organization || null,
+      hasCompletedOnboarding: user?.hasCompletedOnboarding,
+    });
+
+    console.error(
+      `${DIAG} 9. Organization bootstrap: NOT invoked on this path (identity sync only)`,
+    );
+
+    return sendSuccess(res, { user }, "User synchronized successfully");
+  } catch (error) {
+    // Do not swallow — dump full exception for Render logs
+    console.error(`${DIAG} EXCEPTION in syncClerkUser`);
+    console.error(error);
+    console.error(error?.stack);
+    console.error(`${DIAG} exception meta`, {
+      name: error?.name,
+      message: error?.message,
+      code: error?.code,
+      keyPattern: error?.keyPattern,
+      keyValue: error?.keyValue,
+      errors: error?.errors
+        ? Object.fromEntries(
+            Object.entries(error.errors).map(([k, v]) => [
+              k,
+              {
+                message: v?.message,
+                kind: v?.kind,
+                path: v?.path,
+                value: v?.value,
+              },
+            ]),
+          )
+        : undefined,
+    });
+    return sendError(res, 500, error.message || "Failed to sync user");
   }
 };

@@ -1,9 +1,9 @@
 import request from "supertest";
-import jwt from "jsonwebtoken";
 import mongoose from "mongoose";
 import axios from "axios";
 import { jest } from "@jest/globals";
 import { app } from "../server.js";
+import { createClerkTestToken, authHeader } from "./helpers/clerkTestAuth.js";
 import User from "../models/userModel.js";
 import Organization from "../models/organizationModel.js";
 import Membership from "../models/membershipModel.js";
@@ -61,17 +61,19 @@ describe("Gemini AI Endpoint Authentication and Authorization", () => {
       email: `member-${Math.random()}@example.com`,
       password: "password123",
       organization: organization._id,
-      role: "member",
+      role: "admin",
     });
-    userToken = jwt.sign(
-      { id: user._id },
-      process.env.JWT_SECRET || "fallback_secret",
-    );
+    user.clerkUserId = `user_test_${user._id}`;
+    await user.save();
+    userToken = createClerkTestToken({
+      clerkUserId: user.clerkUserId,
+      email: user.email,
+    });
 
     await Membership.create({
       user: user._id,
       organization: organization._id,
-      role: "member",
+      role: "admin",
       status: "active",
     });
 
@@ -83,10 +85,12 @@ describe("Gemini AI Endpoint Authentication and Authorization", () => {
       organization: organization._id,
       role: "guest",
     });
-    guestToken = jwt.sign(
-      { id: guestUser._id },
-      process.env.JWT_SECRET || "fallback_secret",
-    );
+    guestUser.clerkUserId = `user_test_${guestUser._id}`;
+    await guestUser.save();
+    guestToken = createClerkTestToken({
+      clerkUserId: guestUser.clerkUserId,
+      email: guestUser.email,
+    });
   });
 
   describe("POST /api/gemini/insights", () => {
@@ -102,7 +106,7 @@ describe("Gemini AI Endpoint Authentication and Authorization", () => {
     it("should reject unauthorized requests from guest with 403", async () => {
       const res = await request(app)
         .post("/api/gemini/insights")
-        .set("Authorization", `Bearer ${guestToken}`)
+        .set(authHeader(guestToken))
         .send({ summary: { totalMeetings: 5, activePolicies: 2 } });
 
       expect(res.statusCode).toEqual(403);
@@ -112,12 +116,14 @@ describe("Gemini AI Endpoint Authentication and Authorization", () => {
     it("should allow authenticated member with view reports permission to generate insights", async () => {
       const res = await request(app)
         .post("/api/gemini/insights")
-        .set("Authorization", `Bearer ${userToken}`)
+        .set(authHeader(userToken))
         .send({ summary: { totalMeetings: 5, activePolicies: 2 } });
 
       expect(res.statusCode).toEqual(200);
       expect(res.body.success).toBe(true);
-      expect(res.body.insight).toBe("This is a mocked professional analytics summary highlighting trends and insights.");
+      expect(res.body.insight).toBe(
+        "This is a mocked professional analytics summary highlighting trends and insights.",
+      );
     });
   });
 });

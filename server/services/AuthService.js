@@ -1,17 +1,11 @@
-import bcrypt from "bcryptjs";
-import jwt from "jsonwebtoken";
-import { randomInt } from "node:crypto";
 import userModel from "../models/userModel.js";
-import transporter from "../config/nodeMailer.js";
-import {
-  EMAIL_VERIFY_TEMPLATE,
-  PASSWORD_RESET_TEMPLATE,
-} from "../config/emailTemplates.js";
-import { getTokens } from "./calendarService.js";
-import { AppError, NotFoundError } from "../utils/errors.js";
+import { NotFoundError } from "../utils/errors.js";
 
-const normalizeEmail = (email) => String(email).trim().toLowerCase();
-
+/**
+ * AuthService — post-cutover surface.
+ * Identity (login/register/OTP/password reset) is owned by Clerk.
+ * This service only loads Mongo user documents for the app.
+ */
 class AuthService {
   static async register({ name, email, password }) {
     const cleanEmail = normalizeEmail(email);
@@ -165,29 +159,6 @@ class AuthService {
     }
 
     return user;
-  }
-
-  static async googleCalendarCallback({ code, token }) {
-    const tokens = await getTokens(code);
-
-    if (!token) {
-      throw new AppError("Not authenticated", 401);
-    }
-    
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    const userId = decoded.id;
-
-    const user = await userModel.findById(userId);
-    if (!user) {
-      throw new NotFoundError("User not found");
-    }
-
-    user.googleAccessToken = tokens.access_token;
-    if (tokens.refresh_token) {
-      user.googleRefreshToken = tokens.refresh_token;
-    }
-    user.calendarSyncEnabled = true;
-    await user.save();
   }
 }
 
