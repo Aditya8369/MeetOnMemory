@@ -7,6 +7,7 @@ import { Play, Square, SkipForward, AlertTriangle } from "lucide-react";
 import {
   formatClock,
   getItemTiming,
+  readAgendaElapsedMs,
   summarizeAgendaTiming,
 } from "../../utils/agendaTiming";
 import { createClerkSocketOptions } from "../../services/apiClient.js";
@@ -26,24 +27,26 @@ const AgendaTimer = ({ meeting }) => {
     // Find active item
     const currentActive = agendaItems.find((item) => item.status === "active");
     setActiveItem(currentActive || null);
-
-    if (currentActive && currentActive.startedAt) {
-      const start = new Date(currentActive.startedAt).getTime();
-      const current = new Date().getTime();
-      setElapsedMs(current - start + (currentActive.actualDuration || 0));
-    } else {
-      setElapsedMs(0);
-    }
+    setElapsedMs(readAgendaElapsedMs(currentActive));
   }, [agendaItems]);
 
   useEffect(() => {
-    if (activeItem) {
-      timerRef.current = setInterval(() => {
-        setElapsedMs((prev) => prev + 1000);
-      }, 1000);
-    } else {
+    if (!activeItem) {
       clearInterval(timerRef.current);
+      return undefined;
     }
+
+    // Issue #1159 — this used to be `setElapsedMs((prev) => prev + 1000)`, so
+    // the displayed time was a count of ticks rather than a measurement.
+    // Browsers clamp `setInterval` to roughly once a minute in a backgrounded
+    // tab, which is exactly where a live meeting timer spends its time: the
+    // clock fell minutes behind and never caught up, and the overrun warning
+    // fired late or not at all. Recomputing from `startedAt` makes a dropped
+    // tick cost nothing but a late repaint.
+    const tick = () => setElapsedMs(readAgendaElapsedMs(activeItem));
+
+    tick();
+    timerRef.current = setInterval(tick, 1000);
 
     return () => clearInterval(timerRef.current);
   }, [activeItem]);
