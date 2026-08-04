@@ -86,7 +86,9 @@ describe("Route Consolidation and Registration", () => {
       "/api/membership",
       "/api/memberships",
       "/api/membership-request",
+      "/api/membership-requests",
       "/api/invitation",
+      "/api/invitations",
       "/api/meetings/timer",
       "/api/meetings",
       "/api/search",
@@ -95,6 +97,8 @@ describe("Route Consolidation and Registration", () => {
       "/api/analytics",
       "/api/gemini",
       "/api/user",
+      "/api/users",
+      "/api/notification",
       "/api/notifications",
       "/api/knowledge",
       "/api/calendar",
@@ -131,6 +135,10 @@ describe("Route Consolidation and Registration", () => {
       "/api/glossary",
       "/api/ai-summary-templates",
       "/api/topics",
+      "/api/automation-rules",
+      "/api/meeting-health",
+      "/api/workspace",
+      "/api/recap",
     ];
 
     for (const routePath of expectedRoutes) {
