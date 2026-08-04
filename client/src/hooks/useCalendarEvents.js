@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { toast } from "react-toastify";
 import { meetingApi } from "../services";
+import apiClient from "../services/apiClient.js";
 
 export const useCalendarEvents = () => {
   const [meetings, setMeetings] = useState([]);
@@ -13,6 +14,7 @@ export const useCalendarEvents = () => {
   const [statusFilter, setStatusFilter] = useState("all");
   const [typeFilter, setTypeFilter] = useState("all");
   const [orgFilter, setOrgFilter] = useState("all");
+  const [showExternalEvents, setShowExternalEvents] = useState(true);
 
   // Fetch Meetings
   useEffect(() => {
@@ -20,11 +22,39 @@ export const useCalendarEvents = () => {
       setLoading(true);
       try {
         const { data } = await meetingApi.getAllMeetings();
+        let allMeetings = [];
         if (data.success) {
-          setMeetings(data.meetings || []);
+          allMeetings = data.meetings || [];
         } else {
           toast.error(data.message || "Failed to fetch meetings.");
         }
+
+        // Fetch external events
+        try {
+          const { data: extData } = await apiClient.get("/api/calendar/events");
+          if (extData.success && extData.events) {
+            const externalEvents = extData.events.map((e) => ({
+              _id: e.id,
+              title: e.title,
+              date: new Date(e.start),
+              time: new Date(e.start).toLocaleTimeString([], {
+                hour: "2-digit",
+                minute: "2-digit",
+              }),
+              duration: (new Date(e.end) - new Date(e.start)) / 60000,
+              venue: e.location,
+              meetingType: "external",
+              status: "upcoming",
+              provider: e.provider,
+              isExternal: true,
+            }));
+            allMeetings = [...allMeetings, ...externalEvents];
+          }
+        } catch (extErr) {
+          console.error("External events fetch err:", extErr);
+        }
+
+        setMeetings(allMeetings);
       } catch (err) {
         console.error("Fetch meetings error:", err);
         toast.error("Error loading calendar data.");
@@ -38,6 +68,11 @@ export const useCalendarEvents = () => {
 
   // Filter Logic
   const filteredMeetings = meetings.filter((meeting) => {
+    // Filter external events
+    if (meeting.isExternal && !showExternalEvents) {
+      return false;
+    }
+
     const matchesStatus =
       statusFilter === "all" || meeting.status === statusFilter;
     const matchesType =
@@ -45,7 +80,7 @@ export const useCalendarEvents = () => {
 
     // Filter by organization
     let matchesOrg = true;
-    if (orgFilter !== "all") {
+    if (orgFilter !== "all" && !meeting.isExternal) {
       if (orgFilter === "personal") {
         matchesOrg = !meeting.organization;
       } else {
@@ -61,10 +96,11 @@ export const useCalendarEvents = () => {
     return matchesStatus && matchesType && matchesOrg;
   });
 
-  // Extract unique organizations for filters
+  // Extract unique organizations for filters (exclude external events)
   const uniqueOrgs = Array.from(
     new Set(
       meetings
+        .filter((m) => !m.isExternal)
         .map((m) => m.organization?.name || m.organization)
         .filter(Boolean),
     ),
@@ -85,6 +121,8 @@ export const useCalendarEvents = () => {
     setTypeFilter,
     orgFilter,
     setOrgFilter,
+    showExternalEvents,
+    setShowExternalEvents,
     filteredMeetings,
     uniqueOrgs,
   };

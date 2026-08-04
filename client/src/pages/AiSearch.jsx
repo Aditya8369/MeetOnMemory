@@ -1,5 +1,6 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { X } from "lucide-react";
 import Navbar from "../components/Navbar.jsx";
 import SearchBar from "../components/ai-search/SearchBar.jsx";
 import SearchFilters from "../components/ai-search/SearchFilters.jsx";
@@ -14,6 +15,20 @@ import { sanitizeHtml } from "../utils/sanitizeHtml";
 // Modal Component for showing full details
 const ResultModal = ({ result, onClose }) => {
   const { t } = useTranslation();
+
+  useEffect(() => {
+    if (!result) return;
+
+    const handleKeyDown = (e) => {
+      if (e.key === "Escape") {
+        onClose();
+      }
+    };
+
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
+  }, [result, onClose]);
+
   if (!result) return null;
 
   return (
@@ -24,9 +39,13 @@ const ResultModal = ({ result, onClose }) => {
             {result.title || t("aiSearch.untitledMeeting")}
           </h2>
           <button
+            type="button"
             onClick={onClose}
+            aria-label="Close"
             className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 text-2xl"
-          ></button>
+          >
+            <X className="w-6 h-6" aria-hidden="true" />
+          </button>
         </div>
 
         <div className="space-y-4">
@@ -142,7 +161,7 @@ const AiSearch = () => {
         });
         setResults(res.data.results || []);
       } else {
-        const res = await apiClient.post("/api/ai-search", { query, filters });
+        const res = await apiClient.post("/api/ai", { query, filters });
         const data = res.data;
 
         let sortedResults = data.results || [];
@@ -188,11 +207,11 @@ const AiSearch = () => {
   };
 
   const handleOpenMeeting = (result) => {
-    window.open(`/meetings/${result.meetingId}`, "_blank");
+    window.open(`/meeting/${result.meetingId}`, "_blank");
   };
 
   const handleOpenMeetingById = (meetingId) => {
-    if (meetingId) window.open(`/meetings/${meetingId}`, "_blank");
+    if (meetingId) window.open(`/meeting/${meetingId}`, "_blank");
   };
 
   const handleCopySummary = async (result) => {

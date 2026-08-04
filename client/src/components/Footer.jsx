@@ -2,6 +2,7 @@ import React, { useCallback } from "react";
 import { useTranslation } from "react-i18next";
 import { Link, useLocation } from "react-router-dom";
 import { Github, ArrowUp } from "lucide-react";
+import ThemeToggle from "./ThemeToggle.jsx";
 
 const Footer = () => {
   const { t } = useTranslation();
@@ -67,7 +68,8 @@ const Footer = () => {
                 |
               </span>
               <span className="text-xs text-gray-500 dark:text-gray-400">
-                &copy; {currentYear} MeetOnMemory. {t("footer.allRightsReserved")}
+                &copy; {currentYear} MeetOnMemory.{" "}
+                {t("footer.allRightsReserved")}
               </span>
               <span className="px-2 py-0.5 text-[10px] font-semibold text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-gray-800 rounded-full">
                 v1.0.0
@@ -101,10 +103,35 @@ const Footer = () => {
                 Cookies
               </Link>
               <Link
+                to="/help-center"
+                className="hover:text-blue-600 dark:hover:text-blue-400 transition-colors duration-200"
+              >
+                {t("footer.helpCenter", "Help Center")}
+              </Link>
+              <Link
+                to="/careers"
+                className="hover:text-blue-600 dark:hover:text-blue-400 transition-colors duration-200"
+              >
+                {t("footer.careers", "Careers")}
+              </Link>
+              <Link
+                to="/docs"
+                className="hover:text-blue-600 dark:hover:text-blue-400 transition-colors duration-200 font-semibold text-blue-600 dark:text-blue-400"
+              >
+                Developer Docs
+              </Link>
+              <span className="text-gray-300 dark:text-gray-700">|</span>
+              <Link
                 to="/contact"
                 className="hover:text-blue-600 dark:hover:text-blue-400 transition-colors duration-200"
               >
                 {t("footer.contact", "Contact")}
+              </Link>
+              <Link
+                to="/status"
+                className="hover:text-blue-600 dark:hover:text-blue-400 transition-colors duration-200"
+              >
+                {t("footer.status", "Status")}
               </Link>
               <a
                 href="https://github.com/imuniqueshiv/MeetOnMemory"
@@ -249,6 +276,14 @@ const Footer = () => {
                   {t("navbar.login")}
                 </Link>
               </li>
+              <li>
+                <Link
+                  to="/status"
+                  className="text-sm text-gray-500 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors duration-200 inline-block"
+                >
+                  {t("footer.status", "System Status")}
+                </Link>
+              </li>
             </ul>
           </div>
 
@@ -260,10 +295,34 @@ const Footer = () => {
             <ul className="flex flex-col gap-3">
               <li>
                 <Link
+                  to="/help-center"
+                  className="text-sm text-gray-500 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors duration-200 inline-block font-medium"
+                >
+                  {t("footer.helpCenter", "Help Center")}
+                </Link>
+              </li>
+              <li>
+                <Link
                   to="/contact"
                   className="text-sm text-gray-500 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors duration-200 inline-block font-medium"
                 >
                   Contact Support
+                </Link>
+              </li>
+              <li>
+                <Link
+                  to="/careers"
+                  className="text-sm text-gray-500 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors duration-200 inline-block font-medium"
+                >
+                  {t("footer.careers", "Careers")}
+                </Link>
+              </li>
+              <li>
+                <Link
+                  to="/docs"
+                  className="text-sm text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 transition-colors duration-200 inline-block font-semibold"
+                >
+                  Developer Docs
                 </Link>
               </li>
               <li>
@@ -348,41 +407,83 @@ const Footer = () => {
             <p className="text-gray-400 dark:text-gray-500 text-sm">
               &copy; {currentYear} MeetOnMemory. {t("footer.allRightsReserved")}
             </p>
-            <span className="hidden sm:inline text-gray-300 dark:text-gray-700">|</span>
+            <span className="hidden sm:inline text-gray-300 dark:text-gray-700">
+              |
+            </span>
             <div className="flex items-center gap-3 text-xs font-medium text-gray-400 dark:text-gray-500">
-              <Link to="/privacy" className="hover:text-blue-600 dark:hover:text-blue-400 transition-colors">
+              <Link
+                to="/privacy"
+                className="hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
+              >
                 {t("footer.privacy")}
               </Link>
               <span>•</span>
-              <Link to="/terms" className="hover:text-blue-600 dark:hover:text-blue-400 transition-colors">
+              <Link
+                to="/terms"
+                className="hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
+              >
                 {t("footer.terms")}
               </Link>
               <span>•</span>
-              <Link to="/security" className="hover:text-blue-600 dark:hover:text-blue-400 transition-colors">
+              <Link
+                to="/security"
+                className="hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
+              >
                 {t("footer.security", "Security")}
               </Link>
               <span>•</span>
-              <Link to="/cookie-policy" className="hover:text-blue-600 dark:hover:text-blue-400 transition-colors">
+              <Link
+                to="/cookie-policy"
+                className="hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
+              >
                 Cookies
               </Link>
               <span>•</span>
-              <Link to="/contact" className="hover:text-blue-600 dark:hover:text-blue-400 transition-colors">
+              <Link
+                to="/help-center"
+                className="hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
+              >
+                {t("footer.helpCenter", "Help Center")}
+              </Link>
+              <span>•</span>
+              <Link
+                to="/careers"
+                className="hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
+              >
+                {t("footer.careers", "Careers")}
+              </Link>
+              <span>•</span>
+              <Link
+                to="/contact"
+                className="hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
+              >
                 {t("footer.contact", "Contact")}
+              </Link>
+              <span>•</span>
+              <Link
+                to="/status"
+                className="hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
+              >
+                {t("footer.status", "Status")}
               </Link>
             </div>
           </div>
           <p className="text-gray-400 dark:text-gray-500 text-sm">
-            {t("footer.madeWith")} ❤️ {t("footer.by")} {t("footer.meetOnMemoryTeam")}.
+            {t("footer.madeWith")} ❤️ {t("footer.by")}{" "}
+            {t("footer.meetOnMemoryTeam")}.
           </p>
-          {/* Back to top */}
-          <button
-            onClick={scrollToTop}
-            aria-label="Scroll back to top"
-            className="flex items-center gap-1.5 text-sm text-gray-400 dark:text-gray-500 hover:text-blue-600 dark:hover:text-blue-400 transition-colors duration-200 group focus-visible:ring-2 focus-visible:ring-blue-500 rounded-md px-1"
-          >
-            <ArrowUp className="w-4 h-4 group-hover:-translate-y-0.5 transition-transform duration-200" />
-            {t("footer.backToTop")}
-          </button>
+          <div className="flex items-center gap-3">
+            <ThemeToggle showLabel={false} />
+            {/* Back to top */}
+            <button
+              onClick={scrollToTop}
+              aria-label="Scroll back to top"
+              className="flex items-center gap-1.5 text-sm text-gray-400 dark:text-gray-500 hover:text-blue-600 dark:hover:text-blue-400 transition-colors duration-200 group focus-visible:ring-2 focus-visible:ring-blue-500 rounded-md px-1"
+            >
+              <ArrowUp className="w-4 h-4 group-hover:-translate-y-0.5 transition-transform duration-200" />
+              {t("footer.backToTop")}
+            </button>
+          </div>
         </div>
       </div>
     </footer>
@@ -390,4 +491,3 @@ const Footer = () => {
 };
 
 export default Footer;
-
