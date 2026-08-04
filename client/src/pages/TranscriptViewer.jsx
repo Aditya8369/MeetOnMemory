@@ -13,6 +13,7 @@ import {
   Sparkles,
 } from "lucide-react";
 import { toast } from "react-toastify";
+import { sanitizeHtml } from "../utils/sanitizeHtml";
 
 const TranscriptViewer = () => {
   const { meetingId } = useParams();
@@ -41,7 +42,7 @@ const TranscriptViewer = () => {
             Authorization: `Bearer ${token}`,
           },
           withCredentials: true,
-        }
+        },
       );
 
       setTranscript(response.data);
@@ -77,7 +78,7 @@ const TranscriptViewer = () => {
             Authorization: `Bearer ${token}`,
           },
           withCredentials: true,
-        }
+        },
       );
 
       setSearchResults(response.data.matches || []);
@@ -102,7 +103,7 @@ const TranscriptViewer = () => {
           },
           withCredentials: true,
           responseType: "blob",
-        }
+        },
       );
 
       const url = window.URL.createObjectURL(new Blob([response.data]));
@@ -134,7 +135,7 @@ const TranscriptViewer = () => {
           },
           withCredentials: true,
           responseType: "blob",
-        }
+        },
       );
 
       const url = window.URL.createObjectURL(new Blob([response.data]));
@@ -160,7 +161,10 @@ const TranscriptViewer = () => {
   const highlightText = (text, query) => {
     if (!query) return text;
     const regex = new RegExp(`(${query})`, "gi");
-    return text.replace(regex, '<mark class="bg-yellow-300 text-black">$1</mark>');
+    return text.replace(
+      regex,
+      '<mark class="bg-yellow-300 text-black">$1</mark>',
+    );
   };
 
   const scrollToSegment = (index) => {
@@ -177,7 +181,9 @@ const TranscriptViewer = () => {
       <div className="min-h-screen bg-gray-50 dark:bg-slate-900 flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600 mx-auto"></div>
-          <p className="mt-4 text-gray-600 dark:text-gray-400">Loading transcript...</p>
+          <p className="mt-4 text-gray-600 dark:text-gray-400">
+            Loading transcript...
+          </p>
         </div>
       </div>
     );
@@ -218,7 +224,10 @@ const TranscriptViewer = () => {
                 onClick={() => navigate(-1)}
                 className="p-2 hover:bg-gray-100 dark:hover:bg-slate-700 rounded-lg transition-colors"
               >
-                <ArrowLeft size={20} className="text-gray-600 dark:text-gray-400" />
+                <ArrowLeft
+                  size={20}
+                  className="text-gray-600 dark:text-gray-400"
+                />
               </button>
               <div>
                 <h1 className="text-xl font-bold text-gray-900 dark:text-white">
@@ -227,12 +236,16 @@ const TranscriptViewer = () => {
                 <div className="flex items-center gap-4 mt-1 text-sm text-gray-600 dark:text-gray-400">
                   <span className="flex items-center gap-1">
                     <Calendar size={14} />
-                    {meeting?.date ? new Date(meeting.date).toLocaleDateString() : "N/A"}
+                    {meeting?.date
+                      ? new Date(meeting.date).toLocaleDateString()
+                      : "N/A"}
                   </span>
                   <span className="flex items-center gap-1">
                     <Clock size={14} />
                     {Math.floor(transcript.duration / 60)}:
-                    {Math.floor(transcript.duration % 60).toString().padStart(2, "0")}
+                    {Math.floor(transcript.duration % 60)
+                      .toString()
+                      .padStart(2, "0")}
                   </span>
                   <span className="flex items-center gap-1">
                     <Users size={14} />
@@ -335,7 +348,9 @@ const TranscriptViewer = () => {
                   <p
                     className="text-gray-700 dark:text-gray-300 text-sm leading-relaxed"
                     dangerouslySetInnerHTML={{
-                      __html: highlightText(segment.text, searchQuery),
+                      __html: sanitizeHtml(
+                        highlightText(segment.text, searchQuery),
+                      ),
                     }}
                   />
                 </div>
@@ -360,7 +375,9 @@ const TranscriptViewer = () => {
                   {searchResults.map((result, index) => (
                     <button
                       key={index}
-                      onClick={() => scrollToSegment(transcript.segments.indexOf(result))}
+                      onClick={() =>
+                        scrollToSegment(transcript.segments.indexOf(result))
+                      }
                       className="w-full text-left p-3 bg-gray-50 dark:bg-slate-700 rounded-lg hover:bg-gray-100 dark:hover:bg-slate-600 transition-colors"
                     >
                       <div className="flex items-center gap-2 mb-1">

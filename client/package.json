@@ -17,6 +17,7 @@
     "buffer": "^6.0.3",
     "chart.js": "^4.5.1",
     "date-fns": "^4.4.0",
+    "dompurify": "^3.4.13",
     "i18next": "^26.3.6",
     "lucide-react": "^0.548.0",
     "process": "^0.11.10",
