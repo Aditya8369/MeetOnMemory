@@ -1,4 +1,5 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useContext, useMemo } from "react";
+import AppContent from "../context/AppContent.js";
 import { io } from "socket.io-client";
 import Peer from "simple-peer";
 import { toast } from "react-toastify";
@@ -13,6 +14,18 @@ import {
 export default function useWebRTC(roomId, callbacks) {
   const navigate = useNavigate();
   const backendUrl = getBackendUrl();
+  const { userData } = useContext(AppContent);
+  const localUserInfo = useMemo(
+    () => ({
+      id: userData?._id || userData?.id || undefined,
+      name: userData?.name || "Participant",
+      email: userData?.email || "",
+      profilePic: userData?.profilePic || "",
+    }),
+    [userData],
+  );
+  const localUserInfoRef = useRef(localUserInfo);
+  localUserInfoRef.current = localUserInfo;
 
   const [joined, setJoined] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -63,7 +76,7 @@ export default function useWebRTC(roomId, callbacks) {
         transports: ["websocket"],
       });
       socketRef.current = io(backendUrl, opts);
-      const userInfo = { name: "You" };
+      const userInfo = localUserInfoRef.current;
 
       socketRef.current.emit("join-meeting", { roomId, userInfo });
 
@@ -193,7 +206,7 @@ export default function useWebRTC(roomId, callbacks) {
         userToSignal,
         callerID,
         signal,
-        userInfo: { name: "You" },
+        userInfo: localUserInfoRef.current,
       });
     });
 
