@@ -10,13 +10,14 @@ try {
   // rate-limit-redis optional dependency fallback
 }
 
-// Create a shared store that uses Redis if available, otherwise falls back to in-memory
+// Create a shared store that uses Redis if available,
+// otherwise falls back to in-memory
 const createStore = (prefix) => {
   const redisClient = getRedisClient();
   if (redisClient && RedisStore) {
     return new RedisStore({
       sendCommand: (...args) => redisClient.sendCommand(...args),
-      prefix: prefix,
+      prefix,
     });
   }
   return undefined; // Falls back to default MemoryStore
@@ -72,8 +73,11 @@ export const uploadLimiter = rateLimit({
 // Rate limiter for login endpoint (protects against brute-force attacks)
 export const loginLimiter = rateLimit({
   ...baseOptions,
-  windowMs: parseInt(process.env.RATE_LIMIT_LOGIN_WINDOW_MS) || 15 * 60 * 1000, // 15 minutes default
-  max: parseInt(process.env.RATE_LIMIT_LOGIN_MAX) || 5, // 5 attempts per window default
+  // 15 minutes default
+  windowMs:
+    parseInt(process.env.RATE_LIMIT_LOGIN_WINDOW_MS) || 15 * 60 * 1000,
+  // 5 attempts per window default
+  max: parseInt(process.env.RATE_LIMIT_LOGIN_MAX) || 5,
   message: {
     success: false,
     message: "Too many login attempts, please try again later.",
@@ -82,12 +86,15 @@ export const loginLimiter = rateLimit({
   store: createStore("rl:login:"),
 });
 
-// Rate limiter for registration endpoint (protects against automated account creation)
+// Rate limiter for registration endpoint
+// (protects against automated account creation)
 export const registerLimiter = rateLimit({
   ...baseOptions,
+  // 1 hour default
   windowMs:
-    parseInt(process.env.RATE_LIMIT_REGISTER_WINDOW_MS) || 60 * 60 * 1000, // 1 hour default
-  max: parseInt(process.env.RATE_LIMIT_REGISTER_MAX) || 3, // 3 registrations per hour default
+    parseInt(process.env.RATE_LIMIT_REGISTER_WINDOW_MS) || 60 * 60 * 1000,
+  // 3 registrations per hour default
+  max: parseInt(process.env.RATE_LIMIT_REGISTER_MAX) || 3,
   message: {
     success: false,
     message: "Too many registration attempts, please try again later.",
@@ -99,8 +106,11 @@ export const registerLimiter = rateLimit({
 // Rate limiter for OTP endpoints (protects against OTP abuse and spam)
 export const otpLimiter = rateLimit({
   ...baseOptions,
-  windowMs: parseInt(process.env.RATE_LIMIT_OTP_WINDOW_MS) || 60 * 60 * 1000, // 1 hour default
-  max: parseInt(process.env.RATE_LIMIT_OTP_MAX) || 5, // 5 OTP requests per hour default
+  // 1 hour default
+  windowMs:
+    parseInt(process.env.RATE_LIMIT_OTP_WINDOW_MS) || 60 * 60 * 1000,
+  // 5 OTP requests per hour default
+  max: parseInt(process.env.RATE_LIMIT_OTP_MAX) || 5,
   message: {
     success: false,
     message: "Too many OTP requests, please try again later.",
@@ -147,7 +157,9 @@ export const assistantMessageLimiter = rateLimit({
   ...baseOptions,
   windowMs: 1 * 60 * 1000, // 1 minute
   max: 10, // Limit each user to 10 messages per minute
-  message: { error: "Too many messages sent. Please try again later." },
+  message: {
+    error: "Too many messages sent. Please try again later.",
+  },
   store: createStore("rl:assistant_message:"),
 });
 
@@ -182,7 +194,8 @@ export const policyAnalyzeLimiter = rateLimit({
   max: 20,
   message: {
     success: false,
-    message: "Too many re-analysis requests, please try again after 15 minutes.",
+    message:
+      "Too many re-analysis requests, please try again after 15 minutes.",
   },
   store: createStore("rl:policy_analyze:"),
 });
