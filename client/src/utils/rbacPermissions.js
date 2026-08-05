@@ -77,6 +77,12 @@ export const PERMISSIONS = {
     view: ["owner", "admin", "moderator", "member"],
     export: ["owner", "admin", "moderator"],
   },
+  // Analytics permissions (including attendance analytics)
+  analytics: {
+    view: ["owner", "admin", "moderator"],
+    export: ["owner", "admin"],
+    manage: ["owner", "admin"],
+  },
   // Admin Panel permissions
   admin_panel: {
     view: ["owner", "admin"],
