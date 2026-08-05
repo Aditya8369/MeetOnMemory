@@ -393,7 +393,7 @@ const ProtectedRoutes = (
     <Route
       path="/settings"
       element={
-        <ProtectedRoute resource="settings" action="view">
+        <ProtectedRoute>
           <Settings />
         </ProtectedRoute>
       }
