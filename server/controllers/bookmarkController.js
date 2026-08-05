@@ -1,6 +1,7 @@
 import Bookmark from "../models/bookmarkModel.js";
 import Meeting from "../models/meetingModel.js";
 import mongoose from "mongoose";
+import { isSameOrganization } from "../utils/authUtils.js";
 
 // @desc    Toggle bookmark (add if missing, remove if exists)
 // @route   POST /api/bookmarks/toggle
@@ -25,10 +26,7 @@ export const toggleBookmark = async (req, res) => {
       return res.status(404).json({ message: "Meeting not found" });
     }
 
-    const userOrg = req.user.organization?.toString();
-    const meetingOrg = meeting.organization?.toString();
-
-    if (!userOrg || !meetingOrg || userOrg !== meetingOrg) {
+    if (!isSameOrganization(req.user, meeting)) {
       return res.status(403).json({
         message: "Meeting does not belong to your organization",
       });

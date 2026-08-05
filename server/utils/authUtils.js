@@ -45,3 +45,15 @@ export async function verifyClerkSessionToken(token) {
     secretKey: process.env.CLERK_SECRET_KEY,
   });
 }
+
+/**
+ * Check if a user and a resource belong to the same organization.
+ * @param {object} user - User object containing `organization`.
+ * @param {object} resource - Resource object containing `organization`.
+ * @returns {boolean} True if both have valid, matching organization IDs.
+ */
+export const isSameOrganization = (user, resource) => {
+  const userOrg = user?.organization?.toString();
+  const resourceOrg = resource?.organization?.toString();
+  return Boolean(userOrg && resourceOrg && userOrg === resourceOrg);
+};

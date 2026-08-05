@@ -73,12 +73,6 @@ const userInOrgB = () => ({
   organization: ORG_B,
 });
 
-const meetingInOrgA = (id = new mongoose.Types.ObjectId()) => ({
-  _id: id,
-  organization: ORG_A,
-  select: vi.fn().mockReturnThis(),
-});
-
 describe("toggleBookmark — organization ownership (#819)", () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -98,6 +92,26 @@ describe("toggleBookmark — organization ownership (#819)", () => {
 
       expect(res.statusCode).toBe(403);
       expect(res.body.message).toMatch(/does not belong to your organization/i);
+      expect(mockBookmarkCreate).not.toHaveBeenCalled();
+    });
+
+    it("returns 403 and does not remove an existing bookmark when caller's org does not match meeting's org", async () => {
+      const meetingId = new mongoose.Types.ObjectId();
+      const existingBookmark = { _id: new mongoose.Types.ObjectId() };
+
+      mockMeetingFindById.mockReturnValue({
+        select: vi
+          .fn()
+          .mockResolvedValue({ _id: meetingId, organization: ORG_A }),
+      });
+      mockBookmarkFindOne.mockResolvedValue(existingBookmark);
+
+      const res = makeRes();
+      await toggleBookmark(makeReq(meetingId.toString(), userInOrgB()), res);
+
+      expect(res.statusCode).toBe(403);
+      expect(res.body.message).toMatch(/does not belong to your organization/i);
+      expect(mockBookmarkDeleteOne).not.toHaveBeenCalled();
       expect(mockBookmarkCreate).not.toHaveBeenCalled();
     });
 
