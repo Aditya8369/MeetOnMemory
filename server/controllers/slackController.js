@@ -159,7 +159,7 @@ export const slackOAuthRedirect = async (req, res, next) => {
       return sendError(res, 403, "Unauthorized organization binding.");
     }
 
-    if (!hasPermission(user.role || "guest", "settings", "edit")) {
+    if (!hasPermission(user.role, "settings", "edit")) {
       return sendError(
         res,
         403,
