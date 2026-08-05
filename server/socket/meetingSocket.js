@@ -1,7 +1,6 @@
 import Meeting from "../models/meetingModel.js";
 import { hasPermission } from "../utils/rbacPermissions.js";
 import streamingTranscriptionService from "../services/StreamingTranscriptionService.js";
-import authenticateSocket from "../middleware/socketAuth.js";
 import { getRedisClient } from "../services/redisService.js";
 
 /**
@@ -118,9 +117,6 @@ export default (io) => {
   const localUsersInRoom = new Map(); // roomId -> Array of users
   const localSocketToRoom = new Map(); // socketId -> roomId
   const roomTimers = {}; // roomId -> timer state (still local as timers are instance-specific)
-
-  // Authentication Middleware with Clerk & Dual Auth support
-  io.use(authenticateSocket);
 
   io.on("connection", (socket) => {
     /**
