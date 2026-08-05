@@ -2,6 +2,7 @@ import {
   findUserByClerkId,
   provisionOrLinkClerkUser,
 } from "../services/authLinkingService.js";
+import { AccountMergeError } from "../services/userAccountMergeService.js";
 import { verifyClerkSessionToken } from "../utils/authUtils.js";
 import logger from "../utils/logger.js";
 
@@ -184,6 +185,15 @@ const userAuth = async (req, res, next) => {
 
     next();
   } catch (error) {
+    if (error instanceof AccountMergeError) {
+      console.error(`${DIAG} userAuth ACCOUNT MERGE CONFLICT`);
+      console.error(error?.message);
+      return res.status(409).json({
+        success: false,
+        message: error.message || "Account synchronization conflict.",
+      });
+    }
+
     console.error("Auth middleware error:", error.message);
 
     console.error(`${DIAG} userAuth OUTER catch`);

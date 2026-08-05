@@ -1,6 +1,7 @@
 import { sendSuccess, sendError } from "../utils/responseHandler.js";
 import AuthService from "../services/AuthService.js";
 import { provisionOrLinkClerkUser } from "../services/authLinkingService.js";
+import { AccountMergeError } from "../services/userAccountMergeService.js";
 
 // --------------------------- HELPERS ---------------------------
 const validateFields = (fields, res) => {
@@ -231,6 +232,13 @@ export const syncClerkUser = async (req, res) => {
 
     return sendSuccess(res, { user }, "User synchronized successfully");
   } catch (error) {
+    if (error instanceof AccountMergeError) {
+      return sendError(
+        res,
+        409,
+        error.message || "Failed to sync user due to account conflict",
+      );
+    }
     // Do not swallow — dump full exception for Render logs
     console.error(`${DIAG} EXCEPTION in syncClerkUser`);
     console.error(error);
