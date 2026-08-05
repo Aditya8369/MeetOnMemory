@@ -55,20 +55,6 @@ const TranscriptViewer = () => {
   const fetchTranscript = useCallback(async () => {
     try {
       setLoading(true);
-      const token = document.cookie
-        .split("; ")
-        .find((row) => row.startsWith("token="))
-        ?.split("=")[1];
-
-      const response = await axios.get(
-        `${backendUrl}/api/transcripts/meeting/${meetingId}`,
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-          withCredentials: true,
-        },
-      );
       const response = await api.get(`/transcripts/meeting/${meetingId}`);
 
       setTranscript(response.data);
@@ -116,12 +102,6 @@ const TranscriptViewer = () => {
       const response = await api.post(
         `/transcripts/meeting/${meetingId}/search`,
         { query: searchQuery },
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-          withCredentials: true,
-        },
       );
 
       setSearchResults(response.data.matches || []);
