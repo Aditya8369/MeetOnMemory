@@ -74,8 +74,7 @@ export const uploadLimiter = rateLimit({
 export const loginLimiter = rateLimit({
   ...baseOptions,
   // 15 minutes default
-  windowMs:
-    parseInt(process.env.RATE_LIMIT_LOGIN_WINDOW_MS) || 15 * 60 * 1000,
+  windowMs: parseInt(process.env.RATE_LIMIT_LOGIN_WINDOW_MS) || 15 * 60 * 1000,
   // 5 attempts per window default
   max: parseInt(process.env.RATE_LIMIT_LOGIN_MAX) || 5,
   message: {
@@ -107,8 +106,7 @@ export const registerLimiter = rateLimit({
 export const otpLimiter = rateLimit({
   ...baseOptions,
   // 1 hour default
-  windowMs:
-    parseInt(process.env.RATE_LIMIT_OTP_WINDOW_MS) || 60 * 60 * 1000,
+  windowMs: parseInt(process.env.RATE_LIMIT_OTP_WINDOW_MS) || 60 * 60 * 1000,
   // 5 OTP requests per hour default
   max: parseInt(process.env.RATE_LIMIT_OTP_MAX) || 5,
   message: {
