@@ -11,11 +11,12 @@ try {
 }
 
 // Create a shared store that uses Redis if available, otherwise falls back to in-memory
-const createStore = () => {
+const createStore = (prefix) => {
   const redisClient = getRedisClient();
   if (redisClient && RedisStore) {
     return new RedisStore({
       sendCommand: (...args) => redisClient.sendCommand(...args),
+      prefix: prefix,
     });
   }
   return undefined; // Falls back to default MemoryStore
@@ -37,7 +38,7 @@ export const apiLimiter = rateLimit({
     success: false,
     message: "Too many requests from this IP, please try again later.",
   },
-  store: createStore(),
+  store: createStore("rl:api:"),
 });
 
 // Stricter rate limiter for write operations (create, update, delete)
@@ -49,7 +50,7 @@ export const writeLimiter = rateLimit({
     success: false,
     message: "Too many write requests from this IP, please try again later.",
   },
-  store: createStore(),
+  store: createStore("rl:write:"),
 });
 
 // Rate limiter for file uploads (stricter due to resource usage)
@@ -61,7 +62,7 @@ export const uploadLimiter = rateLimit({
     success: false,
     message: "Too many upload requests from this IP, please try again later.",
   },
-  store: createStore(),
+  store: createStore("rl:upload:"),
 });
 
 // ================================
@@ -78,7 +79,7 @@ export const loginLimiter = rateLimit({
     message: "Too many login attempts, please try again later.",
   },
   skipSuccessfulRequests: true, // Don't count successful requests
-  store: createStore(),
+  store: createStore("rl:login:"),
 });
 
 // Rate limiter for registration endpoint (protects against automated account creation)
@@ -92,7 +93,7 @@ export const registerLimiter = rateLimit({
     message: "Too many registration attempts, please try again later.",
   },
   skipSuccessfulRequests: true,
-  store: createStore(),
+  store: createStore("rl:register:"),
 });
 
 // Rate limiter for OTP endpoints (protects against OTP abuse and spam)
@@ -105,7 +106,7 @@ export const otpLimiter = rateLimit({
     message: "Too many OTP requests, please try again later.",
   },
   skipSuccessfulRequests: true,
-  store: createStore(),
+  store: createStore("rl:otp:"),
 });
 
 // ================================
@@ -122,7 +123,7 @@ export const globalLimiter = rateLimit({
     message:
       "Too many requests from this IP, please try again after 15 minutes",
   },
-  store: createStore(),
+  store: createStore("rl:global:"),
 });
 
 // Rate limiter for data export requests (1 per 24 hours per IP)
@@ -134,5 +135,78 @@ export const dataExportLimiter = rateLimit({
     success: false,
     message: "You can only request a data export once every 24 hours.",
   },
-  store: createStore(),
+  store: createStore("rl:data_export:"),
+});
+
+// ================================
+// ASSISTANT & POLICY RATE LIMITERS
+// ================================
+
+// Rate limiter for RAG assistant message sending
+export const assistantMessageLimiter = rateLimit({
+  ...baseOptions,
+  windowMs: 1 * 60 * 1000, // 1 minute
+  max: 10, // Limit each user to 10 messages per minute
+  message: { error: "Too many messages sent. Please try again later." },
+  store: createStore("rl:assistant_message:"),
+});
+
+// General policy rate limiter (all policy routes)
+export const policyApiLimiter = rateLimit({
+  ...baseOptions,
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 100,
+  message: {
+    success: false,
+    message: "Too many requests, please try again after 15 minutes.",
+  },
+  store: createStore("rl:policy_api:"),
+});
+
+// Stricter policy upload rate limiter
+export const policyUploadLimiter = rateLimit({
+  ...baseOptions,
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 10,
+  message: {
+    success: false,
+    message: "Too many upload requests, please try again after 15 minutes.",
+  },
+  store: createStore("rl:policy_upload:"),
+});
+
+// Policy re-analysis rate limiter
+export const policyAnalyzeLimiter = rateLimit({
+  ...baseOptions,
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 20,
+  message: {
+    success: false,
+    message: "Too many re-analysis requests, please try again after 15 minutes.",
+  },
+  store: createStore("rl:policy_analyze:"),
+});
+
+// Policy download rate limiter
+export const policyDownloadLimiter = rateLimit({
+  ...baseOptions,
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 60,
+  message: {
+    success: false,
+    message: "Too many download requests, please try again after 15 minutes.",
+  },
+  store: createStore("rl:policy_download:"),
+});
+
+// Policy delete rate limiter
+export const policyDeleteLimiter = rateLimit({
+  ...baseOptions,
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 10,
+  message: {
+    success: false,
+    message: "Too many delete requests, please try again after 15 minutes.",
+  },
+  store: createStore("rl:policy_delete:"),
 });

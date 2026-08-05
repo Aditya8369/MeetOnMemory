@@ -9,17 +9,11 @@ import {
   clearPinnedContext,
 } from "../services/ragAssistantService.js";
 import userAuth from "../middleware/userAuth.js";
-import rateLimit from "express-rate-limit";
+import { assistantMessageLimiter } from "../middleware/rateLimiter.js";
 
 const router = express.Router();
 
 router.use(userAuth);
-
-const messageLimiter = rateLimit({
-  windowMs: 1 * 60 * 1000, // 1 minute
-  max: 10, // Limit each user to 10 messages per minute
-  message: { error: "Too many messages sent. Please try again later." },
-});
 
 // Create a new session
 router.post("/sessions", async (req, res) => {
@@ -117,7 +111,7 @@ router.delete("/sessions/:id/pinned-context", async (req, res) => {
 });
 
 // Send a message
-router.post("/sessions/:id/message", messageLimiter, async (req, res) => {
+router.post("/sessions/:id/message", assistantMessageLimiter, async (req, res) => {
   try {
     const { content } = req.body;
     if (!content) {
