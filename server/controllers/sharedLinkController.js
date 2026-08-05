@@ -487,7 +487,8 @@ export const getPublicResource = async (req, res) => {
     if (link.resourceModel === "Meeting") {
       const meeting = await Meeting.findById(link.resourceId)
         .select(
-          "title description meetingType date time duration location venue participants agendaItems policyDetails transcript summary structuredMoM aiNotes status tags",
+          "title description date time location " +
+            "participants summary structuredMoM",
         )
         .lean();
 
@@ -496,12 +497,22 @@ export const getPublicResource = async (req, res) => {
           .status(404)
           .json({ success: false, message: "Meeting not found" });
       }
-      resourceData = meeting;
+
+      resourceData = {
+        title: meeting.title,
+        description: meeting.description,
+        date: meeting.date,
+        time: meeting.time,
+        location: meeting.location,
+        summary: meeting.summary,
+        structuredMoM: meeting.structuredMoM,
+        participants: meeting.participants
+          ? Array(meeting.participants.length).fill({})
+          : [],
+      };
     } else if (link.resourceModel === "Policy") {
       const policy = await Policy.findById(link.resourceId)
-        .select(
-          "name version fileUrl summary key_changes keywords status isDraft",
-        )
+        .select("name version summary key_changes")
         .lean();
 
       if (!policy) {
@@ -509,7 +520,13 @@ export const getPublicResource = async (req, res) => {
           .status(404)
           .json({ success: false, message: "Policy not found" });
       }
-      resourceData = policy;
+
+      resourceData = {
+        name: policy.name,
+        version: policy.version,
+        summary: policy.summary,
+        key_changes: policy.key_changes,
+      };
     }
 
     // Record view only after successful access; never include analytics in public payload
