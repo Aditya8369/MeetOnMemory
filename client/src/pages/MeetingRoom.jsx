@@ -31,6 +31,10 @@ import {
   getMeetingVideoGridClass,
   MEETING_VIDEO_TILE_CLASS,
 } from "../utils/meetingVideoGrid.js";
+import {
+  getTrackEnabledState,
+  resolveMeetingMediaStream,
+} from "../utils/mediaStream.js";
 
 const MeetingRoom = () => {
   const { roomId } = useParams();
@@ -123,16 +127,22 @@ const MeetingRoom = () => {
     return () => clearInterval(interval);
   }, [timerState.isRunning, meetingEnded]);
 
-  const joinMeeting = async () => {
+  const joinMeeting = async (providedStream = null, joinOptions = {}) => {
     try {
       setLoading(true);
 
-      const stream = await navigator.mediaDevices.getUserMedia({
-        video: true,
-        audio: true,
+      const { mode = null } = joinOptions;
+      const stream = await resolveMeetingMediaStream({
+        providedStream,
+        mode,
+        videoDeviceId: permission.selectedCamera,
+        audioDeviceId: permission.selectedMicrophone,
       });
 
       streamRef.current = stream;
+      const trackState = getTrackEnabledState(stream);
+      setMicOn(trackState.micOn);
+      setCameraOn(trackState.cameraOn);
       setJoined(true);
 
       setTimeout(() => {
@@ -265,6 +275,7 @@ const MeetingRoom = () => {
       setMediaError(errMsg);
       toast.error(errMsg);
       setLoading(false);
+      setDeviceSetupDone(false);
     }
   };
 
@@ -386,13 +397,16 @@ const MeetingRoom = () => {
   };
 
   const handleJoinWithStream = (stream) => {
+    // Hand off ownership so Device Setup unmount cleanup does not stop tracks.
+    permission.releaseStream();
     setDeviceSetupDone(true);
     joinMeeting(stream);
   };
 
-  const handleJoinWithout = () => {
+  const handleJoinWithout = (mode = "observer") => {
+    permission.releaseStream();
     setDeviceSetupDone(true);
-    joinMeeting(null);
+    joinMeeting(null, { mode });
   };
 
   return (

@@ -5,6 +5,10 @@ import { toast } from "react-toastify";
 import { useNavigate } from "react-router-dom";
 import { getBackendUrl } from "../config/backendConfig.js";
 import { createClerkSocketOptions } from "../services/apiClient.js";
+import {
+  getTrackEnabledState,
+  resolveMeetingMediaStream,
+} from "../utils/mediaStream.js";
 
 export default function useWebRTC(roomId, callbacks) {
   const navigate = useNavigate();
@@ -26,18 +30,27 @@ export default function useWebRTC(roomId, callbacks) {
   const screenTrackRef = useRef(null);
   const peersRef = useRef([]);
 
-  const joinMeeting = async (providedStream = null) => {
+  const joinMeeting = async (providedStream = null, joinOptions = {}) => {
     try {
       setLoading(true);
 
-      const stream =
-        providedStream ||
-        (await navigator.mediaDevices.getUserMedia({
-          video: true,
-          audio: true,
-        }));
+      const {
+        mode = null,
+        videoDeviceId = "",
+        audioDeviceId = "",
+      } = joinOptions;
+
+      const stream = await resolveMeetingMediaStream({
+        providedStream,
+        mode,
+        videoDeviceId,
+        audioDeviceId,
+      });
 
       streamRef.current = stream;
+      const trackState = getTrackEnabledState(stream);
+      setMicOn(trackState.micOn);
+      setCameraOn(trackState.cameraOn);
       setJoined(true);
 
       setTimeout(() => {
