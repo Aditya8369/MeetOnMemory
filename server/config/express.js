@@ -22,16 +22,24 @@ export function configureExpress(app) {
   app.use(requestContext);
   configureSecurity(app);
   app.use(cors(corsOptions));
+  app.use(cookieParser());
+
+  // Public Slack webhooks are parsed by Slack-specific body parsers BEFORE the
+  // global JSON/urlencoded parsers. This order is required so that:
+  //  1. req.rawBody is captured for Slack HMAC signature verification, and
+  //  2. the strict SLACK_PAYLOAD_LIMIT is enforced on these endpoints.
+  // If the global parsers ran first, they would consume the stream and both
+  // guarantees would be lost. (Issue #1118)
+  app.use("/api/slack", slackWebhookParser, slackRoutes);
+
   app.use(express.json({ limit: "2mb" }));
   app.use(express.urlencoded({ extended: true, limit: "2mb" }));
-  app.use(cookieParser());
 
   // Dependency-aware health probes must not be blocked by the global limiter
   // or CSRF middleware.
   configureHealthEndpoints(app);
 
   // External/public routes use their own authentication mechanisms.
-  app.use("/api/slack", slackWebhookParser, slackRoutes);
   app.use("/api/webhooks", webhookRoutes);
   app.use("/api/public/shared", publicSharedRoutes);
 
