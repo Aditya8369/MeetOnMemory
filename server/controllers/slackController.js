@@ -23,6 +23,7 @@ import {
   buildMeetingCreatedBlocks,
 } from "../services/slackService.js";
 import { sendError } from "../utils/responseHandler.js";
+import { encryptToken } from "../utils/crypto.js";
 
 // Helpers
 
@@ -181,7 +182,7 @@ export const slackOAuthRedirect = async (req, res, next) => {
     // slackData.team.id / slackData.team.name = the Slack workspace info
     await Organization.findByIdAndUpdate(organizationId, {
       $set: {
-        "slackIntegration.botToken": slackData.access_token,
+        "slackIntegration.botToken": encryptToken(slackData.access_token),
         "slackIntegration.channelId":
           slackData.incoming_webhook?.channel_id || "",
         "slackIntegration.teamId": slackData.team?.id || "",
