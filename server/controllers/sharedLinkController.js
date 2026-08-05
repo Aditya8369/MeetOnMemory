@@ -15,6 +15,12 @@ import {
   isPasscodeLocked,
 } from "../utils/sharedLinkSecurity.js";
 
+const getSharedLinkJwtSecret = () =>
+  process.env.SHARED_LINK_JWT_SECRET ||
+  process.env.SHARED_LINK_SECRET ||
+  process.env.JWT_SECRET ||
+  "default_shared_link_secret";
+
 /**
  * The shareable resource types and the model each one resolves against.
  *
@@ -454,7 +460,7 @@ export const verifyPasscode = async (req, res) => {
     // Generate a short-lived token to access the resource
     const token = jwt.sign(
       { linkId: link._id, hash: link.hash },
-      process.env.JWT_SECRET,
+      getSharedLinkJwtSecret(),
       { expiresIn: "1h" },
     );
 
@@ -501,19 +507,26 @@ export const getPublicResource = async (req, res) => {
         });
       }
 
+      let decoded = null;
+      const secret = getSharedLinkJwtSecret();
       try {
-        const decoded = jwt.verify(token, process.env.JWT_SECRET);
-        if (decoded.hash !== hash) {
-          return res.status(401).json({
-            success: false,
-            message: "Invalid access token",
-            requiresPasscode: true,
-          });
-        }
+        decoded = jwt.verify(token, secret);
       } catch (_err) {
+        if (process.env.JWT_SECRET && process.env.JWT_SECRET !== secret) {
+          try {
+            decoded = jwt.verify(token, process.env.JWT_SECRET);
+          } catch (_fallbackErr) {
+            // ignore
+          }
+        }
+      }
+
+      if (!decoded || decoded.hash !== hash) {
         return res.status(401).json({
           success: false,
-          message: "Session expired, please re-enter passcode",
+          message: !decoded
+            ? "Session expired, please re-enter passcode"
+            : "Invalid access token",
           requiresPasscode: true,
         });
       }
