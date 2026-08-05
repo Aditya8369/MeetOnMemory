@@ -1,7 +1,7 @@
 import express from "express";
 import {
   createLink,
-  getActiveLinksFixed,
+  getActiveLinks,
   revokeLink,
 } from "../controllers/sharedLinkController.js";
 import userAuth from "../middleware/userAuth.js";
@@ -12,7 +12,7 @@ const router = express.Router();
 router.use(userAuth);
 
 router.post("/", createLink);
-router.get("/:resourceType/:resourceId", getActiveLinksFixed);
+router.get("/:resourceType/:resourceId", getActiveLinks);
 router.delete("/:id", revokeLink);
 
 export default router;

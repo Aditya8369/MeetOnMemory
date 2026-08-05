@@ -50,7 +50,7 @@ import bcrypt from "bcryptjs";
 import {
   getPublicResource,
   verifyPasscode,
-  getActiveLinksFixed,
+  getActiveLinks,
 } from "../controllers/sharedLinkController.js";
 
 const mockRes = () => {
@@ -241,7 +241,7 @@ describe("Shared link analytics (#723)", () => {
       user: { organization: "org-1", role: "member" },
     };
     const memberRes = mockRes();
-    await getActiveLinksFixed(memberReq, memberRes);
+    await getActiveLinks(memberReq, memberRes);
     expect(memberRes.body.links[0]).toMatchObject({
       totalViews: 5,
       failedPasscodeAttempts: 2,
@@ -253,7 +253,7 @@ describe("Shared link analytics (#723)", () => {
       user: { organization: "org-1", role: "viewer" },
     };
     const viewerRes = mockRes();
-    await getActiveLinksFixed(viewerReq, viewerRes);
+    await getActiveLinks(viewerReq, viewerRes);
     expect(viewerRes.body.links[0].totalViews).toBeUndefined();
     expect(viewerRes.body.links[0].failedPasscodeAttempts).toBeUndefined();
     expect(viewerRes.body.links[0].hash).toBe("h1");
