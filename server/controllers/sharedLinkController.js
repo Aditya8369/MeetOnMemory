@@ -200,6 +200,19 @@ export const createLink = async (req, res) => {
         .json({ success: false, message: "Invalid resource type" });
     }
 
+    const userRole = req.user?.role || "guest";
+    const resourceCategory =
+      resourceType === "Policy" ? "policies" : "meetings";
+    if (
+      !hasPermission(userRole, resourceCategory, "edit") &&
+      !hasPermission(userRole, resourceCategory, "create")
+    ) {
+      return res.status(403).json({
+        success: false,
+        message: `Forbidden: Insufficient permissions to create shared links for ${resourceType.toLowerCase()}`,
+      });
+    }
+
     if (!mongoose.isValidObjectId(resourceId)) {
       // Previously a malformed id reached `findById` and surfaced as a CastError
       // 500 rather than a validation error.
@@ -310,6 +323,17 @@ export const getActiveLinks = async (req, res) => {
 export const getActiveLinksFixed = async (req, res) => {
   try {
     const { resourceType, resourceId } = req.params;
+    const userRole = req.user?.role || "guest";
+    const resourceCategory =
+      resourceType === "Policy" ? "policies" : "meetings";
+
+    if (!hasPermission(userRole, resourceCategory, "view")) {
+      return res.status(403).json({
+        success: false,
+        message: `Forbidden: Insufficient permissions to view shared links for ${resourceType.toLowerCase()}`,
+      });
+    }
+
     const includeAnalytics = canViewAnalytics(req.user, resourceType);
 
     const links = await SharedLink.find({
@@ -337,12 +361,25 @@ export const revokeLink = async (req, res) => {
 
     const link = await SharedLink.findOne({
       _id: id,
-      organizationId: req.user.organization,
+      organizationId: req.user?.organization,
     });
     if (!link) {
       return res
         .status(404)
         .json({ success: false, message: "Link not found" });
+    }
+
+    const userRole = req.user?.role || "guest";
+    const resourceCategory =
+      link.resourceModel === "Policy" ? "policies" : "meetings";
+    if (
+      !hasPermission(userRole, resourceCategory, "edit") &&
+      !hasPermission(userRole, resourceCategory, "delete")
+    ) {
+      return res.status(403).json({
+        success: false,
+        message: `Forbidden: Insufficient permissions to revoke shared links for ${link.resourceModel.toLowerCase()}`,
+      });
     }
 
     link.active = false;
