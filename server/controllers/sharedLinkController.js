@@ -79,11 +79,7 @@ const analyticsPermissionFor = (resourceModel) =>
   resourceModel === "Policy" ? "policies" : "meetings";
 
 const canViewAnalytics = (user, resourceModel) =>
-  hasPermission(
-    user?.role || "guest",
-    analyticsPermissionFor(resourceModel),
-    "edit",
-  );
+  hasPermission(user?.role, analyticsPermissionFor(resourceModel), "edit");
 
 const toPublicLink = (link, includeAnalytics) => {
   const base = {
