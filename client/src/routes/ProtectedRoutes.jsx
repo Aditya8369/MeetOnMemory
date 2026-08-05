@@ -167,7 +167,7 @@ const ProtectedRoutes = (
     <Route
       path="/automation-rules"
       element={
-        <ProtectedRoute resource="organization" action="manage">
+        <ProtectedRoute resource="automation_rules" action="view">
           <AutomationRules />
         </ProtectedRoute>
       }
