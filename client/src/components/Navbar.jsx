@@ -389,7 +389,7 @@ const Navbar = () => {
       label: t("navbar.dashboard"),
       href: "/dashboard",
       icon: LayoutDashboard,
-      permission: { resource: "reports", action: "view" },
+      permission: null,
     },
     {
       label: t("navbar.meetings"),
