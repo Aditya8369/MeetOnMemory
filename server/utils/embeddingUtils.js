@@ -168,10 +168,7 @@ export const indexMeeting = async (meeting) => {
         metadata: {
           meetingId: meeting._id.toString(),
           chunkIndex: i,
-          title,
-          summary,
-          transcript: meeting.transcript,
-          createdAt: meeting.createdAt || new Date(),
+          text: transcriptChunks[i],
           organization: meeting.organization?.toString() || null,
         },
       });
