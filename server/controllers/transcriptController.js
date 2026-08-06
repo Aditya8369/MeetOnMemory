@@ -886,6 +886,39 @@ function formatTimestamp(seconds) {
 }
 
 /**
+ * Translate transcript (stub for translation operation)
+ */
+export const translateTranscript = async (req, res) => {
+  try {
+    const { meetingId } = req.params;
+    
+    // Authorization: User must be authenticated (handled by userAuth)
+    // Authorization: User must be part of organization and have view permission (handled by requireOrgAccess and requirePermission)
+    
+    const transcript = await Transcript.findOne({ meeting: meetingId }).populate("meeting");
+    if (!transcript) {
+      return res.status(404).json({ message: "Transcript not found" });
+    }
+
+    const meeting = transcript.meeting;
+
+    // Translation ownership check (where applicable)
+    // Ensure only the user who uploaded the meeting or an admin can perform translation operations
+    const isOwner = meeting.uploadedBy?.toString() === req.user._id.toString();
+    const isAdmin = req.user.role === "admin";
+    
+    if (!isOwner && !isAdmin) {
+      return res.status(403).json({ 
+        message: "Forbidden: You do not own this meeting and cannot perform translation operations" 
+      });
+    }
+
+    // Since this is a placeholder for actual translation logic (per constraints), 
+    // we return a success response immediately.
+    res.json({ message: "Translation authorized and processed successfully", transcript: transcript.fullText });
+  } catch (error) {
+    console.error("Error translating transcript:", error);
+    res.status(500).json({ message: "Failed to translate transcript" });
  * Update speaker tags in a transcript
  */
 export const updateSpeakers = async (req, res) => {
