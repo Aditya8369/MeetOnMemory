@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import Navbar from "../components/Navbar.jsx";
 import { useCalendarEvents } from "../hooks/useCalendarEvents";
@@ -13,6 +13,7 @@ import {
   Plus,
   Loader2,
   Inbox,
+  Cloud,
 } from "lucide-react";
 
 const Calendar = () => {
@@ -32,9 +33,24 @@ const Calendar = () => {
     setTypeFilter,
     orgFilter,
     setOrgFilter,
+    showExternalEvents,
+    setShowExternalEvents,
     filteredMeetings,
     uniqueOrgs,
+    hasMore,
+    loadMoreMeetings,
   } = useCalendarEvents();
+
+  // Handle outside click to close modal
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (e.key === "Escape") {
+        setSelectedMeeting(null);
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [setSelectedMeeting]);
 
   // Navigation helpers
   const handlePrev = () => {
@@ -111,14 +127,11 @@ const Calendar = () => {
 
           <div className="flex items-center gap-3 w-full md:w-auto">
             <button
-              onClick={() => {
-                window.location.href =
-                  "http://localhost:4000/api/auth/google-calendar";
-              }}
-              className="inline-flex items-center gap-2 px-4 py-2 text-xs font-bold text-slate-700 bg-white border border-slate-200 hover:bg-slate-50 active:bg-slate-100 rounded-xl transition-all shadow-sm cursor-pointer w-full md:w-auto justify-center"
+              onClick={() => navigate("/settings")}
+              className="inline-flex items-center gap-2 px-4 py-2 text-xs font-bold text-slate-700 bg-white dark:bg-slate-800 dark:text-slate-200 border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700 active:bg-slate-100 rounded-xl transition-all shadow-xs cursor-pointer w-full md:w-auto justify-center"
             >
-              <CalendarIcon className="w-4 h-4 text-blue-600" />
-              Sync Google Calendar
+              <CalendarIcon className="w-4 h-4 text-blue-600 dark:text-blue-400" />
+              Calendar Integrations
             </button>
             <button
               onClick={() => navigate("/create-meeting")}
@@ -186,6 +199,19 @@ const Calendar = () => {
               <Filter className="w-3.5 h-3.5 text-slate-400" />
               <span>Filters:</span>
             </div>
+
+            {/* External events toggle */}
+            <button
+              onClick={() => setShowExternalEvents(!showExternalEvents)}
+              className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg border transition-all cursor-pointer ${
+                showExternalEvents
+                  ? "bg-purple-50 dark:bg-purple-900/30 border-purple-200 dark:border-purple-700 text-purple-700 dark:text-purple-300"
+                  : "bg-slate-50 dark:bg-slate-800 border-slate-200/80 dark:border-slate-700 text-slate-600 dark:text-slate-400"
+              }`}
+            >
+              <Cloud className="w-3.5 h-3.5" />
+              <span>External Events</span>
+            </button>
 
             {/* Date filter (Jump to Date) */}
             <div className="flex items-center gap-1 bg-slate-50 dark:bg-slate-800 border border-slate-200/80 dark:border-slate-700 rounded-lg px-2.5 py-1 text-slate-700 dark:text-slate-300 select-none">
@@ -277,12 +303,34 @@ const Calendar = () => {
             </button>
           </div>
         ) : (
-          <CalendarGrid
-            view={view}
-            currentDate={currentDate}
-            filteredMeetings={filteredMeetings}
-            setSelectedMeeting={setSelectedMeeting}
-          />
+          <>
+            <CalendarGrid
+              view={view}
+              currentDate={currentDate}
+              filteredMeetings={filteredMeetings}
+              setSelectedMeeting={setSelectedMeeting}
+            />
+
+            {/* Load More Button - Issue #1234 */}
+            {hasMore && (
+              <div className="flex justify-center mt-6">
+                <button
+                  onClick={loadMoreMeetings}
+                  disabled={loading}
+                  className="px-6 py-3 text-sm font-semibold text-blue-600 dark:text-blue-400 bg-white dark:bg-slate-800 border border-blue-200 dark:border-blue-700 rounded-xl hover:bg-blue-50 dark:hover:bg-slate-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-sm"
+                >
+                  {loading ? (
+                    <span className="flex items-center gap-2">
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                      Loading...
+                    </span>
+                  ) : (
+                    "Load More Meetings"
+                  )}
+                </button>
+              </div>
+            )}
+          </>
         )}
       </main>
 
