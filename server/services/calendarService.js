@@ -7,8 +7,7 @@ import CalendarConnection from "../models/calendarConnectionModel.js";
 
 // Encryption key from environment
 const ENCRYPTION_KEY =
-  process.env.CALENDAR_ENCRYPTION_KEY ||
-  process.env.TOKEN_ENCRYPTION_KEY;
+  process.env.CALENDAR_ENCRYPTION_KEY || process.env.TOKEN_ENCRYPTION_KEY;
 
 if (!ENCRYPTION_KEY) {
   console.warn(

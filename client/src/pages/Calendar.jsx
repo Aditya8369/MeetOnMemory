@@ -37,6 +37,8 @@ const Calendar = () => {
     setShowExternalEvents,
     filteredMeetings,
     uniqueOrgs,
+    hasMore,
+    loadMoreMeetings,
   } = useCalendarEvents();
 
   // Handle outside click to close modal
@@ -301,12 +303,34 @@ const Calendar = () => {
             </button>
           </div>
         ) : (
-          <CalendarGrid
-            view={view}
-            currentDate={currentDate}
-            filteredMeetings={filteredMeetings}
-            setSelectedMeeting={setSelectedMeeting}
-          />
+          <>
+            <CalendarGrid
+              view={view}
+              currentDate={currentDate}
+              filteredMeetings={filteredMeetings}
+              setSelectedMeeting={setSelectedMeeting}
+            />
+
+            {/* Load More Button - Issue #1234 */}
+            {hasMore && (
+              <div className="flex justify-center mt-6">
+                <button
+                  onClick={loadMoreMeetings}
+                  disabled={loading}
+                  className="px-6 py-3 text-sm font-semibold text-blue-600 dark:text-blue-400 bg-white dark:bg-slate-800 border border-blue-200 dark:border-blue-700 rounded-xl hover:bg-blue-50 dark:hover:bg-slate-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-sm"
+                >
+                  {loading ? (
+                    <span className="flex items-center gap-2">
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                      Loading...
+                    </span>
+                  ) : (
+                    "Load More Meetings"
+                  )}
+                </button>
+              </div>
+            )}
+          </>
         )}
       </main>
 

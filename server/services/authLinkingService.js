@@ -1,15 +1,11 @@
 import userModel from "../models/userModel.js";
 import crypto from "crypto";
+import {
+  isPlaceholderClerkEmail,
+  mergePlaceholderAccount,
+} from "./userAccountMergeService.js";
 
 const DIAG = "[SYNC-CLERK-DIAG]";
-
-const isPlaceholderClerkEmail = (email) => {
-  if (!email || typeof email !== "string") return true;
-  return (
-    email.endsWith("@clerk.placeholder") ||
-    /^user_[A-Za-z0-9]+(@|$)/.test(email)
-  );
-};
 
 /**
  * Finds a MongoDB user by their Clerk ID.
@@ -122,6 +118,26 @@ export const provisionOrLinkClerkUser = async ({
             emailOwner?._id?.toString?.() === user._id?.toString?.() || false,
         },
       );
+      const occupiedByOther =
+        emailOwner && emailOwner._id.toString() !== user._id.toString();
+      if (occupiedByOther) {
+        console.error(
+          `${DIAG} 7. Email occupied by another account — merging placeholder (Issue #1114)`,
+          {
+            placeholderId: user._id?.toString?.() || null,
+            verifiedId: emailOwner._id?.toString?.() || null,
+            email,
+          },
+        );
+        return await mergePlaceholderAccount({
+          placeholder: user,
+          verified: emailOwner,
+          clerkUserId,
+          email,
+          name,
+          profilePic,
+        });
+      }
       user.email = email;
       needsSave = true;
       pending.email = true;

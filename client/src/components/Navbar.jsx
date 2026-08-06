@@ -15,6 +15,7 @@ import { notificationApi, authApi, organizationApi } from "../services";
 import { io } from "socket.io-client";
 import { createClerkSocketOptions } from "../services/apiClient.js";
 import LanguageSwitcher from "./LanguageSwitcher.jsx";
+import BrandLogo from "./branding/BrandLogo.jsx";
 import { useUser } from "@clerk/clerk-react";
 import {
   Menu,
@@ -389,7 +390,7 @@ const Navbar = () => {
       label: t("navbar.dashboard"),
       href: "/dashboard",
       icon: LayoutDashboard,
-      permission: { resource: "reports", action: "view" },
+      permission: null,
     },
     {
       label: t("navbar.meetings"),
@@ -492,35 +493,12 @@ const Navbar = () => {
             onKeyDown={(e) => e.key === "Enter" && navigate("/")}
           >
             <div className="flex items-center justify-center shrink-0">
-              {/* Clean Extra Large Native Option A Infinity Symbol with scale only */}
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                viewBox="0 0 100 100"
+              <BrandLogo
+                variant="mark"
+                alt=""
+                aria-hidden="true"
                 className="relative w-10 h-10 sm:w-12 sm:h-12 lg:w-16 lg:h-16 transition-transform duration-300 group-hover:scale-105"
-              >
-                <defs>
-                  <linearGradient
-                    id="navInfinityGrad"
-                    x1="0%"
-                    y1="0%"
-                    x2="100%"
-                    y2="100%"
-                  >
-                    <stop offset="0%" stop-color="#2563eb" />
-                    <stop offset="100%" stop-color="#7c3aed" />
-                  </linearGradient>
-                </defs>
-                <path
-                  d="M25,50 C25,35 38,30 50,50 C62,70 75,65 75,50 C75,35 62,30 50,50 C38,70 25,65 25,50 Z"
-                  fill="none"
-                  stroke="url(#navInfinityGrad)"
-                  stroke-width="11"
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                />
-                <circle cx="25" cy="50" r="6.5" fill="#2563eb" />
-                <circle cx="75" cy="50" r="6.5" fill="#7c3aed" />
-              </svg>
+              />
             </div>
             {/* Clean, Consistent Text Layout (Hover effects removed) */}
             <span className="font-bold text-lg sm:text-2xl text-gray-900 dark:text-gray-100 tracking-tight shrink-0">

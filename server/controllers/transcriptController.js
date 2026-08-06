@@ -191,6 +191,62 @@ export const uploadTranscriptAudio = async (req, res) => {
       });
     }
 
+    const ALLOWED_RECORDING_MIME_TYPES = [
+      "audio/mpeg",
+      "audio/mp3",
+      "audio/wav",
+      "audio/x-wav",
+      "audio/m4a",
+      "audio/x-m4a",
+      "audio/ogg",
+      "audio/webm",
+      "audio/flac",
+      "audio/aac",
+      "audio/mp4",
+      "video/mp4",
+      "video/webm",
+      "video/quicktime",
+      "video/x-msvideo",
+      "video/x-matroska",
+      "application/octet-stream",
+    ];
+
+    const ALLOWED_RECORDING_EXTENSIONS = [
+      ".mp3",
+      ".wav",
+      ".m4a",
+      ".ogg",
+      ".webm",
+      ".flac",
+      ".aac",
+      ".mp4",
+      ".mov",
+      ".avi",
+      ".mkv",
+    ];
+
+    const ext = path.extname(req.file.originalname || "").toLowerCase();
+    const mimeType = req.file.mimetype;
+    const isExtAllowed = !ext || ALLOWED_RECORDING_EXTENSIONS.includes(ext);
+    const isMimeAllowed =
+      !mimeType ||
+      mimeType === "blob" ||
+      ALLOWED_RECORDING_MIME_TYPES.includes(mimeType);
+
+    if (!isExtAllowed || !isMimeAllowed) {
+      if (req.file.path && fs.existsSync(req.file.path)) {
+        try {
+          fs.unlinkSync(req.file.path);
+        } catch {
+          // ignore
+        }
+      }
+      return res.status(400).json({
+        success: false,
+        message: "Invalid file type or extension for meeting recording",
+      });
+    }
+
     // Verify meeting exists and user has access
     const meeting = await Meeting.findById(meetingId);
     if (!meeting) {
