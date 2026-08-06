@@ -10,7 +10,9 @@ import ActionItem from "../models/actionItemModel.js";
 describe("reportGeneratorService", () => {
   const mockUserId = new mongoose.Types.ObjectId();
   const mockOrgId = new mongoose.Types.ObjectId();
-  const mockUser = { _id: mockUserId, currentOrganization: mockOrgId };
+  // `organization`, not `currentOrganization` — nothing ever wrote the latter,
+  // and this fixture was the only place it appeared (Issue #1272).
+  const mockUser = { _id: mockUserId, organization: mockOrgId };
 
   afterEach(() => {
     jest.clearAllMocks();
@@ -117,12 +119,11 @@ describe("reportGeneratorService", () => {
       }),
     });
 
-    const result = await generateReport(
-      "template-3",
-      {},
-      mockUser,
-      mockOrgId.toString(),
-    );
+    // `mockOrgId` is passed as an ObjectId, the shape the controller actually
+    // supplies. This used to be `.toString()`, which was the only reason the
+    // test passed — the service compared a string against an ObjectId and
+    // rejected every template a real caller owned (Issue #1272).
+    const result = await generateReport("template-3", {}, mockUser, mockOrgId);
 
     expect(template.save).toHaveBeenCalled();
     expect(result.templateName).toBe("Test Template");

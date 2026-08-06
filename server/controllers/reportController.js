@@ -1,6 +1,8 @@
+import mongoose from "mongoose";
 import { z } from "zod";
 import ReportTemplate from "../models/reportTemplateModel.js";
 import { generateReport } from "../services/reportGeneratorService.js";
+import { isSameOrganization } from "../utils/organizationScope.js";
 
 // Validation Schemas
 const sectionSchema = z.object({
@@ -30,17 +32,117 @@ const reportTemplateSchema = z.object({
   isShared: z.boolean().optional(),
 });
 
+/**
+ * Organization context for the caller (Issue #1272).
+ *
+ * Every handler in this file used to read `req.user.currentOrganization`. No
+ * middleware, model field or service ever wrote that property — `userModel`
+ * calls it `organization`, and `requireOrgMembership` only asserts that
+ * `req.user.organization` is truthy. So `orgId` was permanently `undefined`,
+ * and the whole feature answered `400 Organization context required` on the two
+ * routes that checked for it and 404 on the rest.
+ *
+ * The router now guarantees membership before any handler runs, so this is a
+ * plain read rather than another place to re-check it.
+ */
+const callerOrganization = (req) => req.user?.organization;
+
+/**
+ * Rejects a `:id` that Mongoose would throw a `CastError` on.
+ *
+ * `ReportTemplate.findById("not-an-id")` rejects, and every handler funnels
+ * rejections into a generic 500. A malformed id is a client mistake and belongs
+ * in the 400 family.
+ */
+const invalidTemplateId = (res, id) => {
+  if (mongoose.Types.ObjectId.isValid(id)) return false;
+
+  res.status(400).json({ success: false, message: "Invalid template ID" });
+  return true;
+};
+
+/**
+ * Loads a template the caller is allowed to *see*.
+ *
+ * Returns `null` after responding, so callers can `if (!template) return;`.
+ *
+ * The organization check deliberately produces the same 404 as a missing
+ * template: telling a caller "this exists, but not for you" confirms the id is
+ * real. The creator check is a 403 because by that point the caller has already
+ * been established as a member of the owning organization.
+ */
+const loadVisibleTemplate = async (req, res) => {
+  const { id } = req.params;
+  if (invalidTemplateId(res, id)) return null;
+
+  const template = await ReportTemplate.findById(id);
+
+  if (
+    !template ||
+    !isSameOrganization(template.organization, callerOrganization(req))
+  ) {
+    res.status(404).json({ success: false, message: "Template not found" });
+    return null;
+  }
+
+  if (
+    !template.isShared &&
+    template.createdBy.toString() !== req.user._id.toString()
+  ) {
+    res.status(403).json({
+      success: false,
+      message: "Not authorized to view this template",
+    });
+    return null;
+  }
+
+  return template;
+};
+
+/**
+ * Loads a template the caller is allowed to *modify*.
+ *
+ * Sharing a template grants read access, not write access — only the creator
+ * may edit or delete, which is why this cannot reuse `loadVisibleTemplate`.
+ */
+const loadEditableTemplate = async (req, res, action) => {
+  const { id } = req.params;
+  if (invalidTemplateId(res, id)) return null;
+
+  const template = await ReportTemplate.findById(id);
+
+  if (
+    !template ||
+    !isSameOrganization(template.organization, callerOrganization(req))
+  ) {
+    res.status(404).json({ success: false, message: "Template not found" });
+    return null;
+  }
+
+  if (template.createdBy.toString() !== req.user._id.toString()) {
+    res.status(403).json({
+      success: false,
+      message: `Not authorized to ${action} this template`,
+    });
+    return null;
+  }
+
+  return template;
+};
+
+const sendValidationError = (res, error) =>
+  res.status(400).json({
+    success: false,
+    message: "Validation error",
+    errors: error.errors,
+  });
+
 // @desc    Get all report templates for the organization
 // @route   GET /api/reports/templates
-// @access  Private
+// @access  Private (reports:view)
 export const getReportTemplates = async (req, res) => {
   try {
-    const orgId = req.user.currentOrganization;
-    if (!orgId) {
-      return res
-        .status(400)
-        .json({ success: false, message: "Organization context required" });
-    }
+    const orgId = callerOrganization(req);
 
     // Fetch templates created by the user or shared within the org
     const templates = await ReportTemplate.find({
@@ -57,27 +159,11 @@ export const getReportTemplates = async (req, res) => {
 
 // @desc    Get a single report template
 // @route   GET /api/reports/templates/:id
-// @access  Private
+// @access  Private (reports:view)
 export const getReportTemplate = async (req, res) => {
   try {
-    const orgId = req.user.currentOrganization;
-    const template = await ReportTemplate.findById(req.params.id);
-
-    if (!template || template.organization.toString() !== orgId) {
-      return res
-        .status(404)
-        .json({ success: false, message: "Template not found" });
-    }
-
-    if (
-      !template.isShared &&
-      template.createdBy.toString() !== req.user._id.toString()
-    ) {
-      return res.status(403).json({
-        success: false,
-        message: "Not authorized to view this template",
-      });
-    }
+    const template = await loadVisibleTemplate(req, res);
+    if (!template) return;
 
     res.status(200).json({ success: true, data: template });
   } catch (error) {
@@ -88,32 +174,23 @@ export const getReportTemplate = async (req, res) => {
 
 // @desc    Create a new report template
 // @route   POST /api/reports/templates
-// @access  Private
+// @access  Private (reports:view)
 export const createReportTemplate = async (req, res) => {
   try {
-    const orgId = req.user.currentOrganization;
-    if (!orgId) {
-      return res
-        .status(400)
-        .json({ success: false, message: "Organization context required" });
-    }
-
     const validatedData = reportTemplateSchema.parse(req.body);
 
+    // `organization` and `createdBy` are applied last so a body carrying either
+    // key cannot re-parent the template or forge its author.
     const template = await ReportTemplate.create({
       ...validatedData,
-      organization: orgId,
+      organization: callerOrganization(req),
       createdBy: req.user._id,
     });
 
     res.status(201).json({ success: true, data: template });
   } catch (error) {
     if (error instanceof z.ZodError) {
-      return res.status(400).json({
-        success: false,
-        message: "Validation error",
-        errors: error.errors,
-      });
+      return sendValidationError(res, error);
     }
     console.error("Error creating report template:", error);
     res.status(500).json({ success: false, message: "Server error" });
@@ -122,39 +199,24 @@ export const createReportTemplate = async (req, res) => {
 
 // @desc    Update a report template
 // @route   PUT /api/reports/templates/:id
-// @access  Private
+// @access  Private (reports:view, creator only)
 export const updateReportTemplate = async (req, res) => {
   try {
-    const orgId = req.user.currentOrganization;
     const validatedData = reportTemplateSchema.parse(req.body);
 
-    const template = await ReportTemplate.findById(req.params.id);
+    const template = await loadEditableTemplate(req, res, "edit");
+    if (!template) return;
 
-    if (!template || template.organization.toString() !== orgId) {
-      return res
-        .status(404)
-        .json({ success: false, message: "Template not found" });
-    }
-
-    // Only creator can update
-    if (template.createdBy.toString() !== req.user._id.toString()) {
-      return res.status(403).json({
-        success: false,
-        message: "Not authorized to edit this template",
-      });
-    }
-
+    // `validatedData` is the parsed schema output, not `req.body`, so keys the
+    // schema does not declare — `organization`, `createdBy`, `generationCount` —
+    // are dropped rather than assigned.
     Object.assign(template, validatedData);
     await template.save();
 
     res.status(200).json({ success: true, data: template });
   } catch (error) {
     if (error instanceof z.ZodError) {
-      return res.status(400).json({
-        success: false,
-        message: "Validation error",
-        errors: error.errors,
-      });
+      return sendValidationError(res, error);
     }
     console.error("Error updating report template:", error);
     res.status(500).json({ success: false, message: "Server error" });
@@ -163,25 +225,11 @@ export const updateReportTemplate = async (req, res) => {
 
 // @desc    Delete a report template
 // @route   DELETE /api/reports/templates/:id
-// @access  Private
+// @access  Private (reports:view, creator only)
 export const deleteReportTemplate = async (req, res) => {
   try {
-    const orgId = req.user.currentOrganization;
-    const template = await ReportTemplate.findById(req.params.id);
-
-    if (!template || template.organization.toString() !== orgId) {
-      return res
-        .status(404)
-        .json({ success: false, message: "Template not found" });
-    }
-
-    // Only creator can delete
-    if (template.createdBy.toString() !== req.user._id.toString()) {
-      return res.status(403).json({
-        success: false,
-        message: "Not authorized to delete this template",
-      });
-    }
+    const template = await loadEditableTemplate(req, res, "delete");
+    if (!template) return;
 
     await template.deleteOne();
 
@@ -196,32 +244,38 @@ export const deleteReportTemplate = async (req, res) => {
 
 // @desc    Generate report data based on template
 // @route   POST /api/reports/generate/:id
-// @access  Private
+// @access  Private (reports:view)
 export const generateReportData = async (req, res) => {
   try {
-    const orgId = req.user.currentOrganization;
     const templateId = req.params.id;
-    const filterOverrides = req.body.filterOverrides || {};
+    if (invalidTemplateId(res, templateId)) return;
+
+    const filterOverrides = req.body?.filterOverrides || {};
 
     const reportData = await generateReport(
       templateId,
       filterOverrides,
       req.user,
-      orgId,
+      callerOrganization(req),
     );
 
     res.status(200).json({ success: true, data: reportData });
   } catch (error) {
+    // The service signals authorization and lookup failures with plain Errors.
+    // `error.message` was previously dereferenced unconditionally, so any
+    // rejection without a message (an aborted DB operation, for instance) threw
+    // a second time inside the catch block and escaped as an unhandled
+    // rejection instead of a response.
+    const message = typeof error?.message === "string" ? error.message : "";
+
+    if (message.includes("permission") || message.includes("authorized")) {
+      return res.status(403).json({ success: false, message });
+    }
+    if (message.includes("not found")) {
+      return res.status(404).json({ success: false, message });
+    }
+
     console.error("Error generating report:", error);
-    if (
-      error.message.includes("permission") ||
-      error.message.includes("authorized")
-    ) {
-      return res.status(403).json({ success: false, message: error.message });
-    }
-    if (error.message.includes("not found")) {
-      return res.status(404).json({ success: false, message: error.message });
-    }
     res.status(500).json({ success: false, message: "Server error" });
   }
 };
