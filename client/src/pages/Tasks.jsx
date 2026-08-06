@@ -1,6 +1,8 @@
 import React from "react";
 import { useNavigate } from "react-router-dom";
 import Navbar from "../components/Navbar.jsx";
+import RoleGate from "../components/RoleGate.jsx";
+import { useRBAC } from "../hooks/useRBAC.js";
 import {
   CheckCircle2,
   AlertCircle,
@@ -18,6 +20,8 @@ import Pagination from "../components/meetings/Pagination";
 const Tasks = () => {
   const navigate = useNavigate();
   const taskState = useTasks();
+  const { hasPermission } = useRBAC();
+  const canCreateMeeting = hasPermission("meetings", "create");
 
   return (
     <div className="min-h-screen bg-linear-to-b from-slate-50 via-white to-slate-50 dark:from-slate-950 dark:via-slate-900 dark:to-slate-950 flex flex-col">
@@ -85,16 +89,20 @@ const Tasks = () => {
             <p className="text-slate-600 dark:text-slate-400 mb-6">
               {taskState.hasActiveFilters
                 ? "Try adjusting your filters or search terms"
-                : "Upload and transcribe meetings to generate action items"}
+                : canCreateMeeting
+                  ? "Upload and transcribe meetings to generate action items"
+                  : "Action items from meetings will appear here."}
             </p>
             {!taskState.hasActiveFilters && (
-              <button
-                onClick={() => navigate("/upload-meeting")}
-                className="inline-flex items-center gap-2 px-6 py-2.5 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-colors"
-              >
-                <FileText className="w-4 h-4" />
-                Upload Meeting
-              </button>
+              <RoleGate resource="meetings" action="create">
+                <button
+                  onClick={() => navigate("/upload-meeting")}
+                  className="inline-flex items-center gap-2 px-6 py-2.5 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-colors"
+                >
+                  <FileText className="w-4 h-4" />
+                  Upload Meeting
+                </button>
+              </RoleGate>
             )}
           </div>
         ) : (
