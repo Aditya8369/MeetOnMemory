@@ -481,6 +481,37 @@ export const getPinnedNotes = async (req, res) => {
   }
 };
 
+// @desc Search personal notes for the current user
+// @route GET /api/personal-notes/search
+// @access Private
+export const searchNotes = async (req, res) => {
+  try {
+    const userId = req.user._id;
+    const { query } = req.query;
+
+    const filter = { userId };
+    if (query) {
+      filter.$or = [
+        { title: { $regex: query, $options: "i" } },
+        { content: { $regex: query, $options: "i" } },
+      ];
+    }
+
+    const notes = await PersonalNote.find(filter)
+      .populate("meetingId", "title date organization")
+      .sort({ updatedAt: -1 });
+
+    res.status(200).json({
+      success: true,
+      notes,
+      count: notes.length,
+    });
+  } catch (error) {
+    console.error("Error searching notes:", error);
+    res.status(500).json({ success: false, message: "Server error" });
+  }
+};
+
 // Export constants for use in other modules
 export const NOTE_LIMITS = {
   MAX_TITLE_LENGTH: MAX_NOTE_TITLE_LENGTH,

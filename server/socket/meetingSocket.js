@@ -1,7 +1,6 @@
 import Meeting from "../models/meetingModel.js";
 import { hasPermission } from "../utils/rbacPermissions.js";
 import streamingTranscriptionService from "../services/StreamingTranscriptionService.js";
-import authenticateSocket from "../middleware/socketAuth.js";
 import { getRedisClient } from "../services/redisService.js";
 
 /**
@@ -119,9 +118,6 @@ export default (io) => {
   const localSocketToRoom = new Map(); // socketId -> roomId
   const roomTimers = {}; // roomId -> timer state (still local as timers are instance-specific)
 
-  // Authentication Middleware with Clerk & Dual Auth support
-  io.use(authenticateSocket);
-
   io.on("connection", (socket) => {
     /**
      * Check if user has access to a specific meeting
@@ -199,8 +195,17 @@ export default (io) => {
           return;
         }
 
-        // Create user object with socket ID
-        const user = { socketId: socket.id, ...userInfo };
+        // Create user object with socket ID using server-side
+        // authenticated data to prevent spoofing
+        const user = {
+          socketId: socket.id,
+          id: socket.userId,
+          userId: socket.userId,
+          name: socket.user?.name || "Anonymous",
+          email: socket.user?.email || "",
+          profilePic: socket.user?.profilePic || "",
+          role: socket.userRole || "member",
+        };
 
         // Add user to room presence (distributed via Redis)
         const allUsersInRoom = await addUserToRoom(
@@ -263,7 +268,15 @@ export default (io) => {
       io.to(payload.userToSignal).emit("user-joined-signal", {
         signal: payload.signal,
         callerID: payload.callerID,
-        userInfo: payload.userInfo,
+        userInfo: {
+          socketId: socket.id,
+          id: socket.userId,
+          userId: socket.userId,
+          name: socket.user?.name || "Anonymous",
+          email: socket.user?.email || "",
+          profilePic: socket.user?.profilePic || "",
+          role: socket.userRole || "member",
+        },
       });
     });
 

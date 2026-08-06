@@ -108,6 +108,13 @@ export const PERMISSIONS = {
   audit_logs: {
     view: ["owner", "admin"],
   },
+  // Automation Rules permissions (org admins / owners only)
+  automation_rules: {
+    view: ["owner", "admin"],
+    create: ["owner", "admin"],
+    edit: ["owner", "admin"],
+    delete: ["owner", "admin"],
+  },
 };
 
 /**
