@@ -44,7 +44,17 @@ const TranscriptViewer = () => {
         }
       );
 
-      setTranscript(response.data);
+      const data = response.data;
+      if (data && data.segments) {
+        data.segments = data.segments.filter((segment, index, self) =>
+          index === self.findIndex(s => 
+            s.startTime === segment.startTime && 
+            s.text === segment.text && 
+            s.speaker === segment.speaker
+          )
+        );
+      }
+      setTranscript(data);
     } catch (error) {
       console.error("Error fetching transcript:", error);
       toast.error("Failed to load transcript");
