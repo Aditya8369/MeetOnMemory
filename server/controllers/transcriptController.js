@@ -560,10 +560,18 @@ export const voiceSearch = async (req, res) => {
       });
     }
 
+    const userOrg = req.user?.organization?.toString();
+    if (!userOrg) {
+      return res.status(400).json({
+        success: false,
+        message: "Organization context is required for voice search",
+      });
+    }
+
     console.log(`🎙️ Voice Search for query: "${query}"`);
 
-    // Perform vector search across all content types
-    const results = await searchVectorStore(query);
+    // Perform vector search across all content types scoped to user's org
+    const results = await searchVectorStore(query, { organization: userOrg });
 
     if (!results || results.length === 0) {
       return res.status(200).json({
@@ -573,10 +581,9 @@ export const voiceSearch = async (req, res) => {
       });
     }
 
-    // Filter results to include only those belonging to user's organization (fail closed)
-    const userOrg = req.user?.organization?.toString();
+    // Filter results to include only those belonging to user's organization
     const filteredResults = results.filter((r) => {
-      if (!r.organization || !userOrg) return false;
+      if (!r.organization) return false;
       return r.organization.toString() === userOrg;
     });
 
