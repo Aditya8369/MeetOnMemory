@@ -422,10 +422,29 @@ describe("POST /generate/:id", () => {
       .send({})
       .expect(404);
 
-    expect(res.body.message).toMatch(/not found in your organization/i);
+    // The message must not say "in your organization" — that wording confirms
+    // the id names a real template, which is the distinction the 404 exists to
+    // hide.
+    expect(res.body.message).toBe("Report Template not found");
 
     const stored = await ReportTemplate.findById(template._id);
     expect(stored.generationCount).toBe(0);
+  });
+
+  it("is indistinguishable from generating with an id that does not exist", async () => {
+    const foreign = await seedForeignSharedTemplate();
+
+    const existsElsewhere = await request(app)
+      .post(`/api/reports/generate/${foreign._id}`)
+      .send({})
+      .expect(404);
+
+    const doesNotExist = await request(app)
+      .post(`/api/reports/generate/${new mongoose.Types.ObjectId()}`)
+      .send({})
+      .expect(404);
+
+    expect(existsElsewhere.body).toEqual(doesNotExist.body);
   });
 
   it("refuses to generate from a colleague's private template", async () => {

@@ -3,6 +3,7 @@ import { z } from "zod";
 import ReportTemplate from "../models/reportTemplateModel.js";
 import { generateReport } from "../services/reportGeneratorService.js";
 import { isSameOrganization } from "../utils/organizationScope.js";
+import { AppError } from "../utils/errors.js";
 
 // Validation Schemas
 const sectionSchema = z.object({
@@ -261,18 +262,21 @@ export const generateReportData = async (req, res) => {
 
     res.status(200).json({ success: true, data: reportData });
   } catch (error) {
-    // The service signals authorization and lookup failures with plain Errors.
-    // `error.message` was previously dereferenced unconditionally, so any
-    // rejection without a message (an aborted DB operation, for instance) threw
-    // a second time inside the catch block and escaped as an unhandled
-    // rejection instead of a response.
-    const message = typeof error?.message === "string" ? error.message : "";
-
-    if (message.includes("permission") || message.includes("authorized")) {
-      return res.status(403).json({ success: false, message });
-    }
-    if (message.includes("not found")) {
-      return res.status(404).json({ success: false, message });
+    // Map on the error's own status, not on the wording of its message.
+    //
+    // This was a chain of `error.message.includes("permission" | "authorized" |
+    // "not found")`. Two things were wrong with that. Rewording a message in
+    // the service silently turned a deliberate 403 into a 500, with nothing to
+    // connect the two edits. And the reverse held as well: any unrelated
+    // failure whose message happened to contain "not found" — a driver error,
+    // a populate on a missing ref — was reported to the client as a 404.
+    //
+    // The service now throws the typed errors from `utils/errors.js`, so the
+    // status travels with the error instead of being re-derived from prose.
+    if (error instanceof AppError) {
+      return res
+        .status(error.statusCode)
+        .json({ success: false, message: error.message });
     }
 
     console.error("Error generating report:", error);
