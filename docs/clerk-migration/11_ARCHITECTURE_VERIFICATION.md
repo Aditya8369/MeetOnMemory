@@ -18,7 +18,7 @@ Evidence-based checklist for the current auth system.
 | Membership roles narrower                     | ✅ Verified    | `membershipModel.js` enum `admin\|member`                                                                   |
 | Socket cookie JWT auth                        | ✅ Verified    | `meetingSocket.js`, `transcriptSocket.js`, `documentSync.js`                                                |
 | AppContext CSRF + is-auth bootstrap           | ✅ Verified    | `AppContext.jsx`                                                                                            |
-| apiClient CSRF header                         | ✅ Verified    | `apiClient.js`, `csrfService.js`                                                                            |
+| apiClient CSRF header                         | ❌ Retired     | Client CSRF helper removed (`csrfService.js`, Issue #1139); requests use Clerk Bearer |
 | No Clerk today                                | ✅ Verified    | No Clerk deps/usage in app source (planning time)                                                           |
 | `password` required on User                   | ✅ Verified    | `userModel.js`                                                                                              |
 | ChatSession is not login session              | ✅ Verified    | `ChatSession.js` AI history                                                                                 |

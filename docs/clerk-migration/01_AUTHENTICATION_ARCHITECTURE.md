@@ -107,12 +107,11 @@ flowchart LR
   F --> G[csrfErrorHandler → 403 CSRF_INVALID]
 ```
 
-- Token issue: `GET /api/csrf-token` → `{ csrfToken: req.csrfToken() }`.
-- Client storage: **in-memory only** (`csrfService.js`), attached as `X-CSRF-Token`.
-- On CSRF failure: refresh once and retry (`apiClient` interceptor).
-- Auth login/register **require** CSRF (`authCsrfRegression` tests).
+- Token issue: `GET /api/csrf-token` → `{ csrfToken: req.csrfToken() }` (legacy).
+- Client storage: **removed** after Clerk cutover (`csrfService.js` deleted in Issue #1139).
+- Mutating API calls now authenticate with Clerk Bearer tokens via `apiClient`; there is no client CSRF refresh/retry path.
 
-**Evidence:** `server/config/express.js`, `server/middleware/csrfProtection.js`, `client/src/services/csrfService.js`.
+**Evidence (current):** `client/src/services/apiClient.js` (Clerk Bearer). Historical server CSRF pieces may still appear in older migration notes.
 
 ---
 
@@ -235,7 +234,7 @@ Frontend: `/email-verify`, `/reset-password`.
 | ------- | ---------------------------------------------------- |
 | Context | `AppContext.jsx` / `AppContent.js` (not AuthContext) |
 | Guard   | `ProtectedRoute.jsx`                                 |
-| API     | `authApi.js`, `apiClient.js`, `csrfService.js`       |
+| API     | `authApi.js`, `apiClient.js` (Clerk Bearer; CSRF client helper removed) |
 | Pages   | `Login.jsx`, `EmailVerify.jsx`, `ResetPassword.jsx`  |
 
 **Legacy inconsistency:** some pages read `localStorage.token` or parse `document.cookie` for Bearer headers; AppContext **does not** set `localStorage.token`.
