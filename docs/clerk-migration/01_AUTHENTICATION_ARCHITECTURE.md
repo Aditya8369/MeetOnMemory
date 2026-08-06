@@ -234,7 +234,7 @@ Frontend: `/email-verify`, `/reset-password`.
 | ------- | ---------------------------------------------------- |
 | Context | `AppContext.jsx` / `AppContent.js` (not AuthContext) |
 | Guard   | `ProtectedRoute.jsx`                                 |
-| API     | `authApi.js`, `apiClient.js` (Clerk Bearer; CSRF client helper removed) |
+| API     | **Current:** `apiClient.js` (Clerk Bearer). **Legacy:** `authApi.js` (`/api/auth/*` identity helpers; do not use for new work). CSRF client helper removed (Issue #1139). |
 | Pages   | `Login.jsx`, `EmailVerify.jsx`, `ResetPassword.jsx`  |
 
 **Legacy inconsistency:** some pages read `localStorage.token` or parse `document.cookie` for Bearer headers; AppContext **does not** set `localStorage.token`.
