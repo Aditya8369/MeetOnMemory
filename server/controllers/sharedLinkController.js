@@ -293,36 +293,9 @@ export const createLink = async (req, res) => {
   }
 };
 
+
+
 export const getActiveLinks = async (req, res) => {
-  try {
-    const { resourceType, resourceId } = req.params;
-
-    const links = await SharedLink.find({
-      resourceId,
-      resourceModel: resourceType,
-      organizationId: req.user.organization,
-      active: true,
-    }).select("-passcode");
-
-    res.status(200).json({
-      success: true,
-      links: links.map((link) => ({
-        _id: link._id,
-        hash: link.hash,
-        expirationDate: link.expirationDate,
-        hasPasscode: !!link.passcode, // this check doesn't work if passcode is excluded in select, wait.
-      })),
-    });
-  } catch (error) {
-    console.error("Error fetching active links:", error);
-    res
-      .status(500)
-      .json({ success: false, message: "Server error fetching links" });
-  }
-};
-
-// Fix the hasPasscode issue for getActiveLinks
-export const getActiveLinksFixed = async (req, res) => {
   try {
     const { resourceType, resourceId } = req.params;
     const userRole = req.user?.role || "guest";

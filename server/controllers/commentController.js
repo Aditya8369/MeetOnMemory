@@ -204,7 +204,12 @@ export const createComment = async (req, res) => {
     res.status(201).json(savedComment);
   } catch (error) {
     console.error("Error creating comment:", error);
-    res.status(500).json({ message: "Server Error", error: error.message });
+    res.status(500).json({
+      error: {
+        code: "INTERNAL_SERVER_ERROR",
+        message: "An unexpected error occurred. Please try again later.",
+      },
+    });
   }
 };
 
@@ -292,7 +297,12 @@ export const getCommentsByMeeting = async (req, res) => {
     });
   } catch (error) {
     console.error("Error fetching comments:", error);
-    res.status(500).json({ message: "Server Error", error: error.message });
+    res.status(500).json({
+      error: {
+        code: "INTERNAL_SERVER_ERROR",
+        message: "An unexpected error occurred. Please try again later.",
+      },
+    });
   }
 };
 
@@ -350,7 +360,12 @@ export const updateComment = async (req, res) => {
     res.status(200).json(updatedComment);
   } catch (error) {
     console.error("Error updating comment:", error);
-    res.status(500).json({ message: "Server Error", error: error.message });
+    res.status(500).json({
+      error: {
+        code: "INTERNAL_SERVER_ERROR",
+        message: "An unexpected error occurred. Please try again later.",
+      },
+    });
   }
 };
 
@@ -400,7 +415,12 @@ export const deleteComment = async (req, res) => {
     res.status(200).json({ message: "Comment deleted successfully", id });
   } catch (error) {
     console.error("Error deleting comment:", error);
-    res.status(500).json({ message: "Server Error", error: error.message });
+    res.status(500).json({
+      error: {
+        code: "INTERNAL_SERVER_ERROR",
+        message: "An unexpected error occurred. Please try again later.",
+      },
+    });
   }
 };
 
@@ -453,6 +473,11 @@ export const toggleReaction = async (req, res) => {
     res.status(200).json(updatedComment);
   } catch (error) {
     console.error("Error toggling reaction:", error);
-    res.status(500).json({ message: "Server Error", error: error.message });
+    res.status(500).json({
+      error: {
+        code: "INTERNAL_SERVER_ERROR",
+        message: "An unexpected error occurred. Please try again later.",
+      },
+    });
   }
 };
