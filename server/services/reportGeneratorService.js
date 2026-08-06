@@ -2,6 +2,10 @@ import Meeting from "../models/meetingModel.js";
 import ActionItem from "../models/actionItemModel.js";
 import Decision from "../models/decisionModel.js";
 import ReportTemplate from "../models/reportTemplateModel.js";
+import { isSameOrganization } from "../utils/organizationScope.js";
+
+/** Fallback window when neither the override nor the template supplies one. */
+const DEFAULT_DATE_RANGE_DAYS = 30;
 
 export const generateReport = async (
   templateId,
@@ -14,30 +18,50 @@ export const generateReport = async (
     throw new Error("Report Template not found");
   }
 
-  // Check RBAC
+  // Check RBAC.
+  //
+  // The organization check runs *first* now (Issue #1272). Ordering it after
+  // the sharing check meant a shared template in another organization produced
+  // the tenant-mismatch message, which distinguishes "exists elsewhere" from
+  // "does not exist" for a caller who should not be able to tell the two apart.
+  //
+  // The comparison itself was `template.organization.toString() !== orgId`.
+  // `orgId` arrives from the controller as an `ObjectId`, so that compared a
+  // string against an `ObjectId` and was true for *every* template, including
+  // the caller's own. The only reason the existing suite did not catch it is
+  // that it passes `mockOrgId.toString()` by hand.
+  if (!isSameOrganization(template.organization, orgId)) {
+    throw new Error("Report Template not found in your organization.");
+  }
+
   if (
     !template.isShared &&
     template.createdBy.toString() !== user._id.toString()
   ) {
     throw new Error("You do not have permission to view this report template.");
   }
-  if (template.organization.toString() !== orgId) {
-    throw new Error("Report Template not found in your organization.");
-  }
 
   // Increment generation count
   template.generationCount += 1;
   await template.save();
 
-  // 1. Resolve Filters
+  // 1. Resolve Filters.
+  //
+  // `defaultFilters` is optional on documents written before it was added to
+  // the schema, so each read is guarded — `template.defaultFilters.tags` on
+  // such a document threw a TypeError that the controller reported as a 500.
+  const defaultFilters = template.defaultFilters || {};
+
   const dateRangeDays =
-    filterOverrides?.dateRangeDays || template.defaultFilters.dateRangeDays;
+    filterOverrides?.dateRangeDays ||
+    defaultFilters.dateRangeDays ||
+    DEFAULT_DATE_RANGE_DAYS;
   const tags = filterOverrides?.tags?.length
     ? filterOverrides.tags
-    : template.defaultFilters.tags;
+    : defaultFilters.tags;
   const meetingTypes = filterOverrides?.meetingTypes?.length
     ? filterOverrides.meetingTypes
-    : template.defaultFilters.meetingTypes;
+    : defaultFilters.meetingTypes;
 
   const startDate = new Date();
   startDate.setDate(startDate.getDate() - dateRangeDays);
