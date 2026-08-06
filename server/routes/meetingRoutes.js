@@ -26,6 +26,8 @@ import {
   deleteMeeting, // EXISTING: Delete meeting
   searchMeetingsByText, // 🆕 NEW: Voice/Text Search
   notifyLiveMeeting, // NEW: Notify participants of a live meeting
+  handleMeetingClipOperation,
+  getMeetingClip,
 } from "../controllers/meetingController.js";
 import { exportMeeting } from "../controllers/exportController.js";
 
@@ -156,6 +158,26 @@ router.post(
   writeLimiter,
   requirePermission("meetings", "create"),
   notifyLiveMeeting,
+);
+
+// ✅ Create/Modify Meeting Clip
+router.post(
+  "/:id/clip",
+  userAuth,
+  requireOrgMembership,
+  requireOrgAccess(Meeting),
+  requirePermission("meetings", "edit"),
+  handleMeetingClipOperation
+);
+
+// ✅ View Meeting Clip
+router.get(
+  "/:id/clip/:clipId",
+  userAuth,
+  requireOrgMembership,
+  requireOrgAccess(Meeting),
+  requirePermission("meetings", "view"),
+  getMeetingClip
 );
 
 export default router;
