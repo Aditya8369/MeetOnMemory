@@ -113,7 +113,7 @@ export const requireOwnerOrAdmin = (Model) => {
         });
       }
 
-      const docId = req.params.id;
+      const docId = req.params.id || req.params.meetingId;
       if (!docId) {
         return res
           .status(400)
@@ -168,7 +168,7 @@ export const requireOwner = (Model) => {
           .json({ success: false, message: "Unauthorized" });
       }
 
-      const docId = req.params.id;
+      const docId = req.params.id || req.params.meetingId;
       if (!docId) {
         return res
           .status(400)
@@ -224,7 +224,7 @@ export const requireOrgAccess = (Model) => {
         });
       }
 
-      const docId = req.params.id;
+      const docId = req.params.id || req.params.meetingId;
       if (!docId) {
         return res
           .status(400)

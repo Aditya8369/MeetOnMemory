@@ -10,6 +10,7 @@ import {
   exportTranscriptAsText,
   exportTranscriptAsPDF,
   finalizeTranscript,
+  translateTranscript,
 } from "../controllers/transcriptController.js";
 import userAuth from "../middleware/userAuth.js";
 import { apiLimiter } from "../middleware/rateLimiter.js";
@@ -64,6 +65,15 @@ router.post(
   requireOrgAccess(Meeting),
   requirePermission("meetings", "edit"),
   finalizeTranscript
+);
+
+// Translate transcript
+router.post(
+  "/meeting/:meetingId/translate",
+  userAuth,
+  requireOrgAccess(Meeting),
+  requirePermission("meetings", "view"),
+  translateTranscript
 );
 
 export default router;
