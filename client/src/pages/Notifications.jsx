@@ -4,6 +4,7 @@ import AppContent from "../context/AppContent";
 import { toast } from "react-toastify";
 import Navbar from "../components/Navbar.jsx";
 import { notificationApi } from "../services";
+import { validateRedirect } from "../utils/validateRedirect.js";
 import {
   Bell,
   Check,
@@ -235,25 +236,23 @@ const Notifications = () => {
     }
   };
 
-  import { validateRedirect } from "../utils/validateRedirect.js";
-
-/**
- * Handle notification click - mark as read and navigate to action URL
- * @param {Object} notification - Notification object
- */
-const handleNotificationClick = (notification) => {
-  if (!notification.isRead) {
-    handleMarkAsRead(notification._id);
-  }
-  if (notification.actionUrl) {
-    const safeUrl = validateRedirect(notification.actionUrl, null);
-    if (safeUrl) {
-      navigate(safeUrl);
-    } else {
-      toast.error("Invalid or unsafe link");
+  /**
+   * Handle notification click - mark as read and navigate to action URL
+   * @param {Object} notification - Notification object
+   */
+  const handleNotificationClick = (notification) => {
+    if (!notification.isRead) {
+      handleMarkAsRead(notification._id);
     }
-  }
-};
+    if (notification.actionUrl) {
+      const safeUrl = validateRedirect(notification.actionUrl, null);
+      if (safeUrl) {
+        navigate(safeUrl);
+      } else {
+        toast.error("Invalid or unsafe link");
+      }
+    }
+  };
 
   // Redirect to login if not authenticated
   if (!userData) {
