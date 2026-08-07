@@ -399,7 +399,7 @@ router.post(
   requireOrgMembership,
   requireOrgAccess(Meeting),
   requirePermission("meetings", "edit"),
-  handleMeetingClipOperation
+  handleMeetingClipOperation,
 );
 
 // ✅ View Meeting Clip
@@ -409,7 +409,9 @@ router.get(
   requireOrgMembership,
   requireOrgAccess(Meeting),
   requirePermission("meetings", "view"),
-  getMeetingClip
+  getMeetingClip,
+);
+
 // ✅ Resend Meeting Digest
 router.post(
   "/:id/digest/resend",
