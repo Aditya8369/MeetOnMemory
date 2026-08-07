@@ -10,14 +10,33 @@ export const allowedOrigins = [
 
 export const corsOptions = {
   origin: function (origin, callback) {
-    if (!origin || allowedOrigins.includes(origin)) {
-      callback(null, true);
-    } else {
-      console.warn(`Blocked by CORS: ${origin}`);
-      callback(new Error("Not allowed by CORS"));
+    // Explicitly reject null origin string (sandboxed iframes, opaque origins)
+    if (origin === "null") {
+      console.warn("Blocked by CORS: null origin");
+      return callback(new Error("Not allowed by CORS"));
     }
+
+    // Allow requests without Origin header (e.g. server-to-server, cURL, same-origin)
+    if (!origin) {
+      return callback(null, true);
+    }
+
+    // Validate origin against allowed origins list
+    if (allowedOrigins.includes(origin)) {
+      return callback(null, true);
+    }
+
+    console.warn(`Blocked by CORS: ${origin}`);
+    return callback(new Error("Not allowed by CORS"));
   },
-  credentials: true,
+  credentials: function (req, callback) {
+    const origin = req.headers ? req.headers.origin : null;
+    // Credentials header is only granted if the request origin is explicitly approved
+    if (origin && origin !== "null" && allowedOrigins.includes(origin)) {
+      return callback(null, true);
+    }
+    return callback(null, false);
+  },
   methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
   allowedHeaders: ["Content-Type", "Authorization"],
 };
