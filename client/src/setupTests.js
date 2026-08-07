@@ -44,4 +44,4 @@ if (typeof globalThis.IntersectionObserver === "undefined") {
   };
 }
 
-vi.stubEnv('VITE_CLERK_PUBLISHABLE_KEY', 'pk_test_bW9jay1jbGVyay1rZXk');
+vi.stubEnv("VITE_CLERK_PUBLISHABLE_KEY", "pk_test_bW9jay1jbGVyay1rZXk");
