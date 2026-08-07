@@ -159,7 +159,7 @@ const Dashboard = () => {
     <div className="min-h-screen flex flex-col bg-linear-to-b from-slate-50 via-white to-slate-50 dark:from-gray-900 dark:via-gray-900 dark:to-gray-900">
       <Navbar />
 
-      <main className="flex-1 w-full max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 pt-28 pb-12 sm:pb-16">
+      <div className="flex-1 w-full max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 pt-28 pb-12 sm:pb-16">
         {/* ── Hero + AI Search — unified panel ── */}
         <section
           aria-label="Dashboard hero"
@@ -364,7 +364,7 @@ const Dashboard = () => {
           />
           <PersonalNotesSidebar />
         </section>
-      </main>
+      </div>
     </div>
   );
 };

@@ -159,7 +159,7 @@ const Profile = () => {
     <div className="min-h-screen bg-linear-to-b from-slate-50 via-white to-slate-50 dark:from-slate-950 dark:via-slate-900 dark:to-slate-950 text-slate-800 dark:text-slate-200 flex flex-col font-sans select-none">
       <Navbar />
 
-      <main className="flex-1 w-full max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 pt-28 pb-16 flex flex-col justify-center">
+      <div className="flex-1 w-full max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 pt-28 pb-16 flex flex-col justify-center">
         {/* Page title header */}
         <div className="text-center mb-8 fade-in-up stagger-1">
           <h1 className="text-3xl font-extrabold tracking-tight text-slate-900 dark:text-white sm:text-4xl">
@@ -435,7 +435,7 @@ const Profile = () => {
             </form>
           )}
         </div>
-      </main>
+      </div>
     </div>
   );
 };
