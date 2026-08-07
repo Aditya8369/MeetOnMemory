@@ -59,12 +59,15 @@ const TranscriptViewer = () => {
 
       const data = response.data;
       if (data && data.segments) {
-        data.segments = data.segments.filter((segment, index, self) =>
-          index === self.findIndex(s => 
-            s.startTime === segment.startTime && 
-            s.text === segment.text && 
-            s.speaker === segment.speaker
-          )
+        data.segments = data.segments.filter(
+          (segment, index, self) =>
+            index ===
+            self.findIndex(
+              (s) =>
+                s.startTime === segment.startTime &&
+                s.text === segment.text &&
+                s.speaker === segment.speaker,
+            ),
         );
       }
       setTranscript(data);
