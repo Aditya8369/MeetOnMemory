@@ -12,28 +12,30 @@ import { configureSocket } from "./config/socket.js";
 import { startWorkers } from "./config/workers.js";
 import routes from "./routes/index.js";
 
-// Import slackService, cacheInvalidationService, and conflictScanTrigger to register eventBus listeners.
+// Import side-effect modules that register eventBus listeners
 import "./services/slackService.js";
 import "./services/cacheInvalidationService.js";
-// Import conflictScanTrigger to register its eventBus 'mom.generated'
-// listener, which enqueues a background contradiction scan per
-// organization whenever new decisions/action items are extracted.
 import "./services/conflictScanTrigger.js";
 
-import meetingSocket from "./socket/meetingSocket.js"; // eslint-disable-line no-unused-vars
-import documentSync from "./socket/documentSync.js"; // eslint-disable-line no-unused-vars
-import transcriptSocket from "./socket/transcriptSocket.js"; // eslint-disable-line no-unused-vars
-import { initRedis, getRedisClient } from "./services/redisService.js"; // eslint-disable-line no-unused-vars
-import { createAdapter } from "@socket.io/redis-adapter"; // eslint-disable-line no-unused-vars
+// Import socket handlers
+import meetingSocket from "./socket/meetingSocket.js";
+import documentSync from "./socket/documentSync.js";
+import transcriptSocket from "./socket/transcriptSocket.js";
+
+// Import notification event listeners
+import { initListeners } from "./events/listeners.js";
+
+import { initRedis, getRedisClient } from "./services/redisService.js";
+import { createAdapter } from "@socket.io/redis-adapter";
 import { startCalendarSyncJob } from "./jobs/calendarSyncJob.js";
 import startPollExpirationJob from "./jobs/pollExpirationJob.js";
-import { createClient } from "redis"; // eslint-disable-line no-unused-vars
+import { createClient } from "redis";
 import {
-  initAIWorker, // eslint-disable-line no-unused-vars
-  initDataExportWorker, // eslint-disable-line no-unused-vars
-  initConflictScanWorker, // eslint-disable-line no-unused-vars
+  initAIWorker,
+  initDataExportWorker,
+  initConflictScanWorker,
 } from "./services/queueService.js";
-import { initWebhookWorker } from "./services/webhookDispatcherService.js"; // eslint-disable-line no-unused-vars
+import { initWebhookWorker } from "./services/webhookDispatcherService.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -66,7 +68,24 @@ configureErrorHandling(app);
 const server = http.createServer(app);
 
 // SOCKET.IO
-configureSocket(server, app);
+const io = configureSocket(server, app);
+
+// Initialize notification event listeners
+// This MUST happen after Socket.IO is configured so listeners can emit real-time notifications
+if (io) {
+  const listenersInitialized = initListeners(io);
+  if (listenersInitialized) {
+    console.log("✅ Notification event listeners initialized successfully");
+  } else {
+    console.warn(
+      "⚠️ Notification event listeners were already initialized or failed to initialize",
+    );
+  }
+} else {
+  console.error(
+    "❌ Failed to initialize notification listeners: Socket.IO instance not available",
+  );
+}
 
 // SERVER START (Skipped during Jest test execution)
 if (process.env.NODE_ENV !== "test") {
