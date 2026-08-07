@@ -8,7 +8,7 @@ import {
   User,
   Clock,
 } from "lucide-react";
-import axios from "axios";
+import apiClient from "../../services/apiClient.js";
 
 const COLUMNS = [
   {
@@ -70,7 +70,7 @@ const LiveActionBoard = ({ socket, meetingId, userId, participants }) => {
   useEffect(() => {
     const fetchState = async () => {
       try {
-        const res = await axios.get(`/api/workspace/${meetingId}/state`);
+        const res = await apiClient.get(`/api/workspace/${meetingId}/state`);
         if (res.data.success && res.data.warRoom?.actionColumns) {
           setColumns(res.data.warRoom.actionColumns);
         }
@@ -190,7 +190,7 @@ const LiveActionBoard = ({ socket, meetingId, userId, participants }) => {
     if (!newItemTitle.trim()) return;
 
     try {
-      const res = await axios.post(`/api/workspace/${meetingId}/action`, {
+      const res = await apiClient.post(`/api/workspace/${meetingId}/action`, {
         title: newItemTitle.trim(),
         priority: "medium",
       });
