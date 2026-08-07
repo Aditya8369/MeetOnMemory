@@ -249,6 +249,24 @@ const MeetingRoom = () => {
 
       socketRef.current.on("transcript-final", (data) => {
         const { segment } = data;
+        setCaptions((prev) => {
+          // Check for exact duplicate in captions
+          const exists = prev.some(c => c.text === segment.text && c.timestamp === data.timestamp);
+          if (exists) return prev;
+          return [
+            ...prev.slice(-4),
+            { text: segment.text, speaker: segment.speaker, isFinal: true, timestamp: data.timestamp },
+          ];
+        });
+        setTranscriptSegments((prev) => {
+          const exists = prev.some(s => 
+            s.startTime === segment.startTime && 
+            s.text === segment.text && 
+            s.speaker === segment.speaker
+          );
+          if (exists) return prev;
+          return [...prev, segment];
+        });
         setCaptions((prev) => [
           ...prev.slice(-4),
           {
