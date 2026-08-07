@@ -10,6 +10,11 @@ import {
 } from "lucide-react";
 import apiClient from "../services/apiClient.js";
 import ConfirmModal from "./ConfirmModal.jsx";
+import {
+  validateCalendarOAuthAuthUrl,
+  CALENDAR_OAUTH_FALLBACK_PATH,
+} from "../utils/validateCalendarOAuthRedirect.js";
+import { validateRedirect } from "../utils/validateRedirect.js";
 
 const CalendarIntegrations = () => {
   const [integrations, setIntegrations] = useState([]);
@@ -50,7 +55,15 @@ const CalendarIntegrations = () => {
       const res = await apiClient.get(`/api/calendar/${provider}/connect`);
       const redirectUrl = res.data?.url || res.data?.authUrl;
       if (res.data.success && redirectUrl) {
-        window.location.href = redirectUrl;
+        const safeAuthUrl = validateCalendarOAuthAuthUrl(redirectUrl);
+        if (safeAuthUrl) {
+          window.location.href = safeAuthUrl;
+          return;
+        }
+        toast.error(`Invalid authorization URL for ${provider}`);
+        window.location.assign(
+          validateRedirect(CALENDAR_OAUTH_FALLBACK_PATH, "/settings"),
+        );
       } else {
         toast.error(`Failed to get authorization URL for ${provider}`);
       }
