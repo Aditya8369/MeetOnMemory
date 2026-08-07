@@ -1,6 +1,8 @@
 import React, { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import Navbar from "../components/Navbar.jsx";
+import RoleGate from "../components/RoleGate.jsx";
+import { useRBAC } from "../hooks/useRBAC.js";
 import { useCalendarEvents } from "../hooks/useCalendarEvents";
 import CalendarGrid from "../components/calendar/CalendarGrid";
 import MeetingDetailsModal from "../components/calendar/MeetingDetailsModal";
@@ -18,6 +20,8 @@ import {
 
 const Calendar = () => {
   const navigate = useNavigate();
+  const { hasPermission } = useRBAC();
+  const canCreateMeeting = hasPermission("meetings", "create");
 
   const {
     loading,
@@ -133,13 +137,15 @@ const Calendar = () => {
               <CalendarIcon className="w-4 h-4 text-blue-600 dark:text-blue-400" />
               Calendar Integrations
             </button>
-            <button
-              onClick={() => navigate("/create-meeting")}
-              className="inline-flex items-center gap-2 px-4 py-2 text-xs font-bold text-white bg-blue-600 hover:bg-blue-500 active:bg-blue-700 rounded-xl transition-all shadow-md shadow-blue-600/10 cursor-pointer w-full md:w-auto justify-center"
-            >
-              <Plus className="w-4 h-4" />
-              Schedule Meeting
-            </button>
+            <RoleGate resource="meetings" action="create">
+              <button
+                onClick={() => navigate("/create-meeting")}
+                className="inline-flex items-center gap-2 px-4 py-2 text-xs font-bold text-white bg-blue-600 hover:bg-blue-500 active:bg-blue-700 rounded-xl transition-all shadow-md shadow-blue-600/10 cursor-pointer w-full md:w-auto justify-center"
+              >
+                <Plus className="w-4 h-4" />
+                Schedule Meeting
+              </button>
+            </RoleGate>
           </div>
         </div>
 
@@ -291,16 +297,19 @@ const Calendar = () => {
               No Scheduled Meetings
             </h3>
             <p className="text-slate-500 dark:text-slate-400 text-xs sm:text-sm mt-1 max-w-sm">
-              There are no meetings scheduled matching the selected filters.
-              Change filters or create a new meeting.
+              {canCreateMeeting
+                ? "There are no meetings scheduled matching the selected filters. Change filters or create a new meeting."
+                : "There are no meetings scheduled matching the selected filters. Try adjusting your filters."}
             </p>
-            <button
-              onClick={() => navigate("/create-meeting")}
-              className="mt-5 inline-flex items-center gap-2 px-4 py-2 text-xs font-bold text-white bg-blue-600 hover:bg-blue-500 active:bg-blue-700 rounded-xl transition-all shadow-xs cursor-pointer"
-            >
-              <Plus className="w-4 h-4" />
-              Schedule New Meeting
-            </button>
+            <RoleGate resource="meetings" action="create">
+              <button
+                onClick={() => navigate("/create-meeting")}
+                className="mt-5 inline-flex items-center gap-2 px-4 py-2 text-xs font-bold text-white bg-blue-600 hover:bg-blue-500 active:bg-blue-700 rounded-xl transition-all shadow-xs cursor-pointer"
+              >
+                <Plus className="w-4 h-4" />
+                Schedule New Meeting
+              </button>
+            </RoleGate>
           </div>
         ) : (
           <>
