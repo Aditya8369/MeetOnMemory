@@ -186,27 +186,11 @@ const Profile = () => {
                       src={userData.profilePic}
                       alt={userData.name}
                       className="w-20 h-20 rounded-full object-cover border border-slate-200 shadow-xs"
-                      onError={async () => {
+                      onError={() => {
                         toast.warning(
                           "Failed to load custom profile image. Displaying initials fallback.",
                         );
-                        setProfilePic("");
                         setProfilePicFailed(true);
-                        const cleared = { ...userData, profilePic: "" };
-                        setUserData(cleared);
-                        localStorage.setItem(
-                          "userData",
-                          JSON.stringify(cleared),
-                        );
-                        try {
-                          await userApi.updateProfile({
-                            name: userData.name,
-                            profilePic: "",
-                            bio: userData.bio,
-                          });
-                        } catch {
-                          // silent
-                        }
                       }}
                     />
                   ) : (
