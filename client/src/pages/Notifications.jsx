@@ -235,18 +235,25 @@ const Notifications = () => {
     }
   };
 
-  /**
-   * Handle notification click - mark as read and navigate to action URL
-   * @param {Object} notification - Notification object
-   */
-  const handleNotificationClick = (notification) => {
-    if (!notification.isRead) {
-      handleMarkAsRead(notification._id);
+  import { validateRedirect } from "../utils/validateRedirect.js";
+
+/**
+ * Handle notification click - mark as read and navigate to action URL
+ * @param {Object} notification - Notification object
+ */
+const handleNotificationClick = (notification) => {
+  if (!notification.isRead) {
+    handleMarkAsRead(notification._id);
+  }
+  if (notification.actionUrl) {
+    const safeUrl = validateRedirect(notification.actionUrl, null);
+    if (safeUrl) {
+      navigate(safeUrl);
+    } else {
+      toast.error("Invalid or unsafe link");
     }
-    if (notification.actionUrl) {
-      navigate(notification.actionUrl);
-    }
-  };
+  }
+};
 
   // Redirect to login if not authenticated
   if (!userData) {
