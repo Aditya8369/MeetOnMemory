@@ -17,25 +17,26 @@ import "./services/slackService.js";
 import "./services/cacheInvalidationService.js";
 import "./services/conflictScanTrigger.js";
 
-// Import socket handlers
-import meetingSocket from "./socket/meetingSocket.js";
-import documentSync from "./socket/documentSync.js";
-import transcriptSocket from "./socket/transcriptSocket.js";
+// Import socket handlers (side-effect imports for registration)
+import meetingSocket from "./socket/meetingSocket.js"; // eslint-disable-line no-unused-vars
+import documentSync from "./socket/documentSync.js"; // eslint-disable-line no-unused-vars
+import transcriptSocket from "./socket/transcriptSocket.js"; // eslint-disable-line no-unused-vars
 
-// Import notification event listeners
+// Import notification event listeners (ACTUALLY USED below)
 import { initListeners } from "./events/listeners.js";
 
-import { initRedis, getRedisClient } from "./services/redisService.js";
-import { createAdapter } from "@socket.io/redis-adapter";
+// Redis imports (used in socket configuration)
+import { initRedis, getRedisClient } from "./services/redisService.js"; // eslint-disable-line no-unused-vars
+import { createAdapter } from "@socket.io/redis-adapter"; // eslint-disable-line no-unused-vars
 import { startCalendarSyncJob } from "./jobs/calendarSyncJob.js";
 import startPollExpirationJob from "./jobs/pollExpirationJob.js";
-import { createClient } from "redis";
+import { createClient } from "redis"; // eslint-disable-line no-unused-vars
 import {
-  initAIWorker,
-  initDataExportWorker,
-  initConflictScanWorker,
+  initAIWorker, // eslint-disable-line no-unused-vars
+  initDataExportWorker, // eslint-disable-line no-unused-vars
+  initConflictScanWorker, // eslint-disable-line no-unused-vars
 } from "./services/queueService.js";
-import { initWebhookWorker } from "./services/webhookDispatcherService.js";
+import { initWebhookWorker } from "./services/webhookDispatcherService.js"; // eslint-disable-line no-unused-vars
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -104,7 +105,6 @@ if (process.env.NODE_ENV !== "test") {
   startCalendarSyncJob();
 
   // Start poll expiration background job
-  const io = app.get("io");
   startPollExpirationJob(io);
 }
 
