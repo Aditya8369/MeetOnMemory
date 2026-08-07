@@ -9,11 +9,13 @@ import {
   XCircle,
 } from "lucide-react";
 import apiClient from "../services/apiClient.js";
+import ConfirmModal from "./ConfirmModal.jsx";
 
 const CalendarIntegrations = () => {
   const [integrations, setIntegrations] = useState([]);
   const [loading, setLoading] = useState(true);
   const [resyncing, setResyncing] = useState({});
+  const [providerToDisconnect, setProviderToDisconnect] = useState(null);
 
   const fetchIntegrations = useCallback(async () => {
     try {
@@ -197,6 +199,7 @@ const CalendarIntegrations = () => {
               <div className="flex items-center gap-2">
                 {connected && (
                   <button
+                    type="button"
                     onClick={() => resyncProvider(p.key)}
                     disabled={isSyncing}
                     className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-slate-700 dark:text-slate-300 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-lg transition-colors cursor-pointer"
@@ -210,13 +213,15 @@ const CalendarIntegrations = () => {
 
                 {connected ? (
                   <button
-                    onClick={() => disconnectProvider(p.key)}
+                    type="button"
+                    onClick={() => setProviderToDisconnect(p.key)}
                     className="px-3 py-1.5 text-xs font-semibold text-red-600 bg-red-50 hover:bg-red-100 dark:bg-red-950/40 dark:hover:bg-red-900/60 dark:text-red-400 rounded-lg transition-colors cursor-pointer"
                   >
                     Disconnect
                   </button>
                 ) : (
                   <button
+                    type="button"
                     onClick={() => connectProvider(p.connectKey)}
                     className="px-3 py-1.5 text-xs font-semibold text-white bg-blue-600 hover:bg-blue-500 rounded-lg transition-colors cursor-pointer shadow-xs"
                   >
@@ -228,6 +233,20 @@ const CalendarIntegrations = () => {
           );
         })}
       </div>
+
+      <ConfirmModal
+        isOpen={Boolean(providerToDisconnect)}
+        onClose={() => setProviderToDisconnect(null)}
+        onConfirm={() => {
+          if (providerToDisconnect) {
+            disconnectProvider(providerToDisconnect);
+            setProviderToDisconnect(null);
+          }
+        }}
+        title="Disconnect Calendar Integration"
+        message="Are you sure you want to disconnect this calendar provider? OAuth access will be revoked and meeting synchronization will be paused."
+        confirmText="Disconnect"
+      />
     </div>
   );
 };
