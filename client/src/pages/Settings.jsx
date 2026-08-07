@@ -31,6 +31,11 @@ import { ClerkManageAccountButton } from "../components/ClerkUserControls.jsx";
 import apiClient from "../services/apiClient.js";
 import { notificationApi } from "../services/notificationApi.js";
 import { userApi } from "../services/userApi.js";
+import {
+  validateCalendarOAuthAuthUrl,
+  CALENDAR_OAUTH_FALLBACK_PATH,
+} from "../utils/validateCalendarOAuthRedirect.js";
+import { validateRedirect } from "../utils/validateRedirect.js";
 
 const clerkPubKey = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY;
 
@@ -247,10 +252,20 @@ const Settings = () => {
     try {
       setCalendarLoading(true);
       const response = await apiClient.get("/api/calendar/google/auth-url");
+      const safeAuthUrl = validateCalendarOAuthAuthUrl(response.data.authUrl);
+
+      if (!safeAuthUrl) {
+        toast.error("Invalid Google Calendar authorization URL");
+        setCalendarLoading(false);
+        window.location.assign(
+          validateRedirect(CALENDAR_OAUTH_FALLBACK_PATH, "/settings"),
+        );
+        return;
+      }
 
       // Open OAuth popup
       const authWindow = window.open(
-        response.data.authUrl,
+        safeAuthUrl,
         "_blank",
         "width=500,height=600",
       );
@@ -275,10 +290,20 @@ const Settings = () => {
     try {
       setCalendarLoading(true);
       const response = await apiClient.get("/api/calendar/microsoft/auth-url");
+      const safeAuthUrl = validateCalendarOAuthAuthUrl(response.data.authUrl);
+
+      if (!safeAuthUrl) {
+        toast.error("Invalid Microsoft Calendar authorization URL");
+        setCalendarLoading(false);
+        window.location.assign(
+          validateRedirect(CALENDAR_OAUTH_FALLBACK_PATH, "/settings"),
+        );
+        return;
+      }
 
       // Open OAuth popup
       const authWindow = window.open(
-        response.data.authUrl,
+        safeAuthUrl,
         "_blank",
         "width=500,height=600",
       );
