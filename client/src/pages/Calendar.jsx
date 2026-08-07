@@ -115,7 +115,7 @@ const Calendar = () => {
     <div className="min-h-screen bg-linear-to-b from-slate-50 via-white to-slate-50 dark:from-slate-950 dark:via-slate-900 dark:to-slate-950 text-slate-800 dark:text-slate-200 flex flex-col font-sans">
       <Navbar />
 
-      <main className="flex-1 w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-24 pb-16 flex flex-col">
+      <div className="flex-1 w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-24 pb-16 flex flex-col">
         {/* Navigation & Toolbar Header */}
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6 pb-5 border-b border-slate-200">
           <div>
@@ -341,7 +341,7 @@ const Calendar = () => {
             )}
           </>
         )}
-      </main>
+      </div>
 
       <MeetingDetailsModal
         selectedMeeting={selectedMeeting}

@@ -27,7 +27,7 @@ const Tasks = () => {
     <div className="min-h-screen bg-linear-to-b from-slate-50 via-white to-slate-50 dark:from-slate-950 dark:via-slate-900 dark:to-slate-950 flex flex-col">
       <Navbar />
 
-      <main className="flex-1 w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-28 pb-16">
+      <div className="flex-1 w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-28 pb-16">
         {/* Header */}
         <div className="mb-8 fade-in-up flex items-start justify-between gap-4 flex-wrap">
           <div>
@@ -133,7 +133,7 @@ const Tasks = () => {
           setSelectedTask={taskState.setSelectedTask}
           navigate={navigate}
         />
-      </main>
+      </div>
     </div>
   );
 };

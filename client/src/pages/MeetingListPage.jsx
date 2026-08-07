@@ -34,7 +34,7 @@ const MeetingListPage = () => {
       </header>
 
       {/* Main Section */}
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 pb-16">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 pb-16">
         {/* Top Actions */}
         <div className="flex justify-between items-center mb-8">
           <h2 className="text-xl font-semibold flex items-center gap-2 text-slate-900 dark:text-white">
@@ -64,7 +64,7 @@ const MeetingListPage = () => {
 
         {/* Meeting Repository Component */}
         <MeetingRepository />
-      </main>
+      </div>
     </div>
   );
 };
