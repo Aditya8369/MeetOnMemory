@@ -73,7 +73,7 @@ router.post(
   userAuth,
   requireOrgAccess(Meeting),
   requirePermission("meetings", "view"),
-  translateTranscript
+  translateTranscript,
 );
 // Update speaker names in transcript
 router.put("/:id/speakers", userAuth, updateSpeakers);

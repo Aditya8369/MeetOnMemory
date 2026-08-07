@@ -246,6 +246,34 @@ export const provisionOrLinkClerkUser = async ({
       mongoUserId: newUser?._id?.toString?.(),
     });
   } catch (err) {
+    const isDuplicateKey =
+      err?.code === 11000 ||
+      err?.name === "MongoServerError" ||
+      (err?.message && err.message.includes("E11000"));
+
+    if (isDuplicateKey) {
+      console.warn(
+        `${DIAG} 10. Concurrent user creation race detected (E11000). Retrying lookup by clerkUserId/email...`,
+      );
+      // Retry finding existing user created by parallel request
+      const existingUser = await userModel
+        .findOne({
+          $or: [{ clerkUserId }, ...(email ? [{ email }] : [])],
+        })
+        .select("-password");
+
+      if (existingUser) {
+        console.warn(
+          `${DIAG} 10. Concurrent provisioning race resolved cleanly. Reusing existing user ${existingUser._id}`,
+        );
+        const existingObj = existingUser.toObject
+          ? existingUser.toObject()
+          : existingUser;
+        delete existingObj.password;
+        return existingObj;
+      }
+    }
+
     console.error(`${DIAG} 10. userModel.create() FAILED`);
     console.error(err);
     console.error(err?.stack);

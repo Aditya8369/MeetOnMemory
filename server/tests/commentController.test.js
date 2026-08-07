@@ -117,7 +117,9 @@ describe("Comment Controller - Length Validation", () => {
     let consoleErrorSpy;
 
     beforeEach(() => {
-      consoleErrorSpy = jest.spyOn(console, "error").mockImplementation(() => {});
+      consoleErrorSpy = jest
+        .spyOn(console, "error")
+        .mockImplementation(() => {});
     });
 
     afterEach(() => {
@@ -137,7 +139,10 @@ describe("Comment Controller - Length Validation", () => {
       await createComment(req, res);
 
       // Verify internal error is logged
-      expect(consoleErrorSpy).toHaveBeenCalledWith("Error creating comment:", internalError);
+      expect(consoleErrorSpy).toHaveBeenCalledWith(
+        "Error creating comment:",
+        internalError,
+      );
 
       // Verify response is standardized 500 error
       expect(res.status).toHaveBeenCalledWith(500);
@@ -150,7 +155,9 @@ describe("Comment Controller - Length Validation", () => {
 
       // Verify no stack trace or internal message is exposed
       const jsonArgs = res.json.mock.calls[0][0];
-      expect(JSON.stringify(jsonArgs)).not.toContain("Database connection failed");
+      expect(JSON.stringify(jsonArgs)).not.toContain(
+        "Database connection failed",
+      );
     });
   });
 });
