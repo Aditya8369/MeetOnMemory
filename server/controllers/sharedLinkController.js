@@ -293,8 +293,6 @@ export const createLink = async (req, res) => {
   }
 };
 
-
-
 export const getActiveLinks = async (req, res) => {
   try {
     const { resourceType, resourceId } = req.params;

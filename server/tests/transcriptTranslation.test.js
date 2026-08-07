@@ -15,7 +15,7 @@ import jwt from "jsonwebtoken";
 describe("POST /api/transcripts/meeting/:meetingId/translate Authorization", () => {
   let uploaderToken, viewerToken, externalToken, adminToken;
   let meetingId;
-  
+
   beforeAll(async () => {
     process.env.JWT_SECRET = "testsecret";
 
@@ -31,13 +31,29 @@ describe("POST /api/transcripts/meeting/:meetingId/translate Authorization", () 
     // Setup mocks
     jest.spyOn(User, "findById").mockImplementation((id) => {
       const users = {
-        [uploaderId.toString()]: { _id: uploaderId, organization: orgId, role: "member" },
-        [viewerId.toString()]: { _id: viewerId, organization: orgId, role: "member" },
-        [externalId.toString()]: { _id: externalId, organization: otherOrgId, role: "member" },
-        [adminId.toString()]: { _id: adminId, organization: orgId, role: "admin" }
+        [uploaderId.toString()]: {
+          _id: uploaderId,
+          organization: orgId,
+          role: "member",
+        },
+        [viewerId.toString()]: {
+          _id: viewerId,
+          organization: orgId,
+          role: "member",
+        },
+        [externalId.toString()]: {
+          _id: externalId,
+          organization: otherOrgId,
+          role: "member",
+        },
+        [adminId.toString()]: {
+          _id: adminId,
+          organization: orgId,
+          role: "admin",
+        },
       };
       return {
-        select: () => Promise.resolve(users[id.toString()])
+        select: () => Promise.resolve(users[id.toString()]),
       };
     });
 
@@ -55,26 +71,38 @@ describe("POST /api/transcripts/meeting/:meetingId/translate Authorization", () 
     jest.spyOn(Transcript, "findOne").mockImplementation(({ meeting }) => {
       if (meeting.toString() === meetingId.toString()) {
         return {
-          populate: () => Promise.resolve({
-            _id: new mongoose.Types.ObjectId(),
-            meeting: {
-              _id: meetingId,
-              organization: orgId,
-              uploadedBy: uploaderId,
-            },
-            fullText: "Hello world"
-          })
+          populate: () =>
+            Promise.resolve({
+              _id: new mongoose.Types.ObjectId(),
+              meeting: {
+                _id: meetingId,
+                organization: orgId,
+                uploadedBy: uploaderId,
+              },
+              fullText: "Hello world",
+            }),
         };
       }
       return { populate: () => Promise.resolve(null) };
     });
 
     // We will simulate JWT generation
-    uploaderToken = jwt.sign({ id: uploaderId, role: "member" }, process.env.JWT_SECRET);
-    viewerToken = jwt.sign({ id: viewerId, role: "member" }, process.env.JWT_SECRET);
-    externalToken = jwt.sign({ id: externalId, role: "member" }, process.env.JWT_SECRET);
-    adminToken = jwt.sign({ id: adminId, role: "admin" }, process.env.JWT_SECRET);
-    
+    uploaderToken = jwt.sign(
+      { id: uploaderId, role: "member" },
+      process.env.JWT_SECRET,
+    );
+    viewerToken = jwt.sign(
+      { id: viewerId, role: "member" },
+      process.env.JWT_SECRET,
+    );
+    externalToken = jwt.sign(
+      { id: externalId, role: "member" },
+      process.env.JWT_SECRET,
+    );
+    adminToken = jwt.sign(
+      { id: adminId, role: "admin" },
+      process.env.JWT_SECRET,
+    );
   });
 
   afterAll(() => {
@@ -82,7 +110,9 @@ describe("POST /api/transcripts/meeting/:meetingId/translate Authorization", () 
   });
 
   it("should reject translation request without a token (401)", async () => {
-    const res = await request(app).post(`/api/transcripts/meeting/${meetingId}/translate`);
+    const res = await request(app).post(
+      `/api/transcripts/meeting/${meetingId}/translate`,
+    );
     expect(res.status).toBe(401);
   });
 
@@ -98,7 +128,9 @@ describe("POST /api/transcripts/meeting/:meetingId/translate Authorization", () 
       .post(`/api/transcripts/meeting/${meetingId}/translate`)
       .set("Cookie", [`token=${viewerToken}`]);
     expect(res.status).toBe(403);
-    expect(res.body.message).toContain("Forbidden: You do not own this meeting");
+    expect(res.body.message).toContain(
+      "Forbidden: You do not own this meeting",
+    );
   });
 
   it("should allow translation request for the uploader (200)", async () => {

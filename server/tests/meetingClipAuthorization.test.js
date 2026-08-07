@@ -33,24 +33,56 @@ describe("Meeting Clip Authorization", () => {
   const validMongoId = "507f1f77bcf86cd799439011";
 
   // Mock Tokens
-  const noOrgToken = jwt.sign({ id: "6a74b2d9ce08c6d9eb0e32c1", role: "member" }, JWT_SECRET);
-  const differentOrgToken = jwt.sign({ id: "6a74b2d9ce08c6d9eb0e32c2", role: "member" }, JWT_SECRET);
-  const correctOrgToken = jwt.sign({ id: "6a74b2d9ce08c6d9eb0e32c3", role: "member" }, JWT_SECRET);
-  const adminToken = jwt.sign({ id: "6a74b2d9ce08c6d9eb0e32c4", role: "admin" }, JWT_SECRET);
+  const noOrgToken = jwt.sign(
+    { id: "6a74b2d9ce08c6d9eb0e32c1", role: "member" },
+    JWT_SECRET,
+  );
+  const differentOrgToken = jwt.sign(
+    { id: "6a74b2d9ce08c6d9eb0e32c2", role: "member" },
+    JWT_SECRET,
+  );
+  const correctOrgToken = jwt.sign(
+    { id: "6a74b2d9ce08c6d9eb0e32c3", role: "member" },
+    JWT_SECRET,
+  );
+  const adminToken = jwt.sign(
+    { id: "6a74b2d9ce08c6d9eb0e32c4", role: "admin" },
+    JWT_SECRET,
+  );
 
   beforeEach(() => {
     jest.clearAllMocks();
-    
+
     // Mock user DB lookups for userAuth middleware
     mockUserFindById.mockImplementation((id) => {
       const mockChain = {
         select: jest.fn().mockImplementation(() => {
-          if (id === "6a74b2d9ce08c6d9eb0e32c1") return Promise.resolve({ _id: id, role: "member", organization: null });
-          if (id === "6a74b2d9ce08c6d9eb0e32c2") return Promise.resolve({ _id: id, role: "member", organization: otherOrgId });
-          if (id === "6a74b2d9ce08c6d9eb0e32c3") return Promise.resolve({ _id: id, role: "member", organization: orgId });
-          if (id === "6a74b2d9ce08c6d9eb0e32c4") return Promise.resolve({ _id: id, role: "admin", organization: orgId });
+          if (id === "6a74b2d9ce08c6d9eb0e32c1")
+            return Promise.resolve({
+              _id: id,
+              role: "member",
+              organization: null,
+            });
+          if (id === "6a74b2d9ce08c6d9eb0e32c2")
+            return Promise.resolve({
+              _id: id,
+              role: "member",
+              organization: otherOrgId,
+            });
+          if (id === "6a74b2d9ce08c6d9eb0e32c3")
+            return Promise.resolve({
+              _id: id,
+              role: "member",
+              organization: orgId,
+            });
+          if (id === "6a74b2d9ce08c6d9eb0e32c4")
+            return Promise.resolve({
+              _id: id,
+              role: "admin",
+              organization: orgId,
+            });
           return Promise.resolve(null);
-        })
+        }),
       };
       return mockChain;
     });
@@ -66,7 +98,9 @@ describe("Meeting Clip Authorization", () => {
 
   describe("GET /api/meetings/:id/clip/:clipId", () => {
     it("should reject access if no token is provided (401)", async () => {
-      const res = await request(app).get(`/api/meetings/${validMongoId}/clip/clip123`);
+      const res = await request(app).get(
+        `/api/meetings/${validMongoId}/clip/clip123`,
+      );
       expect(res.status).toBe(401);
     });
 
@@ -104,7 +138,9 @@ describe("Meeting Clip Authorization", () => {
 
   describe("POST /api/meetings/:id/clip", () => {
     it("should reject access if no token is provided (401)", async () => {
-      const res = await request(app).post(`/api/meetings/${validMongoId}/clip`).send({ data: "test" });
+      const res = await request(app)
+        .post(`/api/meetings/${validMongoId}/clip`)
+        .send({ data: "test" });
       expect(res.status).toBe(401);
     });
 
