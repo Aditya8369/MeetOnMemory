@@ -277,28 +277,28 @@ const MeetingAnalytics = () => {
         {/* Key Metrics Cards */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
           <MetricCard
-            Icon={Users}
+            icon={Users}
             label="Participants"
             value={metrics.speakerCount}
             subtitle={`of ${metrics.participantCount} total`}
             color="blue"
           />
           <MetricCard
-            Icon={Clock}
+            icon={Clock}
             label="Duration"
             value={formatDuration(metrics.totalDuration)}
             subtitle={`${metrics.silencePeriods} silence periods`}
             color="purple"
           />
           <MetricCard
-            Icon={Activity}
+            icon={Activity}
             label="Engagement"
             value={`${metrics.engagementScore.toFixed(0)}%`}
             subtitle="Overall score"
             color="green"
           />
           <MetricCard
-            Icon={Award}
+            icon={Award}
             label="Equity"
             value={`${metrics.participationEquity.toFixed(0)}%`}
             subtitle="Participation balance"
@@ -486,32 +486,32 @@ const MeetingAnalytics = () => {
             <MetricDetail
               label="Total Silence Time"
               value={formatDuration(metrics.totalSilenceTime)}
-              Icon={Clock}
+              icon={Clock}
             />
             <MetricDetail
               label="Avg Intervention Length"
               value={formatDuration(metrics.averageInterventionLength)}
-              Icon={Activity}
+              icon={Activity}
             />
             <MetricDetail
               label="Longest Intervention"
               value={formatDuration(metrics.longestIntervention)}
-              Icon={TrendingUp}
+              icon={TrendingUp}
             />
             <MetricDetail
               label="Decision Density"
               value={`${metrics.decisionDensity.toFixed(1)}/hour`}
-              Icon={Target}
+              icon={Target}
             />
             <MetricDetail
               label="Action Item Density"
               value={`${metrics.actionItemDensity.toFixed(1)}/hour`}
-              Icon={Target}
+              icon={Target}
             />
             <MetricDetail
               label="Silence Periods"
               value={metrics.silencePeriods}
-              Icon={Clock}
+              icon={Clock}
             />
           </div>
         </div>
@@ -520,7 +520,11 @@ const MeetingAnalytics = () => {
   );
 };
 
-const MetricCard = ({ icon: Icon, label, value, subtitle, color }) => {
+const MetricCard = ({ icon, label, value, subtitle, color }) => {
+  // Assign to capitalized local variable to satisfy JSX component naming
+  // and avoid ESLint no-unused-vars false positives on destructuring renames
+  const Icon = icon;
+
   const colorClasses = {
     blue: "bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400",
     purple:
@@ -549,16 +553,22 @@ const MetricCard = ({ icon: Icon, label, value, subtitle, color }) => {
   );
 };
 
-const MetricDetail = ({ label, value, icon: Icon }) => (
-  <div className="flex items-center gap-3 p-3 bg-slate-50 dark:bg-slate-800 rounded-lg">
-    <Icon className="w-5 h-5 text-slate-400" />
-    <div>
-      <p className="text-xs text-slate-500 dark:text-slate-400">{label}</p>
-      <p className="text-sm font-semibold text-slate-900 dark:text-white">
-        {value}
-      </p>
+const MetricDetail = ({ label, value, icon }) => {
+  // Assign to capitalized local variable to satisfy JSX component naming
+  // and avoid ESLint no-unused-vars false positives on destructuring renames
+  const Icon = icon;
+
+  return (
+    <div className="flex items-center gap-3 p-3 bg-slate-50 dark:bg-slate-800 rounded-lg">
+      <Icon className="w-5 h-5 text-slate-400" />
+      <div>
+        <p className="text-xs text-slate-500 dark:text-slate-400">{label}</p>
+        <p className="text-sm font-semibold text-slate-900 dark:text-white">
+          {value}
+        </p>
+      </div>
     </div>
-  </div>
-);
+  );
+};
 
 export default MeetingAnalytics;
