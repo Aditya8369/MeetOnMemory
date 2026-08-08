@@ -4,6 +4,7 @@ import AppContent from "../context/AppContent";
 import { toast } from "react-toastify";
 import Navbar from "../components/Navbar.jsx";
 import { notificationApi } from "../services";
+import { validateRedirect } from "../utils/validateRedirect.js";
 import {
   Bell,
   Check,
@@ -244,7 +245,12 @@ const Notifications = () => {
       handleMarkAsRead(notification._id);
     }
     if (notification.actionUrl) {
-      navigate(notification.actionUrl);
+      const safeUrl = validateRedirect(notification.actionUrl, null);
+      if (safeUrl) {
+        navigate(safeUrl);
+      } else {
+        toast.error("Invalid or unsafe link");
+      }
     }
   };
 
