@@ -3,6 +3,7 @@ import { ArrowLeft, RotateCcw, Search, Trash2 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "react-toastify";
 import Navbar from "../components/Navbar.jsx";
+import ConfirmModal from "../components/ConfirmModal.jsx";
 import AppContent from "../context/AppContent.js";
 import { meetingApi } from "../services/meetingApi.js";
 
@@ -14,6 +15,11 @@ const MeetingRecycleBin = () => {
   const [pagination, setPagination] = useState({ page: 1, totalPages: 1 });
   const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(true);
+
+  // Modal target state (#1341)
+  const [restoreTarget, setRestoreTarget] = useState(null);
+  const [purgeTarget, setPurgeTarget] = useState(null);
+  const [actionLoading, setActionLoading] = useState(false);
 
   const loadMeetings = useCallback(
     async (page = 1, query = search) => {
@@ -41,30 +47,33 @@ const MeetingRecycleBin = () => {
     loadMeetings(1);
   }, [loadMeetings]);
 
-  const restore = async (meeting) => {
-    if (!window.confirm(`Restore “${meeting.title}”?`)) return;
+  const handleRestoreConfirm = async () => {
+    if (!restoreTarget) return;
+    setActionLoading(true);
     try {
-      await meetingApi.restoreDeletedMeeting(meeting._id);
+      await meetingApi.restoreDeletedMeeting(restoreTarget._id);
       toast.success("Meeting restored");
+      setRestoreTarget(null);
       loadMeetings(pagination.page);
     } catch (error) {
       toast.error(error.response?.data?.message || "Restore failed");
+    } finally {
+      setActionLoading(false);
     }
   };
 
-  const purge = async (meeting) => {
-    if (
-      !window.confirm(
-        `Permanently delete “${meeting.title}”? This cannot be undone.`,
-      )
-    )
-      return;
+  const handlePurgeConfirm = async () => {
+    if (!purgeTarget) return;
+    setActionLoading(true);
     try {
-      await meetingApi.permanentlyDeleteMeeting(meeting._id);
+      await meetingApi.permanentlyDeleteMeeting(purgeTarget._id);
       toast.success("Meeting permanently deleted");
+      setPurgeTarget(null);
       loadMeetings(pagination.page);
     } catch (error) {
       toast.error(error.response?.data?.message || "Permanent deletion failed");
+    } finally {
+      setActionLoading(false);
     }
   };
 
@@ -136,15 +145,17 @@ const MeetingRecycleBin = () => {
                 )}
                 <div className="flex gap-2 mt-5">
                   <button
-                    onClick={() => restore(meeting)}
-                    className="inline-flex items-center gap-2 rounded-lg bg-green-600 px-3 py-2 text-white"
+                    type="button"
+                    onClick={() => setRestoreTarget(meeting)}
+                    className="inline-flex items-center gap-2 rounded-lg bg-green-600 px-3 py-2 text-white cursor-pointer"
                   >
                     <RotateCcw size={16} /> Restore
                   </button>
                   {canPurge && (
                     <button
-                      onClick={() => purge(meeting)}
-                      className="inline-flex items-center gap-2 rounded-lg bg-red-600 px-3 py-2 text-white"
+                      type="button"
+                      onClick={() => setPurgeTarget(meeting)}
+                      className="inline-flex items-center gap-2 rounded-lg bg-red-600 px-3 py-2 text-white cursor-pointer"
                     >
                       <Trash2 size={16} /> Delete forever
                     </button>
@@ -177,6 +188,29 @@ const MeetingRecycleBin = () => {
           </div>
         )}
       </div>
+
+      {/* Confirmation Modals (#1341) */}
+      <ConfirmModal
+        isOpen={Boolean(restoreTarget)}
+        onClose={() => setRestoreTarget(null)}
+        onConfirm={handleRestoreConfirm}
+        title="Confirm Restore Meeting"
+        message={`Are you sure you want to restore "${restoreTarget?.title || "this meeting"}" back to active meetings?`}
+        confirmText="Restore Meeting"
+        variant="warning"
+        isLoading={actionLoading}
+      />
+
+      <ConfirmModal
+        isOpen={Boolean(purgeTarget)}
+        onClose={() => setPurgeTarget(null)}
+        onConfirm={handlePurgeConfirm}
+        title="Permanently Delete Meeting"
+        message={`Are you sure you want to permanently delete "${purgeTarget?.title || "this meeting"}"? This action cannot be undone.`}
+        confirmText="Delete Forever"
+        variant="danger"
+        isLoading={actionLoading}
+      />
     </div>
   );
 };
