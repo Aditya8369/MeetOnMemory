@@ -97,9 +97,9 @@ const LiveTranscriptPanel = ({ meetingId }) => {
 
   if (status === "disconnected") {
     return (
-      <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-        <div className="flex items-center gap-3 text-gray-500">
-          <Loader2 className="w-5 h-5 animate-spin" />
+      <div className="bg-white dark:bg-slate-900 rounded-lg shadow-sm border border-gray-200 dark:border-slate-800 p-6">
+        <div className="flex items-center gap-3 text-gray-500 dark:text-slate-400">
+          <Loader2 className="w-5 h-5 animate-spin text-blue-500" />
           <span>Connecting to transcript service...</span>
         </div>
       </div>
@@ -108,8 +108,8 @@ const LiveTranscriptPanel = ({ meetingId }) => {
 
   if (status === "error") {
     return (
-      <div className="bg-white rounded-lg shadow-sm border border-red-200 p-6">
-        <div className="flex items-center gap-3 text-red-600">
+      <div className="bg-white dark:bg-slate-900 rounded-lg shadow-sm border border-red-200 dark:border-red-900/50 p-6">
+        <div className="flex items-center gap-3 text-red-600 dark:text-red-400">
           <AlertCircle className="w-5 h-5" />
           <span>{error || "Transcript service error"}</span>
         </div>
@@ -118,22 +118,22 @@ const LiveTranscriptPanel = ({ meetingId }) => {
   }
 
   return (
-    <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+    <div className="bg-white dark:bg-slate-900 rounded-lg shadow-sm border border-gray-200 dark:border-slate-800 p-6">
       <div className="flex items-center justify-between mb-4">
-        <h3 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
-          <Mic className="w-5 h-5" />
+        <h3 className="text-lg font-semibold text-gray-900 dark:text-white flex items-center gap-2">
+          <Mic className="w-5 h-5 text-blue-600 dark:text-blue-400" />
           Live Transcript
         </h3>
         <div className="flex items-center gap-2">
           <span
             className={`px-3 py-1 rounded-full text-xs font-medium ${
               status === "recording"
-                ? "bg-red-100 text-red-700"
+                ? "bg-red-100 text-red-700 dark:bg-red-950/60 dark:text-red-400"
                 : status === "processing"
-                  ? "bg-yellow-100 text-yellow-700"
+                  ? "bg-yellow-100 text-yellow-700 dark:bg-yellow-950/60 dark:text-yellow-400"
                   : status === "completed"
-                    ? "bg-green-100 text-green-700"
-                    : "bg-gray-100 text-gray-700"
+                    ? "bg-green-100 text-green-700 dark:bg-emerald-950/60 dark:text-emerald-400"
+                    : "bg-gray-100 text-gray-700 dark:bg-slate-800 dark:text-slate-300"
             }`}
           >
             {status.charAt(0).toUpperCase() + status.slice(1)}
@@ -142,17 +142,17 @@ const LiveTranscriptPanel = ({ meetingId }) => {
       </div>
 
       {status === "recording" && segments.length === 0 ? (
-        <div className="text-center py-12 text-gray-500">
+        <div className="text-center py-12 text-gray-500 dark:text-slate-400">
           <Mic className="w-12 h-12 mx-auto mb-3 opacity-50" />
           <p>Waiting for audio...</p>
         </div>
       ) : status === "processing" ? (
-        <div className="text-center py-12 text-gray-500">
-          <Loader2 className="w-12 h-12 mx-auto mb-3 animate-spin" />
+        <div className="text-center py-12 text-gray-500 dark:text-slate-400">
+          <Loader2 className="w-12 h-12 mx-auto mb-3 animate-spin text-blue-500" />
           <p>Processing transcription...</p>
         </div>
       ) : segments.length === 0 ? (
-        <div className="text-center py-12 text-gray-500">
+        <div className="text-center py-12 text-gray-500 dark:text-slate-400">
           <p>No transcript available yet</p>
         </div>
       ) : (
@@ -160,17 +160,19 @@ const LiveTranscriptPanel = ({ meetingId }) => {
           {segments.map((segment, index) => (
             <div
               key={index}
-              className="p-3 bg-gray-50 rounded-lg border border-gray-200"
+              className="p-3 bg-gray-50 dark:bg-slate-800/60 rounded-lg border border-gray-200 dark:border-slate-700/80"
             >
               <div className="flex items-center justify-between mb-1">
-                <span className="text-xs font-medium text-blue-600">
+                <span className="text-xs font-medium text-blue-600 dark:text-blue-400">
                   {segment.speaker || "Unknown"}
                 </span>
-                <span className="text-xs text-gray-500">
+                <span className="text-xs text-gray-500 dark:text-slate-400">
                   {formatTime(segment.startTime)}
                 </span>
               </div>
-              <p className="text-sm text-gray-700">{segment.text}</p>
+              <p className="text-sm text-gray-700 dark:text-slate-200">
+                {segment.text}
+              </p>
             </div>
           ))}
           <div ref={transcriptEndRef} />
