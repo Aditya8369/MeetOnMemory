@@ -8,6 +8,7 @@ import { csrfErrorHandler } from "../middleware/csrfProtection.js";
 import { globalLimiter } from "../middleware/rateLimiter.js";
 import errorHandler from "../middleware/errorHandler.js";
 import requestContext from "../middleware/requestContext.js";
+import { originValidationMiddleware } from "../middleware/originValidation.js";
 
 import webhookRoutes from "../routes/webhookRoutes.js";
 import slackRoutes from "../routes/slackRoutes.js";
@@ -22,6 +23,7 @@ export function configureExpress(app) {
   app.use(requestContext);
   configureSecurity(app);
   app.use(cors(corsOptions));
+  app.use(originValidationMiddleware);
   app.use(cookieParser());
 
   // Public Slack webhooks are parsed by Slack-specific body parsers BEFORE the

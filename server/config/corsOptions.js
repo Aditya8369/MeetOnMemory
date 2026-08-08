@@ -1,11 +1,31 @@
-export const allowedOrigins = [
+const DEFAULT_ALLOWED_ORIGINS = [
   "http://localhost:5173",
   "http://localhost:5174",
   "http://localhost:4173",
   "http://127.0.0.1:5173",
   "http://127.0.0.1:5174",
   "http://127.0.0.1:4173",
-  process.env.CLIENT_URL,
+];
+
+const parseTrustedClientOrigin = () => {
+  const clientUrl = process.env.CLIENT_URL;
+  if (!clientUrl) {
+    return null;
+  }
+
+  try {
+    return new URL(clientUrl).origin;
+  } catch {
+    console.warn(
+      "Ignored invalid CLIENT_URL environment variable for origin validation",
+    );
+    return null;
+  }
+};
+
+export const allowedOrigins = [
+  ...DEFAULT_ALLOWED_ORIGINS,
+  parseTrustedClientOrigin(),
 ].filter(Boolean);
 
 export const corsOptions = {
