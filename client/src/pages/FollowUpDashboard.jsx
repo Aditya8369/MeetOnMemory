@@ -237,28 +237,28 @@ const FollowUpDashboard = () => {
         {analytics && (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
             <MetricCard
-              Icon={Target}
+              icon={Target}
               label="Completion Rate"
               value={`${analytics.summary.completionRate.toFixed(1)}%`}
               subtitle={`${analytics.summary.completedTasks} of ${analytics.summary.totalTasks}`}
               color="green"
             />
             <MetricCard
-              Icon={Clock}
+              icon={Clock}
               label="Avg Completion Time"
               value={`${analytics.summary.avgTimeToCompletion.toFixed(1)}d`}
               subtitle="Days to complete"
               color="blue"
             />
             <MetricCard
-              Icon={AlertCircle}
+              icon={AlertCircle}
               label="Overdue Tasks"
               value={analytics.summary.overdueTasks}
               subtitle={`${analytics.summary.overdueRate.toFixed(1)}% overdue rate`}
               color="red"
             />
             <MetricCard
-              Icon={Award}
+              icon={Award}
               label="On-Time Rate"
               value={`${analytics.summary.onTimeRate.toFixed(1)}%`}
               subtitle="Completed before deadline"
@@ -538,7 +538,11 @@ const FollowUpDashboard = () => {
   );
 };
 
-const MetricCard = ({ Icon, label, value, subtitle, color }) => {
+const MetricCard = ({ icon, label, value, subtitle, color }) => {
+  // Assign to capitalized local variable to satisfy JSX component naming
+  // and avoid ESLint no-unused-vars false positives on destructuring renames
+  const Icon = icon;
+
   const colorClasses = {
     blue: "bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400",
     green:
