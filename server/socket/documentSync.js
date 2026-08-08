@@ -124,12 +124,10 @@ function registerPresence(socket, roomName, meetingId) {
     email,
   });
 
-  socket
-    .to(roomName)
-    .emit("presence-joined", {
-      meetingId,
-      collaborator: members.get(socket.id),
-    });
+  socket.to(roomName).emit("presence-joined", {
+    meetingId,
+    collaborator: members.get(socket.id),
+  });
   broadcastPresence(roomName, meetingId);
 }
 
