@@ -10,6 +10,18 @@ import {
   RefreshCw,
 } from "lucide-react";
 
+/**
+ * Client-side HTML sanitization helper for live email previews (#1339)
+ */
+const sanitizeHtml = (html) => {
+  if (typeof html !== "string") return "";
+  return html
+    .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, "")
+    .replace(/on\w+="[^"]*"/gi, "")
+    .replace(/on\w+='[^']*'/gi, "")
+    .replace(/javascript:/gi, "");
+};
+
 const DigestPreferences = () => {
   const [preferences, setPreferences] = useState({
     frequency: "weekly",
@@ -82,7 +94,7 @@ const DigestPreferences = () => {
         "/api/digest-preferences/preview",
         preferences,
       );
-      setPreviewHtml(data.html);
+      setPreviewHtml(sanitizeHtml(data.html || ""));
     } catch (error) {
       console.error("Failed to fetch preview:", error);
       // fallback preview if error
@@ -254,9 +266,10 @@ const DigestPreferences = () => {
 
         <div className="flex gap-4">
           <button
+            type="button"
             onClick={handleSave}
             disabled={saving}
-            className="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-lg flex justify-center items-center gap-2 transition-colors disabled:opacity-50"
+            className="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-lg flex justify-center items-center gap-2 transition-colors disabled:opacity-50 cursor-pointer"
           >
             {saving ? (
               <Loader2 className="w-4 h-4 animate-spin" />
@@ -265,8 +278,9 @@ const DigestPreferences = () => {
             )}
           </button>
           <button
+            type="button"
             onClick={handleSendTest}
-            className="flex-1 bg-slate-100 hover:bg-slate-200 dark:bg-slate-700 dark:hover:bg-slate-600 text-slate-800 dark:text-slate-200 font-medium py-2 px-4 rounded-lg flex justify-center items-center gap-2 transition-colors"
+            className="flex-1 bg-slate-100 hover:bg-slate-200 dark:bg-slate-700 dark:hover:bg-slate-600 text-slate-800 dark:text-slate-200 font-medium py-2 px-4 rounded-lg flex justify-center items-center gap-2 transition-colors cursor-pointer"
           >
             <Mail className="w-4 h-4" /> Send Test
           </button>
