@@ -520,7 +520,7 @@ const MeetingAnalytics = () => {
   );
 };
 
-const MetricCard = ({ Icon, label, value, subtitle, color }) => {
+const MetricCard = ({ icon: IconComponent, label, value, subtitle, color }) => {
   const colorClasses = {
     blue: "bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400",
     purple:
@@ -535,7 +535,7 @@ const MetricCard = ({ Icon, label, value, subtitle, color }) => {
     <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-lg p-6">
       <div className="flex items-start justify-between mb-2">
         <div className={`p-3 rounded-xl ${colorClasses[color]}`}>
-          <Icon className="w-6 h-6" />
+          <IconComponent className="w-6 h-6" />
         </div>
       </div>
       <p className="text-sm text-slate-600 dark:text-slate-400 mb-1">{label}</p>
@@ -549,9 +549,9 @@ const MetricCard = ({ Icon, label, value, subtitle, color }) => {
   );
 };
 
-const MetricDetail = ({ label, value, Icon }) => (
+const MetricDetail = ({ label, value, icon: IconComponent }) => (
   <div className="flex items-center gap-3 p-3 bg-slate-50 dark:bg-slate-800 rounded-lg">
-    <Icon className="w-5 h-5 text-slate-400" />
+    <IconComponent className="w-5 h-5 text-slate-400" />
     <div>
       <p className="text-xs text-slate-500 dark:text-slate-400">{label}</p>
       <p className="text-sm font-semibold text-slate-900 dark:text-white">
