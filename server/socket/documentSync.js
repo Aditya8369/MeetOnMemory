@@ -16,6 +16,9 @@ import authenticateSocket from "../middleware/socketAuth.js";
 //     }
 const docRegistry = new Map();
 
+// Per-room presence registry: roomName -> Map<socketId, { userId, name, email }>
+const presenceRegistry = new Map();
+
 // Debounce window in milliseconds before a DB write is triggered
 const SAVE_DEBOUNCE_MS = 5000;
 
@@ -79,6 +82,75 @@ if (redisUri) {
     redisSub = null;
   }
 }
+
+// ── Real-time presence (Issue #1236) ──────────────────────────────────────────
+
+/**
+ * Broadcast the current presence list for a document room to all members.
+ * @param {string} roomName - Socket.IO room for the document
+ * @param {string} meetingId - Meeting id (included in the payload)
+ */
+function broadcastPresence(roomName, meetingId) {
+  if (!syncNamespace) return;
+  const members = presenceRegistry.get(roomName) || new Map();
+  const collaborators = Array.from(members.values());
+  syncNamespace
+    .to(roomName)
+    .emit("presence-update", { meetingId, collaborators });
+}
+
+/**
+ * Register a newly joined socket in the room's presence list and notify the
+ * other members. Falls back to the socket's authenticated identity when the
+ * User document is unavailable.
+ */
+function registerPresence(socket, roomName, meetingId) {
+  const name =
+    socket.user?.name ||
+    socket.user?.firstName ||
+    socket.user?.username ||
+    (socket.userId ? `User ${socket.userId.slice(0, 6)}` : "Anonymous");
+  const email = socket.user?.email || "";
+
+  let members = presenceRegistry.get(roomName);
+  if (!members) {
+    members = new Map();
+    presenceRegistry.set(roomName, members);
+  }
+  members.set(socket.id, {
+    socketId: socket.id,
+    userId: socket.userId || socket.id,
+    name,
+    email,
+  });
+
+  socket.to(roomName).emit("presence-joined", {
+    meetingId,
+    collaborator: members.get(socket.id),
+  });
+  broadcastPresence(roomName, meetingId);
+}
+
+/**
+ * Remove a socket from the room's presence list and notify remaining members.
+ */
+function unregisterPresence(socket, roomName, meetingId) {
+  const members = presenceRegistry.get(roomName);
+  if (!members) return;
+  const removed = members.delete(socket.id);
+  if (removed) {
+    socket
+      .to(roomName)
+      .emit("presence-left", { meetingId, socketId: socket.id });
+  }
+  if (members.size === 0) {
+    presenceRegistry.delete(roomName);
+  } else {
+    broadcastPresence(roomName, meetingId);
+  }
+}
+
+// ── Real-time presence (Issue #1236) ──────────────────────────────────────────
 
 // Debounced save — resets the timer on every new update
 const scheduleSave = (meetingId, ydoc) => {
@@ -339,6 +411,9 @@ export default (io) => {
         `[documentSync] Socket ${socket.id} joined doc room: ${roomName}`,
       );
 
+      // Broadcast real-time presence (Issue #1236)
+      registerPresence(socket, roomName, meetingId);
+
       try {
         const ydoc = await getOrCreateDoc(meetingId);
 
@@ -418,10 +493,12 @@ export default (io) => {
       });
     });
 
-    // Disconnect — clean up if no one is left in the room
+    // Disconnect — clean up presence and release the doc if no one is left
     socket.on("disconnect", async () => {
       console.log(`[documentSync] Client disconnected: ${socket.id}`);
       if (currentMeetingId) {
+        // Notify remaining members and clean up presence (Issue #1236)
+        unregisterPresence(socket, `doc:${currentMeetingId}`, currentMeetingId);
         // Small delay to allow the socket to fully leave the room
         setTimeout(() => cleanupDoc(currentMeetingId, syncNamespace), 500);
       }

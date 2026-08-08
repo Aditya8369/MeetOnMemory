@@ -12,6 +12,7 @@ import { createClerkSocketOptions } from "../services/apiClient.js";
  * @returns {{
  *   content: string,           — current plain-text content
  *   setContent: Function,      — write new text (broadcasts CRDT update)
+ *   collaborators: Array,      — real-time presence list [{ socketId, userId, name, email }]
  *   connectedUsers: number,    — number of active collaborators
  *   isSynced: boolean,         — true once initial state received from server
  *   isConnected: boolean,      — socket connection status
@@ -19,7 +20,7 @@ import { createClerkSocketOptions } from "../services/apiClient.js";
  */
 const useCollaborativeDoc = (meetingId, backendUrl) => {
   const [content, setContentState] = useState("");
-  const [connectedUsers, setConnectedUsers] = useState(1);
+  const [collaborators, setCollaborators] = useState([]);
   const [isSynced, setIsSynced] = useState(false);
   const [isConnected, setIsConnected] = useState(false);
 
@@ -28,6 +29,7 @@ const useCollaborativeDoc = (meetingId, backendUrl) => {
   const ydocRef = useRef(null);
   const ytextRef = useRef(null);
   const isRemoteUpdateRef = useRef(false); // prevent echo loops
+  const presenceRef = useRef(new Map()); // socketId -> collaborator
 
   useEffect(() => {
     if (!meetingId || !backendUrl) return;
@@ -89,11 +91,32 @@ const useCollaborativeDoc = (meetingId, backendUrl) => {
         }
       });
 
-      // 6. Receive cursor/presence updates
+      // 6. Receive real-time presence updates (Issue #1236)
+      socket.on("presence-update", ({ collaborators = [] }) => {
+        presenceRef.current = new Map(
+          collaborators.map((c) => [c.socketId || c.userId, c]),
+        );
+        setCollaborators(Array.from(presenceRef.current.values()));
+      });
+
+      socket.on("presence-joined", ({ collaborator }) => {
+        if (!collaborator) return;
+        presenceRef.current.set(
+          collaborator.socketId || collaborator.userId,
+          collaborator,
+        );
+        setCollaborators(Array.from(presenceRef.current.values()));
+      });
+
+      socket.on("presence-left", ({ socketId }) => {
+        if (presenceRef.current.delete(socketId)) {
+          setCollaborators(Array.from(presenceRef.current.values()));
+        }
+      });
+
+      // cursor-update — optional real-time cursor presence relay
       socket.on("cursor-update", () => {
-        // Presence tracking — bump connected user count (simple heuristic)
-        // A full implementation would maintain a map of { socketId → user }
-        setConnectedUsers((prev) => Math.max(prev, 2));
+        // Cursor telemetry only; presence is tracked via presence-* events above
       });
 
       // 7. Observe local Yjs changes and broadcast them
@@ -124,6 +147,8 @@ const useCollaborativeDoc = (meetingId, backendUrl) => {
       if (onUpdate) ydoc.off("update", onUpdate);
       socket?.disconnect();
       ydoc.destroy();
+      presenceRef.current = new Map();
+      setCollaborators([]);
     };
   }, [meetingId, backendUrl]);
 
@@ -175,7 +200,8 @@ const useCollaborativeDoc = (meetingId, backendUrl) => {
   return {
     content,
     setContent,
-    connectedUsers,
+    collaborators,
+    connectedUsers: collaborators.length,
     isSynced,
     isConnected,
   };
