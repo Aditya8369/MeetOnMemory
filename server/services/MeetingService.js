@@ -365,33 +365,6 @@ export const generateMeetingMoM = async (
     throw new ValidationError("No transcript provided.");
   }
 
-  const { aiQueue } = await loadQueueService();
-  if (aiQueue && aiQueue.isActive) {
-    console.log(
-      `🚀 Queueing MoM generation job for ${meetingId || "transcript-only"}...`,
-    );
-    await aiQueue.add(
-      "generate-mom",
-      {
-        meetingId,
-        transcript: textToSummarize,
-        date,
-        title,
-        userId,
-      },
-      {
-        attempts: 3,
-        backoff: {
-          type: "exponential",
-          delay: 5000, // Wait 5s, then 10s on retries
-        },
-      },
-    );
-    return { queued: true };
-  }
-
-  console.log(`🧠 Generating MoM for ${meetingId || "transcript-only"}...`);
-
   let customInstructions = null;
   try {
     if (meeting) {
@@ -422,6 +395,34 @@ export const generateMeetingMoM = async (
       err.message,
     );
   }
+
+  const { aiQueue } = await loadQueueService();
+  if (aiQueue && aiQueue.isActive) {
+    console.log(
+      `🚀 Queueing MoM generation job for ${meetingId || "transcript-only"}...`,
+    );
+    await aiQueue.add(
+      "generate-mom",
+      {
+        meetingId,
+        transcript: textToSummarize,
+        date,
+        title,
+        userId,
+        customInstructions,
+      },
+      {
+        attempts: 3,
+        backoff: {
+          type: "exponential",
+          delay: 5000, // Wait 5s, then 10s on retries
+        },
+      },
+    );
+    return { queued: true };
+  }
+
+  console.log(`🧠 Generating MoM for ${meetingId || "transcript-only"}...`);
 
   const { generateMoMWithAI, normalizeMoM, buildHumanReadableMoM } =
     await loadGenerativeAI();
