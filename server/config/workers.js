@@ -1,6 +1,5 @@
 import { initRedis } from "../services/redisService.js";
 import {
-  initAIWorker,
   initDataExportWorker,
   initExportCleanupWorker,
   initConflictScanWorker,
@@ -50,7 +49,6 @@ export async function startWorkers(app) {
   };
 
   await safeInit("Redis", () => initRedis());
-  await safeInit("AI Worker", () => initAIWorker(app));
   await safeInit("Data Export Worker", () => initDataExportWorker(app));
   await safeInit("Export Cleanup Worker", () => initExportCleanupWorker());
   await safeInit("Conflict Scan Worker", () => initConflictScanWorker(app));

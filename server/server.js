@@ -32,7 +32,6 @@ import { startCalendarSyncJob } from "./jobs/calendarSyncJob.js";
 import startPollExpirationJob from "./jobs/pollExpirationJob.js";
 import { createClient } from "redis"; // eslint-disable-line no-unused-vars
 import {
-  initAIWorker, // eslint-disable-line no-unused-vars
   initDataExportWorker, // eslint-disable-line no-unused-vars
   initConflictScanWorker, // eslint-disable-line no-unused-vars
 } from "./services/queueService.js";
