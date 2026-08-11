@@ -429,4 +429,50 @@ describe("PersonalNote API", () => {
     expect(resInvalidAnn.statusCode).toBe(400);
     expect(resInvalidAnn.body.success).toBe(false);
   });
+
+  it("should handle adversarial regex patterns safely in search without backtracking", async () => {
+    const adversarialQuery = "a".repeat(100) + "x" + "a".repeat(100) + "(a+)+$";
+
+    const res = await request(app)
+      .get(
+        `/api/personal-notes/search?query=${encodeURIComponent(adversarialQuery)}`,
+      )
+      .set(authHeader(token));
+
+    expect(res.statusCode).toBe(200);
+    expect(res.body.success).toBe(true);
+    expect(res.body.notes).toBeInstanceOf(Array);
+  });
+
+  it("should reject excessively long search queries to prevent ReDoS", async () => {
+    const hugeQuery = "a".repeat(501);
+
+    const res = await request(app)
+      .get(`/api/personal-notes/search?query=${encodeURIComponent(hugeQuery)}`)
+      .set(authHeader(token));
+
+    expect(res.statusCode).toBe(400);
+    expect(res.body.success).toBe(false);
+    expect(res.body.message).toContain(
+      "Query length cannot exceed 500 characters",
+    );
+  });
+
+  it("should correctly find notes containing regex special characters as literal matches", async () => {
+    await PersonalNote.create({
+      userId: user._id,
+      meetingId: meeting._id,
+      content: "Price: $9.99 for 1+ items?",
+    });
+
+    const query = "$9.99";
+    const res = await request(app)
+      .get(`/api/personal-notes/search?query=${encodeURIComponent(query)}`)
+      .set(authHeader(token));
+
+    expect(res.statusCode).toBe(200);
+    expect(res.body.success).toBe(true);
+    expect(res.body.notes.length).toBeGreaterThanOrEqual(1);
+    expect(res.body.notes[0].content).toContain("Price: $9.99");
+  });
 });

@@ -652,9 +652,23 @@ export const searchNotes = async (req, res) => {
       meetingId: { $in: meetingIds },
     };
     if (query) {
+      if (typeof query !== "string") {
+        return res.status(400).json({
+          success: false,
+          message: "Query must be a string",
+        });
+      }
+      if (query.length > 500) {
+        return res.status(400).json({
+          success: false,
+          message: "Query length cannot exceed 500 characters",
+        });
+      }
+      // Escape regex special characters to prevent ReDoS and regex injection
+      const escapedQuery = query.replace(/[/\-\\^$*+?.()|[\]{}]/g, "\\$&");
       filter.$or = [
-        { title: { $regex: query, $options: "i" } },
-        { content: { $regex: query, $options: "i" } },
+        { title: { $regex: escapedQuery, $options: "i" } },
+        { content: { $regex: escapedQuery, $options: "i" } },
       ];
     }
 
