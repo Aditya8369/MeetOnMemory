@@ -160,7 +160,7 @@ export default (io) => {
      * Join a meeting room
      * Handles distributed presence tracking across multiple server instances
      */
-    socket.on("join-meeting", async ({ roomId, userInfo }) => {
+    socket.on("join-meeting", async ({ roomId }) => {
       try {
         // RBAC: Check if user has permission to view meetings
         if (
@@ -265,11 +265,18 @@ export default (io) => {
      */
     socket.on("sending-signal", (payload) => {
       try {
-        if (!payload || !payload.userToSignal || !payload.callerID || !payload.signal) {
-          console.warn(`[WebRTC] Invalid sending-signal payload from ${socket.id}`);
+        if (
+          !payload ||
+          !payload.userToSignal ||
+          !payload.callerID ||
+          !payload.signal
+        ) {
+          console.warn(
+            `[WebRTC] Invalid sending-signal payload from ${socket.id}`,
+          );
           return;
         }
-        
+
         // payload: { userToSignal, callerID, signal }
         io.to(payload.userToSignal).emit("user-joined-signal", {
           signal: payload.signal,
@@ -285,14 +292,19 @@ export default (io) => {
           },
         });
       } catch (error) {
-        console.error(`[WebRTC] Error in sending-signal from ${socket.id}:`, error);
+        console.error(
+          `[WebRTC] Error in sending-signal from ${socket.id}:`,
+          error,
+        );
       }
     });
 
     socket.on("returning-signal", (payload) => {
       try {
         if (!payload || !payload.signal || !payload.callerID) {
-          console.warn(`[WebRTC] Invalid returning-signal payload from ${socket.id}`);
+          console.warn(
+            `[WebRTC] Invalid returning-signal payload from ${socket.id}`,
+          );
           return;
         }
 
@@ -302,7 +314,10 @@ export default (io) => {
           id: socket.id,
         });
       } catch (error) {
-        console.error(`[WebRTC] Error in returning-signal from ${socket.id}:`, error);
+        console.error(
+          `[WebRTC] Error in returning-signal from ${socket.id}:`,
+          error,
+        );
       }
     });
 
