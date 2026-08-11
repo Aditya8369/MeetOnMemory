@@ -7,6 +7,7 @@ import conflictScanJob from "./conflictDetection/conflictScanJob.js";
 import sentimentAnalysisJob from "../jobs/sentimentAnalysisJob.js";
 import recalculateImportanceJob from "../jobs/recalculateImportanceJob.js";
 import memoryLifecycleJob from "../jobs/memoryLifecycleJob.js";
+import RecapEmailService from "./recapEmailService.js";
 import queueRegistry, {
   readPositiveIntEnv,
   resolveJobOptions,
@@ -325,6 +326,28 @@ export const initMemoryLifecycleWorker = async (app) => {
 
   return worker;
 };
+
+/**
+ * Processes queued meeting recap deliveries (Issue #1248).
+ * Jobs are enqueued by recapScheduleController.retryDelivery as "retry-delivery".
+ */
+export const initRecapDeliveryWorker = () =>
+  createWorker({
+    name: "recap-delivery-queue",
+    label: "Recap Delivery Worker",
+    processor: async (job) => {
+      if (job.name !== "retry-delivery") {
+        throw new Error(`Unsupported recap delivery job: ${job.name}`);
+      }
+
+      const meetingId = job.data?.meetingId;
+      if (!meetingId) {
+        throw new Error("Recap delivery job missing meetingId");
+      }
+
+      await RecapEmailService.sendImmediateRecap(meetingId);
+    },
+  });
 
 /**
  * Drains every registered worker, then closes queues and shared Redis

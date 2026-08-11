@@ -35,7 +35,9 @@ export function configureSocket(server, app) {
           socket: {
             reconnectStrategy: (retries) => {
               if (retries > 10) {
-                console.error("❌ Redis Adapter: Max connection retries reached");
+                console.error(
+                  "❌ Redis Adapter: Max connection retries reached",
+                );
                 return new Error("Max retries reached");
               }
               // exponential backoff
@@ -53,12 +55,16 @@ export function configureSocket(server, app) {
         subClient.on("error", (err) => {
           console.error("❌ Redis Adapter SubClient Error:", err.message);
         });
-        
-        pubClient.on("reconnecting", () => console.log("🔄 Redis Adapter PubClient reconnecting..."));
-        subClient.on("reconnecting", () => console.log("🔄 Redis Adapter SubClient reconnecting..."));
+
+        pubClient.on("reconnecting", () =>
+          console.log("🔄 Redis Adapter PubClient reconnecting..."),
+        );
+        subClient.on("reconnecting", () =>
+          console.log("🔄 Redis Adapter SubClient reconnecting..."),
+        );
 
         await Promise.all([pubClient.connect(), subClient.connect()]);
-        
+
         io.adapter(createAdapter(pubClient, subClient));
         console.log(
           "✅ Socket.io Redis Pub/Sub adapter attached (horizontal scaling enabled for WebRTC Signaling)",
