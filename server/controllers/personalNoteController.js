@@ -558,17 +558,18 @@ export const togglePin = async (req, res) => {
     }
 
     if (!note) {
-      // Create note if it doesn't exist (pinned by default)
+      // Create note if it doesn't exist (pinned by default or set explicitly)
       note = await PersonalNote.create({
         userId,
         meetingId,
         content: "",
         title: "",
-        isPinned: true,
+        isPinned: req.body.isPinned !== undefined ? req.body.isPinned : true,
       });
     } else {
-      // Toggle pin status
-      note.isPinned = !note.isPinned;
+      // Toggle pin status or set explicitly
+      note.isPinned =
+        req.body.isPinned !== undefined ? req.body.isPinned : !note.isPinned;
       await note.save();
     }
 

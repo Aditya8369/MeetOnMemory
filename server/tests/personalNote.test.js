@@ -343,4 +343,90 @@ describe("PersonalNote API", () => {
     expect(resAnn.statusCode).toBe(403);
     expect(resAnn.body.success).toBe(false);
   });
+
+  it("should return the canonical response shape for note fetching", async () => {
+    // 1. Fetch non-existing note (returns empty template)
+    const resEmpty = await request(app)
+      .get(`/api/personal-notes/${meeting._id}`)
+      .set(authHeader(token));
+
+    expect(resEmpty.statusCode).toBe(200);
+    expect(resEmpty.body.success).toBe(true);
+    expect(resEmpty.body.note).toBeDefined();
+    expect(resEmpty.body.note.title).toBe("");
+    expect(resEmpty.body.note.content).toBe("");
+    expect(resEmpty.body.note.annotations).toBeInstanceOf(Array);
+    expect(resEmpty.body.note.isPinned).toBe(false);
+    expect(resEmpty.body.note.limits).toBeDefined();
+    expect(resEmpty.body.note.limits.maxTitleLength).toBeDefined();
+    expect(resEmpty.body.note.limits.maxContentLength).toBeDefined();
+
+    // 2. Create the note
+    await PersonalNote.create({
+      userId: user._id,
+      meetingId: meeting._id,
+      title: "Valid Title",
+      content: "Valid Content",
+      isPinned: true,
+    });
+
+    // 3. Fetch existing note (returns note + limits)
+    const resNote = await request(app)
+      .get(`/api/personal-notes/${meeting._id}`)
+      .set(authHeader(token));
+
+    expect(resNote.statusCode).toBe(200);
+    expect(resNote.body.success).toBe(true);
+    expect(resNote.body.note.title).toBe("Valid Title");
+    expect(resNote.body.note.content).toBe("Valid Content");
+    expect(resNote.body.note.isPinned).toBe(true);
+    expect(resNote.body.note.limits).toBeDefined();
+  });
+
+  it("should support explicit isPinned value in togglePin endpoint", async () => {
+    // 1. Explicitly pin to true
+    const resPinTrue = await request(app)
+      .patch(`/api/personal-notes/${meeting._id}/pin`)
+      .set(authHeader(token))
+      .send({ isPinned: true });
+
+    expect(resPinTrue.statusCode).toBe(200);
+    expect(resPinTrue.body.success).toBe(true);
+    expect(resPinTrue.body.isPinned).toBe(true);
+
+    // 2. Explicitly pin to false
+    const resPinFalse = await request(app)
+      .patch(`/api/personal-notes/${meeting._id}/pin`)
+      .set(authHeader(token))
+      .send({ isPinned: false });
+
+    expect(resPinFalse.statusCode).toBe(200);
+    expect(resPinFalse.body.success).toBe(true);
+    expect(resPinFalse.body.isPinned).toBe(false);
+  });
+
+  it("should return consistent validation errors for invalid request payloads", async () => {
+    // 1. Try to upsert invalid fields
+    const resInvalidUpsert = await request(app)
+      .post(`/api/personal-notes/${meeting._id}`)
+      .set(authHeader(token))
+      .send({ title: "a".repeat(201) }); // over limit
+
+    expect(resInvalidUpsert.statusCode).toBe(400);
+    expect(resInvalidUpsert.body.success).toBe(false);
+    expect(resInvalidUpsert.body.errors).toBeDefined();
+
+    // 2. Try to add invalid annotation
+    const resInvalidAnn = await request(app)
+      .post(`/api/personal-notes/${meeting._id}/annotations`)
+      .set(authHeader(token))
+      .send({
+        annotationText: "", // too short
+        sourceField: "invalid-source",
+        offsets: { start: -1, end: 10 },
+      });
+
+    expect(resInvalidAnn.statusCode).toBe(400);
+    expect(resInvalidAnn.body.success).toBe(false);
+  });
 });
