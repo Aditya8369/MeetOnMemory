@@ -35,6 +35,8 @@ const PersonalNotesSidebar = ({ meetingId, isOpen }) => {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
   const [saveStatus, setSaveStatus] = useState("idle"); // idle, saving, saved, error
+  const [isClearing, setIsClearing] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   // Character limits (matching backend)
   const LIMITS = {
@@ -104,7 +106,7 @@ const PersonalNotesSidebar = ({ meetingId, isOpen }) => {
    * Auto-save note content with debouncing (1 second delay)
    */
   useEffect(() => {
-    if (!meetingId || isLoading) return;
+    if (!meetingId || isLoading || isClearing || isDeleting) return;
 
     // Check if note has changed from original
     const hasChanged =
@@ -152,7 +154,15 @@ const PersonalNotesSidebar = ({ meetingId, isOpen }) => {
     }, 1000); // 1 second debounce
 
     return () => clearTimeout(timeoutId);
-  }, [noteTitle, noteContent, meetingId, isLoading, originalNote]);
+  }, [
+    noteTitle,
+    noteContent,
+    meetingId,
+    isLoading,
+    originalNote,
+    isClearing,
+    isDeleting,
+  ]);
 
   /**
    * Toggle pin status of the note
@@ -166,6 +176,76 @@ const PersonalNotesSidebar = ({ meetingId, isOpen }) => {
     } catch (err) {
       console.error("Error toggling pin:", err);
       setError("Failed to update pin status");
+    }
+  };
+
+  /**
+   * Handle clearing note content (title and text content)
+   */
+  const handleClearContent = async () => {
+    if (
+      window.confirm(
+        "Are you sure you want to clear this note's title and content? Your annotations and pin status will be kept.",
+      )
+    ) {
+      setIsClearing(true);
+      setError(null);
+      try {
+        const response = await personalNoteApi.clearNoteContent(meetingId);
+        if (response.success) {
+          const clearedData = {
+            title: "",
+            content: "",
+            isPinned: note.isPinned,
+            annotations: note.annotations,
+          };
+          setNote(clearedData);
+          setOriginalNote(clearedData);
+          setSaveStatus("idle");
+        } else {
+          setError(response.message || "Failed to clear note content");
+        }
+      } catch (err) {
+        console.error("Error clearing note content:", err);
+        setError("Failed to clear note content");
+      } finally {
+        setIsClearing(false);
+      }
+    }
+  };
+
+  /**
+   * Handle deleting the note document entirely
+   */
+  const handleDeleteNote = async () => {
+    if (
+      window.confirm(
+        "Are you sure you want to delete this personal note entirely from the database? This action is irreversible.",
+      )
+    ) {
+      setIsDeleting(true);
+      setError(null);
+      try {
+        const response = await personalNoteApi.deleteNote(meetingId);
+        if (response.success) {
+          const deletedData = {
+            title: "",
+            content: "",
+            isPinned: false,
+            annotations: [],
+          };
+          setNote(deletedData);
+          setOriginalNote(deletedData);
+          setSaveStatus("idle");
+        } else {
+          setError(response.message || "Failed to delete note");
+        }
+      } catch (err) {
+        console.error("Error deleting note:", err);
+        setError("Failed to delete note");
+      } finally {
+        setIsDeleting(false);
+      }
     }
   };
 
@@ -416,6 +496,23 @@ const PersonalNotesSidebar = ({ meetingId, isOpen }) => {
               </div>
             </div>
           )}
+          {/* Destructive Actions Section */}
+          <div className="border-t border-gray-200 dark:border-gray-700 pt-4 flex gap-2">
+            <button
+              onClick={handleClearContent}
+              disabled={isSaving || isClearing || isDeleting}
+              className="flex-1 px-3 py-2 text-xs font-semibold text-amber-700 hover:text-white border border-amber-300 hover:bg-amber-600 rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-amber-500 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {isClearing ? "Clearing..." : "Clear Content"}
+            </button>
+            <button
+              onClick={handleDeleteNote}
+              disabled={isSaving || isClearing || isDeleting}
+              className="flex-1 px-3 py-2 text-xs font-semibold text-red-700 hover:text-white border border-red-300 hover:bg-red-600 rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-red-500 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {isDeleting ? "Deleting..." : "Delete Note"}
+            </button>
+          </div>
         </div>
       )}
     </div>
