@@ -3,8 +3,9 @@ import path from "path";
 export const validatePath = (filePath) => {
   if (!filePath) throw new Error("Path is required");
   const resolved = path.resolve(filePath);
-  const uploadsDir = path.resolve("uploads");
-  if (!resolved.startsWith(uploadsDir + path.sep) && resolved !== uploadsDir) {
+  const uploadsDir = path.resolve(process.env.UPLOADS_DIR || "uploads");
+  const relative = path.relative(uploadsDir, resolved);
+  if (relative.startsWith("..") || path.isAbsolute(relative)) {
     throw new Error("Directory traversal detected: Access denied");
   }
   return resolved;
