@@ -4,7 +4,7 @@ export const validatePath = (filePath) => {
   if (!filePath) throw new Error("Path is required");
   const resolved = path.resolve(filePath);
   const uploadsDir = path.resolve("uploads");
-  if (!resolved.startsWith(uploadsDir)) {
+  if (!resolved.startsWith(uploadsDir + path.sep) && resolved !== uploadsDir) {
     throw new Error("Directory traversal detected: Access denied");
   }
   return resolved;

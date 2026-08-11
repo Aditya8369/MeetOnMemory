@@ -401,6 +401,13 @@ export const generateMeetingMoM = async (
     console.log(
       `🚀 Queueing MoM generation job for ${meetingId || "transcript-only"}...`,
     );
+
+    if (meeting) {
+      meeting.status = "processing";
+      await meeting.save();
+      eventBus.emit("meeting.updated", meeting);
+    }
+
     await aiQueue.add(
       "generate-mom",
       {
