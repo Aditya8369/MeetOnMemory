@@ -475,4 +475,134 @@ describe("PersonalNote API", () => {
     expect(res.body.notes.length).toBeGreaterThanOrEqual(1);
     expect(res.body.notes[0].content).toContain("Price: $9.99");
   });
+
+  it("should clear note content successfully", async () => {
+    // 1. Create a note with content
+    await PersonalNote.create({
+      userId: user._id,
+      meetingId: meeting._id,
+      title: "Content to be cleared",
+      content: "Body to be cleared",
+    });
+
+    // 2. Clear content
+    const resClear = await request(app)
+      .put(`/api/personal-notes/${meeting._id}/clear`)
+      .set(authHeader(token));
+
+    expect(resClear.statusCode).toBe(200);
+    expect(resClear.body.success).toBe(true);
+    expect(resClear.body.note.title).toBe("");
+    expect(resClear.body.note.content).toBe("");
+
+    // Verify in db
+    const note = await PersonalNote.findOne({
+      userId: user._id,
+      meetingId: meeting._id,
+    });
+    expect(note.title).toBe("");
+    expect(note.content).toBe("");
+  });
+
+  it("should fail to clear note if note does not exist", async () => {
+    // Note doesn't exist for this meeting yet
+    const newMeeting = await Meeting.create({
+      title: "Another Meeting",
+      date: new Date(),
+      uploadedBy: user._id,
+      participants: [],
+    });
+
+    const resClear = await request(app)
+      .put(`/api/personal-notes/${newMeeting._id}/clear`)
+      .set(authHeader(token));
+
+    expect(resClear.statusCode).toBe(404);
+    expect(resClear.body.success).toBe(false);
+  });
+
+  it("should fail to clear note if unauthorized", async () => {
+    // Create note for User A
+    await PersonalNote.create({
+      userId: user._id,
+      meetingId: meeting._id,
+      title: "User A Title",
+      content: "User A Content",
+    });
+
+    // User B tries to clear User A's note
+    const userB = await User.create({
+      name: "User B",
+      email: "userb@test.com",
+      password: "password123",
+      role: "member",
+    });
+    userB.clerkUserId = `user_test_${userB._id}`;
+    await userB.save();
+
+    const tokenB = createClerkTestToken({
+      clerkUserId: userB.clerkUserId,
+      email: userB.email,
+    });
+
+    // Note: User B doesn't have access to this meeting anyway, so it should return 403 or 404
+    const resClear = await request(app)
+      .put(`/api/personal-notes/${meeting._id}/clear`)
+      .set(authHeader(tokenB));
+
+    expect(resClear.statusCode).toBe(403);
+    expect(resClear.body.success).toBe(false);
+
+    // Verify User A's note remains intact
+    const note = await PersonalNote.findOne({
+      userId: user._id,
+      meetingId: meeting._id,
+    });
+    expect(note.title).toBe("User A Title");
+  });
+
+  it("repeated clear calls should run atomically and safely", async () => {
+    await PersonalNote.create({
+      userId: user._id,
+      meetingId: meeting._id,
+      title: "Content",
+      content: "Body",
+    });
+
+    // Run parallel clear requests
+    const promises = [
+      request(app)
+        .put(`/api/personal-notes/${meeting._id}/clear`)
+        .set(authHeader(token)),
+      request(app)
+        .put(`/api/personal-notes/${meeting._id}/clear`)
+        .set(authHeader(token)),
+    ];
+    const results = await Promise.all(promises);
+
+    expect(results[0].statusCode).toBe(200);
+    expect(results[1].statusCode).toBe(200);
+  });
+
+  it("should delete note entirely successfully", async () => {
+    await PersonalNote.create({
+      userId: user._id,
+      meetingId: meeting._id,
+      title: "To be deleted",
+      content: "To be deleted",
+    });
+
+    const resDelete = await request(app)
+      .delete(`/api/personal-notes/${meeting._id}`)
+      .set(authHeader(token));
+
+    expect(resDelete.statusCode).toBe(200);
+    expect(resDelete.body.success).toBe(true);
+
+    const note = await PersonalNote.findOne({
+      userId: user._id,
+      meetingId: meeting._id,
+    });
+    expect(note).toBeNull();
+  });
 });

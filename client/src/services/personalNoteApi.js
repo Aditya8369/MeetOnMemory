@@ -49,4 +49,10 @@ export const personalNoteApi = {
 
   searchNotes: (query) =>
     wrap(apiClient.get(`/personal-notes/search`, { params: { q: query } })),
+
+  clearNoteContent: (meetingId) =>
+    wrap(apiClient.put(`/personal-notes/${meetingId}/clear`)),
+
+  deleteNote: (meetingId) =>
+    wrap(apiClient.delete(`/personal-notes/${meetingId}`)),
 };

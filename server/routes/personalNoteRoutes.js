@@ -7,6 +7,8 @@ import {
   togglePin,
   getPinnedNotes,
   searchNotes,
+  clearNoteContent,
+  deleteNote,
 } from "../controllers/personalNoteController.js";
 import userAuth from "../middleware/userAuth.js";
 
@@ -35,5 +37,11 @@ router.delete("/:meetingId/annotations/:annotationId", removeAnnotation);
 
 // Toggle pin status
 router.patch("/:meetingId/pin", togglePin);
+
+// Clear note content
+router.put("/:meetingId/clear", clearNoteContent);
+
+// Delete note document entirely
+router.delete("/:meetingId", deleteNote);
 
 export default router;

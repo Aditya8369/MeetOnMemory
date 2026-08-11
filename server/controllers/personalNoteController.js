@@ -687,6 +687,125 @@ export const searchNotes = async (req, res) => {
   }
 };
 
+// @desc Clear personal note content (title and content)
+// @route PUT /api/personal-notes/:meetingId/clear
+// @access Private
+export const clearNoteContent = async (req, res) => {
+  try {
+    const { meetingId } = req.params;
+    const userId = req.user._id;
+
+    // Enforce RBAC permission
+    if (
+      !req.user?.role ||
+      !hasPermission(req.user.role, "personal_notes", "edit")
+    ) {
+      return res.status(403).json({
+        success: false,
+        message: "Forbidden: You do not have permission to edit personal notes",
+      });
+    }
+
+    // Verify user has access to this meeting
+    const access = await resolveAccessibleMeeting(meetingId, req.user);
+    if (access.error) {
+      return res
+        .status(access.error.status)
+        .json({ success: false, message: access.error.message });
+    }
+
+    // Find note
+    let note = await PersonalNote.findOne({ userId, meetingId });
+
+    if (!note) {
+      return res.status(404).json({
+        success: false,
+        message: "Note not found",
+      });
+    }
+
+    // Verify ownership
+    if (note.userId.toString() !== userId.toString()) {
+      return res.status(403).json({
+        success: false,
+        message: "Forbidden: You do not own this note",
+      });
+    }
+
+    // Clear content and title atomically
+    note.content = "";
+    note.title = "";
+    await note.save();
+
+    res.status(200).json({
+      success: true,
+      message: "Note content cleared successfully",
+      note,
+    });
+  } catch (error) {
+    console.error("Error clearing personal note content:", error);
+    res.status(500).json({ success: false, message: "Server error" });
+  }
+};
+
+// @desc Delete personal note document entirely
+// @route DELETE /api/personal-notes/:meetingId
+// @access Private
+export const deleteNote = async (req, res) => {
+  try {
+    const { meetingId } = req.params;
+    const userId = req.user._id;
+
+    // Enforce RBAC permission
+    if (
+      !req.user?.role ||
+      !hasPermission(req.user.role, "personal_notes", "delete")
+    ) {
+      return res.status(403).json({
+        success: false,
+        message:
+          "Forbidden: You do not have permission to delete personal notes",
+      });
+    }
+
+    // Verify user has access to this meeting
+    const access = await resolveAccessibleMeeting(meetingId, req.user);
+    if (access.error) {
+      return res
+        .status(access.error.status)
+        .json({ success: false, message: access.error.message });
+    }
+
+    // Find note
+    const note = await PersonalNote.findOne({ userId, meetingId });
+    if (!note) {
+      return res.status(404).json({
+        success: false,
+        message: "Note not found",
+      });
+    }
+
+    // Verify ownership
+    if (note.userId.toString() !== userId.toString()) {
+      return res.status(403).json({
+        success: false,
+        message: "Forbidden: You do not own this note",
+      });
+    }
+
+    // Delete note document atomically
+    await PersonalNote.deleteOne({ _id: note._id });
+
+    res.status(200).json({
+      success: true,
+      message: "Note deleted successfully",
+    });
+  } catch (error) {
+    console.error("Error deleting personal note:", error);
+    res.status(500).json({ success: false, message: "Server error" });
+  }
+};
+
 // Export constants for use in other modules
 export const NOTE_LIMITS = {
   MAX_TITLE_LENGTH: MAX_NOTE_TITLE_LENGTH,
