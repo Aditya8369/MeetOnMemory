@@ -39,5 +39,6 @@ export default {
     "knowledgeSearchRegexSafety.test.js",
     "periodBucket.test.js",
     "rateLimitStore.test.js",
+    "attachmentDownloadHeaders.test.js",
   ],
 };
