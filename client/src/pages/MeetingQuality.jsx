@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useContext, useCallback } from "react";
 import { useParams } from "react-router-dom";
 import AppContent from "../context/AppContent";
+import { usePolling } from "../hooks/usePolling.js";
 import Navbar from "../components/Navbar.jsx";
 import {
   BarChart,
@@ -51,6 +52,9 @@ const MeetingQuality = () => {
   const [calculating, setCalculating] = useState(false);
   const [recommendations, setRecommendations] = useState(null);
 
+  // Owns the completion poll below, including its teardown on unmount (#1455).
+  const { startPolling } = usePolling();
+
   const fetchRecommendations = useCallback(async () => {
     try {
       const response = await fetch(
@@ -82,44 +86,49 @@ const MeetingQuality = () => {
 
       toast.info("Quality calculation started. This may take up to 5 seconds.");
 
-      // Poll for completion
-      const pollInterval = setInterval(async () => {
-        try {
+      // Poll for completion. The interval and its 30 s deadline used to be
+      // plain `const`s inside this handler, so nothing on the unmount path
+      // could clear them and navigating away left the poll running (#1455).
+      startPolling(
+        async ({ signal }) => {
           const checkResponse = await fetch(
             `${backendUrl}/api/quality/meeting/${meetingId}`,
-            { credentials: "include" },
+            { credentials: "include", signal },
           );
 
-          if (checkResponse.ok) {
-            const data = await checkResponse.json();
-            if (data.status === "completed") {
-              clearInterval(pollInterval);
-              setQualityData(data);
-              setCalculating(false);
-              toast.success("Quality score calculated!");
-              fetchRecommendations();
-            } else if (data.status === "failed") {
-              clearInterval(pollInterval);
-              setCalculating(false);
-              toast.error("Quality calculation failed");
-            }
-          }
-        } catch (err) {
-          console.error("Poll error:", err);
-        }
-      }, 2000);
+          if (!checkResponse.ok) return false;
 
-      // Stop polling after 30 seconds
-      setTimeout(() => {
-        clearInterval(pollInterval);
-        setCalculating(false);
-      }, 30000);
+          const data = await checkResponse.json();
+
+          if (data.status === "completed") {
+            setQualityData(data);
+            setCalculating(false);
+            toast.success("Quality score calculated!");
+            fetchRecommendations();
+            return true;
+          }
+
+          if (data.status === "failed") {
+            setCalculating(false);
+            toast.error("Quality calculation failed");
+            return true;
+          }
+
+          return false;
+        },
+        {
+          intervalMs: 2000,
+          timeoutMs: 30000,
+          onTimeout: () => setCalculating(false),
+          onError: (err) => console.error("Poll error:", err),
+        },
+      );
     } catch (error) {
       console.error("Error triggering calculation:", error);
       toast.error("Failed to start calculation");
       setCalculating(false);
     }
-  }, [backendUrl, meetingId, fetchRecommendations]);
+  }, [backendUrl, meetingId, fetchRecommendations, startPolling]);
 
   const fetchQualityData = useCallback(async () => {
     try {
@@ -612,18 +621,29 @@ const MeetingQuality = () => {
   );
 };
 
-const MetricCard = ({ Icon, label, value }) => (
-  <div className="bg-slate-50 dark:bg-slate-800 rounded-xl p-4">
-    <div className="flex items-center gap-2 mb-2">
-      <Icon className="w-5 h-5 text-blue-600 dark:text-blue-400" />
-      <span className="text-sm text-slate-600 dark:text-slate-400">
-        {label}
-      </span>
+const MetricCard = (props) => {
+  // `Icon` is destructured in the body rather than in the parameter list on
+  // purpose. The shared ESLint config does not include `react/jsx-uses-vars`,
+  // so it cannot see that `<Icon />` below is a use; it works around that with
+  // `varsIgnorePattern: "^[A-Z_]"`, which covers variables but not destructured
+  // parameters. Binding it here therefore satisfies the rule without disabling
+  // it. This is a latent error that only surfaced once this file was touched,
+  // because `lint:changed` lints changed files only.
+  const { Icon, label, value } = props;
+
+  return (
+    <div className="bg-slate-50 dark:bg-slate-800 rounded-xl p-4">
+      <div className="flex items-center gap-2 mb-2">
+        <Icon className="w-5 h-5 text-blue-600 dark:text-blue-400" />
+        <span className="text-sm text-slate-600 dark:text-slate-400">
+          {label}
+        </span>
+      </div>
+      <div className="text-2xl font-bold text-slate-900 dark:text-white">
+        {value}
+      </div>
     </div>
-    <div className="text-2xl font-bold text-slate-900 dark:text-white">
-      {value}
-    </div>
-  </div>
-);
+  );
+};
 
 export default MeetingQuality;

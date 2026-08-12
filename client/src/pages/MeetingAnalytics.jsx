@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useContext, useCallback } from "react";
 import { useParams } from "react-router-dom";
 import AppContent from "../context/AppContent";
+import { usePolling } from "../hooks/usePolling.js";
 import Navbar from "../components/Navbar.jsx";
 import {
   BarChart,
@@ -42,6 +43,9 @@ const MeetingAnalytics = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [analyzing, setAnalyzing] = useState(false);
+
+  // Owns the completion poll below, including its teardown on unmount (#1455).
+  const { startPolling } = usePolling();
 
   const fetchAnalytics = useCallback(async () => {
     try {
@@ -96,37 +100,42 @@ const MeetingAnalytics = () => {
 
       toast.info("Analysis started. This may take up to 60 seconds.");
 
-      // Poll for completion
-      const pollInterval = setInterval(async () => {
-        try {
+      // Poll for completion. The interval and its 2-minute deadline used to be
+      // plain `const`s inside this handler, so nothing on the unmount path
+      // could clear them and navigating away left the poll running (#1455).
+      startPolling(
+        async ({ signal }) => {
           const checkResponse = await fetch(
             `${backendUrl}/api/analytics/meetings/${meetingId}`,
-            { credentials: "include" },
+            { credentials: "include", signal },
           );
 
-          if (checkResponse.ok) {
-            const data = await checkResponse.json();
-            if (data.status === "completed") {
-              clearInterval(pollInterval);
-              setAnalytics(data);
-              setAnalyzing(false);
-              toast.success("Analysis completed!");
-            } else if (data.status === "failed") {
-              clearInterval(pollInterval);
-              setAnalyzing(false);
-              toast.error("Analysis failed");
-            }
-          }
-        } catch (err) {
-          console.error("Error polling:", err);
-        }
-      }, 5000);
+          if (!checkResponse.ok) return false;
 
-      // Stop polling after 2 minutes
-      setTimeout(() => {
-        clearInterval(pollInterval);
-        setAnalyzing(false);
-      }, 120000);
+          const data = await checkResponse.json();
+
+          if (data.status === "completed") {
+            setAnalytics(data);
+            setAnalyzing(false);
+            toast.success("Analysis completed!");
+            return true;
+          }
+
+          if (data.status === "failed") {
+            setAnalyzing(false);
+            toast.error("Analysis failed");
+            return true;
+          }
+
+          return false;
+        },
+        {
+          intervalMs: 5000,
+          timeoutMs: 120000,
+          onTimeout: () => setAnalyzing(false),
+          onError: (err) => console.error("Error polling:", err),
+        },
+      );
     } catch (err) {
       console.error("Error triggering analysis:", err);
       toast.error("Failed to start analysis");
