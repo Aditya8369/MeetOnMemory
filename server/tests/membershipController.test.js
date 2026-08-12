@@ -148,3 +148,189 @@ describe("MembershipController - removeMembership", () => {
     expect(res.statusCode).toEqual(403);
   });
 });
+
+describe("MembershipController - updateMembershipRole (#1361)", () => {
+  let adminUser;
+  let adminToken;
+  let memberUser;
+  let organization;
+  let memberMembership;
+  let adminMembership;
+
+  beforeEach(async () => {
+    organization = await Organization.create({
+      name: "Test Org",
+      slug: "test-org-" + Math.random().toString(36).substring(7),
+      owner: new mongoose.Types.ObjectId(),
+    });
+
+    adminUser = await User.create({
+      name: "Admin User",
+      email: `admin-${Math.random()}@example.com`,
+      password: "password123",
+      organization: organization._id,
+      role: "admin",
+      isAccountVerified: true,
+    });
+    adminUser.clerkUserId = `user_test_${adminUser._id}`;
+    await adminUser.save();
+    adminToken = createClerkTestToken({
+      clerkUserId: adminUser.clerkUserId,
+      email: adminUser.email,
+    });
+
+    organization.owner = adminUser._id;
+    await organization.save();
+
+    adminMembership = await Membership.create({
+      user: adminUser._id,
+      organization: organization._id,
+      role: "admin",
+      status: "active",
+    });
+
+    memberUser = await User.create({
+      name: "Member User",
+      email: `member-${Math.random()}@example.com`,
+      password: "password123",
+      organization: organization._id,
+      role: "member",
+      isAccountVerified: true,
+    });
+    memberUser.clerkUserId = `user_test_${memberUser._id}`;
+    await memberUser.save();
+
+    memberMembership = await Membership.create({
+      user: memberUser._id,
+      organization: organization._id,
+      role: "member",
+      status: "active",
+    });
+  });
+
+  it("syncs User.role when Membership.role is updated for the primary org", async () => {
+    const res = await request(app)
+      .patch(`/api/memberships/${memberMembership._id}/role`)
+      .set(authHeader(adminToken))
+      .send({ role: "admin" });
+
+    expect(res.statusCode).toEqual(200);
+    expect(res.body.success).toBe(true);
+
+    const updatedMembership = await Membership.findById(memberMembership._id);
+    expect(updatedMembership.role).toBe("admin");
+
+    const updatedUser = await User.findById(memberUser._id);
+    expect(updatedUser.role).toBe("admin");
+  });
+
+  it("syncs User.role when Membership.role is downgraded", async () => {
+    memberMembership.role = "admin";
+    await memberMembership.save();
+    memberUser.role = "admin";
+    await memberUser.save();
+
+    const res = await request(app)
+      .patch(`/api/memberships/${memberMembership._id}/role`)
+      .set(authHeader(adminToken))
+      .send({ role: "member" });
+
+    expect(res.statusCode).toEqual(200);
+
+    const updatedMembership = await Membership.findById(memberMembership._id);
+    expect(updatedMembership.role).toBe("member");
+
+    const updatedUser = await User.findById(memberUser._id);
+    expect(updatedUser.role).toBe("member");
+  });
+
+  it("is a no-op when the membership role is unchanged", async () => {
+    const res = await request(app)
+      .patch(`/api/memberships/${memberMembership._id}/role`)
+      .set(authHeader(adminToken))
+      .send({ role: "member" });
+
+    expect(res.statusCode).toEqual(200);
+    expect(res.body.success).toBe(true);
+
+    const updatedMembership = await Membership.findById(memberMembership._id);
+    expect(updatedMembership.role).toBe("member");
+
+    const updatedUser = await User.findById(memberUser._id);
+    expect(updatedUser.role).toBe("member");
+  });
+
+  it("does not change User.role when membership is not for the primary org", async () => {
+    const otherOrg = await Organization.create({
+      name: "Other Org",
+      slug: "other-org-" + Math.random().toString(36).substring(7),
+      owner: new mongoose.Types.ObjectId(),
+    });
+
+    memberUser.organization = otherOrg._id;
+    await memberUser.save();
+
+    const res = await request(app)
+      .patch(`/api/memberships/${memberMembership._id}/role`)
+      .set(authHeader(adminToken))
+      .send({ role: "admin" });
+
+    expect(res.statusCode).toEqual(200);
+
+    const updatedMembership = await Membership.findById(memberMembership._id);
+    expect(updatedMembership.role).toBe("admin");
+
+    const updatedUser = await User.findById(memberUser._id);
+    expect(updatedUser.role).toBe("member");
+  });
+
+  it("still prevents removing the last admin", async () => {
+    const res = await request(app)
+      .patch(`/api/memberships/${adminMembership._id}/role`)
+      .set(authHeader(adminToken))
+      .send({ role: "member" });
+
+    expect(res.statusCode).toEqual(400);
+    expect(res.body.message).toContain("Cannot remove the last admin");
+  });
+
+  it("still rejects unauthorized role updates", async () => {
+    const otherMember = await User.create({
+      name: "Other Member",
+      email: `other-${Math.random()}@example.com`,
+      password: "password123",
+      organization: organization._id,
+      role: "member",
+      isAccountVerified: true,
+    });
+    otherMember.clerkUserId = `user_test_${otherMember._id}`;
+    await otherMember.save();
+    const otherToken = createClerkTestToken({
+      clerkUserId: otherMember.clerkUserId,
+      email: otherMember.email,
+    });
+
+    await Membership.create({
+      user: otherMember._id,
+      organization: organization._id,
+      role: "member",
+      status: "active",
+    });
+
+    const res = await request(app)
+      .patch(`/api/memberships/${memberMembership._id}/role`)
+      .set(authHeader(otherToken))
+      .send({ role: "admin" });
+
+    expect(res.statusCode).toEqual(403);
+  });
+
+  it("returns 404 for an invalid membership id", async () => {
+    const res = await request(app)
+      .patch(`/api/memberships/${new mongoose.Types.ObjectId()}/role`)
+      .set(authHeader(adminToken))
+      .send({ role: "admin" });
+
+    expect(res.statusCode).toEqual(404);
+  });
+});
