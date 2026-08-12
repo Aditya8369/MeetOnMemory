@@ -17,6 +17,15 @@ import {
   ConflictError,
   ValidationError,
 } from "../utils/errors.js";
+import { parseInvitationCsv } from "../utils/invitationCsvParse.js";
+import {
+  startBulkInvitationJob,
+  recordBulkInvitationResult,
+  finishBulkInvitationJob,
+} from "./bulkInvitationProgress.js";
+
+/** Maximum invitation rows accepted in a single CSV upload (Issue #1362). */
+export const MAX_BULK_INVITATIONS = 100;
 
 // ═══════════════════════════════════════════════════════════════
 // Private helpers
@@ -247,6 +256,124 @@ export const createInvitation = async (
     success: true,
     message: "Invitation created successfully.",
     invitation,
+  };
+};
+
+/**
+ * ✅ Bulk-import invitations from CSV (Issue #1362)
+ *
+ * Parses CSV content, enforces the 100-row cap, validates/creates each row via
+ * `createInvitation` (reusing auth, duplicate, and role rules), and tracks
+ * per-row progress for the response (and future async workers).
+ *
+ * @param {string} userId
+ * @param {{ organizationId: string, csvContent: string|Buffer }} payload
+ * @param {{ origin?: string, inviterName?: string }} meta
+ */
+export const bulkImportInvitations = async (
+  userId,
+  { organizationId, csvContent },
+  { origin, inviterName } = {},
+) => {
+  if (!organizationId) {
+    throw new ValidationError("Organization ID is required.");
+  }
+  if (!isValidObjectId(organizationId)) {
+    throw new ValidationError("Invalid organization ID.");
+  }
+  if (csvContent == null || csvContent === "") {
+    throw new ValidationError("CSV file is required.");
+  }
+
+  // Fail fast on org access before parsing large files into invitations.
+  const organization = await Organization.findById(organizationId);
+  if (!organization) {
+    throw new NotFoundError("Organization not found.");
+  }
+  if (!(await isAdminOrOwner(userId, organization))) {
+    throw new ForbiddenError("Not authorized to create invitations.");
+  }
+
+  let parsed;
+  try {
+    parsed = parseInvitationCsv(csvContent);
+  } catch (err) {
+    throw new ValidationError(err.message || "Invalid CSV file.");
+  }
+
+  if (parsed.rows.length === 0) {
+    throw new ValidationError("CSV file contains no invitation rows.");
+  }
+
+  if (parsed.rows.length > MAX_BULK_INVITATIONS) {
+    throw new ValidationError(
+      `CSV exceeds the maximum of ${MAX_BULK_INVITATIONS} invitations per upload.`,
+    );
+  }
+
+  const job = startBulkInvitationJob(parsed.rows.length);
+
+  for (const row of parsed.rows) {
+    const email = row.email || "";
+
+    if (!email) {
+      recordBulkInvitationResult(job.jobId, {
+        row: row.row,
+        email,
+        success: false,
+        error: "Email is required.",
+      });
+      continue;
+    }
+
+    if (!row.role) {
+      recordBulkInvitationResult(job.jobId, {
+        row: row.row,
+        email,
+        success: false,
+        error: "Role is required.",
+      });
+      continue;
+    }
+
+    try {
+      const created = await createInvitation(
+        userId,
+        {
+          organizationId,
+          email: row.email,
+          role: row.role,
+          message: row.message,
+        },
+        { origin, inviterName },
+      );
+
+      recordBulkInvitationResult(job.jobId, {
+        row: row.row,
+        email,
+        success: true,
+        invitationId: String(created.invitation._id),
+      });
+    } catch (err) {
+      recordBulkInvitationResult(job.jobId, {
+        row: row.row,
+        email,
+        success: false,
+        error: err.message || "Failed to create invitation.",
+      });
+    }
+  }
+
+  finishBulkInvitationJob(job.jobId, "completed");
+
+  return {
+    success: true,
+    jobId: job.jobId,
+    totalRows: job.totalRows,
+    successful: job.successful,
+    failed: job.failed,
+    progress: job.progress,
+    results: job.results,
   };
 };
 
