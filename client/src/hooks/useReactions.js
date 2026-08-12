@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { toast } from "react-toastify";
 
-export default function useReactions(roomId, socketRef) {
+export default function useReactions(roomId, socket) {
   const [reactions, setReactions] = useState([]); // Array of { id, emoji, userId, isLocal }
   const [onCooldown, setOnCooldown] = useState(false);
   const reactionCountRef = useRef(0);
@@ -13,7 +13,6 @@ export default function useReactions(roomId, socketRef) {
   const RATE_LIMIT_WINDOW = 10000;
 
   useEffect(() => {
-    const socket = socketRef?.current;
     if (!socket) return;
 
     const handleNewReaction = (payload) => {
@@ -45,7 +44,7 @@ export default function useReactions(roomId, socketRef) {
       socket.off("reaction:new", handleNewReaction);
       socket.off("reaction:error", handleError);
     };
-  }, [socketRef]);
+  }, [socket]);
 
   const sendReaction = useCallback(
     (emoji) => {
@@ -62,7 +61,6 @@ export default function useReactions(roomId, socketRef) {
         setReactions((prev) => prev.filter((r) => r.id !== id));
       }, 4000);
 
-      const socket = socketRef?.current;
       if (socket) {
         socket.emit("reaction:send", { roomId, emoji });
       }
@@ -89,7 +87,7 @@ export default function useReactions(roomId, socketRef) {
         }
       }
     },
-    [roomId, socketRef, onCooldown],
+    [roomId, socket, onCooldown],
   );
 
   // Cleanup timeouts on unmount
