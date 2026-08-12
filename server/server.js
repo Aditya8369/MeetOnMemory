@@ -112,6 +112,9 @@ if (process.env.NODE_ENV !== "test") {
 
   // Start poll expiration background job
   startPollExpirationJob(io);
+
+  // Start follow-up reminder background job
+  startFollowUpReminderJob();
 }
 
 // (AI, Data Export, and Webhook workers are initialized inside server.listen callback)
