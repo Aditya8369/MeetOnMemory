@@ -24,6 +24,7 @@ router.use(userAuth);
 // Issue #1380 authorization chain:
 //   userAuth → org membership → admin/manager role → path org matches membership
 // Controllers then query with req.authorizedOrganizationId only.
+// (Upstream #1379 controller-side org checks moved into middleware.)
 router.get(
   "/trends/:organizationId",
   requireOrgMembership,

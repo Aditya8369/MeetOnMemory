@@ -32,6 +32,7 @@ export const getOrganizationHealthTrends = async (req, res, next) => {
   try {
     // Issue #1380: never query with the client-supplied path param.
     // requireOrganizationParamMatch sets the server-trusted membership org.
+    // Upstream #1379 org checks are enforced in middleware; queries use that id only.
     const organizationId =
       req.authorizedOrganizationId ||
       (req.user?.organization?._id || req.user?.organization)?.toString();
