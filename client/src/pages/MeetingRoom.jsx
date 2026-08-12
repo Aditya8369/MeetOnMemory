@@ -1,6 +1,14 @@
-import React, { useEffect, useState, useRef, useContext, useMemo } from "react";
+import React, {
+  useCallback,
+  useEffect,
+  useState,
+  useRef,
+  useContext,
+  useMemo,
+} from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { io } from "socket.io-client";
+import { useAuth } from "@clerk/clerk-react";
 import Peer from "simple-peer";
 import { toast } from "react-toastify";
 import {
@@ -36,7 +44,10 @@ import {
   resolveMeetingMediaStream,
 } from "../utils/mediaStream.js";
 import AppContent from "../context/AppContent.js";
-import { createClerkSocketOptions } from "../services/apiClient.js";
+import {
+  createClerkSocketOptions,
+  getClerkBearerToken,
+} from "../services/apiClient.js";
 
 /** Build join/signaling identity from authenticated AppContext user (Issue #1211). */
 const buildLocalUserInfo = (userData) => ({
@@ -50,6 +61,8 @@ const MeetingRoom = () => {
   const { roomId } = useParams();
   const navigate = useNavigate();
   const { userData } = useContext(AppContent);
+  const { isSignedIn, isLoaded, userId } = useAuth();
+  const [socket, setSocket] = useState(null);
   const localUserInfo = useMemo(() => buildLocalUserInfo(userData), [userData]);
   const localUserInfoRef = useRef(localUserInfo);
   localUserInfoRef.current = localUserInfo;
@@ -117,10 +130,7 @@ const MeetingRoom = () => {
   );
 
   // Reactions
-  const { reactions, sendReaction, onCooldown } = useReactions(
-    roomId,
-    socketRef,
-  );
+  const { reactions, sendReaction, onCooldown } = useReactions(roomId, socket);
 
   // Local timer tick for smooth UI updates
   useEffect(() => {
@@ -140,6 +150,191 @@ const MeetingRoom = () => {
     }
     return () => clearInterval(interval);
   }, [timerState.isRunning, meetingEnded]);
+
+  const setupSocketListeners = (activeSocket) => {
+    const userInfo = localUserInfoRef.current;
+    activeSocket.emit("join-meeting", { roomId, userInfo });
+
+    activeSocket.on("reconnect_attempt", async () => {
+      const token = await getClerkBearerToken();
+      if (activeSocket.auth) {
+        activeSocket.auth.token = token;
+      } else {
+        activeSocket.auth = { token };
+      }
+    });
+
+    activeSocket.on("all-users", (users) => {
+      const peersArr = [];
+      users.forEach((user) => {
+        const peer = createPeer(
+          user.socketId,
+          activeSocket.id,
+          streamRef.current,
+        );
+        peersRef.current.push({
+          peerID: user.socketId,
+          peer,
+          userInfo: user,
+        });
+        peersArr.push({
+          peerID: user.socketId,
+          peer,
+          userInfo: user,
+        });
+      });
+      setPeers(peersArr);
+    });
+
+    activeSocket.on("user-joined", (user) => {
+      toast.info(`👋 Participant joined`);
+      const peer = addPeer(user.socketId, activeSocket.id, streamRef.current);
+      peersRef.current.push({
+        peerID: user.socketId,
+        peer,
+        userInfo: user,
+      });
+
+      setPeers([...peersRef.current]);
+    });
+
+    // Timer synchronization event
+    activeSocket.on("timer-sync", (serverState) => {
+      setTimerState((prev) => ({ ...prev, ...serverState }));
+      timerStateRef.current = { ...timerStateRef.current, ...serverState };
+    });
+
+    activeSocket.on("user-joined-signal", (payload) => {
+      const item = peersRef.current.find((p) => p.peerID === payload.callerID);
+      if (item) {
+        item.peer.signal(payload.signal);
+      }
+    });
+
+    activeSocket.on("receiving-returned-signal", (payload) => {
+      const item = peersRef.current.find((p) => p.peerID === payload.id);
+      if (item) {
+        item.peer.signal(payload.signal);
+      }
+    });
+
+    activeSocket.on("user-left", (id) => {
+      toast.error(`🚪 Participant left`);
+      const peerObj = peersRef.current.find((p) => p.peerID === id);
+      if (peerObj) {
+        peerObj.peer.destroy();
+      }
+      peersRef.current = peersRef.current.filter((p) => p.peerID !== id);
+      setPeers([...peersRef.current]);
+    });
+
+    // Transcription events
+    activeSocket.on("transcript-partial", (data) => {
+      if (showCaptions) {
+        setCaptions((prev) => [
+          ...prev.slice(-4),
+          { text: data.text, isFinal: false, timestamp: data.timestamp },
+        ]);
+      }
+    });
+
+    activeSocket.on("transcript-final", (data) => {
+      const { segment } = data;
+      setCaptions((prev) => {
+        // Check for exact duplicate in captions
+        const exists = prev.some(
+          (c) => c.text === segment.text && c.timestamp === data.timestamp,
+        );
+        if (exists) return prev;
+        return [
+          ...prev.slice(-4),
+          {
+            text: segment.text,
+            speaker: segment.speaker,
+            isFinal: true,
+            timestamp: data.timestamp,
+          },
+        ];
+      });
+      setTranscriptSegments((prev) => {
+        const exists = prev.some(
+          (s) =>
+            s.startTime === segment.startTime &&
+            s.text === segment.text &&
+            s.speaker === segment.speaker,
+        );
+        if (exists) return prev;
+        return [...prev, segment];
+      });
+    });
+
+    activeSocket.on("transcription-started", () => {
+      setTranscriptionEnabled(true);
+      toast.success("🎙️ Live transcription started");
+    });
+
+    activeSocket.on("transcription-stopped", () => {
+      setTranscriptionEnabled(false);
+      toast.info("🎙️ Live transcription stopped");
+    });
+
+    activeSocket.on("transcription-error", (data) => {
+      toast.error(`Transcription error: ${data.message}`);
+      setTranscriptionEnabled(false);
+    });
+  };
+
+  // Connect & Rebind socket dynamically when Clerk session or token changes
+  useEffect(() => {
+    if (!joined || !isSignedIn || !isLoaded) return;
+
+    let active = true;
+    let newSocket = null;
+
+    const connectAndBind = async () => {
+      try {
+        setLoading(true);
+        // Clear previous connection
+        if (socketRef.current) {
+          socketRef.current.disconnect();
+          socketRef.current = null;
+          setSocket(null);
+        }
+
+        const opts = await createClerkSocketOptions({
+          transports: ["websocket"],
+        });
+        if (!active) return;
+
+        newSocket = io(backendUrl, opts);
+        socketRef.current = newSocket;
+        setSocket(newSocket);
+
+        setupSocketListeners(newSocket);
+        setLoading(false);
+      } catch (err) {
+        console.error("Socket rebinding error:", err);
+        setLoading(false);
+      }
+    };
+
+    connectAndBind();
+
+    return () => {
+      active = false;
+      if (newSocket) {
+        newSocket.disconnect();
+      }
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [userId, isSignedIn, isLoaded, joined, backendUrl]);
+
+  // Cleanly handle logout during an active meeting
+  useEffect(() => {
+    if (joined && isLoaded && !isSignedIn) {
+      leaveMeeting();
+    }
+  }, [isSignedIn, isLoaded, joined, leaveMeeting]);
 
   const joinMeeting = async (providedStream = null, joinOptions = {}) => {
     try {
@@ -165,144 +360,7 @@ const MeetingRoom = () => {
         }
       }, 100);
 
-      socketRef.current = io(
-        backendUrl,
-        await createClerkSocketOptions({ transports: ["websocket"] }),
-      );
-
-      // Server presence uses auth context; payload kept aligned with other clients.
-      const userInfo = localUserInfoRef.current;
-
-      socketRef.current.emit("join-meeting", { roomId, userInfo });
-
-      socketRef.current.on("all-users", (users) => {
-        const peersArr = [];
-        users.forEach((user) => {
-          const peer = createPeer(user.socketId, socketRef.current.id, stream);
-          peersRef.current.push({
-            peerID: user.socketId,
-            peer,
-            userInfo: user,
-          });
-          peersArr.push({
-            peerID: user.socketId,
-            peer,
-            userInfo: user,
-          });
-        });
-        setPeers(peersArr);
-      });
-
-      socketRef.current.on("user-joined", (user) => {
-        toast.info(`👋 Participant joined`);
-        const peer = addPeer(user.socketId, socketRef.current.id, stream);
-        peersRef.current.push({
-          peerID: user.socketId,
-          peer,
-          userInfo: user,
-        });
-
-        setPeers([...peersRef.current]);
-      });
-
-      // Timer synchronization event
-      socketRef.current.on("timer-sync", (serverState) => {
-        setTimerState((prev) => ({ ...prev, ...serverState }));
-        timerStateRef.current = { ...timerStateRef.current, ...serverState };
-      });
-
-      socketRef.current.on("user-joined-signal", (payload) => {
-        const item = peersRef.current.find(
-          (p) => p.peerID === payload.callerID,
-        );
-        if (item) {
-          item.peer.signal(payload.signal);
-        }
-      });
-
-      socketRef.current.on("receiving-returned-signal", (payload) => {
-        const item = peersRef.current.find((p) => p.peerID === payload.id);
-        if (item) {
-          item.peer.signal(payload.signal);
-        }
-      });
-
-      socketRef.current.on("user-left", (id) => {
-        toast.error(`🚪 Participant left`);
-        const peerObj = peersRef.current.find((p) => p.peerID === id);
-        if (peerObj) {
-          peerObj.peer.destroy();
-        }
-        peersRef.current = peersRef.current.filter((p) => p.peerID !== id);
-        setPeers([...peersRef.current]);
-      });
-
-      // Transcription events
-      socketRef.current.on("transcript-partial", (data) => {
-        if (showCaptions) {
-          setCaptions((prev) => [
-            ...prev.slice(-4),
-            { text: data.text, isFinal: false, timestamp: data.timestamp },
-          ]);
-        }
-      });
-
-      socketRef.current.on("transcript-final", (data) => {
-        const { segment } = data;
-        setCaptions((prev) => {
-          // Check for exact duplicate in captions
-          const exists = prev.some(
-            (c) => c.text === segment.text && c.timestamp === data.timestamp,
-          );
-          if (exists) return prev;
-          return [
-            ...prev.slice(-4),
-            {
-              text: segment.text,
-              speaker: segment.speaker,
-              isFinal: true,
-              timestamp: data.timestamp,
-            },
-          ];
-        });
-        setTranscriptSegments((prev) => {
-          const exists = prev.some(
-            (s) =>
-              s.startTime === segment.startTime &&
-              s.text === segment.text &&
-              s.speaker === segment.speaker,
-          );
-          if (exists) return prev;
-          return [...prev, segment];
-        });
-        setCaptions((prev) => [
-          ...prev.slice(-4),
-          {
-            text: segment.text,
-            speaker: segment.speaker,
-            isFinal: true,
-            timestamp: data.timestamp,
-          },
-        ]);
-        setTranscriptSegments((prev) => [...prev, segment]);
-      });
-
-      socketRef.current.on("transcription-started", () => {
-        setTranscriptionEnabled(true);
-        toast.success("🎙️ Live transcription started");
-      });
-
-      socketRef.current.on("transcription-stopped", () => {
-        setTranscriptionEnabled(false);
-        toast.info("🎙️ Live transcription stopped");
-      });
-
-      socketRef.current.on("transcription-error", (data) => {
-        toast.error(`Transcription error: ${data.message}`);
-        setTranscriptionEnabled(false);
-      });
-
-      setLoading(false);
+      // Loading state will be turned off in the react socket useEffect upon successful connect
     } catch (err) {
       console.error("Camera/Mic access denied:", err);
       let errMsg =
@@ -357,7 +415,7 @@ const MeetingRoom = () => {
     return peer;
   };
 
-  const leaveMeeting = () => {
+  const leaveMeeting = useCallback(() => {
     setMeetingEnded(true);
 
     streamRef.current?.getTracks().forEach((track) => track.stop());
@@ -366,12 +424,13 @@ const MeetingRoom = () => {
     socketRef.current?.disconnect();
 
     setJoined(false);
+    setSocket(null);
 
     setTimeout(() => {
       setMeetingEnded(false);
       navigate("/dashboard");
     }, 4000);
-  };
+  }, [navigate, socketRef]);
 
   // Toggle Media Handlers
   const toggleMic = () => {

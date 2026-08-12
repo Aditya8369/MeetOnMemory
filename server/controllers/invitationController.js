@@ -7,6 +7,7 @@ import crypto from "crypto";
 import mongoose from "mongoose";
 import EmailService from "../services/EmailService.js";
 import AuditService from "../services/AuditService.js";
+import * as InvitationService from "../services/InvitationService.js";
 
 /**
  * Validate MongoDB ObjectId
@@ -496,6 +497,14 @@ export const rejectInvitation = async (req, res) => {
       });
     }
 
+    if (InvitationService.isInvitationExpired(invitation.expiresAt)) {
+      invitation.status = "expired";
+      await invitation.save();
+      return res
+        .status(400)
+        .json({ success: false, message: "Invitation has expired." });
+    }
+
     // Verify email matches
     const user = await userModel.findById(req.user.id);
 
@@ -604,35 +613,15 @@ export const revokeInvitation = async (req, res) => {
 export const getInvitationByToken = async (req, res) => {
   try {
     const { token } = req.params;
-
-    const invitation = await Invitation.findOne({ token })
-      .populate("organization", "name slug description logo")
-      .populate("invitedBy", "name email");
-
-    if (!invitation) {
-      return res
-        .status(404)
-        .json({ success: false, message: "Invitation not found." });
-    }
-
-    if (invitation.status !== "pending") {
-      return res.status(400).json({
-        success: false,
-        message: "Invitation is not in pending status.",
-      });
-    }
-
-    if (invitation.expiresAt < new Date()) {
-      invitation.status = "expired";
-      await invitation.save();
-      return res
-        .status(400)
-        .json({ success: false, message: "Invitation has expired." });
-    }
-
-    res.status(200).json({ success: true, invitation });
+    const result = await InvitationService.getInvitationByToken(token);
+    res.status(200).json(result);
   } catch (error) {
     console.error("❌ Error fetching invitation:", error);
+    if (error.statusCode) {
+      return res
+        .status(error.statusCode)
+        .json({ success: false, message: error.message });
+    }
     res.status(500).json({ success: false, message: "Server error" });
   }
 };
