@@ -88,6 +88,7 @@ const MultiLanguageTranscript = ({ meetingId }) => {
 
       socket.on("connect", () => {
         console.log("✓ Translation socket connected");
+        socket.emit("translation:join", { meetingId });
       });
 
       socket.on("translation:result", (data) => {
@@ -146,7 +147,7 @@ const MultiLanguageTranscript = ({ meetingId }) => {
     } catch (error) {
       console.error("Socket connection error:", error);
     }
-  }, [backendUrl]);
+  }, [backendUrl, meetingId]);
 
   useEffect(() => {
     fetchLanguages();
