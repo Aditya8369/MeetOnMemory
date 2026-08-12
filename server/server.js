@@ -36,6 +36,7 @@ import {
 import { createAdapter } from "@socket.io/redis-adapter"; // eslint-disable-line no-unused-vars
 import { startCalendarSyncJob } from "./jobs/calendarSyncJob.js";
 import startPollExpirationJob from "./jobs/pollExpirationJob.js";
+import startFollowUpReminderJob from "./jobs/followUpReminderJob.js";
 import { createClient } from "redis"; // eslint-disable-line no-unused-vars
 import {
   initDataExportWorker, // eslint-disable-line no-unused-vars
@@ -112,6 +113,9 @@ if (process.env.NODE_ENV !== "test") {
 
   // Start poll expiration background job
   startPollExpirationJob(io);
+
+  // Start follow-up reminder background job
+  startFollowUpReminderJob();
 }
 
 // (AI, Data Export, and Webhook workers are initialized inside server.listen callback)
