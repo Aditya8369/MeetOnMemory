@@ -1,4 +1,3 @@
-import mongoose from "mongoose";
 import MeetingHealth from "../models/meetingHealthModel.js";
 import { calculateMeetingHealth } from "../services/meetingHealthService.js";
 
@@ -28,34 +27,24 @@ export const getMeetingHealth = async (req, res, next) => {
 
 // @desc    Get organization health trends
 // @route   GET /api/meeting-health/trends/:organizationId
-// @access  Private (role + org scope — enforced here and in routes)
+// @access  Private (membership + role + org match — enforced in routes)
 export const getOrganizationHealthTrends = async (req, res, next) => {
   try {
-    const { organizationId } = req.params;
+    // Issue #1380: never query with the client-supplied path param.
+    // requireOrganizationParamMatch sets the server-trusted membership org.
+    // Upstream #1379 org checks are enforced in middleware; queries use that id only.
+    const organizationId =
+      req.authorizedOrganizationId ||
+      (req.user?.organization?._id || req.user?.organization)?.toString();
 
-    if (!req.user?.organization) {
+    if (!organizationId) {
       return res.status(403).json({
         success: false,
         message: "Forbidden: Organization membership required",
       });
     }
 
-    if (!mongoose.Types.ObjectId.isValid(organizationId)) {
-      return res.status(400).json({
-        success: false,
-        message: "Invalid organization ID",
-      });
-    }
-
-    // Issue #1379: never trust client-supplied organizationId for trends
-    if (req.user.organization.toString() !== String(organizationId)) {
-      return res.status(403).json({
-        success: false,
-        message: "Forbidden: You don't have access to this resource",
-      });
-    }
-
-    // Get last 30 meetings health for trends
+    // Get last 30 meetings health for trends — scoped to authorized org only
     const trends = await MeetingHealth.find({ organization: organizationId })
       .sort({ createdAt: 1 }) // Chronological order
       .limit(30)

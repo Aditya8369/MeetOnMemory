@@ -7,6 +7,8 @@ import {
 import userAuth from "../middleware/userAuth.js";
 import {
   requireOrgAccess,
+  requireOrgMembership,
+  requireOrganizationParamMatch,
   requirePermission,
   requireRole,
 } from "../middleware/rbac.js";
@@ -18,11 +20,16 @@ router.use(userAuth);
 
 // Organization-wide trends MUST be registered before "/:meetingId"
 // so "trends" is not captured as a meeting id.
-// Preserve existing admin/manager role gate; org scoping is enforced in the
-// controller (Issue #1379).
+//
+// Issue #1380 authorization chain:
+//   userAuth → org membership → admin/manager role → path org matches membership
+// Controllers then query with req.authorizedOrganizationId only.
+// (Upstream #1379 controller-side org checks moved into middleware.)
 router.get(
   "/trends/:organizationId",
+  requireOrgMembership,
   requireRole(["admin", "manager"]),
+  requireOrganizationParamMatch("organizationId"),
   getOrganizationHealthTrends,
 );
 
