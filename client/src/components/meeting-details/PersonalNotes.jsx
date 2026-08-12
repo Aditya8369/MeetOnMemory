@@ -1,7 +1,14 @@
-import React, { useState, useEffect, useRef, useCallback } from "react";
+import React, {
+  useState,
+  useEffect,
+  useRef,
+  useCallback,
+  useMemo,
+} from "react";
 import { personalNoteApi } from "../../services";
 import { Pin, Save, CheckCircle, Highlighter } from "lucide-react";
 import ReactMarkdown from "react-markdown";
+import { normalizeTranscript } from "../../utils/normalizeTranscript.js";
 
 const PersonalNotes = ({ meeting }) => {
   const [content, setContent] = useState("");
@@ -13,6 +20,9 @@ const PersonalNotes = ({ meeting }) => {
   const [tooltipPosition, setTooltipPosition] = useState({ top: 0, left: 0 });
   const [selectedTextData, setSelectedTextData] = useState(null);
 
+  const normalizedSegments = useMemo(() => {
+    return normalizeTranscript(meeting?.transcript);
+  }, [meeting?.transcript]);
   const containerRef = useRef(null);
 
   const fetchNote = useCallback(async () => {
@@ -147,13 +157,12 @@ const PersonalNotes = ({ meeting }) => {
         )}
 
         <div className="prose dark:prose-invert max-w-none text-sm text-slate-700 dark:text-gray-300">
-          {meeting.transcript && meeting.transcript.length > 0 ? (
-            meeting.transcript.map((t, idx) => (
+          {normalizedSegments && normalizedSegments.length > 0 ? (
+            normalizedSegments.map((t, idx) => (
               <p key={idx} className="mb-4">
                 <span className="font-semibold text-slate-900 dark:text-white mr-2">
                   {t.speaker || "Speaker"}:
                 </span>
-                {/* Basic rendering. For actual highlighted regions, more complex logic is needed to wrap text ranges */}
                 {t.text}
               </p>
             ))
