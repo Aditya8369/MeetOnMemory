@@ -38,5 +38,6 @@ export default {
     "routeRegistration.test.js",
     "knowledgeSearchRegexSafety.test.js",
     "periodBucket.test.js",
+    "rateLimitStore.test.js",
   ],
 };

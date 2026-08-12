@@ -1,27 +1,23 @@
 import rateLimit from "express-rate-limit";
-import { getRedisClient } from "../services/redisService.js";
 import { getClientIp } from "../utils/ipUtils.js";
+import { createRateLimitStore } from "./rateLimitStore.js";
 
-let RedisStore;
-try {
-  const mod = await import("rate-limit-redis");
-  RedisStore = mod.RedisStore || mod.default;
-} catch (_e) {
-  // rate-limit-redis optional dependency fallback
-}
-
-// Create a shared store that uses Redis if available,
-// otherwise falls back to in-memory
-const createStore = (prefix) => {
-  const redisClient = getRedisClient();
-  if (redisClient && RedisStore) {
-    return new RedisStore({
-      sendCommand: (...args) => redisClient.sendCommand(...args),
-      prefix,
-    });
-  }
-  return undefined; // Falls back to default MemoryStore
-};
+/**
+ * Builds this limiter's store (Issue #1452).
+ *
+ * The previous `createStore` called `getRedisClient()` right here, at module
+ * scope. This module is evaluated during the import phase — `config/express.js`
+ * imports it, and `config/express.js` is in `server.js`'s static import graph —
+ * whereas `initRedis()` only runs later, inside `startWorkers()`. So the client
+ * was always `null`, `createStore` always returned `undefined`, and every
+ * limiter below silently used the in-process `MemoryStore`.
+ *
+ * `createRateLimitStore` returns a store that resolves its own backend on first
+ * use instead, so the limiters attach to Redis as soon as it is ready without
+ * anything about the bootstrap order having to change. See
+ * `middleware/rateLimitStore.js` for the details.
+ */
+const createStore = (prefix) => createRateLimitStore(prefix);
 
 // Common options to ensure secure IP key generation across all limiters
 const baseOptions = {
