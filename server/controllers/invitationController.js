@@ -773,3 +773,53 @@ export const expireInvitation = async (req, res) => {
     res.status(500).json({ success: false, message: "Server error" });
   }
 };
+
+/**
+ * ✅ Bulk Import Invitations from CSV
+ * POST /api/invitations/bulk
+ *
+ * Multipart fields:
+ *   - file: CSV upload (email, role, optional message)
+ *   - organizationId: target organization
+ */
+export const bulkImportInvitations = async (req, res) => {
+  try {
+    if (!req.user || !req.user.id) {
+      return res
+        .status(401)
+        .json({ success: false, message: "Authentication failed." });
+    }
+
+    if (!req.file) {
+      return res.status(400).json({
+        success: false,
+        message: "CSV file is required.",
+      });
+    }
+
+    const organizationId =
+      req.body?.organizationId || req.body?.organization_id;
+
+    const result = await InvitationService.bulkImportInvitations(
+      req.user.id,
+      {
+        organizationId,
+        csvContent: req.file.buffer,
+      },
+      {
+        origin: req.headers.origin,
+        inviterName: req.user.name || "Admin",
+      },
+    );
+
+    res.status(200).json(result);
+  } catch (error) {
+    console.error("❌ Error bulk-importing invitations:", error);
+    if (error.statusCode) {
+      return res
+        .status(error.statusCode)
+        .json({ success: false, message: error.message });
+    }
+    res.status(500).json({ success: false, message: "Server error" });
+  }
+};
