@@ -6,7 +6,6 @@ import {
   createCircuitBreaker,
 } from "../utils/aiResilience.js";
 
-
 const HUGGINGFACE_API_KEY = process.env.HUGGINGFACE_API_KEY; // eslint-disable-line no-unused-vars
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
 const GEMINI_MODEL = process.env.GEMINI_MODEL || "gemini-2.5-flash";
@@ -142,7 +141,6 @@ export const parseJsonOutput = (outputText) => {
     }
   }
 };
-
 
 /**
  * AI-powered contradiction classification for two candidate-conflicting

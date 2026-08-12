@@ -106,11 +106,9 @@ export default async function processAiResultJob(job, _app) {
     }
 
     // Fire and forget email digest
-    MeetingDigestService.sendMeetingDigest(meetingToUpdate._id).catch(
-      (err) => {
-        console.error("Failed to send meeting digest automatically:", err);
-      },
-    );
+    MeetingDigestService.sendMeetingDigest(meetingToUpdate._id).catch((err) => {
+      console.error("Failed to send meeting digest automatically:", err);
+    });
 
     return { success: true, meetingId: meetingToUpdate._id };
   } catch (error) {

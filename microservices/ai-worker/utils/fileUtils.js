@@ -5,7 +5,11 @@ export const validatePath = (filePath) => {
   const resolved = path.resolve(filePath);
   const uploadsDir = path.resolve(process.env.UPLOADS_DIR || "uploads");
   const relative = path.relative(uploadsDir, resolved);
-  if (relative.startsWith("..") || path.isAbsolute(relative)) {
+  if (
+    relative === ".." ||
+    relative.startsWith(".." + path.sep) ||
+    path.isAbsolute(relative)
+  ) {
     throw new Error("Directory traversal detected: Access denied");
   }
   return resolved;
