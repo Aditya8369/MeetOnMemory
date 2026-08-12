@@ -36,8 +36,18 @@ import {
   CALENDAR_OAUTH_FALLBACK_PATH,
 } from "../utils/validateCalendarOAuthRedirect.js";
 import { validateRedirect } from "../utils/validateRedirect.js";
+import { usePolling } from "../hooks/usePolling.js";
 
 const clerkPubKey = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY;
+
+/**
+ * How long to watch a calendar OAuth popup before giving up (Issue #1455).
+ *
+ * Generous, because the user is working through a consent screen — but not
+ * unbounded, so a popup left open and forgotten cannot poll for the lifetime
+ * of the tab. The previous code had no deadline at all.
+ */
+const CALENDAR_OAUTH_POLL_TIMEOUT_MS = 5 * 60 * 1000;
 
 /** Map NotificationPreference document fields → Settings toggle keys. */
 const prefsFromApi = (preferences, emailDigestEnabled) => ({
@@ -80,6 +90,9 @@ const Settings = () => {
     microsoft: null,
   });
   const [calendarLoading, setCalendarLoading] = useState(false);
+
+  // Owns the OAuth popup watcher, including its teardown on unmount (#1455).
+  const { startPolling } = usePolling();
 
   const [notificationPrefs, setNotificationPrefs] = useState({
     meetingNotifications: true,
@@ -247,82 +260,90 @@ const Settings = () => {
     }
   };
 
+  /**
+   * Opens a provider's OAuth popup and waits for the user to finish with it.
+   *
+   * The Google and Microsoft handlers were identical apart from three strings,
+   * and both carried the same two defects (Issue #1455):
+   *
+   *   - `window.open` returns `null` when a popup blocker intervenes, which is
+   *     the common case here because the popup is opened *after* an `await` and
+   *     the user-gesture token has already been spent on the auth-url request.
+   *     `authWindow.closed` then threw a TypeError — and the only
+   *     `clearInterval` sat inside the branch that had just thrown, so it threw
+   *     again every 500 ms for the rest of the session, with the spinner stuck
+   *     on because `setCalendarLoading(false)` was in that same branch.
+   *
+   *   - There was no deadline and no unmount teardown, so even a successful
+   *     flow left a timer running if the user navigated away first.
+   *
+   * The blocked-popup case is now detected before any timer exists, and
+   * `usePolling` owns the rest.
+   *
+   * @param {"google"|"microsoft"} provider
+   * @param {string} label human-readable name used in messages
+   */
+  const connectCalendarProvider = async (provider, label) => {
+    try {
+      setCalendarLoading(true);
+      const response = await apiClient.get(
+        `/api/calendar/${provider}/auth-url`,
+      );
+      const safeAuthUrl = validateCalendarOAuthAuthUrl(response.data.authUrl);
+
+      if (!safeAuthUrl) {
+        toast.error(`Invalid ${label} Calendar authorization URL`);
+        setCalendarLoading(false);
+        window.location.assign(
+          validateRedirect(CALENDAR_OAUTH_FALLBACK_PATH, "/settings"),
+        );
+        return;
+      }
+
+      // Open OAuth popup
+      const authWindow = window.open(
+        safeAuthUrl,
+        "_blank",
+        "width=500,height=600",
+      );
+
+      if (!authWindow) {
+        toast.error(
+          `Could not open the ${label} sign-in window. Please allow pop-ups for this site and try again.`,
+        );
+        setCalendarLoading(false);
+        return;
+      }
+
+      // Poll until the user closes the popup. The deadline is long because the
+      // user is filling in a consent screen, but it exists so a popup left open
+      // and forgotten does not poll for the lifetime of the tab.
+      startPolling(
+        () => {
+          if (!authWindow.closed) return false;
+
+          setCalendarLoading(false);
+          fetchCalendarStatus();
+          return true;
+        },
+        {
+          intervalMs: 500,
+          timeoutMs: CALENDAR_OAUTH_POLL_TIMEOUT_MS,
+          onTimeout: () => setCalendarLoading(false),
+        },
+      );
+    } catch (error) {
+      console.error(`Error connecting ${label} Calendar:`, error);
+      toast.error(`Failed to connect ${label} Calendar`);
+      setCalendarLoading(false);
+    }
+  };
+
   // Calendar connection handlers
-  const handleConnectGoogle = async () => {
-    try {
-      setCalendarLoading(true);
-      const response = await apiClient.get("/api/calendar/google/auth-url");
-      const safeAuthUrl = validateCalendarOAuthAuthUrl(response.data.authUrl);
+  const handleConnectGoogle = () => connectCalendarProvider("google", "Google");
 
-      if (!safeAuthUrl) {
-        toast.error("Invalid Google Calendar authorization URL");
-        setCalendarLoading(false);
-        window.location.assign(
-          validateRedirect(CALENDAR_OAUTH_FALLBACK_PATH, "/settings"),
-        );
-        return;
-      }
-
-      // Open OAuth popup
-      const authWindow = window.open(
-        safeAuthUrl,
-        "_blank",
-        "width=500,height=600",
-      );
-
-      // Poll for callback (in production, use a proper OAuth flow with redirect)
-      const pollForCallback = setInterval(() => {
-        if (authWindow.closed) {
-          clearInterval(pollForCallback);
-          setCalendarLoading(false);
-          // Refresh status
-          fetchCalendarStatus();
-        }
-      }, 500);
-    } catch (error) {
-      console.error("Error connecting Google Calendar:", error);
-      toast.error("Failed to connect Google Calendar");
-      setCalendarLoading(false);
-    }
-  };
-
-  const handleConnectMicrosoft = async () => {
-    try {
-      setCalendarLoading(true);
-      const response = await apiClient.get("/api/calendar/microsoft/auth-url");
-      const safeAuthUrl = validateCalendarOAuthAuthUrl(response.data.authUrl);
-
-      if (!safeAuthUrl) {
-        toast.error("Invalid Microsoft Calendar authorization URL");
-        setCalendarLoading(false);
-        window.location.assign(
-          validateRedirect(CALENDAR_OAUTH_FALLBACK_PATH, "/settings"),
-        );
-        return;
-      }
-
-      // Open OAuth popup
-      const authWindow = window.open(
-        safeAuthUrl,
-        "_blank",
-        "width=500,height=600",
-      );
-
-      // Poll for callback
-      const pollForCallback = setInterval(() => {
-        if (authWindow.closed) {
-          clearInterval(pollForCallback);
-          setCalendarLoading(false);
-          // Refresh status
-          fetchCalendarStatus();
-        }
-      }, 500);
-    } catch (error) {
-      console.error("Error connecting Microsoft Calendar:", error);
-      toast.error("Failed to connect Microsoft Calendar");
-      setCalendarLoading(false);
-    }
-  };
+  const handleConnectMicrosoft = () =>
+    connectCalendarProvider("microsoft", "Microsoft");
 
   const handleDisconnect = async (provider) => {
     try {
