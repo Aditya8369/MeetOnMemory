@@ -3,6 +3,7 @@ import User from "../models/userModel.js";
 import Organization from "../models/organizationModel.js";
 import { createNotification } from "./notificationService.js";
 import EmailService from "./EmailService.js";
+import { groupByPeriod } from "../utils/periodBucket.js";
 
 /**
  * Follow-Up Workflow Service
@@ -669,35 +670,23 @@ export const getCompletionAnalytics = async (organizationId, filters = {}) => {
  * @returns {Array} Trend data
  */
 const calculateTrends = (tasks) => {
-  const weekMap = new Map();
-
-  tasks.forEach((task) => {
-    const weekStart = new Date(task.createdAt);
-    weekStart.setDate(weekStart.getDate() - weekStart.getDay());
-    const weekKey = weekStart.toISOString().split("T")[0];
-
-    if (!weekMap.has(weekKey)) {
-      weekMap.set(weekKey, {
-        week: weekKey,
-        created: 0,
-        completed: 0,
-        overdue: 0,
-      });
-    }
-
-    const weekData = weekMap.get(weekKey);
-    weekData.created++;
-
-    if (task.status === "completed") {
-      weekData.completed++;
-    } else if (task.status === "overdue") {
-      weekData.overdue++;
-    }
+  // Weeks are bucketed in UTC. The inline version derived the week start from
+  // the local calendar and then rendered it with `toISOString()`, so tasks
+  // created early on a Sunday were counted against the previous week on any
+  // non-UTC server (Issue #1453).
+  const { buckets } = groupByPeriod(tasks, {
+    granularity: "weekly",
+    getDate: (task) => task.createdAt,
   });
 
-  return Array.from(weekMap.values()).sort(
-    (a, b) => new Date(a.week) - new Date(b.week),
-  );
+  // `groupByPeriod` already returns chronological order, so the previous
+  // `new Date(a.week)` sort is redundant.
+  return buckets.map(({ period, items }) => ({
+    week: period,
+    created: items.length,
+    completed: items.filter((task) => task.status === "completed").length,
+    overdue: items.filter((task) => task.status === "overdue").length,
+  }));
 };
 
 /**

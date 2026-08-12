@@ -5,6 +5,7 @@ import {
   getOrganizationAnalytics,
 } from "../services/audioAnalyticsService.js";
 import mongoose from "mongoose";
+import { groupByPeriod } from "../utils/periodBucket.js";
 
 /**
  * Meeting Analytics Controller
@@ -224,53 +225,34 @@ export const getTrends = async (req, res) => {
       .sort({ analyzedAt: -1 })
       .limit(100);
 
-    // Group by period
-    const trends = [];
-    const periodMap = new Map();
-
-    analytics.forEach((item) => {
-      const date = new Date(item.analyzedAt);
-      let periodKey;
-
-      if (period === "daily") {
-        periodKey = date.toISOString().split("T")[0];
-      } else if (period === "weekly") {
-        const weekStart = new Date(date);
-        weekStart.setDate(weekStart.getDate() - weekStart.getDay());
-        periodKey = weekStart.toISOString().split("T")[0];
-      } else if (period === "monthly") {
-        periodKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
-      }
-
-      if (!periodMap.has(periodKey)) {
-        periodMap.set(periodKey, []);
-      }
-      periodMap.get(periodKey).push(item);
+    // Group by period. This used to mix `getDay()`/`setDate()` (local calendar)
+    // with `toISOString()` (UTC), which split one week across two buckets on
+    // any server whose TZ is not UTC — and it derived the monthly key from
+    // local `getFullYear()`/`getMonth()` while the daily key came from UTC, so
+    // the three granularities did not agree with each other (Issue #1453).
+    const { buckets } = groupByPeriod(analytics, {
+      granularity: period,
+      getDate: (item) => item.analyzedAt,
     });
 
-    periodMap.forEach((periodAnalytics, periodKey) => {
-      const metrics = periodAnalytics.map((a) => a.metrics);
-      trends.push({
+    const trends = buckets.map(({ period: periodKey, items }) => {
+      const metrics = items.map((a) => a.metrics);
+      const average = (pick) =>
+        metrics.reduce((sum, m) => sum + pick(m), 0) / metrics.length;
+
+      return {
         period: periodKey,
-        meetingCount: periodAnalytics.length,
-        avgEngagement:
-          metrics.reduce((sum, m) => sum + m.engagementScore, 0) /
-          metrics.length,
-        avgParticipationEquity:
-          metrics.reduce((sum, m) => sum + m.participationEquity, 0) /
-          metrics.length,
-        avgDuration:
-          metrics.reduce((sum, m) => sum + m.totalDuration, 0) / metrics.length,
-        avgDecisionDensity:
-          metrics.reduce((sum, m) => sum + m.decisionDensity, 0) /
-          metrics.length,
-      });
+        meetingCount: items.length,
+        avgEngagement: average((m) => m.engagementScore),
+        avgParticipationEquity: average((m) => m.participationEquity),
+        avgDuration: average((m) => m.totalDuration),
+        avgDecisionDensity: average((m) => m.decisionDensity),
+      };
     });
 
-    res.status(200).json({
-      trends: trends.sort((a, b) => new Date(a.period) - new Date(b.period)),
-      period,
-    });
+    // `groupByPeriod` returns buckets in chronological order, so the
+    // `new Date(a.period)` sort that used to run here is gone.
+    res.status(200).json({ trends, period });
   } catch (error) {
     console.error("Error fetching trends:", error);
     res.status(500).json({ message: "Server Error", error: error.message });
