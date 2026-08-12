@@ -1,13 +1,81 @@
+import mongoose from "mongoose";
 import { translateSegment } from "../services/realtimeTranslationService.js";
+import Meeting from "../models/meetingModel.js";
+import RealtimeTranslationCache from "../models/TranslationCache.js";
+import { hasPermission } from "../utils/rbacPermissions.js";
+
+/**
+ * Helper to verify user access to a specific meeting room.
+ *
+ * @param {string} meetingId - Meeting ID to verify
+ * @param {Object} socket - Socket instance
+ * @returns {Promise<boolean>} True if authorized
+ */
+const verifyMeetingAccess = async (meetingId, socket) => {
+  if (!meetingId || !mongoose.isValidObjectId(meetingId)) {
+    return false;
+  }
+  if (!socket.userId || !socket.userRole) {
+    return false;
+  }
+  if (!hasPermission(socket.userRole, "meetings", "view")) {
+    return false;
+  }
+
+  const meeting = await Meeting.findById(meetingId);
+  if (!meeting) {
+    return false;
+  }
+
+  const isOwner = meeting.uploadedBy?.toString() === socket.userId.toString();
+  const isInSameOrg =
+    meeting.organization &&
+    socket.userOrganization &&
+    meeting.organization.toString() === socket.userOrganization.toString();
+
+  return isOwner || isInSameOrg;
+};
 
 /**
  * Translation Socket Handler
  * Handles real-time translation events via Socket.IO
  */
-
 export default (io) => {
   io.on("connection", (socket) => {
+    // Unauthenticated connections are disconnected
+    if (!socket.userId) {
+      console.warn(
+        "🌐 Translation socket rejected: Unauthenticated connection",
+      );
+      socket.disconnect(true);
+      return;
+    }
+
     console.log("🌐 Translation socket connected:", socket.id);
+
+    // Join translation room for a meeting
+    socket.on("translation:join", async (data) => {
+      try {
+        const { meetingId } = data;
+        const authorized = await verifyMeetingAccess(meetingId, socket);
+
+        if (!authorized) {
+          socket.emit("translation:error", {
+            message: "Forbidden: You don't have access to this meeting",
+          });
+          return;
+        }
+
+        socket.join(meetingId);
+        socket.emit("translation:joined", { meetingId });
+        console.log(`✓ User ${socket.userId} joined translation: ${meetingId}`);
+      } catch (error) {
+        console.error("Error joining translation room:", error);
+        socket.emit("translation:error", {
+          message: "Failed to join translation room",
+        });
+      }
+    });
 
     // Handle translation request
     socket.on("translation:request", async (data) => {
@@ -20,6 +88,15 @@ export default (io) => {
           targetLanguage,
           context,
         } = data;
+
+        const authorized = await verifyMeetingAccess(meetingId, socket);
+        if (!authorized) {
+          socket.emit("translation:error", {
+            segmentId,
+            error: "Forbidden: You don't have access to this meeting",
+          });
+          return;
+        }
 
         console.log(
           `📝 Translation request: ${sourceLanguage} -> ${targetLanguage}`,
@@ -53,15 +130,20 @@ export default (io) => {
     });
 
     // Handle language change
-    socket.on("translation:language-change", (data) => {
+    socket.on("translation:language-change", async (data) => {
       try {
-        const { meetingId, language, userId } = data;
+        const { meetingId, language } = data;
+        const authorized = await verifyMeetingAccess(meetingId, socket);
 
-        console.log(`🔄 User ${userId} changed language to ${language}`);
+        if (!authorized) {
+          return;
+        }
+
+        console.log(`🔄 User ${socket.userId} changed language to ${language}`);
 
         // Broadcast language change to all participants
         io.to(meetingId).emit("translation:language-change", {
-          userId,
+          userId: socket.userId,
           language,
           timestamp: Date.now(),
         });
@@ -73,9 +155,18 @@ export default (io) => {
     // Handle manual correction
     socket.on("translation:correction", async (data) => {
       try {
-        const { meetingId, segmentId, language, correctedText, userId } = data;
+        const { meetingId, segmentId, language, correctedText } = data;
 
-        console.log(`✏️ Manual correction submitted by ${userId}`);
+        const authorized = await verifyMeetingAccess(meetingId, socket);
+        if (!authorized) {
+          socket.emit("translation:error", {
+            segmentId,
+            error: "Forbidden: You don't have access to this meeting",
+          });
+          return;
+        }
+
+        console.log(`✏️ Manual correction submitted by ${socket.userId}`);
 
         // Import correction function dynamically to avoid circular dependency
         const { submitCorrection } =
@@ -86,7 +177,7 @@ export default (io) => {
           segmentId,
           language,
           correctedText,
-          userId,
+          socket.userId,
         );
 
         // Broadcast correction to all participants
@@ -94,7 +185,7 @@ export default (io) => {
           segmentId,
           language,
           correctedText,
-          userId,
+          userId: socket.userId,
           timestamp: Date.now(),
         });
 
@@ -112,6 +203,28 @@ export default (io) => {
     socket.on("translation:quality-request", async (data) => {
       try {
         const { segmentId } = data;
+
+        // Fetch segment cache to verify meeting ID access
+        const cache = await RealtimeTranslationCache.findOne({ segmentId });
+        if (!cache) {
+          socket.emit("translation:error", {
+            segmentId,
+            error: "Segment not found",
+          });
+          return;
+        }
+
+        const authorized = await verifyMeetingAccess(
+          cache.meeting.toString(),
+          socket,
+        );
+        if (!authorized) {
+          socket.emit("translation:error", {
+            segmentId,
+            error: "Forbidden: You don't have access to this meeting",
+          });
+          return;
+        }
 
         const { getQualityMetrics } =
           await import("../services/realtimeTranslationService.js");
