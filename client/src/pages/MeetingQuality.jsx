@@ -612,7 +612,6 @@ const MeetingQuality = () => {
   );
 };
 
-// eslint-disable-next-line no-unused-vars
 const MetricCard = ({ Icon, label, value }) => (
   <div className="bg-slate-50 dark:bg-slate-800 rounded-xl p-4">
     <div className="flex items-center gap-2 mb-2">
