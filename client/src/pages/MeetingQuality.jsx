@@ -621,18 +621,29 @@ const MeetingQuality = () => {
   );
 };
 
-const MetricCard = ({ Icon, label, value }) => (
-  <div className="bg-slate-50 dark:bg-slate-800 rounded-xl p-4">
-    <div className="flex items-center gap-2 mb-2">
-      <Icon className="w-5 h-5 text-blue-600 dark:text-blue-400" />
-      <span className="text-sm text-slate-600 dark:text-slate-400">
-        {label}
-      </span>
+const MetricCard = (props) => {
+  // `Icon` is destructured in the body rather than in the parameter list on
+  // purpose. The shared ESLint config does not include `react/jsx-uses-vars`,
+  // so it cannot see that `<Icon />` below is a use; it works around that with
+  // `varsIgnorePattern: "^[A-Z_]"`, which covers variables but not destructured
+  // parameters. Binding it here therefore satisfies the rule without disabling
+  // it. This is a latent error that only surfaced once this file was touched,
+  // because `lint:changed` lints changed files only.
+  const { Icon, label, value } = props;
+
+  return (
+    <div className="bg-slate-50 dark:bg-slate-800 rounded-xl p-4">
+      <div className="flex items-center gap-2 mb-2">
+        <Icon className="w-5 h-5 text-blue-600 dark:text-blue-400" />
+        <span className="text-sm text-slate-600 dark:text-slate-400">
+          {label}
+        </span>
+      </div>
+      <div className="text-2xl font-bold text-slate-900 dark:text-white">
+        {value}
+      </div>
     </div>
-    <div className="text-2xl font-bold text-slate-900 dark:text-white">
-      {value}
-    </div>
-  </div>
-);
+  );
+};
 
 export default MeetingQuality;
