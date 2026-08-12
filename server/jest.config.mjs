@@ -36,5 +36,6 @@ export default {
     "ragAssistantSocketScope.test.js",
     "dashboardController.test.js",
     "routeRegistration.test.js",
+    "knowledgeSearchRegexSafety.test.js",
   ],
 };
