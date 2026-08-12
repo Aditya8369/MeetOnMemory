@@ -4,6 +4,7 @@ import Meeting from "../models/meetingModel.js";
 import ActionItem from "../models/actionItemModel.js";
 import Decision from "../models/decisionModel.js";
 import MeetingFeedback from "../models/meetingFeedbackModel.js";
+import { groupByPeriod } from "../utils/periodBucket.js";
 
 /**
  * Meeting Quality Service
@@ -887,46 +888,28 @@ export const getQualityTrends = async (orgId, period = "weekly") => {
       .sort({ calculatedAt: 1 })
       .limit(100);
 
-    // Group by period
-    const periodMap = new Map();
-    scores.forEach((score) => {
-      const date = new Date(score.calculatedAt);
-      let periodKey;
-
-      if (period === "daily") {
-        periodKey = date.toISOString().split("T")[0];
-      } else if (period === "weekly") {
-        const weekStart = new Date(date);
-        weekStart.setDate(weekStart.getDate() - weekStart.getDay());
-        periodKey = weekStart.toISOString().split("T")[0];
-      } else if (period === "monthly") {
-        periodKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
-      }
-
-      if (!periodMap.has(periodKey)) {
-        periodMap.set(periodKey, []);
-      }
-      periodMap.get(periodKey).push(score);
+    // Group by period, entirely in UTC. The previous inline version mixed the
+    // local calendar (`getDay`/`setDate`) with `toISOString()`, so one week
+    // could land in two buckets on a non-UTC server (Issue #1453).
+    const { buckets } = groupByPeriod(scores, {
+      granularity: period,
+      getDate: (score) => score.calculatedAt,
     });
 
-    const trends = Array.from(periodMap.entries()).map(
-      ([periodKey, periodScores]) => {
-        const avg =
-          periodScores.reduce((sum, s) => sum + (s.scores?.overall || 0), 0) /
-          periodScores.length;
-        return {
-          period: periodKey,
-          meetingCount: periodScores.length,
-          averageScore: Math.round(avg * 10) / 10,
-          minScore: Math.min(
-            ...periodScores.map((s) => s.scores?.overall || 0),
-          ),
-          maxScore: Math.max(
-            ...periodScores.map((s) => s.scores?.overall || 0),
-          ),
-        };
-      },
-    );
+    const trends = buckets.map(({ period: periodKey, items }) => {
+      const overallScores = items.map((s) => s.scores?.overall || 0);
+      const avg =
+        overallScores.reduce((sum, score) => sum + score, 0) /
+        overallScores.length;
+
+      return {
+        period: periodKey,
+        meetingCount: items.length,
+        averageScore: Math.round(avg * 10) / 10,
+        minScore: Math.min(...overallScores),
+        maxScore: Math.max(...overallScores),
+      };
+    });
 
     return trends;
   } catch (error) {

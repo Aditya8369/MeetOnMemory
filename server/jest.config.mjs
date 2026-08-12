@@ -37,5 +37,6 @@ export default {
     "dashboardController.test.js",
     "routeRegistration.test.js",
     "knowledgeSearchRegexSafety.test.js",
+    "periodBucket.test.js",
   ],
 };

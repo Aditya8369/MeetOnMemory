@@ -2,6 +2,7 @@ import MeetingAnalytics from "../models/MeetingAnalytics.js";
 import Meeting from "../models/meetingModel.js";
 import User from "../models/userModel.js";
 import Transcript from "../models/transcriptModel.js";
+import { groupByPeriod } from "../utils/periodBucket.js";
 
 /**
  * Audio Analytics Service
@@ -478,33 +479,26 @@ export const getOrganizationAnalytics = async (
         metrics.length,
     };
 
-    // Calculate trends (group by week)
-    const trends = [];
-    const weekMap = new Map();
-
-    allAnalytics.forEach((analytics) => {
-      const weekStart = new Date(analytics.analyzedAt);
-      weekStart.setDate(weekStart.getDate() - weekStart.getDay());
-      const weekKey = weekStart.toISOString().split("T")[0];
-
-      if (!weekMap.has(weekKey)) {
-        weekMap.set(weekKey, []);
-      }
-      weekMap.get(weekKey).push(analytics);
+    // Calculate trends (group by week). The inline version mixed the local
+    // calendar with `toISOString()`, so a Sunday-morning meeting landed in the
+    // previous week's bucket on any non-UTC server, and the resulting array was
+    // in arrival order rather than chronological (Issue #1453).
+    const { buckets } = groupByPeriod(allAnalytics, {
+      granularity: "weekly",
+      getDate: (analytics) => analytics.analyzedAt,
     });
 
-    weekMap.forEach((weekAnalytics, weekKey) => {
-      const weekMetrics = weekAnalytics.map((a) => a.metrics);
-      trends.push({
-        week: weekKey,
-        meetingCount: weekAnalytics.length,
-        avgEngagement:
-          weekMetrics.reduce((sum, m) => sum + m.engagementScore, 0) /
-          weekMetrics.length,
-        avgParticipationEquity:
-          weekMetrics.reduce((sum, m) => sum + m.participationEquity, 0) /
-          weekMetrics.length,
-      });
+    const trends = buckets.map(({ period, items }) => {
+      const weekMetrics = items.map((a) => a.metrics);
+      const average = (pick) =>
+        weekMetrics.reduce((sum, m) => sum + pick(m), 0) / weekMetrics.length;
+
+      return {
+        week: period,
+        meetingCount: items.length,
+        avgEngagement: average((m) => m.engagementScore),
+        avgParticipationEquity: average((m) => m.participationEquity),
+      };
     });
 
     // Find top performers (most engaged speakers)
