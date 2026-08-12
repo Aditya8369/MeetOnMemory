@@ -74,6 +74,47 @@ const generateInvitationToken = () => {
 };
 
 /**
+ * Returns true when an invitation is past its expiry timestamp.
+ * Treats missing or invalid expiry values as expired.
+ * @param {Date|string|number|null|undefined} expiresAt
+ * @returns {boolean}
+ */
+export const isInvitationExpired = (expiresAt) => {
+  if (expiresAt == null) return true;
+  const expiryMs = new Date(expiresAt).getTime();
+  return Number.isNaN(expiryMs) || expiryMs <= Date.now();
+};
+
+/**
+ * Ensures an invitation is pending and not expired.
+ * Marks expired invitations when persistExpired is true.
+ *
+ * @param {import("mongoose").Document} invitation
+ * @param {{ persistExpired?: boolean, session?: import("mongoose").ClientSession }} [options]
+ * @throws {NotFoundError|ValidationError}
+ */
+export const assertInvitationPendingAndActive = async (
+  invitation,
+  { persistExpired = true, session = null } = {},
+) => {
+  if (!invitation) {
+    throw new NotFoundError("Invitation not found.");
+  }
+
+  if (invitation.status !== "pending") {
+    throw new ValidationError("Invitation is not in pending status.");
+  }
+
+  if (isInvitationExpired(invitation.expiresAt)) {
+    if (persistExpired) {
+      invitation.status = "expired";
+      await invitation.save(session ? { session } : undefined);
+    }
+    throw new ValidationError("Invitation has expired.");
+  }
+};
+
+/**
  * Check if a user is admin or owner of the given organization.
  * Returns true if authorized, false otherwise.
  */
@@ -313,19 +354,8 @@ export const acceptInvitation = async (userId, token) => {
       throw new NotFoundError("Invitation not found.");
     }
 
-    // Step 2: Validate invitation status
-    if (invitation.status !== "pending") {
-      throw new ValidationError(
-        `Invitation is not in pending status. Current status: ${invitation.status}`,
-      );
-    }
-
-    // Step 3: Check expiration
-    if (invitation.expiresAt < new Date()) {
-      invitation.status = "expired";
-      await invitation.save({ session });
-      throw new ValidationError("Invitation has expired.");
-    }
+    // Step 2–3: Validate pending status and expiry (Issue #1358)
+    await assertInvitationPendingAndActive(invitation, { session });
 
     // Step 4: Verify email matches authenticated user
     const user = await userModel.findById(userId).session(session);
@@ -408,9 +438,7 @@ export const rejectInvitation = async (userId, token) => {
     throw new NotFoundError("Invitation not found.");
   }
 
-  if (invitation.status !== "pending") {
-    throw new ValidationError("Invitation is not in pending status.");
-  }
+  await assertInvitationPendingAndActive(invitation);
 
   // Verify email matches
   const user = await userModel.findById(userId);
@@ -477,15 +505,7 @@ export const getInvitationByToken = async (token) => {
     throw new NotFoundError("Invitation not found.");
   }
 
-  if (invitation.status !== "pending") {
-    throw new ValidationError("Invitation is not in pending status.");
-  }
-
-  if (invitation.expiresAt < new Date()) {
-    invitation.status = "expired";
-    await invitation.save();
-    throw new ValidationError("Invitation has expired.");
-  }
+  await assertInvitationPendingAndActive(invitation);
 
   return { success: true, invitation };
 };

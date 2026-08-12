@@ -181,6 +181,73 @@ describe("Organization Invitations & Member Onboarding", () => {
     });
   });
 
+  describe("GET /api/invitation/:token (Get invitation by token)", () => {
+    it("should return invitation details for a valid, non-expired token", async () => {
+      const invitation = await Invitation.create({
+        organization: organization._id,
+        email: inviteUser.email,
+        invitedBy: adminUser._id,
+        token: "valid_lookup_token",
+        role: "member",
+        status: "pending",
+        expiresAt: new Date(Date.now() + 60 * 60 * 1000),
+      });
+
+      const res = await request(app).get(`/api/invitation/${invitation.token}`);
+
+      expect(res.statusCode).toEqual(200);
+      expect(res.body.success).toBe(true);
+      expect(res.body.invitation.token).toBe("valid_lookup_token");
+      expect(res.body.invitation.organization.name).toBe("Acme Corp");
+    });
+
+    it("should reject an expired invitation token with HTTP 400", async () => {
+      const invitation = await Invitation.create({
+        organization: organization._id,
+        email: inviteUser.email,
+        invitedBy: adminUser._id,
+        token: "expired_lookup_token",
+        role: "member",
+        status: "pending",
+        expiresAt: new Date(Date.now() - 1000),
+      });
+
+      const res = await request(app).get(`/api/invitation/${invitation.token}`);
+
+      expect(res.statusCode).toEqual(400);
+      expect(res.body.success).toBe(false);
+      expect(res.body.message).toBe("Invitation has expired.");
+
+      const updated = await Invitation.findById(invitation._id);
+      expect(updated.status).toBe("expired");
+    });
+
+    it("should treat an invitation expiring exactly now as expired", async () => {
+      const invitation = await Invitation.create({
+        organization: organization._id,
+        email: inviteUser.email,
+        invitedBy: adminUser._id,
+        token: "boundary_lookup_token",
+        role: "member",
+        status: "pending",
+        expiresAt: new Date(),
+      });
+
+      const res = await request(app).get(`/api/invitation/${invitation.token}`);
+
+      expect(res.statusCode).toEqual(400);
+      expect(res.body.message).toBe("Invitation has expired.");
+    });
+
+    it("should return 404 for an unknown token", async () => {
+      const res = await request(app).get("/api/invitation/unknown_token_xyz");
+
+      expect(res.statusCode).toEqual(404);
+      expect(res.body.success).toBe(false);
+      expect(res.body.message).toBe("Invitation not found.");
+    });
+  });
+
   describe("POST /api/invitation/:token/accept (Accept invitation)", () => {
     let invitation;
 
