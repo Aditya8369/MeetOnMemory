@@ -1,7 +1,10 @@
 import React, { useState } from "react";
-
+import { useNavigate } from "react-router-dom";
+import { FileText, ExternalLink } from "lucide-react";
+import GlossaryHighlighter from "./GlossaryHighlighter";
 const MeetingTranscript = ({ meeting }) => {
   const [isExpanded, setIsExpanded] = useState(false);
+  const navigate = useNavigate();
 
   if (!meeting) return null;
 
@@ -11,19 +14,7 @@ const MeetingTranscript = ({ meeting }) => {
     return (
       <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-6">
         <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
-          <svg
-            className="w-5 h-5"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M9 19V6l12-3v13M9 19c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zm12-3c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zM9 10l12-3"
-            />
-          </svg>
+          <FileText size={20} />
           Full Transcript
         </h2>
         <div className="text-gray-500 text-sm py-8 text-center bg-gray-50 rounded-lg">
@@ -45,51 +36,41 @@ const MeetingTranscript = ({ meeting }) => {
 
   const shouldShowExpandButton = transcript.length > 1000;
 
+  const truncateAtWord = (text, maxLength) => {
+    if (text.length <= maxLength) return text;
+    const lastSpace = text.lastIndexOf(" ", maxLength);
+    return text.substring(0, lastSpace > 0 ? lastSpace : maxLength) + "...";
+  };
+
   return (
     <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-6">
       <div className="flex items-center justify-between mb-4">
         <h2 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
-          <svg
-            className="w-5 h-5"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M9 19V6l12-3v13M9 19c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zm12-3c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zM9 10l12-3"
-            />
-          </svg>
+          <FileText size={20} />
           Full Transcript
         </h2>
-        <button
-          onClick={handleCopy}
-          className="flex items-center gap-1 text-sm text-gray-600 hover:text-gray-900 px-3 py-1 rounded-md hover:bg-gray-100 transition-colors"
-        >
-          <svg
-            className="w-4 h-4"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => navigate(`/transcript/${meeting._id}`)}
+            className="flex items-center gap-1 text-sm text-indigo-600 hover:text-indigo-800 px-3 py-1 rounded-md hover:bg-indigo-50 transition-colors"
           >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"
-            />
-          </svg>
-          Copy
-        </button>
+            <ExternalLink size={14} />
+            View Full Transcript
+          </button>
+          <button
+            onClick={handleCopy}
+            className="flex items-center gap-1 text-sm text-gray-600 hover:text-gray-900 px-3 py-1 rounded-md hover:bg-gray-100 transition-colors"
+          >
+            Copy
+          </button>
+        </div>
       </div>
 
       <div className="bg-gray-50 rounded-lg p-4 max-h-96 overflow-y-auto">
-        <p className="text-gray-700 text-sm whitespace-pre-wrap leading-relaxed">
+        <div className="text-gray-700 text-sm whitespace-pre-wrap leading-relaxed">
           {shouldShowExpandButton && !isExpanded ? (
             <>
-              {transcript.substring(0, 1000)}...
+              <GlossaryHighlighter text={truncateAtWord(transcript, 1000)} />
               <button
                 onClick={() => setIsExpanded(true)}
                 className="ml-2 text-blue-600 hover:text-blue-800 font-medium"
@@ -99,7 +80,7 @@ const MeetingTranscript = ({ meeting }) => {
             </>
           ) : (
             <>
-              {transcript}
+              <GlossaryHighlighter text={transcript} />
               {shouldShowExpandButton && isExpanded && (
                 <button
                   onClick={() => setIsExpanded(false)}
@@ -110,7 +91,7 @@ const MeetingTranscript = ({ meeting }) => {
               )}
             </>
           )}
-        </p>
+        </div>
       </div>
     </div>
   );

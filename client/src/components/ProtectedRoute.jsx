@@ -2,14 +2,23 @@ import React, { useContext } from "react";
 import { Navigate, useLocation } from "react-router-dom";
 import AppContent from "../context/AppContent";
 import { useRBAC } from "../hooks/useRBAC.js";
+import AccessDenied from "../pages/AccessDenied.jsx";
 
-const ProtectedRoute = ({ children, requiredPermission, resource, action }) => {
-  const { isLoggedin, userData, isLoading } = useContext(AppContent);
+const ProtectedRoute = ({
+  children,
+  requiredPermission,
+  resource,
+  action,
+  forbiddenFallback,
+}) => {
+  const { isLoggedin, userData, loading } = useContext(AppContent);
   const { hasPermission } = useRBAC();
   const location = useLocation();
 
-  // Show loading while fetching user data
-  if (isLoading) {
+  // Hold the route until ClerkSessionSync finishes Mongo bootstrap.
+  // Redirecting while loading=false && !isLoggedin during a transient failure
+  // races Clerk's signed-in redirect back to /dashboard.
+  if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         Loading...
@@ -18,7 +27,7 @@ const ProtectedRoute = ({ children, requiredPermission, resource, action }) => {
   }
 
   // If user not logged in — block access to protected routes
-  if (!isLoggedin) {
+  if (!isLoggedin || !userData) {
     return <Navigate to="/login" state={{ from: location }} replace />;
   }
 
@@ -27,6 +36,7 @@ const ProtectedRoute = ({ children, requiredPermission, resource, action }) => {
     "/organizations",
     "/create-organization",
     "/join-organization",
+    "/browse-organizations",
   ];
   const isOnboardingPage = onboardingPages.includes(location.pathname);
 
@@ -34,14 +44,40 @@ const ProtectedRoute = ({ children, requiredPermission, resource, action }) => {
     return <Navigate to="/organizations" replace />;
   }
 
-  if (userData && userData.hasCompletedOnboarding && isOnboardingPage) {
+  const onboardingOnlyPages = [
+    "/organizations",
+    "/create-organization",
+    "/join-organization",
+  ];
+  const isJoinWithToken =
+    location.pathname === "/join-organization" &&
+    new URLSearchParams(location.search).has("token");
+
+  if (
+    userData &&
+    userData.hasCompletedOnboarding &&
+    onboardingOnlyPages.includes(location.pathname) &&
+    !isJoinWithToken
+  ) {
     return <Navigate to="/dashboard" replace />;
   }
 
   // RBAC: Check if user has required permission
-  if (requiredPermission && resource && action) {
+  if (resource && action) {
     if (!hasPermission(resource, action)) {
-      return <Navigate to="/dashboard" state={{ from: location }} replace />;
+      return forbiddenFallback || <AccessDenied />;
+    }
+  } else if (requiredPermission) {
+    const permResource =
+      typeof requiredPermission === "object"
+        ? requiredPermission.resource
+        : requiredPermission;
+    const permAction =
+      typeof requiredPermission === "object"
+        ? requiredPermission.action
+        : "view";
+    if (!hasPermission(permResource, permAction)) {
+      return forbiddenFallback || <AccessDenied />;
     }
   }
 

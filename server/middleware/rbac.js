@@ -6,6 +6,37 @@ import {
   isValidRole,
 } from "../utils/rbacPermissions.js";
 
+/**
+ * "May this user see this meeting-scoped document?" — the rule
+ * `requireOrgAccess` has always applied, extracted so it can be reused
+ * (Issue #1158).
+ *
+ * The note-version routes need the same rule but cannot use the middleware:
+ * their path carries a `NoteVersion` id, so the meeting has to be resolved
+ * first. Exporting the predicate keeps that from becoming a second, subtly
+ * different definition of who may read a meeting.
+ *
+ * @param {{organization?: any, uploadedBy?: any}} doc
+ * @param {{_id?: any, organization?: any}} user
+ * @returns {boolean}
+ */
+export const canAccessMeetingDoc = (doc, user) => {
+  if (!doc || !user) return false;
+
+  const isOwner =
+    Boolean(doc.uploadedBy) &&
+    Boolean(user._id) &&
+    doc.uploadedBy.toString() === user._id.toString();
+
+  const isInSameOrg = Boolean(
+    doc.organization &&
+    user.organization &&
+    doc.organization.toString() === user.organization.toString(),
+  );
+
+  return isOwner || isInSameOrg;
+};
+
 export const requireRole = (roles) => {
   return (req, res, next) => {
     if (!req.user) {
@@ -19,9 +50,10 @@ export const requireRole = (roles) => {
       });
     }
 
+    const userRole = req.user.role;
     const allowedRoles = Array.isArray(roles) ? roles : [roles];
 
-    if (!allowedRoles.includes(req.user.role)) {
+    if (!allowedRoles.includes(userRole)) {
       return res
         .status(403)
         .json({ success: false, message: "Forbidden: Insufficient role" });
@@ -31,15 +63,15 @@ export const requireRole = (roles) => {
   };
 };
 
-export const requireAdmin = (req, res, next) => {
+export const requireAdminOrOwner = (req, res, next) => {
   if (!req.user) {
     return res.status(401).json({ success: false, message: "Unauthorized" });
   }
 
-  if (req.user.role !== "admin") {
+  if (req.user.role !== "admin" && req.user.role !== "owner") {
     return res.status(403).json({
       success: false,
-      message: "Forbidden: Admin access required",
+      message: "Forbidden: Admin or Owner access required",
     });
   }
 
@@ -74,7 +106,9 @@ export const requirePermission = (resource, action) => {
       });
     }
 
-    if (!hasPermission(req.user.role, resource, action)) {
+    const userRole = req.user.role;
+
+    if (!hasPermission(userRole, resource, action)) {
       return res.status(403).json({
         success: false,
         message: `Forbidden: You don't have permission to ${action} ${resource}`,
@@ -98,8 +132,10 @@ export const requireAnyPermission = (resource, actions) => {
       });
     }
 
+    const userRole = req.user.role;
+
     const hasAny = actions.some((action) =>
-      hasPermission(req.user.role, resource, action),
+      hasPermission(userRole, resource, action),
     );
 
     if (!hasAny) {
@@ -129,7 +165,8 @@ export const requireOwnerOrAdmin = (Model) => {
         });
       }
 
-      const docId = req.params.id;
+      // Prefer :id (meetings/policies); fall back to :meetingId (transcript routes).
+      const docId = req.params.id || req.params.meetingId;
       if (!docId) {
         return res
           .status(400)
@@ -184,7 +221,8 @@ export const requireOwner = (Model) => {
           .json({ success: false, message: "Unauthorized" });
       }
 
-      const docId = req.params.id;
+      // Prefer :id (meetings/policies); fall back to :meetingId (transcript routes).
+      const docId = req.params.id || req.params.meetingId;
       if (!docId) {
         return res
           .status(400)
@@ -240,7 +278,8 @@ export const requireOrgAccess = (Model) => {
         });
       }
 
-      const docId = req.params.id;
+      // Prefer :id (meetings/policies); fall back to :meetingId (transcript routes).
+      const docId = req.params.id || req.params.meetingId;
       if (!docId) {
         return res
           .status(400)
@@ -259,13 +298,7 @@ export const requireOrgAccess = (Model) => {
           .json({ success: false, message: "Resource not found" });
       }
 
-      const isOwner = doc.uploadedBy?.toString() === req.user._id.toString();
-      const isInSameOrg =
-        doc.organization &&
-        req.user.organization &&
-        doc.organization.toString() === req.user.organization.toString();
-
-      if (!isOwner && !isInSameOrg) {
+      if (!canAccessMeetingDoc(doc, req.user)) {
         return res.status(403).json({
           success: false,
           message: "Forbidden: You don't have access to this resource",

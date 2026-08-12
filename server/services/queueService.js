@@ -1,481 +1,380 @@
 import { Queue, Worker } from "bullmq";
 import Redis from "ioredis";
-import { GoogleGenerativeAI } from "@google/generative-ai";
-import axios from "axios";
-import eventBus from "./eventBus.js";
-import Meeting from "../models/meetingModel.js";
-import { indexMeeting } from "../utils/embeddingUtils.js";
-import {
-  processStructuredMoM,
-  detectResolutions,
-} from "./knowledgeGraphService.js";
-import { createAndPushNotification } from "./notificationService.js";
-import userModel from "../models/userModel.js";
-import membershipModel from "../models/membershipModel.js";
-import fs from "fs";
-import path from "path";
-import { fileURLToPath } from "url";
-import { createRequire } from "module";
-import jwt from "jsonwebtoken";
-import transporter from "../config/nodeMailer.js";
+import processAudioJob from "../jobs/processAudioJob.js";
+import exportDataJob from "../jobs/exportDataJob.js";
+import cleanupExpiredExportsJob from "../jobs/cleanupExpiredExportsJob.js";
+import conflictScanJob from "./conflictDetection/conflictScanJob.js";
+import sentimentAnalysisJob from "../jobs/sentimentAnalysisJob.js";
+import recalculateImportanceJob from "../jobs/recalculateImportanceJob.js";
+import memoryLifecycleJob from "../jobs/memoryLifecycleJob.js";
+import RecapEmailService from "./recapEmailService.js";
+import queueRegistry, {
+  readPositiveIntEnv,
+  resolveJobOptions,
+  resolveWorkerOptions,
+} from "./queueRegistry.js";
 
-const require = createRequire(import.meta.url);
-const archiver = require("archiver");
+// ─────────────────────────────────────────────────────────────────────────────
+// Issue #975 — Background jobs are silently lost.
+//
+// This file previously declared seven near-identical queue getters, seven
+// near-identical `add()` wrappers, and seven near-identical `initXWorker`
+// functions. None of them set `defaultJobOptions`, so every job ran with
+// BullMQ's default `attempts: 1` and was destroyed by the first transient
+// error; none of them retained a handle to the created Worker, so nothing could
+// be drained on shutdown.
+//
+// Both problems are now solved structurally rather than per-queue: queues and
+// workers are built by shared factories that apply the retry/backoff/retention
+// defaults from queueRegistry.js and register every handle for shutdown. Adding
+// an eighth queue is one table entry, and it cannot accidentally ship without
+// retries.
+//
+// The public API (`aiQueue.add(...)`, `initAIWorker(app)`, …) is unchanged so no
+// caller needed to be touched.
+// ─────────────────────────────────────────────────────────────────────────────
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
+// BullMQ requires maxRetriesPerRequest to be null on worker connections.
+let _producerConnection = null;
+let _workerConnection = null;
 
-const redisUri = process.env.REDIS_URI;
+/** @type {Map<string, import("bullmq").Queue>} */
+const _queueInstances = new Map();
 
-// BullMQ requires maxRetriesPerRequest to be null
-const connection = redisUri
-  ? new Redis(redisUri, {
-      maxRetriesPerRequest: null,
+const redisConfigured = () => Boolean(process.env.REDIS_URI);
+
+function getProducerConnection() {
+  if (!redisConfigured()) return null;
+  if (!_producerConnection) {
+    _producerConnection = new Redis(process.env.REDIS_URI, {
+      maxRetriesPerRequest: 3, // Fail fast for requests adding tasks to queue
+      family: 0,
+    });
+    _producerConnection.on("error", (err) => {
+      console.error("⚠️ BullMQ Producer Redis Connection Error:", err.message);
+    });
+    queueRegistry.registerConnection("bullmq-producer", _producerConnection);
+  }
+  return _producerConnection;
+}
+
+function getWorkerConnection() {
+  if (!redisConfigured()) return null;
+  if (!_workerConnection) {
+    _workerConnection = new Redis(process.env.REDIS_URI, {
+      maxRetriesPerRequest: null, // Unlimited retries for background workers
       family: 0, // Helps with DNS resolution for some cloud providers
-    })
-  : null;
-
-if (connection) {
-  connection.on("error", (err) => {
-    console.error("⚠️ BullMQ Redis Connection Error:", err.message);
-  });
+    });
+    _workerConnection.on("error", (err) => {
+      console.error("⚠️ BullMQ Worker Redis Connection Error:", err.message);
+    });
+    queueRegistry.registerConnection("bullmq-worker", _workerConnection);
+  }
+  return _workerConnection;
 }
 
-export const aiQueue = connection
-  ? new Queue("ai-mom-generation", { connection })
-  : null;
+/**
+ * Lazily creates (and memoises) a queue with the shared durability defaults
+ * applied. Returns null when Redis is not configured — the historical
+ * behaviour, which lets the app boot for frontend-only development.
+ *
+ * @param {string} name BullMQ queue name
+ * @returns {import("bullmq").Queue|null}
+ */
+function getQueue(name) {
+  if (!redisConfigured()) return null;
 
-export const dataExportQueue = connection
-  ? new Queue("data-export-queue", { connection })
-  : null;
+  const existing = _queueInstances.get(name);
+  if (existing) return existing;
 
-export const initAIWorker = (app) => {
+  const connection = getProducerConnection();
+  if (!connection) return null;
+
+  const queue = new Queue(name, {
+    connection,
+    // The fix for Problem 1 in #975: every job on every queue now gets
+    // attempts + exponential backoff + bounded retention by default.
+    defaultJobOptions: resolveJobOptions(name),
+  });
+
+  _queueInstances.set(name, queue);
+  queueRegistry.registerQueue(name, queue);
+  return queue;
+}
+
+/**
+ * Builds the thin `{ add, isActive }` facade each queue is exported as.
+ *
+ * Preserves the previous contract exactly: `add()` resolves to null and warns
+ * when Redis is absent rather than throwing, so callers in request paths don't
+ * need to guard.
+ *
+ * @param {string} name
+ */
+const createQueueFacade = (name) => ({
+  /**
+   * @param {string} jobName
+   * @param {object} [data]
+   * @param {object} [opts] per-job overrides; merged over the queue defaults
+   */
+  add: async (jobName, data, opts) => {
+    const queue = getQueue(name);
+    if (!queue) {
+      console.warn(
+        `⚠️ Queue operation ignored: Redis is not configured (queue: ${name}).`,
+      );
+      return null;
+    }
+    // Explicitly resolve per-call options against the shared defaults. BullMQ
+    // would merge `defaultJobOptions` itself, but doing it here means an
+    // `opts` object that only sets e.g. `repeat` can't accidentally shadow the
+    // retry policy, and it keeps the merge behaviour unit-testable.
+    return await queue.add(jobName, data, resolveJobOptions(name, opts ?? {}));
+  },
+  get isActive() {
+    return getQueue(name) !== null;
+  },
+  /** Exposed for diagnostics and tests. */
+  get name() {
+    return name;
+  },
+});
+
+export const aiQueue = createQueueFacade("ai-mom-generation");
+
+export const dataExportQueue = createQueueFacade("data-export-queue");
+
+export const exportCleanupQueue = createQueueFacade("export-cleanup-queue");
+
+export const conflictScanQueue = createQueueFacade("conflict-scan-queue");
+export const sentimentAnalysisQueue = createQueueFacade(
+  "sentiment-analysis-queue",
+);
+export const recalculateImportanceQueue = createQueueFacade(
+  "recalculate-importance-queue",
+);
+export const memoryLifecycleQueue = createQueueFacade("memory-lifecycle-queue");
+export const recapDeliveryQueue = createQueueFacade("recap-delivery-queue");
+
+/**
+ * Creates a worker, wires the standard lifecycle logging, and registers it with
+ * the shutdown registry.
+ *
+ * The `failed` handler is the one behavioural addition: it now distinguishes a
+ * retry from a final failure. Previously every attempt logged an identical
+ * "job failed" line, which made a job that was about to be retried
+ * indistinguishable from one that had been abandoned.
+ *
+ * @param {object} params
+ * @param {string} params.name  queue name
+ * @param {string} params.label human-readable name for logs
+ * @param {Function} params.processor async (job) => any
+ * @param {object} [params.workerOptions]
+ * @returns {import("bullmq").Worker|null}
+ */
+function createWorker({ name, label, processor, workerOptions = {} }) {
+  const connection = getWorkerConnection();
   if (!connection) {
-    console.warn("⚠️ Redis not configured. AI Worker will not start.");
-    return;
+    console.warn(`⚠️ Redis not configured. ${label} will not start.`);
+    return null;
   }
 
-  const worker = new Worker(
-    "ai-mom-generation",
-    async (job) => {
-      const { meetingId, transcript, date, title, userId } = job.data;
-      const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
-      const GEMINI_MODEL = process.env.GEMINI_MODEL || "gemini-2.0-flash";
-      const HUGGINGFACE_API_KEY = process.env.HUGGINGFACE_API_KEY;
-
-      let textToSummarize = (transcript || "").trim();
-
-      // Fetch meeting transcript if only meetingId is provided
-      let meeting = null;
-      if (meetingId && !textToSummarize) {
-        meeting = await Meeting.findById(meetingId);
-        if (!meeting) {
-          throw new Error("Meeting not found");
-        }
-        textToSummarize = (meeting.transcript || "").trim();
-      }
-
-      if (!textToSummarize) {
-        throw new Error("No transcript provided.");
-      }
-
-      console.log(`🧠 Generating MoM for ${meetingId || "transcript-only"}...`);
-
-      // ======= Build Professional MoM Prompt =======
-      const prompt = `
-You are an advanced AI meeting assistant responsible for preparing *formal, well-structured Minutes of Meeting (MoM)* 
-from the transcript provided below.
-
-The MoM should be factual, concise, and formatted for professional use in organizations, universities, or institutions.  
-Avoid repetition, filler words, and unnecessary phrases. Capture key insights, outcomes, and responsibilities accurately.
-
-🎯 Your goal is to return a clean JSON object with the following fields:
-{
-  "title": "A clear, professional meeting title (e.g., 'AI Integration Strategy Discussion')",
-  "date": "${date}",
-  "summary": "A concise 4–6 sentence paragraph summarizing the meeting objectives, key points discussed, and overall conclusions. Use formal tone.",
-  "agenda": ["main agenda point 1", "main agenda point 2", "main agenda point 3"],
-  "key_discussions": [
-    "Summarize core discussion points or debates in neutral and objective language.",
-    "Mention who contributed if identifiable (optional)."
-  ],
-  "decisions": [
-    "List final decisions or outcomes agreed upon during the meeting, if any."
-  ],
-  "action_items": [
-    {"task": "Describe the specific task or next step", "owner": "Person responsible (if mentioned)", "due_date": "Deadline or expected date, if mentioned", "status": "Status if mentioned (e.g., 'pending', 'in progress', 'completed')"}
-  ],
-  "questions_raised": [
-    "List important unanswered questions or follow-up discussions that emerged during the meeting."
-  ],
-  "keywords": [
-    "Extract 5-10 relevant keywords and topics discussed during the meeting."
-  ],
-  "attendees": ["List attendees if mentioned or infer from transcript"],
-  "notes": "Include any follow-up requirements, risks, or additional remarks worth noting."
-}
-
-Transcript:
-${textToSummarize}
-
-🧠 Instructions:
-- Return ONLY valid JSON (no Markdown, no commentary, no backticks).
-- Write in clear, formal English.
-- Ensure every array key is present — use [] or "" for missing info.
-- Avoid hallucinating or adding extra information.
-- Maintain factual tone based on transcript content only.
-- If user provided a title: ${title || "none"}, incorporate or refine it if appropriate.
-`;
-
-      let structured = null;
-      let humanReadable = "";
-
-      try {
-        console.log(`📡 Using Gemini model: ${GEMINI_MODEL}`);
-
-        const genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
-        const model = genAI.getGenerativeModel({
-          model: GEMINI_MODEL,
-        });
-
-        const result = await model.generateContent(prompt);
-        const outputText = result.response.text();
-
-        try {
-          structured = JSON.parse(outputText);
-        } catch (e) {
-          const match = outputText.match(/\{[\s\S]*\}/);
-          structured = match ? JSON.parse(match[0]) : { rawText: outputText };
-        }
-
-        console.log("✅ Gemini response received");
-      } catch (gemErr) {
-        console.error(
-          "❌ Gemini API error, falling back to HuggingFace:",
-          gemErr.message,
-        );
-
-        try {
-          const hfUrl =
-            "https://api-inference.huggingface.co/models/facebook/bart-large-cnn";
-
-          const hfResp = await axios.post(
-            hfUrl,
-            { inputs: textToSummarize.substring(0, 1024) },
-            {
-              headers: {
-                Authorization: `Bearer ${HUGGINGFACE_API_KEY}`,
-                "Content-Type": "application/json",
-              },
-              timeout: 120000,
-            },
-          );
-
-          const hfText =
-            Array.isArray(hfResp.data) && hfResp.data[0]?.summary_text
-              ? hfResp.data[0].summary_text
-              : hfResp.data?.generated_text || JSON.stringify(hfResp.data);
-
-          structured = {
-            title: title || `Meeting on ${date}`,
-            date: date,
-            summary: hfText,
-            agenda: [],
-            key_discussions: [],
-            decisions: [],
-            action_items: [],
-            questions_raised: [],
-            keywords: [],
-            attendees: [],
-            notes: "Generated using fallback summarization model",
-          };
-
-          console.log("✅ HuggingFace fallback completed");
-        } catch (hfErr) {
-          console.error("❌ HuggingFace also failed:", hfErr.message);
-          throw new Error("Both Gemini and HuggingFace summarization failed");
-        }
-      }
-
-      if (structured) {
-        const mom = {
-          title: structured.title || title || `Meeting on ${date}`,
-          date: structured.date || date,
-          summary: structured.summary || structured.rawText || "",
-          agenda: structured.agenda || [],
-          key_discussions: structured.key_discussions || [],
-          decisions: structured.decisions || [],
-          action_items: structured.action_items || structured.actions || [],
-          questions_raised: structured.questions_raised || [],
-          keywords: structured.keywords || [],
-          attendees: structured.attendees || [],
-          notes: structured.notes || "",
-        };
-
-        humanReadable += `📘 Overview:\n${mom.summary}\n\n`;
-        humanReadable += `📅 Title: ${mom.title}\n`;
-        humanReadable += `Date: ${new Date(mom.date).toLocaleDateString()}\n\n`;
-        humanReadable += `📝 Summary:\n${mom.summary}\n\n`;
-
-        if (mom.agenda.length) {
-          humanReadable += "📋 Agenda:\n";
-          mom.agenda.forEach(
-            (item, i) => (humanReadable += `${i + 1}. ${item}\n`),
-          );
-          humanReadable += "\n";
-        }
-
-        if (mom.key_discussions.length) {
-          humanReadable += "💬 Key Discussions:\n";
-          mom.key_discussions.forEach(
-            (d, i) => (humanReadable += `${i + 1}. ${d}\n`),
-          );
-          humanReadable += "\n";
-        }
-
-        if (mom.decisions.length) {
-          humanReadable += "✅ Decisions:\n";
-          mom.decisions.forEach(
-            (d, i) => (humanReadable += `${i + 1}. ${d}\n`),
-          );
-          humanReadable += "\n";
-        }
-
-        if (mom.action_items.length) {
-          humanReadable += "🎯 Action Items:\n";
-          mom.action_items.forEach((a, i) => {
-            const text =
-              typeof a === "string"
-                ? a
-                : `${a.task || a.action || ""}${a.owner ? " — " + a.owner : ""}${
-                    a.due_date ? " (Due: " + a.due_date + ")" : ""
-                  }`;
-            humanReadable += `${i + 1}. ${text}\n`;
-          });
-          humanReadable += "\n";
-        }
-
-        if (mom.attendees.length) {
-          humanReadable += "👥 Attendees: " + mom.attendees.join(", ") + "\n\n";
-        }
-        if (mom.questions_raised.length) {
-          humanReadable += "❓ Questions Raised:\n";
-          mom.questions_raised.forEach(
-            (q, i) => (humanReadable += `${i + 1}. ${q}\n`),
-          );
-          humanReadable += "\n";
-        }
-        if (mom.keywords.length) {
-          humanReadable += "🏷 Keywords: " + mom.keywords.join(", ") + "\n\n";
-        }
-        if (mom.notes) {
-          humanReadable += "🗒 Notes:\n" + mom.notes + "\n";
-        }
-
-        let meetingToUpdate = meeting;
-
-        if (!meetingToUpdate && meetingId) {
-          meetingToUpdate = await Meeting.findById(meetingId);
-        }
-
-        if (!meetingToUpdate && !meetingId) {
-          meetingToUpdate = await Meeting.create({
-            uploadedBy: userId,
-            title: mom.title,
-            date: new Date(date),
-            transcript: textToSummarize,
-            summary: humanReadable,
-            structuredMoM: mom,
-            status: "completed",
-          });
-          await indexMeeting(meetingToUpdate);
-        } else if (meetingToUpdate) {
-          meetingToUpdate.title = mom.title;
-          meetingToUpdate.date = new Date(date);
-          meetingToUpdate.summary = humanReadable;
-          meetingToUpdate.structuredMoM = mom;
-          await meetingToUpdate.save();
-        }
-
-        console.log("✅ MoM saved to database");
-
-        // Trigger internal events for webhooks
-        try {
-          if (!meetingId) {
-            eventBus.emit("meeting.created", meetingToUpdate);
-          }
-          eventBus.emit("mom.generated", meetingToUpdate);
-        } catch (evtErr) {
-          console.error(
-            "⚠️ Failed to emit webhook events from queue:",
-            evtErr.message,
-          );
-        }
-
-        if (meetingToUpdate) {
-          try {
-            await detectResolutions(meetingToUpdate, mom);
-            await processStructuredMoM(meetingToUpdate, mom);
-          } catch (kgError) {
-            console.error(
-              "⚠️ Knowledge graph processing failed (non-fatal):",
-              kgError,
-            );
-          }
-
-          const io = app.get("io");
-          if (io && userId) {
-            try {
-              await createAndPushNotification(
-                io,
-                userId,
-                "Minutes of Meeting Generated",
-                `MoM for "${meetingToUpdate.title}" is ready.`,
-                "ai_processing",
-                `/meeting/${meetingToUpdate._id}`,
-                "View MoM",
-              );
-              // Send Socket.IO direct notification
-              io.to(userId.toString()).emit("mom-generation-complete", {
-                meetingId: meetingToUpdate._id,
-                title: meetingToUpdate.title,
-                summary: meetingToUpdate.summary,
-                mom: meetingToUpdate.structuredMoM,
-              });
-            } catch (notifErr) {
-              console.error(
-                "⚠️ Notification error (continuing):",
-                notifErr.message,
-              );
-            }
-          }
-        }
-
-        return { success: true, meetingId: meetingToUpdate?._id };
-      }
-
-      throw new Error("No summary generated");
-    },
-    { connection, concurrency: 5 }, // Handle up to 5 concurrent jobs
-  );
+  const worker = new Worker(name, processor, {
+    connection,
+    ...resolveWorkerOptions(name, workerOptions),
+  });
 
   worker.on("completed", (job) => {
-    console.log(`✅ Job ${job.id} completed successfully`);
+    console.log(`✅ ${label}: job ${job.id} completed successfully`);
   });
 
   worker.on("failed", (job, err) => {
-    console.error(`❌ Job ${job.id} failed with error:`, err.message);
+    // `job` can be undefined when BullMQ fails before it can load the job.
+    const attemptsMade = job?.attemptsMade ?? 0;
+    const maxAttempts = job?.opts?.attempts ?? 1;
+    const willRetry = attemptsMade < maxAttempts;
+
+    if (willRetry) {
+      console.warn(
+        `↻ ${label}: job ${job?.id} failed attempt ${attemptsMade}/${maxAttempts}, will retry — ${err?.message}`,
+      );
+    } else {
+      console.error(
+        `❌ ${label}: job ${job?.id} permanently failed after ${attemptsMade}/${maxAttempts} attempts — ${err?.message}`,
+      );
+    }
   });
 
-  console.log(
-    "✅ AI Worker initialized and listening to ai-mom-generation queue",
-  );
-};
+  worker.on("error", (err) => {
+    console.error(`❌ ${label} error:`, err?.message || err);
+  });
 
-export const initDataExportWorker = (app) => {
-  if (!connection) {
-    console.warn("⚠️ Redis not configured. Data Export Worker will not start.");
-    return;
+  // Surfacing stalls matters here: a stalled job is exactly the case that used
+  // to disappear without a trace, because with attempts:1 BullMQ had nothing
+  // left to re-deliver.
+  worker.on("stalled", (jobId) => {
+    console.warn(`⚠️ ${label}: job ${jobId} stalled and will be re-queued.`);
+  });
+
+  queueRegistry.registerWorker(name, worker);
+  console.log(`✅ ${label} initialized and listening to ${name}`);
+  return worker;
+}
+
+export const initAIWorker = (app) =>
+  createWorker({
+    name: "ai-mom-generation",
+    label: "AI Worker",
+    processor: async (job) => await processAudioJob(job, app),
+    workerOptions: {
+      limiter: {
+        max: 5, // Process max 5 jobs
+        duration: 60000, // per 60 seconds to match Gemini free tier limits
+      },
+    },
+  });
+
+export const initDataExportWorker = (app) =>
+  createWorker({
+    name: "data-export-queue",
+    label: "Data Export Worker",
+    processor: async (job) => await exportDataJob(job, app),
+  });
+
+export const initExportCleanupWorker = async () => {
+  const worker = createWorker({
+    name: "export-cleanup-queue",
+    label: "Export Cleanup Worker",
+    processor: cleanupExpiredExportsJob,
+  });
+
+  if (!worker) return null;
+
+  const intervalMs = readPositiveIntEnv(
+    "EXPORT_CLEANUP_INTERVAL_MS",
+    60 * 60 * 1000,
+  );
+
+  try {
+    await exportCleanupQueue.add(
+      "scheduled-export-cleanup",
+      {},
+      {
+        repeat: { every: intervalMs },
+        jobId: "scheduled-export-cleanup",
+      },
+    );
+  } catch (err) {
+    console.error(
+      "⚠️ Failed to schedule recurring export cleanup:",
+      err.message,
+    );
   }
 
-  const worker = new Worker(
-    "data-export-queue",
-    async (job) => {
-      const { userId, email } = job.data;
-      console.log(`📦 Starting data export for user ${userId}...`);
+  return worker;
+};
 
-      try {
-        // Fetch User Data
-        const user = await userModel.findById(userId).lean();
-        if (!user) throw new Error("User not found");
+export const initConflictScanWorker = (app) =>
+  createWorker({
+    name: "conflict-scan-queue",
+    label: "Conflict Scan Worker",
+    processor: async (job) => await conflictScanJob(job, app),
+  });
 
-        // Fetch Meetings
-        const meetings = await Meeting.find({ uploadedBy: userId }).lean();
+export const initSentimentWorker = (app) =>
+  createWorker({
+    name: "sentiment-analysis-queue",
+    label: "Sentiment Analysis Worker",
+    processor: async (job) => await sentimentAnalysisJob(job, app),
+  });
 
-        // Fetch Memberships
-        const memberships = await membershipModel.find({ user: userId }).lean();
+export const initRecalculateImportanceWorker = (app) =>
+  createWorker({
+    name: "recalculate-importance-queue",
+    label: "Recalculate Importance Worker",
+    processor: async (job) => await recalculateImportanceJob(job, app),
+  });
 
-        const exportDir = path.join(__dirname, "..", "uploads", "exports");
-        if (!fs.existsSync(exportDir)) {
-          fs.mkdirSync(exportDir, { recursive: true });
-        }
+export const initMemoryLifecycleWorker = async (app) => {
+  const worker = createWorker({
+    name: "memory-lifecycle-queue",
+    label: "Memory Lifecycle Worker",
+    processor: async (job) => await memoryLifecycleJob(job, app),
+  });
 
-        const fileName = `export_${userId}_${Date.now()}.zip`;
-        const filePath = path.join(exportDir, fileName);
+  if (!worker) return null;
 
-        await new Promise((resolve, reject) => {
-          const output = fs.createWriteStream(filePath);
-          const archive = archiver("zip", { zlib: { level: 9 } });
-
-          output.on("close", resolve);
-          archive.on("error", reject);
-          archive.on("warning", (err) => {
-            if (err.code === "ENOENT") console.warn(err);
-            else reject(err);
-          });
-
-          archive.pipe(output);
-          archive.append(JSON.stringify(user, null, 2), { name: "user_profile.json" });
-          archive.append(JSON.stringify(meetings, null, 2), { name: "meetings.json" });
-          archive.append(JSON.stringify(memberships, null, 2), { name: "memberships.json" });
-          archive.finalize();
-        });
-
-        console.log(`✅ Data export for user ${userId} saved to ${filePath}`);
-
-        // Generate Secure Download Link
-        const jwtSecret = process.env.JWT_SECRET || "fallback_secret";
-        const downloadToken = jwt.sign({ userId, fileName }, jwtSecret, { expiresIn: "24h" });
-        
-        // In production, BASE_URL should be configured correctly in .env
-        const baseUrl = process.env.BASE_URL || "http://localhost:3000";
-        const downloadUrl = `${baseUrl}/api/user/download-export/${downloadToken}`;
-
-        // Send Email
-        const mailOptions = {
-          from: process.env.SMTP_USER || "no-reply@meetonmemory.com",
-          to: email,
-          subject: "Your Data Export is Ready",
-          html: `
-            <h2>Data Export Completed</h2>
-            <p>Your requested data export is ready. You can download it using the link below:</p>
-            <p><a href="${downloadUrl}">Download Data Export</a></p>
-            <p><strong>Note:</strong> This link will expire in 24 hours.</p>
-          `,
-        };
-
-        await transporter.sendMail(mailOptions);
-        console.log(`📧 Notification email sent to ${email}`);
-
-        const io = app.get("io");
-        if (io) {
-          await createAndPushNotification(
-            io,
-            userId,
-            "Data Export Ready",
-            "Your data export has been completed and emailed to you.",
-            "system",
-            downloadUrl,
-            "Download"
-          );
-        }
-
-        return { success: true, fileName };
-      } catch (error) {
-        console.error(`❌ Data export failed for user ${userId}:`, error.message);
-        throw error;
-      }
-    },
-    { connection, concurrency: 2 }
+  // Automatic, recurring sweep (Issue #377 acceptance criterion: memories
+  // transition according to configured policies without manual triggering).
+  // Runs once a day across all organizations; interval is configurable via
+  // env so ops can tune it without a code change.
+  const intervalMs = readPositiveIntEnv(
+    "LIFECYCLE_SWEEP_INTERVAL_MS",
+    24 * 60 * 60 * 1000,
   );
 
-  worker.on("completed", (job) => {
-    console.log(`✅ Data Export Job ${job.id} completed successfully`);
-  });
+  try {
+    await memoryLifecycleQueue.add(
+      "scheduled-lifecycle-sweep",
+      {},
+      {
+        repeat: { every: intervalMs },
+        jobId: "scheduled-lifecycle-sweep",
+      },
+    );
+  } catch (err) {
+    console.error(
+      "⚠️ Failed to schedule recurring memory lifecycle sweep:",
+      err.message,
+    );
+  }
 
-  worker.on("failed", (job, err) => {
-    console.error(`❌ Data Export Job ${job.id} failed with error:`, err.message);
-  });
-
-  console.log("✅ Data Export Worker initialized and listening to data-export-queue");
+  return worker;
 };
+
+/**
+ * Processes queued meeting recap deliveries (Issue #1248).
+ * Jobs are enqueued by recapScheduleController.retryDelivery as "retry-delivery".
+ */
+export const initRecapDeliveryWorker = () =>
+  createWorker({
+    name: "recap-delivery-queue",
+    label: "Recap Delivery Worker",
+    processor: async (job) => {
+      if (job.name !== "retry-delivery") {
+        throw new Error(`Unsupported recap delivery job: ${job.name}`);
+      }
+
+      const meetingId = job.data?.meetingId;
+      if (!meetingId) {
+        throw new Error("Recap delivery job missing meetingId");
+      }
+
+      await RecapEmailService.sendImmediateRecap(meetingId);
+    },
+  });
+
+/**
+ * Drains every registered worker, then closes queues and shared Redis
+ * connections. Safe to call more than once.
+ *
+ * Called by the graceful-shutdown handler in server.js. Exported separately so
+ * tests and scripts can tear the queue layer down without sending a signal.
+ *
+ * @param {object} [options] forwarded to the registry's closeAll
+ */
+export const shutdownQueues = async (options) => {
+  const result = await queueRegistry.closeAll(options);
+  _queueInstances.clear();
+  _producerConnection = null;
+  _workerConnection = null;
+  return result;
+};
+
+/** Diagnostics: which queues and workers are currently live. */
+export const getQueueStatus = () => ({
+  redisConfigured: redisConfigured(),
+  queues: queueRegistry.listQueues(),
+  workers: queueRegistry.listWorkers(),
+  shuttingDown: queueRegistry.isClosing(),
+});

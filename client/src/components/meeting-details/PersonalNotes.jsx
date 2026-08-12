@@ -23,7 +23,6 @@ const PersonalNotes = ({ meeting }) => {
   const normalizedSegments = useMemo(() => {
     return normalizeTranscript(meeting?.transcript);
   }, [meeting?.transcript]);
-
   const containerRef = useRef(null);
 
   const fetchNote = useCallback(async () => {

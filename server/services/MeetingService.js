@@ -1,60 +1,64 @@
 /**
  * MeetingService.js
  *
- * Contains ALL business logic for meeting operations that was previously
- * mixed into meetingController.js. Controllers now delegate every data-access
- * or complex operation to this service and only handle HTTP concerns
- * (request parsing, response shaping).
- *
- * Error signalling: services throw custom AppError subclasses (see
- * utils/errors.js); controllers pass these to next(err) so the global
- * error handler converts them to the right HTTP response.
+ * Orchestrator service coordinating:
+ * - TranscriptionService
+ * - GenerativeAIService
+ * - MeetingStorageService
+ * - Other domain services (Notifications, Calendar, Knowledge Graph, etc.)
  */
 
 import fs from "fs";
-import path from "path";
-import axios from "axios";
 import mongoose from "mongoose";
-import { GoogleGenerativeAI } from "@google/generative-ai";
-
-const validatePath = (filePath) => {
-  if (!filePath) throw new Error("Path is required");
-  const resolved = path.resolve(filePath);
-  const uploadsDir = path.resolve("uploads");
-  if (!resolved.startsWith(uploadsDir)) {
-    throw new Error("Directory traversal detected: Access denied");
-  }
-  return resolved;
-};
-
-import Meeting from "../models/meetingModel.js";
 import User from "../models/userModel.js";
-import { indexMeeting } from "../utils/embeddingUtils.js";
-import {
-  processStructuredMoM,
-  detectResolutions,
-} from "./knowledgeGraphService.js";
-import { checkMeetingDecisionsAgainstPolicies } from "./policyComplianceService.js";
-import { createAndPushNotification } from "./notificationService.js";
+import Meeting from "../models/meetingModel.js";
+import Membership from "../models/membershipModel.js";
+import AiSummaryTemplate from "../models/aiSummaryTemplateModel.js";
+import { captureSnapshot } from "./graphSnapshotService.js";
 import eventBus from "./eventBus.js";
-import * as calendarService from "./calendarService.js";
-import { aiQueue } from "./queueService.js";
 import {
   NotFoundError,
   ValidationError,
   ForbiddenError,
 } from "../utils/errors.js";
 
-// ── Config ─────────────────────────────────────────────────────
-const USE_WHISPER = false;
-const ASSEMBLYAI_API_KEY = process.env.ASSEMBLYAI_API_KEY;
-const HUGGINGFACE_API_KEY = process.env.HUGGINGFACE_API_KEY;
-const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
-const GEMINI_MODEL = process.env.GEMINI_MODEL || "gemini-2.0-flash";
+// Imported specific services and utils
+import { validatePath } from "../utils/fileUtils.js";
+import * as MeetingStorageService from "./MeetingStorageService.js";
+import { normalizeAgendaItems } from "../utils/agendaOrdering.js";
+import {
+  deletedMeetingsFilter,
+  escapeRegExp,
+} from "../utils/meetingSoftDelete.js";
 
-// ── Validation helper ──────────────────────────────────────────
-// Exported so controllers can reuse it for URL param checks before
-// even reaching the service layer.
+// AI / calendar / queue / transcription stacks are loaded on demand. Static
+// imports pull @xenova/transformers, axios diamonds, and related graphs into
+// MeetingService's eager ESM link graph and trigger "module is already linked"
+// under Jest's VM linker.
+const loadEmbeddingUtils = () => import("../utils/embeddingUtils.js");
+const loadKnowledgeGraph = () => import("./knowledgeGraphService.js");
+const loadPolicyCompliance = () => import("./policyComplianceService.js");
+const loadGenerativeAI = () => import("./GenerativeAIService.js");
+const loadCalendarService = () => import("./calendarService.js");
+const loadQueueService = () => import("./queueService.js");
+const loadTranscriptionService = () => import("./TranscriptionService.js");
+const scheduleIndexMeeting = (meeting) => {
+  loadEmbeddingUtils()
+    .then(({ indexMeeting }) => indexMeeting(meeting))
+    .catch((err) =>
+      console.error("⚠️ indexMeeting error (continuing):", err.message),
+    );
+};
+
+const scheduleDeleteFromPinecone = (meetingId) => {
+  loadEmbeddingUtils()
+    .then(({ deleteMeetingFromPinecone }) =>
+      deleteMeetingFromPinecone(meetingId),
+    )
+    .catch((err) =>
+      console.error("⚠️ Pinecone deletion error (continuing):", err.message),
+    );
+};
 export const isValidObjectId = (id) =>
   typeof id === "string" && mongoose.Types.ObjectId.isValid(id);
 
@@ -62,259 +66,15 @@ export const isValidObjectId = (id) =>
 // Private helpers
 // ═══════════════════════════════════════════════════════════════
 
-/**
- * Poll AssemblyAI until the transcription job finishes.
- * Returns the transcript text string.
- */
-const _pollAssemblyAI = async (transcriptId, intervalMs = 2500) => {
-  while (true) {
-    const checkRes = await axios.get(
-      `https://api.assemblyai.com/v2/transcript/${transcriptId}`,
-      { headers: { authorization: ASSEMBLYAI_API_KEY } },
-    );
-    if (checkRes.data.status === "completed") {
-      return checkRes.data.text || "";
-    }
-    if (checkRes.data.status === "error") {
-      throw new Error(checkRes.data.error || "AssemblyAI transcription error");
-    }
-    await new Promise((r) => setTimeout(r, intervalMs));
-  }
-};
-
-/**
- * Upload a local audio file to AssemblyAI and kick off transcription.
- * Returns the transcription job id.
- */
-const _startAssemblyAIJob = async (filePath) => {
-  const uploadRes = await axios.post(
-    "https://api.assemblyai.com/v2/upload",
-    fs.readFileSync(validatePath(filePath)),
-    {
-      headers: {
-        authorization: ASSEMBLYAI_API_KEY,
-        "Transfer-Encoding": "chunked",
-      },
-    },
-  );
-
-  const audioUrl = uploadRes.data.upload_url;
-
-  const transcriptRes = await axios.post(
-    "https://api.assemblyai.com/v2/transcript",
-    { audio_url: audioUrl },
-    { headers: { authorization: ASSEMBLYAI_API_KEY } },
-  );
-
-  return transcriptRes.data.id;
-};
-
-/**
- * Full transcription pipeline: upload → poll → return text.
- */
-const _transcribeFile = async (filePath) => {
-  if (USE_WHISPER) {
-    throw new Error("Whisper path not enabled in this build.");
-  }
-  const jobId = await _startAssemblyAIJob(filePath);
-  return _pollAssemblyAI(jobId);
-};
-
-/**
- * Call Gemini (primary) → HuggingFace (fallback) to generate a structured
- * MoM JSON object from a meeting transcript.
- */
-const _generateMoMWithAI = async (textToSummarize, date, title) => {
-  const prompt = `
-You are an advanced AI meeting assistant responsible for preparing *formal, well-structured Minutes of Meeting (MoM)* 
-from the transcript provided below.
-
-The MoM should be factual, concise, and formatted for professional use in organizations, universities, or institutions.  
-Avoid repetition, filler words, and unnecessary phrases. Capture key insights, outcomes, and responsibilities accurately.
-
-🎯 Your goal is to return a clean JSON object with the following fields:
-{
-  "title": "A clear, professional meeting title (e.g., 'AI Integration Strategy Discussion')",
-  "date": "${date}",
-  "summary": "A concise 4–6 sentence paragraph summarizing the meeting objectives, key points discussed, and overall conclusions. Use formal tone.",
-  "agenda": ["main agenda point 1", "main agenda point 2", "main agenda point 3"],
-  "key_discussions": [
-    "Summarize core discussion points or debates in neutral and objective language.",
-    "Mention who contributed if identifiable (optional)."
-  ],
-  "decisions": [
-    "List final decisions or outcomes agreed upon during the meeting, if any."
-  ],
-  "action_items": [
-    {"task": "Describe the specific task or next step", "owner": "Person responsible (if mentioned)", "due_date": "Deadline or expected date, if mentioned", "status": "Status if mentioned (e.g., 'pending', 'in progress', 'completed')"}
-  ],
-  "questions_raised": [
-    "List important unanswered questions or follow-up discussions that emerged during the meeting."
-  ],
-  "keywords": [
-    "Extract 5-10 relevant keywords and topics discussed during the meeting."
-  ],
-  "attendees": ["List attendees if mentioned or infer from transcript"],
-  "notes": "Include any follow-up requirements, risks, or additional remarks worth noting."
-}
-
-Transcript:
-${textToSummarize}
-
-🧠 Instructions:
-- Return ONLY valid JSON (no Markdown, no commentary, no backticks).
-- Write in clear, formal English.
-- Ensure every array key is present — use [] or "" for missing info.
-- Avoid hallucinating or adding extra information.
-- Maintain factual tone based on transcript content only.
-- If user provided a title: ${title || "none"}, incorporate or refine it if appropriate.
-`;
-
-  // ── Primary: Gemini ──────────────────────────────────────────
-  try {
-    console.log(`📡 Using Gemini model: ${GEMINI_MODEL}`);
-    const genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
-    const model = genAI.getGenerativeModel({ model: GEMINI_MODEL });
-    const result = await model.generateContent(prompt);
-    const outputText = result.response.text();
-
-    let structured;
-    try {
-      structured = JSON.parse(outputText);
-    } catch {
-      const match = outputText.match(/\{[\s\S]*\}/);
-      structured = match ? JSON.parse(match[0]) : { rawText: outputText };
-    }
-    console.log("✅ Gemini response received");
-    return structured;
-  } catch (gemErr) {
-    console.error(
-      "❌ Gemini API error, falling back to HuggingFace:",
-      gemErr.message,
-    );
-  }
-
-  // ── Fallback: HuggingFace ────────────────────────────────────
-  try {
-    const hfUrl =
-      "https://api-inference.huggingface.co/models/facebook/bart-large-cnn";
-    const hfResp = await axios.post(
-      hfUrl,
-      { inputs: textToSummarize.substring(0, 1024) },
-      {
-        headers: {
-          Authorization: `Bearer ${HUGGINGFACE_API_KEY}`,
-          "Content-Type": "application/json",
-        },
-        timeout: 120000,
-      },
-    );
-
-    const hfText =
-      Array.isArray(hfResp.data) && hfResp.data[0]?.summary_text
-        ? hfResp.data[0].summary_text
-        : hfResp.data?.generated_text || JSON.stringify(hfResp.data);
-
-    console.log("✅ HuggingFace fallback completed");
-    return {
-      title: title || `Meeting on ${date}`,
-      date,
-      summary: hfText,
-      agenda: [],
-      key_discussions: [],
-      decisions: [],
-      action_items: [],
-      questions_raised: [],
-      keywords: [],
-      attendees: [],
-      notes: "Generated using fallback summarization model",
-    };
-  } catch (hfErr) {
-    console.error("❌ HuggingFace also failed:", hfErr.message);
-    throw new Error("Both Gemini and HuggingFace summarization failed");
-  }
-};
-
-/**
- * Normalize raw AI output into a consistently shaped MoM object.
- */
-const _normalizeMoM = (structured, title, date) => ({
-  title: structured.title || title || `Meeting on ${date}`,
-  date: structured.date || date,
-  summary: structured.summary || structured.rawText || "",
-  agenda: structured.agenda || [],
-  key_discussions: structured.key_discussions || [],
-  decisions: structured.decisions || [],
-  action_items: structured.action_items || structured.actions || [],
-  questions_raised: structured.questions_raised || [],
-  keywords: structured.keywords || [],
-  attendees: structured.attendees || [],
-  notes: structured.notes || "",
-});
-
-/**
- * Convert a structured MoM object into human-readable plain text.
- */
-const _buildHumanReadableMoM = (mom) => {
-  let text = "";
-  text += `📘 Overview:\n${mom.summary}\n\n`;
-  text += `📅 Title: ${mom.title}\n`;
-  text += `Date: ${new Date(mom.date).toLocaleDateString()}\n\n`;
-  text += `📝 Summary:\n${mom.summary}\n\n`;
-
-  if (mom.agenda.length) {
-    text += "📋 Agenda:\n";
-    mom.agenda.forEach((item, i) => (text += `${i + 1}. ${item}\n`));
-    text += "\n";
-  }
-  if (mom.key_discussions.length) {
-    text += "💬 Key Discussions:\n";
-    mom.key_discussions.forEach((d, i) => (text += `${i + 1}. ${d}\n`));
-    text += "\n";
-  }
-  if (mom.decisions.length) {
-    text += "✅ Decisions:\n";
-    mom.decisions.forEach((d, i) => (text += `${i + 1}. ${d}\n`));
-    text += "\n";
-  }
-  if (mom.action_items.length) {
-    text += "🎯 Action Items:\n";
-    mom.action_items.forEach((a, i) => {
-      const t =
-        typeof a === "string"
-          ? a
-          : `${a.task || a.action || ""}${a.owner ? " — " + a.owner : ""}${
-              a.due_date ? " (Due: " + a.due_date + ")" : ""
-            }`;
-      text += `${i + 1}. ${t}\n`;
-    });
-    text += "\n";
-  }
-  if (mom.attendees.length) {
-    text += "👥 Attendees: " + mom.attendees.join(", ") + "\n\n";
-  }
-  if (mom.questions_raised.length) {
-    text += "❓ Questions Raised:\n";
-    mom.questions_raised.forEach((q, i) => (text += `${i + 1}. ${q}\n`));
-    text += "\n";
-  }
-  if (mom.keywords.length) {
-    text += "🏷 Keywords: " + mom.keywords.join(", ") + "\n\n";
-  }
-  if (mom.notes) {
-    text += "🗒 Notes:\n" + mom.notes + "\n";
-  }
-  return text;
-};
-
-/**
- * Fire-and-forget knowledge graph & compliance processing.
- * Never throws — failure is logged and does not affect the API response.
- */
 const _runKnowledgeGraph = (meetingDoc, mom) => {
   if (!meetingDoc) return;
   (async () => {
     try {
+      const [
+        { detectResolutions, processStructuredMoM },
+        { checkMeetingDecisionsAgainstPolicies },
+      ] = await Promise.all([loadKnowledgeGraph(), loadPolicyCompliance()]);
+
       await detectResolutions(meetingDoc, mom);
       const kgResults = await processStructuredMoM(meetingDoc, mom);
       try {
@@ -326,6 +86,22 @@ const _runKnowledgeGraph = (meetingDoc, mom) => {
         console.error(
           "⚠️ Policy compliance check failed (non-fatal):",
           complianceErr.message,
+        );
+      }
+
+      // Automatic graph snapshot: capture the post-processing graph state
+      // so this meeting's contribution to the knowledge graph is visible
+      // in the history/time-travel view. No-ops (storage-wise) if nothing
+      // actually changed the graph.
+      try {
+        await captureSnapshot(meetingDoc.organization || null, {
+          trigger: "meeting_processed",
+          sourceMeetingId: meetingDoc._id,
+        });
+      } catch (snapshotErr) {
+        console.error(
+          "⚠️ Graph snapshot capture failed (non-fatal):",
+          snapshotErr.message,
         );
       }
     } catch (kgErr) {
@@ -341,17 +117,49 @@ const _runKnowledgeGraph = (meetingDoc, mom) => {
 // Public service methods
 // ═══════════════════════════════════════════════════════════════
 
-/**
- * 1. Create a scheduled meeting record.
- *
- * @param {string} uploaderId  - ObjectId string of the authenticated user
- * @param {string|null} orgId  - Organization ObjectId (may be null)
- * @param {object} data        - Validated fields from the request body
- * @param {object|null} io     - Socket.IO server instance (for notifications)
- * @returns {Promise<Meeting>}
- */
-export const createMeeting = async (uploaderId, orgId, data, io) => {
-  const meeting = await Meeting.create({
+export const buildDuplicateMeetingData = (meeting) => {
+  if (!meeting) throw new NotFoundError("Meeting not found");
+
+  const plain =
+    typeof meeting.toObject === "function" ? meeting.toObject() : meeting;
+
+  return {
+    sourceMeetingId: plain._id?.toString?.() || String(plain._id || ""),
+    title: `${plain.title || "Untitled Meeting"} (Copy)`,
+    description: plain.description || "",
+    organization:
+      plain.organization?.toString?.() || plain.organization || null,
+    meetingType: plain.meetingType || "conference",
+    date: "",
+    time: "",
+    duration: plain.duration ?? null,
+    location: plain.location || "",
+    venue: plain.venue || "",
+    participants: (plain.participants || []).map((participant) => ({
+      name: participant.name || "",
+      email: participant.email || "",
+      role: participant.role || "",
+    })),
+    agendaItems: (plain.agendaItems || []).map((item) => ({
+      text: item.text || "",
+      description: item.description || "",
+      duration: item.duration ?? null,
+    })),
+    tags: [...(plain.tags || [])],
+    policyDetails: plain.policyDetails
+      ? {
+          policyName: plain.policyDetails.policyName || "",
+          policyVersion: plain.policyDetails.policyVersion || "",
+          effectiveDate: plain.policyDetails.effectiveDate || null,
+          approvalRequired: Boolean(plain.policyDetails.approvalRequired),
+        }
+      : null,
+    recordingType: plain.recordingType || "upload",
+  };
+};
+
+export const createMeeting = async (uploaderId, orgId, data) => {
+  const meeting = await MeetingStorageService.createMeetingRecord({
     uploadedBy: uploaderId,
     organization: orgId || null,
     title: data.title.trim(),
@@ -363,7 +171,7 @@ export const createMeeting = async (uploaderId, orgId, data, io) => {
     location: data.location || "",
     venue: data.venue || "",
     participants: data.participants || [],
-    agendaItems: data.agendaItems || [],
+    agendaItems: normalizeAgendaItems(data.agendaItems),
     policyDetails: data.policyDetails || null,
     recordingType: data.recordingType || "upload",
     transcript: "",
@@ -372,66 +180,68 @@ export const createMeeting = async (uploaderId, orgId, data, io) => {
     status: "uploaded",
   });
 
-  // Index for semantic search (fire-and-forget)
-  indexMeeting(meeting).catch((err) =>
-    console.error("⚠️ indexMeeting error (continuing):", err.message),
-  );
+  scheduleIndexMeeting(meeting);
 
-  // Notify other org members (fire-and-forget)
-  if (orgId && io) {
-    User.find({ organization: orgId, _id: { $ne: uploaderId } })
-      .then(async (members) => {
-        for (const member of members) {
-          await createAndPushNotification(
-            io,
-            member._id,
-            "New Meeting Scheduled",
-            `A new meeting "${meeting.title}" has been scheduled.`,
-            "meetings",
-            `/meeting/${meeting._id}`,
-            "View Details",
-          );
-        }
+  if (orgId) {
+    Membership.find({
+      organization: orgId,
+      status: "active",
+      user: { $ne: uploaderId },
+    })
+      .populate("user")
+      .then(async (memberships) => {
+        eventBus.emit("meeting.created", {
+          meeting,
+          membersToNotify: memberships,
+        });
       })
       .catch((err) =>
         console.error("⚠️ Notification error (continuing):", err.message),
       );
   }
 
-  // Google Calendar sync (fire-and-forget)
-  User.findById(uploaderId)
-    .then(async (user) => {
-      if (user?.calendarSyncEnabled) {
-        const eventId = await calendarService.createEvent(user, meeting);
-        if (eventId) {
-          meeting.googleEventId = eventId;
-          await meeting.save();
-        }
-      }
-    })
-    .catch((err) =>
-      console.error("⚠️ Google Calendar sync error (continuing):", err.message),
-    );
+  // Sync with connected calendars (Google and Microsoft)
+  (async () => {
+    try {
+      const calendarService = await loadCalendarService();
 
-  // Webhook event
-  try {
-    eventBus.emit("meeting.created", meeting);
-  } catch (evtErr) {
-    console.error("⚠️ Failed to emit meeting.created event:", evtErr.message);
-  }
+      // Sync with Google Calendar
+      const googleEventId = await calendarService.createGoogleEvent(
+        uploaderId,
+        meeting,
+      );
+      if (googleEventId) {
+        meeting.calendarEvents = meeting.calendarEvents || {};
+        meeting.calendarEvents.google = {
+          eventId: googleEventId,
+          syncedAt: new Date(),
+        };
+        // Update legacy field for backward compatibility
+        meeting.googleEventId = googleEventId;
+        await meeting.save();
+      }
+
+      // Sync with Microsoft Calendar
+      const microsoftEventId = await calendarService.createMicrosoftEvent(
+        uploaderId,
+        meeting,
+      );
+      if (microsoftEventId) {
+        meeting.calendarEvents = meeting.calendarEvents || {};
+        meeting.calendarEvents.microsoft = {
+          eventId: microsoftEventId,
+          syncedAt: new Date(),
+        };
+        await meeting.save();
+      }
+    } catch (err) {
+      console.error("⚠️ Calendar sync error (continuing):", err.message);
+    }
+  })();
 
   return meeting;
 };
 
-/**
- * 2. Upload a new audio file, transcribe it, and create a meeting record.
- *
- * @param {string} uploaderId
- * @param {string|null} orgId
- * @param {object} file  - Multer file object (file.path, file.originalname …)
- * @param {object} body  - Request body (title, date, meetingType)
- * @returns {Promise<{meeting: Meeting, transcript: string}>}
- */
 export const uploadAndTranscribeMeeting = async (
   uploaderId,
   orgId,
@@ -439,12 +249,13 @@ export const uploadAndTranscribeMeeting = async (
   body,
 ) => {
   const filePath = file.path;
-  console.log("🎙️ Starting transcription with AssemblyAI...");
+  console.log("🎙️ Starting transcription...");
 
-  const transcriptText = await _transcribeFile(filePath);
+  const { transcribeFile } = await loadTranscriptionService();
+  const transcriptText = await transcribeFile(filePath);
   console.log("✅ Transcription completed");
 
-  const meeting = await Meeting.create({
+  const meeting = await MeetingStorageService.createMeetingRecord({
     uploadedBy: uploaderId,
     organization: orgId || null,
     title: body.title?.trim() || `Meeting - ${new Date().toLocaleDateString()}`,
@@ -457,13 +268,10 @@ export const uploadAndTranscribeMeeting = async (
     status: "completed",
   });
 
-  indexMeeting(meeting).catch((err) =>
-    console.error("⚠️ indexMeeting error (continuing):", err.message),
-  );
+  scheduleIndexMeeting(meeting);
 
-  // Cleanup temp file
   try {
-    fs.unlinkSync(validatePath(filePath));
+    await fs.promises.unlink(validatePath(filePath));
   } catch (e) {
     console.warn("⚠️ Could not delete temp file:", e.message);
   }
@@ -471,14 +279,6 @@ export const uploadAndTranscribeMeeting = async (
   return { meeting, transcript: transcriptText };
 };
 
-/**
- * 3. Attach an audio recording to an already-created meeting and transcribe it.
- *
- * @param {string} uploaderId
- * @param {string} meetingId  - Must be a valid ObjectId string
- * @param {object} file       - Multer file object
- * @returns {Promise<{meeting: Meeting, transcript: string}>}
- */
 export const uploadAudioForExistingMeeting = async (
   uploaderId,
   meetingId,
@@ -488,7 +288,7 @@ export const uploadAudioForExistingMeeting = async (
     throw new ValidationError("Invalid meeting ID");
   }
 
-  const meeting = await Meeting.findById(meetingId);
+  const meeting = await MeetingStorageService.findMeetingById(meetingId);
   if (!meeting) throw new NotFoundError("Meeting not found");
 
   if (meeting.uploadedBy.toString() !== uploaderId.toString()) {
@@ -500,7 +300,8 @@ export const uploadAudioForExistingMeeting = async (
   const filePath = file.path;
   console.log("🎙️ Transcribing audio for existing meeting...");
 
-  const transcriptText = await _transcribeFile(filePath);
+  const { transcribeFile } = await loadTranscriptionService();
+  const transcriptText = await transcribeFile(filePath);
   console.log("✅ Transcription completed");
 
   meeting.transcript = transcriptText;
@@ -508,12 +309,10 @@ export const uploadAudioForExistingMeeting = async (
   meeting.status = "completed";
   await meeting.save();
 
-  indexMeeting(meeting).catch((err) =>
-    console.error("⚠️ indexMeeting error (continuing):", err.message),
-  );
+  scheduleIndexMeeting(meeting);
 
   try {
-    fs.unlinkSync(validatePath(filePath));
+    await fs.promises.unlink(validatePath(filePath));
   } catch (e) {
     console.warn("⚠️ Could not delete temp file:", e.message);
   }
@@ -521,29 +320,19 @@ export const uploadAudioForExistingMeeting = async (
   return { meeting, transcript: transcriptText };
 };
 
-/**
- * 4. Generate (or queue) AI Minutes of Meeting for a transcript.
- *
- * When BullMQ/Redis is available the job is queued and the method returns
- * { queued: true }.  Otherwise it runs synchronously and returns the full
- * MoM data.
- *
- * @param {string} userId
- * @param {string|null} meetingId
- * @param {string} transcript
- * @param {string} date        - ISO or locale date string
- * @param {string|null} title
- * @param {object|null} io     - Socket.IO instance (for push notification)
- * @returns {Promise<{queued: boolean, mom?, momText?, meetingId?}>}
- */
 export const generateMeetingMoM = async (
   userId,
   meetingId,
   transcript,
   date,
   title,
-  io,
 ) => {
+  const user = await User.findById(userId);
+  if (!user) throw new ForbiddenError("User not found");
+  if (!user.organization) {
+    throw new ForbiddenError("Forbidden: Organization membership required");
+  }
+
   if (meetingId && !isValidObjectId(meetingId)) {
     throw new ValidationError("Invalid meeting ID");
   }
@@ -551,51 +340,112 @@ export const generateMeetingMoM = async (
   let textToSummarize = (transcript || "").trim();
   let meeting = null;
 
-  if (meetingId && !textToSummarize) {
-    meeting = await Meeting.findById(meetingId);
+  if (meetingId) {
+    meeting = await MeetingStorageService.findMeetingById(meetingId);
     if (!meeting) throw new NotFoundError("Meeting not found");
-    textToSummarize = (meeting.transcript || "").trim();
+
+    const hasAccess =
+      (meeting.organization &&
+        meeting.organization.toString() === user.organization.toString()) ||
+      (meeting.uploadedBy &&
+        meeting.uploadedBy.toString() === userId.toString());
+
+    if (!hasAccess) {
+      throw new ForbiddenError(
+        "Forbidden: You do not have access to this meeting",
+      );
+    }
+
+    if (!textToSummarize) {
+      textToSummarize = (meeting.transcript || "").trim();
+    }
   }
 
   if (!textToSummarize) {
     throw new ValidationError("No transcript provided.");
   }
 
-  // ── Queue-first (async path) ─────────────────────────────────
-  if (aiQueue) {
+  const { aiQueue } = await loadQueueService();
+  if (aiQueue && aiQueue.isActive) {
     console.log(
       `🚀 Queueing MoM generation job for ${meetingId || "transcript-only"}...`,
     );
-    await aiQueue.add("generate-mom", {
-      meetingId,
-      transcript: textToSummarize,
-      date,
-      title,
-      userId,
-    });
+    await aiQueue.add(
+      "generate-mom",
+      {
+        meetingId,
+        transcript: textToSummarize,
+        date,
+        title,
+        userId,
+      },
+      {
+        attempts: 3,
+        backoff: {
+          type: "exponential",
+          delay: 5000, // Wait 5s, then 10s on retries
+        },
+      },
+    );
     return { queued: true };
   }
 
-  // ── Synchronous path (Redis disabled) ───────────────────────
   console.log(`🧠 Generating MoM for ${meetingId || "transcript-only"}...`);
 
-  const structured = await _generateMoMWithAI(textToSummarize, date, title);
+  let customInstructions = null;
+  try {
+    if (meeting) {
+      if (meeting.aiSummaryTemplate) {
+        const template = await AiSummaryTemplate.findById(
+          meeting.aiSummaryTemplate,
+        );
+        if (template) customInstructions = template.customInstructions;
+      } else if (meeting.organization) {
+        const defaultTemplate = await AiSummaryTemplate.findOne({
+          organization: meeting.organization,
+          isDefault: true,
+        });
+        if (defaultTemplate)
+          customInstructions = defaultTemplate.customInstructions;
+      }
+    } else if (user && user.organization) {
+      const defaultTemplate = await AiSummaryTemplate.findOne({
+        organization: user.organization,
+        isDefault: true,
+      });
+      if (defaultTemplate)
+        customInstructions = defaultTemplate.customInstructions;
+    }
+  } catch (err) {
+    console.error(
+      "⚠️ Failed to fetch AI summary template instructions:",
+      err.message,
+    );
+  }
+
+  const { generateMoMWithAI, normalizeMoM, buildHumanReadableMoM } =
+    await loadGenerativeAI();
+  const structured = await generateMoMWithAI(
+    textToSummarize,
+    date,
+    title,
+    customInstructions,
+  );
   if (!structured) throw new Error("No summary generated");
 
-  const mom = _normalizeMoM(structured, title, date);
-  const momText = _buildHumanReadableMoM(mom);
+  const mom = normalizeMoM(structured, title, date);
+  const momText = buildHumanReadableMoM(mom);
 
-  // Persist to database
   let meetingToUpdate = meeting;
 
   if (!meetingToUpdate && meetingId) {
-    meetingToUpdate = await Meeting.findById(meetingId);
+    meetingToUpdate = await MeetingStorageService.findMeetingById(meetingId);
   }
 
   if (!meetingToUpdate && !meetingId) {
-    // Transcript-only flow — create a new meeting record
-    meetingToUpdate = await Meeting.create({
+    meetingToUpdate = await MeetingStorageService.createMeetingRecord({
       uploadedBy: userId,
+      organization: user.organization,
       title: mom.title,
       date: new Date(date),
       transcript: textToSummarize,
@@ -603,6 +453,7 @@ export const generateMeetingMoM = async (
       structuredMoM: mom,
       status: "completed",
     });
+    const { indexMeeting } = await loadEmbeddingUtils();
     await indexMeeting(meetingToUpdate);
   } else if (meetingToUpdate) {
     meetingToUpdate.title = mom.title;
@@ -614,31 +465,18 @@ export const generateMeetingMoM = async (
 
   console.log("✅ MoM saved to database");
 
-  // Webhook events
   try {
-    if (!meetingId) eventBus.emit("meeting.created", meetingToUpdate);
+    if (!meetingId)
+      eventBus.emit("meeting.created", {
+        meeting: meetingToUpdate,
+        membersToNotify: [],
+      }); // Or we could pass actual members, but here it's an ad-hoc meeting
     eventBus.emit("mom.generated", meetingToUpdate);
   } catch (evtErr) {
     console.error("⚠️ Failed to emit webhook events:", evtErr.message);
   }
 
-  // Knowledge graph (fire-and-forget)
   _runKnowledgeGraph(meetingToUpdate, mom);
-
-  // Push notification to the creator
-  if (io && meetingToUpdate?.uploadedBy) {
-    createAndPushNotification(
-      io,
-      meetingToUpdate.uploadedBy,
-      "Minutes of Meeting Generated",
-      `MoM for "${meetingToUpdate.title}" is ready.`,
-      "ai_processing",
-      `/meeting/${meetingToUpdate._id}`,
-      "View MoM",
-    ).catch((err) =>
-      console.error("⚠️ Notification error (continuing):", err.message),
-    );
-  }
 
   return {
     queued: false,
@@ -648,43 +486,76 @@ export const generateMeetingMoM = async (
   };
 };
 
-/**
- * 5. Fetch all meetings visible to a user with optional date filtering and
- *    pagination.
- *
- * @param {string} userId
- * @param {string|null} orgId
- * @param {{ page?, limit?, startDate?, endDate? }} queryParams
- * @returns {Promise<{meetings: Meeting[], total: number, page: number, limit: number, totalPages: number}>}
- */
 export const getAllMeetings = async (userId, orgId, queryParams = {}) => {
-  const { page = 1, limit = 10, startDate, endDate } = queryParams;
+  const {
+    page = 1,
+    limit = 10,
+    search = "",
+    sortBy = "createdAt",
+    sortOrder = "desc",
+    meetingType,
+    startDate,
+    endDate,
+    includeArchived,
+  } = queryParams;
 
-  const queryOptions = [{ uploadedBy: userId }];
+  const normalizedPage = Math.max(parseInt(page, 10) || 1, 1);
+  const normalizedLimit = Math.min(Math.max(parseInt(limit, 10) || 10, 1), 100);
+
+  const baseConditions = [];
+
   if (orgId) {
-    queryOptions.push({ organization: orgId });
+    baseConditions.push({
+      $or: [{ uploadedBy: userId }, { organization: orgId }],
+    });
+  } else {
+    baseConditions.push({ uploadedBy: userId });
   }
 
-  const query = { $or: queryOptions };
+  if (!includeArchived) {
+    baseConditions.push({ archived: { $ne: true } });
+  }
+
+  if (meetingType) {
+    baseConditions.push({ meetingType });
+  }
 
   if (startDate || endDate) {
-    query.date = {};
-    if (startDate) query.date.$gte = new Date(startDate);
-    if (endDate) query.date.$lte = new Date(endDate);
+    const dateFilter = {};
+    if (startDate) dateFilter.$gte = new Date(startDate);
+    if (endDate) dateFilter.$lte = new Date(endDate);
+    baseConditions.push({ date: dateFilter });
   }
 
-  const skip = (parseInt(page) - 1) * parseInt(limit);
+  if (search && search.trim()) {
+    const searchRegex = escapeRegExp(search.trim());
+    baseConditions.push({
+      $or: [
+        { title: { $regex: searchRegex, $options: "i" } },
+        { summary: { $regex: searchRegex, $options: "i" } },
+      ],
+    });
+  }
+
+  const query = baseConditions.length > 0 ? { $and: baseConditions } : {};
+
+  const skip = (normalizedPage - 1) * normalizedLimit;
+
+  // Sort mapping
+  const validSortFields = [
+    "title",
+    "date",
+    "createdAt",
+    "duration",
+    "meetingType",
+  ];
+  const sortField = validSortFields.includes(sortBy) ? sortBy : "createdAt";
+  const sortDirection = sortOrder === "asc" ? 1 : -1;
+  const sort = { [sortField]: sortDirection };
 
   const [meetings, total] = await Promise.all([
-    Meeting.find(query)
-      .sort({ createdAt: -1 })
-      .skip(skip)
-      .limit(parseInt(limit))
-      .select(
-        "title summary structuredMoM createdAt date meetingType status time duration recordingType organization",
-      )
-      .populate("organization", "name"),
-    Meeting.countDocuments(query),
+    MeetingStorageService.getMeetingsQuery(query, skip, normalizedLimit, sort),
+    MeetingStorageService.countMeetingsQuery(query),
   ]);
 
   return {
@@ -698,38 +569,27 @@ export const getAllMeetings = async (userId, orgId, queryParams = {}) => {
   };
 };
 
-/**
- * 6. Fetch a single meeting by its ObjectId.
- *
- * @param {string} meetingId
- * @returns {Promise<Meeting>}
- */
 export const getMeetingById = async (meetingId) => {
   if (!isValidObjectId(meetingId)) {
     throw new ValidationError("Invalid meeting ID");
   }
 
-  const meeting = await Meeting.findById(meetingId);
+  const meeting = await MeetingStorageService.findMeetingById(meetingId);
   if (!meeting) throw new NotFoundError("Meeting not found");
   return meeting;
 };
 
-/**
- * 7. Update editable fields of an existing meeting.
- *
- * @param {string} userId
- * @param {string} meetingId
- * @param {object} data      - Fields to update (all optional)
- * @param {object|null} doc  - Pre-fetched document from requireOwner middleware
- * @returns {Promise<Meeting>}
- */
 export const updateMeeting = async (userId, meetingId, data, doc = null) => {
   if (!doc && !isValidObjectId(meetingId)) {
     throw new ValidationError("Invalid meeting ID");
   }
 
   const meeting =
-    doc || (await Meeting.findOne({ _id: meetingId, uploadedBy: userId }));
+    doc ||
+    (await MeetingStorageService.findMeetingByQuery({
+      _id: meetingId,
+      uploadedBy: userId,
+    }));
   if (!meeting) throw new NotFoundError("Meeting not found");
 
   const {
@@ -742,6 +602,7 @@ export const updateMeeting = async (userId, meetingId, data, doc = null) => {
     location,
     venue,
     tags,
+    agendaItems,
   } = data;
 
   if (title) meeting.title = title.trim();
@@ -753,100 +614,192 @@ export const updateMeeting = async (userId, meetingId, data, doc = null) => {
   if (location !== undefined) meeting.location = location;
   if (venue !== undefined) meeting.venue = venue;
   if (tags) meeting.tags = tags;
+  if (agendaItems !== undefined) {
+    meeting.agendaItems = normalizeAgendaItems(agendaItems);
+  }
 
   await meeting.save();
 
-  // Re-index (fire-and-forget)
-  indexMeeting(meeting).catch((err) =>
-    console.error("⚠️ indexMeeting error (continuing):", err.message),
-  );
+  try {
+    eventBus.emit("meeting.updated", meeting);
+  } catch (evtErr) {
+    console.error("⚠️ Failed to emit meeting.updated event:", evtErr.message);
+  }
 
-  // Google Calendar sync (fire-and-forget)
-  if (meeting.googleEventId) {
-    User.findById(userId)
-      .then(async (user) => {
-        if (user?.calendarSyncEnabled) {
-          await calendarService.updateEvent(user, meeting);
-        }
-      })
-      .catch((err) =>
-        console.error("⚠️ Google Calendar update sync error:", err.message),
-      );
+  scheduleIndexMeeting(meeting);
+
+  // Sync updates with connected calendars
+  (async () => {
+    try {
+      const calendarService = await loadCalendarService();
+
+      // Update Google Calendar event
+      if (meeting.calendarEvents?.google?.eventId) {
+        await calendarService.updateGoogleEvent(
+          userId,
+          meeting,
+          meeting.calendarEvents.google.eventId,
+        );
+      }
+      // Update Microsoft Calendar event
+      if (meeting.calendarEvents?.microsoft?.eventId) {
+        await calendarService.updateMicrosoftEvent(
+          userId,
+          meeting,
+          meeting.calendarEvents.microsoft.eventId,
+        );
+      }
+    } catch (err) {
+      console.error("⚠️ Calendar update sync error:", err.message);
+    }
+  })();
+
+  return meeting;
+};
+
+export const deleteMeeting = async (doc, meetingId, actorId, reason = null) => {
+  const meeting =
+    doc ||
+    (isValidObjectId(meetingId) ? await Meeting.findById(meetingId) : null);
+
+  if (!meeting) throw new NotFoundError("Meeting not found");
+  if (meeting.deletedAt) {
+    throw new ValidationError("Meeting is already in the recycle bin");
+  }
+
+  meeting.deletedAt = new Date();
+  meeting.deletedBy = actorId;
+  meeting.deletionReason = reason || null;
+  await meeting.save();
+
+  try {
+    eventBus.emit("meeting.soft_deleted", meeting);
+  } catch (evtErr) {
+    console.error(
+      "⚠️ Failed to emit meeting.soft_deleted event:",
+      evtErr.message,
+    );
   }
 
   return meeting;
 };
 
-/**
- * 8. Delete a meeting and optionally clean up its Google Calendar event.
- *
- * @param {object|null} doc      - Pre-fetched document from requireOwner middleware
- * @param {string} meetingId     - Used if `doc` is null
- * @returns {Promise<void>}
- */
-export const deleteMeeting = async (doc, meetingId) => {
-  let deleted;
+export const getDeletedMeetings = async (
+  organizationId,
+  { page = 1, limit = 20, search = "" } = {},
+) => {
+  const normalizedPage = Math.max(Number.parseInt(page, 10) || 1, 1);
+  const normalizedLimit = Math.min(
+    Math.max(Number.parseInt(limit, 10) || 20, 1),
+    100,
+  );
+  const query = deletedMeetingsFilter({ organization: organizationId });
 
-  if (doc) {
-    const googleEventId = doc.googleEventId;
-    const uploadedBy = doc.uploadedBy;
-    await doc.deleteOne();
-
-    if (googleEventId) {
-      User.findById(uploadedBy)
-        .then(async (user) => {
-          if (user?.calendarSyncEnabled) {
-            await calendarService.deleteEvent(user, googleEventId);
-          }
-        })
-        .catch((err) =>
-          console.error("⚠️ Calendar delete sync error:", err.message),
-        );
-    }
-    return;
+  if (search.trim()) {
+    query.title = { $regex: escapeRegExp(search.trim()), $options: "i" };
   }
 
-  // Fallback: no pre-fetched doc
+  const skip = (normalizedPage - 1) * normalizedLimit;
+  const [meetings, total] = await Promise.all([
+    Meeting.find(query)
+      .sort({ deletedAt: -1 })
+      .skip(skip)
+      .limit(normalizedLimit)
+      .select(
+        "title date meetingType status deletedAt deletedBy deletionReason createdAt",
+      )
+      .populate("deletedBy", "name email"),
+    Meeting.countDocuments(query),
+  ]);
+
+  return {
+    meetings,
+    pagination: {
+      page: normalizedPage,
+      limit: normalizedLimit,
+      total,
+      totalPages: Math.ceil(total / normalizedLimit),
+    },
+  };
+};
+
+export const restoreDeletedMeeting = async (meetingId, organizationId) => {
   if (!isValidObjectId(meetingId)) {
     throw new ValidationError("Invalid meeting ID");
   }
 
-  deleted = await Meeting.findByIdAndDelete(meetingId);
-  if (!deleted) throw new NotFoundError("Meeting not found");
+  const meeting = await Meeting.findOne({
+    _id: meetingId,
+    organization: organizationId,
+    deletedAt: { $ne: null },
+  });
+  if (!meeting) throw new NotFoundError("Deleted meeting not found");
 
-  if (deleted.googleEventId) {
-    User.findById(deleted.uploadedBy)
-      .then(async (user) => {
-        if (user?.calendarSyncEnabled) {
-          await calendarService.deleteEvent(user, deleted.googleEventId);
-        }
-      })
-      .catch((err) =>
-        console.error("⚠️ Calendar delete sync error:", err.message),
-      );
-  }
+  meeting.deletedAt = null;
+  meeting.deletedBy = null;
+  meeting.deletionReason = null;
+  await meeting.save();
+  eventBus.emit("meeting.restored", meeting);
+  return meeting;
 };
 
-/**
- * 9. Text or voice-based search across meeting records.
- *
- * If `audioUrl` is provided and no `query` text, the audio is first
- * transcribed via AssemblyAI to derive the search query.
- *
- * @param {{ query?: string, audioUrl?: string }} params
- * @returns {Promise<{query: string, count: number, results: Meeting[]}>}
- */
-export const searchMeetings = async ({ query, audioUrl }) => {
+export const permanentlyDeleteMeeting = async (meetingId, organizationId) => {
+  if (!isValidObjectId(meetingId)) {
+    throw new ValidationError("Invalid meeting ID");
+  }
+
+  const meeting = await Meeting.findOne({
+    _id: meetingId,
+    organization: organizationId,
+    deletedAt: { $ne: null },
+  });
+  if (!meeting) throw new NotFoundError("Deleted meeting not found");
+
+  await meeting.deleteOne();
+  scheduleDeleteFromPinecone(meetingId);
+  eventBus.emit("meeting.permanently_deleted", meeting);
+  return meeting;
+};
+
+export const archiveMeeting = async (meetingId) => {
+  if (!isValidObjectId(meetingId)) {
+    throw new ValidationError("Invalid meeting ID");
+  }
+
+  const meeting = await MeetingStorageService.findMeetingById(meetingId);
+  if (!meeting) throw new NotFoundError("Meeting not found");
+
+  meeting.archived = true;
+  await meeting.save();
+
+  return meeting;
+};
+
+export const restoreMeeting = async (meetingId) => {
+  if (!isValidObjectId(meetingId)) {
+    throw new ValidationError("Invalid meeting ID");
+  }
+
+  const meeting = await MeetingStorageService.findMeetingById(meetingId);
+  if (!meeting) throw new NotFoundError("Meeting not found");
+
+  meeting.archived = false;
+  await meeting.save();
+
+  return meeting;
+};
+
+export const searchMeetings = async (
+  { query, audioUrl },
+  orgId = null,
+  userId = null,
+) => {
   let searchQuery = (query || "").trim();
 
   if (audioUrl && !searchQuery) {
     console.log("🎧 Transcribing audioUrl for voice search...");
-    const transcriptRes = await axios.post(
-      "https://api.assemblyai.com/v2/transcript",
-      { audio_url: audioUrl },
-      { headers: { authorization: ASSEMBLYAI_API_KEY } },
-    );
-    searchQuery = await _pollAssemblyAI(transcriptRes.data.id, 2000);
+    const { transcribeAudioUrl } = await loadTranscriptionService();
+    searchQuery = await transcribeAudioUrl(audioUrl);
     console.log("🔊 Voice transcribed to text:", searchQuery);
   }
 
@@ -855,31 +808,26 @@ export const searchMeetings = async ({ query, audioUrl }) => {
   }
 
   console.log(`🔍 Searching meetings for: "${searchQuery}"`);
-  const results = await Meeting.find({
-    $or: [
-      { title: { $regex: searchQuery, $options: "i" } },
-      { summary: { $regex: searchQuery, $options: "i" } },
-      { transcript: { $regex: searchQuery, $options: "i" } },
-    ],
-  })
-    .sort({ createdAt: -1 })
-    .select("title summary transcript createdAt date meetingType");
+
+  const filter = {};
+  if (orgId || userId) {
+    const queryOptions = [];
+    if (orgId) queryOptions.push({ organization: orgId });
+    if (userId) queryOptions.push({ uploadedBy: userId });
+    if (queryOptions.length > 0) {
+      filter.$or = queryOptions;
+    }
+  }
+
+  const results = await MeetingStorageService.searchMeetingsRecords(
+    searchQuery,
+    filter,
+  );
 
   return { query: searchQuery, count: results.length, results };
 };
 
-/**
- * 10. Send real-time join-meeting notifications to specified participants.
- *
- * @param {object} io           - Socket.IO server instance
- * @param {string} uploaderId   - Caller's user ObjectId (excluded from notifications)
- * @param {string} roomId       - Live meeting room identifier
- * @param {Array}  participants - Array of {name, email?} objects
- * @param {string|null} orgId   - Organization scope for user lookup
- * @returns {Promise<{count: number}>}
- */
 export const notifyLiveMeetingParticipants = async (
-  io,
   uploaderId,
   roomId,
   participants,
@@ -896,17 +844,12 @@ export const notifyLiveMeetingParticipants = async (
     _id: { $ne: uploaderId },
   });
 
-  for (const user of dbUsers) {
-    await createAndPushNotification(
-      io,
-      user._id,
-      "Live Meeting Started",
-      "You have been invited to join a live meeting.",
-      "meetings",
-      `/meeting-room/${roomId}`,
-      "Join Now",
-    );
-  }
+  eventBus.emit("live_meeting.notified", {
+    uploaderId,
+    roomId,
+    participants: dbUsers,
+    orgId,
+  });
 
   return { count: dbUsers.length };
 };

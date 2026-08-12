@@ -8,9 +8,15 @@ import {
   rejectInvitation,
   revokeInvitation,
   getInvitationByToken,
+  resendInvitation,
+  expireInvitation,
 } from "../controllers/invitationController.js";
 import userAuth from "../middleware/userAuth.js";
-import { apiLimiter, writeLimiter } from "../middleware/rateLimiter.js";
+import {
+  apiLimiter,
+  writeLimiter,
+  invitationCreateLimiter,
+} from "../middleware/rateLimiter.js";
 import { requirePermission, requireOrgMembership } from "../middleware/rbac.js";
 
 const router = express.Router();
@@ -24,6 +30,8 @@ router.post(
   userAuth,
   writeLimiter,
   requirePermission("team_members", "invite"),
+  // Issue #1360: 10 invitation creations per organization per hour (Redis-backed)
+  invitationCreateLimiter,
   createInvitation,
 );
 router.get(
@@ -39,26 +47,28 @@ router.get(
   requirePermission("team_members", "view"),
   getUserInvitations,
 );
-router.post(
-  "/:token/accept",
-  userAuth,
-  writeLimiter,
-  requirePermission("organizations", "leave"),
-  acceptInvitation,
-);
-router.post(
-  "/:token/reject",
-  userAuth,
-  writeLimiter,
-  requirePermission("organizations", "leave"),
-  rejectInvitation,
-);
+router.post("/:token/accept", userAuth, writeLimiter, acceptInvitation);
+router.post("/:token/reject", userAuth, writeLimiter, rejectInvitation);
 router.delete(
   "/:id",
   userAuth,
   writeLimiter,
   requirePermission("team_members", "remove"),
   revokeInvitation,
+);
+router.post(
+  "/:id/resend",
+  userAuth,
+  writeLimiter,
+  requirePermission("team_members", "invite"),
+  resendInvitation,
+);
+router.post(
+  "/:id/expire",
+  userAuth,
+  writeLimiter,
+  requirePermission("team_members", "invite"),
+  expireInvitation,
 );
 router.get("/:token", getInvitationByToken);
 
