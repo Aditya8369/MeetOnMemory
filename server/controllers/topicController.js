@@ -1,4 +1,5 @@
 import mongoose from "mongoose";
+import { z } from "zod";
 import * as topicExtractionService from "../services/topicExtractionService.js";
 import MeetingTopic from "../models/meetingTopicModel.js";
 import TopicCluster from "../models/topicClusterModel.js";
@@ -8,6 +9,17 @@ import { AppError } from "../utils/errors.js";
 
 /** Cluster labels appear in chart axes and legends; long ones break the view. */
 const MAX_CLUSTER_LABEL_LENGTH = 120;
+
+const renameClusterSchema = z.object({
+  label: z
+    .string()
+    .trim()
+    .min(1, "Label is required")
+    .max(
+      MAX_CLUSTER_LABEL_LENGTH,
+      `Label cannot exceed ${MAX_CLUSTER_LABEL_LENGTH} characters`,
+    ),
+});
 
 const isValidId = (id) => mongoose.Types.ObjectId.isValid(id);
 
@@ -150,7 +162,6 @@ export const getTopicClusters = async (req, res) => {
 export const renameCluster = async (req, res) => {
   try {
     const { clusterId } = req.params;
-    const { label } = req.body;
 
     if (!isValidId(clusterId)) {
       return res
@@ -158,19 +169,15 @@ export const renameCluster = async (req, res) => {
         .json({ success: false, error: "Invalid cluster ID" });
     }
 
-    // `if (!label)` accepted any truthy value, so a number or an object reached
-    // `cluster.label = label` and was coerced on save.
-    if (typeof label !== "string" || label.trim().length === 0) {
-      return res
-        .status(400)
-        .json({ success: false, error: "Label is required" });
-    }
-    if (label.trim().length > MAX_CLUSTER_LABEL_LENGTH) {
+    const parsed = renameClusterSchema.safeParse(req.body);
+    if (!parsed.success) {
       return res.status(400).json({
         success: false,
-        error: `Label cannot exceed ${MAX_CLUSTER_LABEL_LENGTH} characters`,
+        error: parsed.error.issues[0]?.message || "Validation error",
       });
     }
+
+    const { label } = parsed.data;
 
     // Scope the lookup (Issue #1276).
     //
