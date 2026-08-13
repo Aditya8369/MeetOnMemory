@@ -40,12 +40,10 @@ export const setGoals = async (req, res, next) => {
 
     // Only owner/creator can set goals (assuming uploadedBy is the owner)
     if (meeting.uploadedBy.toString() !== userId.toString()) {
-      return res
-        .status(403)
-        .json({
-          success: false,
-          message: "Only the meeting owner can set goals",
-        });
+      return res.status(403).json({
+        success: false,
+        message: "Only the meeting owner can set goals",
+      });
     }
 
     let meetingGoal = await MeetingGoal.findOne({ meetingId });
@@ -112,12 +110,10 @@ export const updateGoalStatus = async (req, res, next) => {
 
     // Prevent updating goals before the meeting date
     if (new Date() < new Date(meeting.date)) {
-      return res
-        .status(400)
-        .json({
-          success: false,
-          message: "Cannot update goal status before the meeting occurs",
-        });
+      return res.status(400).json({
+        success: false,
+        message: "Cannot update goal status before the meeting occurs",
+      });
     }
 
     const meetingGoal = await MeetingGoal.findOne({ meetingId });
@@ -160,12 +156,10 @@ export const getOrgGoalStats = async (req, res, next) => {
 
     // Check if user is part of the org
     if (req.user.activeOrganization.toString() !== orgId) {
-      return res
-        .status(403)
-        .json({
-          success: false,
-          message: "Unauthorized for this organization",
-        });
+      return res.status(403).json({
+        success: false,
+        message: "Unauthorized for this organization",
+      });
     }
 
     const pipeline = [
