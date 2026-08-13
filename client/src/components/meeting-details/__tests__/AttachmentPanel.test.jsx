@@ -17,6 +17,12 @@ vi.mock("../../../services", () => ({
     downloadAttachment: vi.fn(),
     deleteAttachment: vi.fn(),
   },
+
+  savedFilterApi: {
+    getSavedFilters: vi.fn().mockResolvedValue({ data: [] }),
+    createSavedFilter: vi.fn(),
+    deleteSavedFilter: vi.fn(),
+  },
 }));
 
 import { attachmentApi } from "../../../services";

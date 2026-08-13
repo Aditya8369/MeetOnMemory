@@ -10,6 +10,14 @@ import {
   initCalendarSyncCron,
 } from "../services/calendarSyncService.js";
 
+const { mockSchedule } = vi.hoisted(() => ({ mockSchedule: vi.fn() }));
+
+vi.mock("node-cron", () => ({
+  default: {
+    schedule: mockSchedule,
+  },
+}));
+
 // Mock axios
 vi.mock("axios", () => ({
   default: {
@@ -179,15 +187,10 @@ describe("Calendar Connection model and Sync service integration", () => {
 
     vi.spyOn(CalendarConnection, "find").mockResolvedValue([googleConnection]);
 
-    // Track cron registration
     let cronCallback;
-    vi.mock("node-cron", () => ({
-      default: {
-        schedule: vi.fn((pattern, cb) => {
-          cronCallback = cb;
-        }),
-      },
-    }));
+    mockSchedule.mockImplementation((pattern, cb) => {
+      cronCallback = cb;
+    });
 
     initCalendarSyncCron();
 

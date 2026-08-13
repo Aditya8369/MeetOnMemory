@@ -329,13 +329,6 @@ const MeetingRoom = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [userId, isSignedIn, isLoaded, joined, backendUrl]);
 
-  // Cleanly handle logout during an active meeting
-  useEffect(() => {
-    if (joined && isLoaded && !isSignedIn) {
-      leaveMeeting();
-    }
-  }, [isSignedIn, isLoaded, joined, leaveMeeting]);
-
   const joinMeeting = async (providedStream = null, joinOptions = {}) => {
     try {
       setLoading(true);
@@ -430,7 +423,14 @@ const MeetingRoom = () => {
       setMeetingEnded(false);
       navigate("/dashboard");
     }, 4000);
-  }, [navigate, socketRef]);
+  }, [navigate, socketRef, streamRef]);
+
+  // Cleanly handle logout during an active meeting
+  useEffect(() => {
+    if (joined && isLoaded && !isSignedIn) {
+      leaveMeeting();
+    }
+  }, [isSignedIn, isLoaded, joined, leaveMeeting]);
 
   // Toggle Media Handlers
   const toggleMic = () => {

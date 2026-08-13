@@ -1,3 +1,9 @@
+import crypto from "crypto";
+
+// Set required environment variable for calendar encryption
+process.env.CALENDAR_ENCRYPTION_KEY =
+  "test_encryption_key_32_bytes_long_xxxxxxxxx";
+
 import { encryptToken, decryptToken } from "../services/calendarService.js";
 import CalendarConnection from "../models/calendarConnectionModel.js";
 import mongoose from "mongoose";

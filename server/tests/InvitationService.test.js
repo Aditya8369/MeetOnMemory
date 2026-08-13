@@ -374,6 +374,7 @@ describe("InvitationService", () => {
       const mockInvitation = {
         status: "pending",
         email: "invitee@example.com",
+        expiresAt: new Date(Date.now() + 100000000),
         save: vi.fn(),
       };
       Invitation.findOne.mockResolvedValue(mockInvitation);

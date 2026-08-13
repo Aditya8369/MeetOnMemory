@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { searchVectorStore } from "../utils/embeddingUtils.js";
 
 // Mock Pinecone index query results
-const mockQuery = vi.fn();
+const { mockQuery } = vi.hoisted(() => ({ mockQuery: vi.fn() }));
 vi.mock("../utils/embeddingUtils.js", async (importOriginal) => {
   const original = await importOriginal();
   return {

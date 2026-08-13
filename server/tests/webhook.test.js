@@ -171,7 +171,7 @@ describe("Webhook Endpoints & Dispatcher", () => {
           organizationId: organization._id.toString(),
         });
       expect(httpRes.statusCode).toEqual(400);
-      expect(httpRes.body.message || JSON.stringify(httpRes.body)).toMatch(
+      expect(JSON.stringify(httpRes.body)).toMatch(
         /Target URL must start with https:\/\//i,
       );
     });

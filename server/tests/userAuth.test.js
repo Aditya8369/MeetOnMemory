@@ -136,7 +136,7 @@ describe("userAuth Middleware Clerk Auth", () => {
       clerkUserId: "user_new",
       email: "new@example.com",
       name: "New User",
-      profilePic: undefined,
+      profilePic: null,
     });
     expect(req.user._id).toBe("provisioned-mongo-id");
     expect(next).toHaveBeenCalled();

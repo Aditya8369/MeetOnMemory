@@ -8,6 +8,10 @@ import Pagination from "./Pagination.jsx";
 import EmptyState from "./EmptyState.jsx";
 import { useNavigate } from "react-router-dom";
 import useApiRequest from "../../hooks/useApiRequest.js";
+import { savedFilterApi } from "../../services";
+import SavedFilterBar from "./SavedFilterBar.jsx";
+import SaveFilterModal from "./SaveFilterModal.jsx";
+import { BookmarkPlus } from "lucide-react";
 
 const MeetingRepository = () => {
   const navigate = useNavigate();
@@ -23,6 +27,46 @@ const MeetingRepository = () => {
   // Pagination
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 9;
+
+  // Saved Filters
+  const [savedFilters, setSavedFilters] = useState([]);
+  const [isSaveModalOpen, setIsSaveModalOpen] = useState(false);
+
+  const fetchSavedFilters = useCallback(async () => {
+    try {
+      const response = await savedFilterApi.getFilters();
+      if (response.data?.success) {
+        setSavedFilters(response.data.filters);
+      }
+    } catch (err) {
+      console.error("Failed to fetch saved filters", err);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchSavedFilters();
+  }, [fetchSavedFilters]);
+
+  const handleApplySavedFilter = (savedFilter) => {
+    if (savedFilter.filters) {
+      setFilters(savedFilter.filters);
+      if (savedFilter.filters.searchQuery !== undefined) {
+        setSearchQuery(savedFilter.filters.searchQuery);
+      }
+    }
+  };
+
+  const handleSaveFilter = async (filterData) => {
+    try {
+      const response = await savedFilterApi.createFilter(filterData);
+      if (response.data?.success) {
+        toast.success("Filter saved successfully");
+        fetchSavedFilters();
+      }
+    } catch (err) {
+      toast.error(err.response?.data?.message || "Failed to save filter");
+    }
+  };
 
   // Abort in-flight loads when a newer refresh starts (#1131 / #978).
   const loadMeetings = useCallback(async (signal) => {
@@ -245,17 +289,33 @@ const MeetingRepository = () => {
 
   return (
     <div className="space-y-6">
+      <SavedFilterBar
+        savedFilters={savedFilters}
+        onApplyFilter={handleApplySavedFilter}
+        fetchFilters={fetchSavedFilters}
+      />
+
       {/* Search and Filters */}
       <div className="flex flex-col lg:flex-row gap-4 items-start lg:items-center justify-between">
         <MeetingSearch
           searchQuery={searchQuery}
           onSearchChange={setSearchQuery}
         />
-        <MeetingFilters
-          filters={filters}
-          onFilterChange={handleFilterChange}
-          onClearFilters={handleClearFilters}
-        />
+        <div className="flex gap-3 items-center w-full lg:w-auto">
+          <MeetingFilters
+            filters={filters}
+            onFilterChange={handleFilterChange}
+            onClearFilters={handleClearFilters}
+          />
+          <button
+            onClick={() => setIsSaveModalOpen(true)}
+            className="flex items-center gap-1.5 px-3 py-2 text-sm font-medium text-blue-600 bg-blue-50 hover:bg-blue-100 dark:text-blue-400 dark:bg-blue-900/30 dark:hover:bg-blue-900/50 rounded-lg transition-colors whitespace-nowrap cursor-pointer"
+            title="Save current filters as a smart view"
+          >
+            <BookmarkPlus className="w-4 h-4" />
+            Save View
+          </button>
+        </div>
       </div>
 
       {/* Active Filters Display */}
@@ -328,6 +388,13 @@ const MeetingRepository = () => {
           )}
         </>
       )}
+
+      <SaveFilterModal
+        isOpen={isSaveModalOpen}
+        onClose={() => setIsSaveModalOpen(false)}
+        onSave={handleSaveFilter}
+        initialFilters={{ ...filters, searchQuery }}
+      />
     </div>
   );
 };

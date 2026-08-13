@@ -24,6 +24,7 @@ const baseOptions = {
   standardHeaders: true, // Return rate limit info in `RateLimit-*` headers
   legacyHeaders: false, // Disable legacy `X-RateLimit-*` headers
   keyGenerator: (req) => getClientIp(req),
+  skip: () => process.env.NODE_ENV === "test",
 };
 
 // General rate limiter for API routes

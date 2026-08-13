@@ -155,7 +155,7 @@ const Settings = () => {
     return () => {
       cancelled = true;
     };
-  }, [userData?.id]);
+  }, [userData?.id, userData?.emailDigestEnabled]);
 
   // Appearance preferences state (UI only - no backend support)
   const [appearancePrefs, setAppearancePrefs] = useState({

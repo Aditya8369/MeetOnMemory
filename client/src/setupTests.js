@@ -44,4 +44,13 @@ if (typeof globalThis.IntersectionObserver === "undefined") {
   };
 }
 
+// jsdom does not implement ResizeObserver. Provide a minimal browser-like mock.
+if (typeof globalThis.ResizeObserver === "undefined") {
+  globalThis.ResizeObserver = class ResizeObserver {
+    observe() {}
+    unobserve() {}
+    disconnect() {}
+  };
+}
+
 vi.stubEnv("VITE_CLERK_PUBLISHABLE_KEY", "pk_test_bW9jay1jbGVyay1rZXk");

@@ -26,6 +26,12 @@ vi.mock("../../services", () => ({
     scanForConflicts: vi.fn(),
     resolveConflict: vi.fn(),
   },
+
+  savedFilterApi: {
+    getSavedFilters: vi.fn().mockResolvedValue({ data: [] }),
+    createSavedFilter: vi.fn(),
+    deleteSavedFilter: vi.fn(),
+  },
 }));
 
 describe("ConflictResolution Confirmation Modal (#1342)", () => {

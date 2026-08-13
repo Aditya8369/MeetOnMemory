@@ -25,6 +25,15 @@ const PresentMode = ({ meeting, onClose }) => {
   const closeButtonRef = useRef(null);
   const previousFocusRef = useRef(null);
 
+  const agendaItems = useMemo(
+    () =>
+      Array.isArray(meeting?.agendaItems)
+        ? meeting.agendaItems.filter((item) => item?.text?.trim())
+        : [],
+    [meeting?.agendaItems],
+  );
+  const hasAgenda = agendaItems.length > 0;
+
   const getFocusableElements = useCallback(() => {
     if (!dialogRef.current) return [];
     const focusableSelectors = [
@@ -37,87 +46,6 @@ const PresentMode = ({ meeting, onClose }) => {
     ].join(", ");
     return Array.from(dialogRef.current.querySelectorAll(focusableSelectors));
   }, []);
-
-  const handleKeyDown = useCallback(
-    (e) => {
-      if (e.key === "Escape") {
-        e.preventDefault();
-        onClose();
-        return;
-      }
-
-      // Trap focus inside the dialog with Tab / Shift+Tab cycling
-      if (e.key === "Tab") {
-        const focusableElements = getFocusableElements();
-        if (focusableElements.length === 0) {
-          e.preventDefault();
-          return;
-        }
-        const firstElement = focusableElements[0];
-        const lastElement = focusableElements[focusableElements.length - 1];
-
-        if (e.shiftKey && document.activeElement === firstElement) {
-          e.preventDefault();
-          lastElement.focus();
-          return;
-        }
-        if (!e.shiftKey && document.activeElement === lastElement) {
-          e.preventDefault();
-          firstElement.focus();
-        }
-      }
-
-      if (hasAgenda) {
-        if (e.key === "ArrowRight") nextSection();
-        if (e.key === "ArrowLeft") prevSection();
-      } else {
-        if (e.key === "ArrowRight") nextSlide();
-        if (e.key === "ArrowLeft") prevSlide();
-      }
-    },
-    [
-      hasAgenda,
-      nextSection,
-      prevSection,
-      nextSlide,
-      prevSlide,
-      onClose,
-      getFocusableElements,
-    ],
-  );
-
-  useEffect(() => {
-    // Save the triggering element so focus can be restored on close
-    previousFocusRef.current = document.activeElement;
-
-    // Move focus into the dialog
-    const frame = requestAnimationFrame(() => {
-      closeButtonRef.current?.focus();
-    });
-
-    document.addEventListener("keydown", handleKeyDown);
-
-    return () => {
-      cancelAnimationFrame(frame);
-      document.removeEventListener("keydown", handleKeyDown);
-      // Restore focus to the triggering element
-      if (
-        previousFocusRef.current &&
-        typeof previousFocusRef.current.focus === "function"
-      ) {
-        previousFocusRef.current.focus();
-      }
-    };
-  }, [handleKeyDown]);
-
-  const agendaItems = useMemo(
-    () =>
-      Array.isArray(meeting?.agendaItems)
-        ? meeting.agendaItems.filter((item) => item?.text?.trim())
-        : [],
-    [meeting?.agendaItems],
-  );
-  const hasAgenda = agendaItems.length > 0;
 
   const [currentSlide, setCurrentSlide] = useState(0);
   const [currentSection, setCurrentSection] = useState(0);
@@ -198,6 +126,78 @@ const PresentMode = ({ meeting, onClose }) => {
   const prevSection = useCallback(() => {
     setCurrentSection((prev) => Math.max(prev - 1, 0));
   }, []);
+
+  const handleKeyDown = useCallback(
+    (e) => {
+      if (e.key === "Escape") {
+        e.preventDefault();
+        onClose();
+        return;
+      }
+
+      // Trap focus inside the dialog with Tab / Shift+Tab cycling
+      if (e.key === "Tab") {
+        const focusableElements = getFocusableElements();
+        if (focusableElements.length === 0) {
+          e.preventDefault();
+          return;
+        }
+        const firstElement = focusableElements[0];
+        const lastElement = focusableElements[focusableElements.length - 1];
+
+        if (e.shiftKey && document.activeElement === firstElement) {
+          e.preventDefault();
+          lastElement.focus();
+          return;
+        }
+        if (!e.shiftKey && document.activeElement === lastElement) {
+          e.preventDefault();
+          firstElement.focus();
+        }
+      }
+
+      if (hasAgenda) {
+        if (e.key === "ArrowRight") nextSection();
+        if (e.key === "ArrowLeft") prevSection();
+      } else {
+        if (e.key === "ArrowRight") nextSlide();
+        if (e.key === "ArrowLeft") prevSlide();
+      }
+    },
+    [
+      hasAgenda,
+      nextSection,
+      prevSection,
+      nextSlide,
+      prevSlide,
+      onClose,
+      getFocusableElements,
+    ],
+  );
+
+  useEffect(() => {
+    // Save the triggering element so focus can be restored on close
+    previousFocusRef.current = document.activeElement;
+
+    // Move focus into the dialog
+    const frame = requestAnimationFrame(() => {
+      closeButtonRef.current?.focus();
+    });
+
+    document.addEventListener("keydown", handleKeyDown);
+
+    return () => {
+      cancelAnimationFrame(frame);
+      document.removeEventListener("keydown", handleKeyDown);
+      // Restore focus to the triggering element
+      if (
+        previousFocusRef.current &&
+        typeof previousFocusRef.current.focus === "function"
+      ) {
+        previousFocusRef.current.focus();
+      }
+    };
+  }, [handleKeyDown]);
 
   // Reset countdown whenever the agenda section changes
   useEffect(() => {

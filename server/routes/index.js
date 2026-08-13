@@ -55,6 +55,7 @@ import meetingQualityRoutes from "./meetingQualityRoutes.js";
 
 import calendarRoutes from "./calendarRoutes.js";
 import assistantRoutes from "./assistantRoutes.js";
+import savedFilterRoutes from "./savedFilterRoutes.js";
 
 const router = express.Router();
 
@@ -119,5 +120,6 @@ router.use("/api/meeting-health", meetingHealthRoutes);
 router.use("/api/workspace", workspaceRoutes);
 router.use("/api/recap", recapRoutes);
 router.use("/api/meeting-quality", meetingQualityRoutes);
+router.use("/api/saved-filters", savedFilterRoutes);
 
 export default router;

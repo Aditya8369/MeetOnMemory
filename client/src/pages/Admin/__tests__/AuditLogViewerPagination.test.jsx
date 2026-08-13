@@ -32,6 +32,12 @@ vi.mock("../../../services", () => ({
       .fn()
       .mockResolvedValue({ data: { success: true, notifications: [] } }),
   },
+
+  savedFilterApi: {
+    getSavedFilters: vi.fn().mockResolvedValue({ data: [] }),
+    createSavedFilter: vi.fn(),
+    deleteSavedFilter: vi.fn(),
+  },
 }));
 
 const mockUserData = {

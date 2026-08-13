@@ -19,6 +19,12 @@ vi.mock("../../services", () => ({
   apiClient: {
     post: (...args) => apiPost(...args),
   },
+
+  savedFilterApi: {
+    getSavedFilters: vi.fn().mockResolvedValue({ data: [] }),
+    createSavedFilter: vi.fn(),
+    deleteSavedFilter: vi.fn(),
+  },
 }));
 
 describe("AiSearch meeting navigation (#615)", () => {

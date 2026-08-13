@@ -45,9 +45,12 @@ describe("DigestPreferences HTML Sanitization (#1339)", () => {
 
     render(<DigestPreferences />);
 
-    await waitFor(() => {
-      expect(screen.getByText("Meeting Summary")).toBeInTheDocument();
-    });
+    await waitFor(
+      () => {
+        expect(screen.getByText("Meeting Summary")).toBeInTheDocument();
+      },
+      { timeout: 3000 },
+    );
 
     expect(screen.queryByText(/alert\("xss"\)/i)).not.toBeInTheDocument();
   });

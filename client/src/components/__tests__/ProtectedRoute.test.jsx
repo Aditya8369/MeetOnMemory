@@ -152,9 +152,7 @@ describe("ProtectedRoute", () => {
     );
 
     expect(mockHasPermission).toHaveBeenCalledWith("meetings", "delete");
-    expect(screen.getByTestId("location-display")).toHaveTextContent(
-      "/dashboard",
-    );
+    expect(screen.getByText("accessDenied.title")).toBeInTheDocument();
   });
 
   it("renders children if user has required permissions", () => {
