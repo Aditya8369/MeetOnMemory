@@ -59,6 +59,7 @@ import calendarRoutes from "./calendarRoutes.js";
 import assistantRoutes from "./assistantRoutes.js";
 import savedFilterRoutes from "./savedFilterRoutes.js";
 import meetingChecklistRoutes from "./meetingChecklistRoutes.js";
+import speakingTimeRoutes from "./speakingTimeRoutes.js";
 
 const router = express.Router();
 
@@ -126,6 +127,7 @@ router.use("/api/recap", recapRoutes);
 router.use("/api/meeting-quality", meetingQualityRoutes);
 router.use("/api/saved-filters", savedFilterRoutes);
 router.use("/api/key-moments", keyMomentRoutes);
+router.use("/api/speaking-time", speakingTimeRoutes);
 router.use("/api/meeting-goals", meetingGoalRoutes);
 
 export default router;
