@@ -28,6 +28,7 @@ const MeetingDetails = () => {
   const [error, setError] = useState(null);
   const [shareModalOpen, setShareModalOpen] = useState(false);
   const [isPresentModeOpen, setIsPresentModeOpen] = useState(false);
+  const [isAnalyticsExpanded, setIsAnalyticsExpanded] = useState(false);
 
   useEffect(() => {
     const fetchMeetingDetails = async () => {
@@ -183,7 +184,25 @@ const MeetingDetails = () => {
         {/* Speaking Time Analytics Section */}
         <div className="bg-white rounded-lg shadow-sm border border-gray-200 mt-6 mb-6 p-6">
           <div className="flex justify-between items-center mb-6">
-            <h2 className="text-xl font-bold text-gray-900 dark:text-white">
+            <h2
+              className="text-xl font-bold text-gray-900 dark:text-white flex items-center gap-2 cursor-pointer"
+              onClick={() => setIsAnalyticsExpanded(!isAnalyticsExpanded)}
+            >
+              <button className="p-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-full transition-colors">
+                <svg
+                  className={`w-5 h-5 transform transition-transform ${isAnalyticsExpanded ? "rotate-180" : ""}`}
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M19 9l-7 7-7-7"
+                  />
+                </svg>
+              </button>
               Speaking Time Analytics
             </h2>
             <button
@@ -193,7 +212,9 @@ const MeetingDetails = () => {
               View My Trends →
             </button>
           </div>
-          <SpeakingTimeBreakdown meetingId={meeting._id} />
+          {isAnalyticsExpanded && (
+            <SpeakingTimeBreakdown meetingId={meeting._id} />
+          )}
         </div>
 
         <MeetingParticipants meeting={meeting} />

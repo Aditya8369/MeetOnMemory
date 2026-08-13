@@ -21,13 +21,14 @@ export const getBreakdownForMeeting = async (meetingId) => {
   );
 
   const statsMap = new Map();
-  let meetingTotalDuration = 0;
+  let meetingSpan = 0;
   let previousSegmentEnd = 0;
+  let previousSpeakerIdentifier = null;
 
   // Determine overall start and end to calculate true meeting duration
   const meetingStart = segments[0].startTime;
   const meetingEnd = Math.max(...segments.map((s) => s.endTime));
-  meetingTotalDuration = meetingEnd - meetingStart;
+  meetingSpan = meetingEnd - meetingStart;
 
   segments.forEach((segment) => {
     const { speaker, speakerId, startTime, endTime } = segment;
@@ -57,29 +58,34 @@ export const getBreakdownForMeeting = async (meetingId) => {
     }
 
     // Check for overlap (proxy for interruption)
-    // If this segment starts before the previous one ends, and it's a different speaker (usually implicitly handled by timeline, but we just check time here)
-    if (startTime < previousSegmentEnd) {
+    // If this segment starts before the previous one ends, and it's a different speaker
+    if (
+      startTime < previousSegmentEnd &&
+      previousSpeakerIdentifier !== identifier
+    ) {
       stats.overlapCount += 1;
     }
 
     if (endTime > previousSegmentEnd) {
       previousSegmentEnd = endTime;
     }
+    previousSpeakerIdentifier = identifier;
   });
 
+  let aggregateSpeakingDuration = 0;
   const participants = Array.from(statsMap.values()).map((stats) => {
+    aggregateSpeakingDuration += stats.totalDuration;
     return {
       ...stats,
       avgUtteranceLength: stats.totalDuration / stats.utteranceCount,
       talkRatio:
-        meetingTotalDuration > 0
-          ? (stats.totalDuration / meetingTotalDuration) * 100
-          : 0,
+        meetingSpan > 0 ? (stats.totalDuration / meetingSpan) * 100 : 0,
     };
   });
 
   return {
-    totalDuration: meetingTotalDuration,
+    meetingSpan,
+    totalDuration: aggregateSpeakingDuration,
     participants,
   };
 };
@@ -92,7 +98,7 @@ export const getBreakdownForMeeting = async (meetingId) => {
  */
 export const getTrendsForUser = async (userId, limit = 10) => {
   // Find meetings where user is a participant
-  const meetings = await Meeting.find({ participants: userId })
+  const meetings = await Meeting.find({ "participants.user": userId })
     .sort({ date: -1, createdAt: -1 })
     .limit(limit)
     .lean();
@@ -101,11 +107,19 @@ export const getTrendsForUser = async (userId, limit = 10) => {
 
   for (const meeting of meetings) {
     const breakdown = await getBreakdownForMeeting(meeting._id);
+
+    // Resolve user's name in this meeting for fallback matching
+    const participantRecord = meeting.participants.find(
+      (p) => p.user && p.user.toString() === userId.toString(),
+    );
+    const userName = participantRecord ? participantRecord.name : null;
+
     // Find this user's stats in the breakdown
-    // user ID matches identifier (if speakerId was properly populated in transcript)
-    // We do a loose match or assume identifier is stringified ObjectId
+    // Match by speakerId (if available) or by resolved speakerName
     const userStats = breakdown.participants.find(
-      (p) => p.identifier === userId.toString(),
+      (p) =>
+        p.identifier === userId.toString() ||
+        (userName && p.speakerName === userName),
     );
 
     if (userStats) {

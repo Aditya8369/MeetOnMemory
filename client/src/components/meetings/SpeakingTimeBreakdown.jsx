@@ -57,23 +57,28 @@ const CustomTooltip = ({ active, payload }) => {
 const SpeakingTimeBreakdown = ({ meetingId }) => {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  const fetchData = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      const res = await speakingTimeApi.getBreakdown(meetingId);
+      if (res.data.success) {
+        setData(res.data.data);
+      } else {
+        setError(res.data.message || "Failed to load speaking time data");
+        toast.error("Failed to load speaking time data");
+      }
+    } catch (err) {
+      console.error("Error fetching speaking time breakdown:", err);
+      setError("Failed to load speaking time data. Please try again.");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
-    const fetchData = async () => {
-      try {
-        setLoading(true);
-        const res = await speakingTimeApi.getBreakdown(meetingId);
-        if (res.data.success) {
-          setData(res.data.data);
-        } else {
-          toast.error("Failed to load speaking time data");
-        }
-      } catch (err) {
-        console.error("Error fetching speaking time breakdown:", err);
-      } finally {
-        setLoading(false);
-      }
-    };
     if (meetingId) {
       fetchData();
     }
@@ -83,6 +88,20 @@ const SpeakingTimeBreakdown = ({ meetingId }) => {
     return (
       <div className="animate-pulse flex items-center justify-center h-64 bg-gray-50 dark:bg-gray-800 rounded-lg">
         <span className="text-gray-500">Loading analytics...</span>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="flex flex-col items-center justify-center h-64 bg-red-50 dark:bg-red-900/20 rounded-lg text-red-600 dark:text-red-400">
+        <p className="mb-4 text-center px-4">{error}</p>
+        <button
+          onClick={fetchData}
+          className="px-4 py-2 bg-red-100 hover:bg-red-200 dark:bg-red-800/30 dark:hover:bg-red-800/50 rounded-lg transition-colors"
+        >
+          Retry
+        </button>
       </div>
     );
   }

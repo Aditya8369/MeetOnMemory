@@ -21,13 +21,17 @@ export const getSpeakingTimeBreakdown = async (req, res) => {
     }
 
     // Check access: user is owner or participant (simplified access check for this endpoint)
-    const isOwner = meeting.owner.toString() === userId.toString();
+    const isOwner = meeting.uploadedBy?.toString() === userId.toString();
     const isParticipant = meeting.participants.some(
-      (p) => p.toString() === userId.toString(),
+      (p) => p.user?.toString() === userId.toString(),
     );
+    const isOrgMember =
+      meeting.organization &&
+      req.user.organization &&
+      meeting.organization.toString() === req.user.organization.toString();
 
-    // If needed, check org level access. For now, require direct association.
-    if (!isOwner && !isParticipant) {
+    // If needed, check org level access. For now, require direct association or org membership.
+    if (!isOwner && !isParticipant && !isOrgMember) {
       return res.status(403).json({ success: false, message: "Access denied" });
     }
 
@@ -47,7 +51,8 @@ export const getSpeakingTimeBreakdown = async (req, res) => {
 export const getSpeakingTimeTrends = async (req, res) => {
   try {
     const userId = req.user._id;
-    const limit = parseInt(req.query.limit, 10) || 10;
+    let limit = parseInt(req.query.limit, 10) || 10;
+    if (limit > 50) limit = 50;
 
     const trends = await getTrendsForUser(userId, limit);
     return res.status(200).json({ success: true, data: trends });
