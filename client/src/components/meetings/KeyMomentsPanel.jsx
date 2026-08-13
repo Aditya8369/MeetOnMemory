@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { useKeyMoments } from "../../hooks/useKeyMoments";
 import { formatTime } from "../../utils/timeUtils"; // assuming a standard time formatter
-import { useAuth } from "../../contexts/AuthContext";
+import { useUser } from "@clerk/clerk-react";
 
 const CATEGORIES = [
   "decision",
@@ -19,7 +19,7 @@ const CATEGORY_COLORS = {
 };
 
 export default function KeyMomentsPanel({ meetingId, onJumpToTime }) {
-  const { user } = useAuth();
+  const { user } = useUser();
   const { moments, isLoading, error, addMoment, removeMoment } =
     useKeyMoments(meetingId);
 
