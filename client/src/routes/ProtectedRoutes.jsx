@@ -57,6 +57,7 @@ import MeetingHealthDashboard from "../pages/MeetingHealthDashboard.jsx";
 import AutomationRules from "../pages/AutomationRules.jsx";
 import TopicExplorer from "../pages/TopicExplorer.jsx";
 import ConflictResolution from "../pages/ConflictResolution.jsx";
+import SpeakingTimeTrends from "../pages/SpeakingTimeTrends.jsx";
 
 const ProtectedRoutes = (
   <React.Fragment>
@@ -459,6 +460,14 @@ const ProtectedRoutes = (
       element={
         <ProtectedRoute resource="reports" action="view">
           <MeetingHealthDashboard />
+        </ProtectedRoute>
+      }
+    />
+    <Route
+      path="/speaking-time-trends"
+      element={
+        <ProtectedRoute resource="reports" action="view">
+          <SpeakingTimeTrends />
         </ProtectedRoute>
       }
     />

@@ -16,6 +16,7 @@ import ShareModal from "../components/shared-links/ShareModal";
 import MeetingFollowUpBanner from "../components/meeting-details/MeetingFollowUpBanner";
 import PresentMode from "../components/meeting-details/PresentMode";
 import PrepChecklist from "../components/meetings/PrepChecklist";
+import SpeakingTimeBreakdown from "../components/meetings/SpeakingTimeBreakdown";
 import { useUser } from "@clerk/clerk-react";
 
 const MeetingDetails = () => {
@@ -178,6 +179,23 @@ const MeetingDetails = () => {
 
         <MeetingTranscript meeting={meeting} />
         <TranscriptAnnotations meeting={meeting} />
+
+        {/* Speaking Time Analytics Section */}
+        <div className="bg-white rounded-lg shadow-sm border border-gray-200 mt-6 mb-6 p-6">
+          <div className="flex justify-between items-center mb-6">
+            <h2 className="text-xl font-bold text-gray-900 dark:text-white">
+              Speaking Time Analytics
+            </h2>
+            <button
+              onClick={() => navigate("/speaking-time-trends")}
+              className="text-sm text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 font-medium"
+            >
+              View My Trends →
+            </button>
+          </div>
+          <SpeakingTimeBreakdown meetingId={meeting._id} />
+        </div>
+
         <MeetingParticipants meeting={meeting} />
         <PrepChecklist meeting={meeting} currentUser={currentUser} />
         <MeetingAgenda meeting={meeting} />
