@@ -73,4 +73,4 @@ class EngagementScorer {
   }
 }
 
-module.exports = EngagementScorer;
+export default EngagementScorer;

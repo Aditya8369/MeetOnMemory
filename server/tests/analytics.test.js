@@ -1,5 +1,5 @@
-const TranscriptAnalyzer = require("../services/transcriptAnalyzer");
-const EngagementScorer = require("../services/engagementScorer");
+import TranscriptAnalyzer from "../services/transcriptAnalyzer.js";
+import EngagementScorer from "../services/engagementScorer.js";
 
 describe("Analytics Engine Logic", () => {
   describe("TranscriptAnalyzer Edge Cases", () => {
