@@ -3,6 +3,7 @@ import { z } from "zod";
 import PersonalNote from "../models/personalNoteModel.js";
 import Meeting from "../models/meetingModel.js";
 import { hasPermission } from "../utils/rbacPermissions.js";
+import { canAccessMeetingDoc } from "../middleware/rbac.js";
 
 /**
  * Maximum character limits for note fields
@@ -59,13 +60,16 @@ const annotationSchema = z.object({
 });
 
 /**
- * Resolve and validate meeting access for a user
+ * Resolve and validate meeting access for a user.
+ * Uses the shared `canAccessMeetingDoc` predicate (same rule as requireOrgAccess)
+ * so personal-note reads/writes stay aligned with meeting-scoped authorization
+ * (Issue #1389).
  *
  * @param {string} meetingId - Meeting ID to check
  * @param {Object} user - User object from request
  * @returns {Promise<Object>} Access result with meeting or error
  */
-const resolveAccessibleMeeting = async (meetingId, user) => {
+export const resolveAccessibleMeeting = async (meetingId, user) => {
   // Validate meeting ID format
   if (!mongoose.isValidObjectId(meetingId)) {
     return {
@@ -76,7 +80,7 @@ const resolveAccessibleMeeting = async (meetingId, user) => {
     };
   }
 
-  // Fetch meeting from database
+  // Fetch meeting from database — never trust the client id alone
   const meeting = await Meeting.findById(meetingId);
   if (!meeting) {
     return {
@@ -87,17 +91,7 @@ const resolveAccessibleMeeting = async (meetingId, user) => {
     };
   }
 
-  // Check if user is the meeting owner
-  const isOwner = meeting.uploadedBy?.toString() === user._id.toString();
-
-  // Check if user belongs to the same organization
-  const isInSameOrg =
-    meeting.organization &&
-    user.organization &&
-    meeting.organization.toString() === user.organization.toString();
-
-  // User must be owner OR in same organization
-  if (!isOwner && !isInSameOrg) {
+  if (!canAccessMeetingDoc(meeting, user)) {
     return {
       error: {
         status: 403,
@@ -130,8 +124,16 @@ const getAccessibleMeetingIds = async (user) => {
 // @desc Get personal note for a specific meeting
 // @route GET /api/personal-notes/:meetingId
 // @access Private
+// Issue #1389: meeting access MUST be resolved before any note query.
 export const getNoteByMeetingId = async (req, res) => {
   try {
+    if (!req.user?._id) {
+      return res.status(401).json({
+        success: false,
+        message: "Unauthorized",
+      });
+    }
+
     const { meetingId } = req.params;
     const userId = req.user._id;
 
@@ -146,7 +148,7 @@ export const getNoteByMeetingId = async (req, res) => {
       });
     }
 
-    // Verify user has access to this meeting
+    // Same meeting authorization path as note write operations
     const access = await resolveAccessibleMeeting(meetingId, req.user);
     if (access.error) {
       return res
@@ -154,8 +156,12 @@ export const getNoteByMeetingId = async (req, res) => {
         .json({ success: false, message: access.error.message });
     }
 
-    // Fetch note for this user and meeting
-    let note = await PersonalNote.findOne({ userId, meetingId });
+    // Query with the server-resolved meeting id — never the raw path param alone
+    const authorizedMeetingId = access.meeting._id;
+    let note = await PersonalNote.findOne({
+      userId,
+      meetingId: authorizedMeetingId,
+    });
 
     if (note && note.userId.toString() !== userId.toString()) {
       return res.status(403).json({

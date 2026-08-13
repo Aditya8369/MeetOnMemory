@@ -155,6 +155,80 @@ describe("PersonalNote API", () => {
     expect(res.body.success).toBe(false);
   });
 
+  it("denies GET retrieval for a meeting the user cannot access (#1389)", async () => {
+    const otherUser = await User.create({
+      name: "Foreign Owner",
+      email: "foreignowner@test.com",
+      password: "password123",
+      role: "member",
+    });
+    const foreignMeeting = await Meeting.create({
+      title: "Inaccessible Meeting",
+      date: new Date(),
+      uploadedBy: otherUser._id,
+      organization: new mongoose.Types.ObjectId(),
+      participants: [],
+    });
+
+    // Even if a note somehow exists for this user+meeting, retrieval must 403
+    await PersonalNote.create({
+      userId: user._id,
+      meetingId: foreignMeeting._id,
+      content: "should not be readable without meeting access",
+    });
+
+    const res = await request(app)
+      .get(`/api/personal-notes/${foreignMeeting._id}`)
+      .set(authHeader(token));
+
+    expect(res.statusCode).toBe(403);
+    expect(res.body.success).toBe(false);
+    expect(res.body.message).toMatch(/access/i);
+    expect(res.body.note).toBeUndefined();
+  });
+
+  it("allows owner GET retrieval for an accessible meeting (#1389)", async () => {
+    await PersonalNote.create({
+      userId: user._id,
+      meetingId: meeting._id,
+      content: "owner readable note",
+      title: "Mine",
+    });
+
+    const res = await request(app)
+      .get(`/api/personal-notes/${meeting._id}`)
+      .set(authHeader(token));
+
+    expect(res.statusCode).toBe(200);
+    expect(res.body.success).toBe(true);
+    expect(res.body.note.content).toBe("owner readable note");
+  });
+
+  it("rejects GET with an invalid meeting id (#1389)", async () => {
+    const res = await request(app)
+      .get(`/api/personal-notes/not-an-object-id`)
+      .set(authHeader(token));
+
+    expect(res.statusCode).toBe(400);
+    expect(res.body.success).toBe(false);
+  });
+
+  it("returns 404 on GET when the meeting does not exist (#1389)", async () => {
+    const missingId = "5f9f1b9b9c9d440000000000";
+    const res = await request(app)
+      .get(`/api/personal-notes/${missingId}`)
+      .set(authHeader(token));
+
+    expect(res.statusCode).toBe(404);
+    expect(res.body.success).toBe(false);
+  });
+
+  it("rejects unauthenticated GET retrieval (#1389)", async () => {
+    const res = await request(app).get(`/api/personal-notes/${meeting._id}`);
+
+    expect(res.statusCode).toBe(401);
+  });
+
   it("rejects content over the max length with 400", async () => {
     const res = await request(app)
       .post(`/api/personal-notes/${meeting._id}`)
