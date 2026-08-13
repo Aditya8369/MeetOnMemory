@@ -1,7 +1,6 @@
 /**
  * @desc Parses meeting transcripts to extract speaking time distribution,
- * interruption counts, and silence periods. Assumes transcript format includes
- * speaker labels and timestamps (e.g., WebVTT or custom JSON format).
+ * interruption counts, and silence periods.
  */
 class TranscriptAnalyzer {
   /**
@@ -24,13 +23,15 @@ class TranscriptAnalyzer {
     let silencePeriods = 0;
     let overlapTime = 0;
 
-    // Sort by start time
     const sorted = [...transcriptSegments].sort((a, b) => a.start - b.start);
+
+    // Track maxEndTime to catch nested/long-running overlaps
+    let maxEndTime = 0;
 
     for (let i = 0; i < sorted.length; i++) {
       const segment = sorted[i];
       const speaker = segment.speaker || "Unknown";
-      const duration = (segment.end - segment.start) / 1000; // Convert ms to seconds
+      const duration = (segment.end - segment.start) / 1000;
 
       if (!speakerStats[speaker]) {
         speakerStats[speaker] = {
@@ -43,28 +44,28 @@ class TranscriptAnalyzer {
       speakerStats[speaker].duration += duration;
       totalSpeakingTime += duration;
 
-      // Count questions (simple heuristic: sentences ending with '?')
       const questions = (segment.text.match(/\?/g) || []).length;
       speakerStats[speaker].questionsAsked += questions;
 
-      // Detect interruptions (overlap with previous segment)
-      if (i > 0) {
-        const prev = sorted[i - 1];
-        if (segment.start < prev.end) {
-          const overlap = (prev.end - segment.start) / 1000;
-          overlapTime += overlap;
-          speakerStats[speaker].interruptions += 1;
-        }
+      // Detect interruptions (overlap with the envelope of previous speech)
+      if (segment.start < maxEndTime) {
+        const overlap =
+          (Math.min(segment.end, maxEndTime) - segment.start) / 1000;
+        overlapTime += overlap;
+        speakerStats[speaker].interruptions += 1;
+      }
 
-        // Detect silence periods (> 10 seconds gap)
-        const gap = (segment.start - prev.end) / 1000;
+      // Detect silence periods (> 10 seconds gap from the envelope)
+      if (maxEndTime > 0) {
+        const gap = (segment.start - maxEndTime) / 1000;
         if (gap > 10) {
           silencePeriods += 1;
         }
       }
+
+      maxEndTime = Math.max(maxEndTime, segment.end);
     }
 
-    // Calculate percentages
     const distribution = Object.entries(speakerStats).map(
       ([speaker, stats]) => ({
         userName: speaker,

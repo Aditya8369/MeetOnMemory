@@ -1,4 +1,5 @@
 const express = require("express");
+const mongoose = require("mongoose");
 const router = express.Router();
 const MeetingAnalytics = require("../models/MeetingAnalytics");
 const TranscriptAnalyzer = require("../services/transcriptAnalyzer");
@@ -16,7 +17,11 @@ router.use(protect);
 router.post("/meeting/:id/analyze", async (req, res) => {
   try {
     const { id } = req.params;
-    const meeting = await Meeting.findById(id);
+    // Tenant authorization: Scope to user's organization
+    const meeting = await Meeting.findOne({
+      _id: id,
+      organization: req.user.organization,
+    });
 
     if (!meeting || !meeting.transcript) {
       return res
@@ -24,41 +29,42 @@ router.post("/meeting/:id/analyze", async (req, res) => {
         .json({ success: false, error: "Meeting or transcript not found" });
     }
 
-    // 1. Analyze transcript
     const transcriptData =
       typeof meeting.transcript === "string"
         ? JSON.parse(meeting.transcript)
         : meeting.transcript;
 
     const analytics = TranscriptAnalyzer.analyze(transcriptData);
-
-    // 2. Count action items
     const actionItemCount = await ActionItem.countDocuments({ meetingId: id });
 
-    // 3. Calculate scores
+    // Duration inconsistency: Calculate once and reuse
+    const durationMinutes =
+      meeting.duration || Math.round(analytics.totalDuration / 60);
+
     const engagementScore = EngagementScorer.calculateEngagementScore(
       analytics,
       actionItemCount,
     );
     const efficiencyScore = EngagementScorer.calculateEfficiencyScore(
-      meeting.duration || 30,
+      durationMinutes,
       actionItemCount,
     );
     const gini = EngagementScorer.calculateGini(analytics.distribution);
 
-    // 4. Save to DB
     const result = await MeetingAnalytics.findOneAndUpdate(
       { meetingId: id },
       {
+        meeting: meeting._id, // Missing required relations
+        organization: meeting.organization, // Missing required relations
         meetingId: id,
         teamId: meeting.teamId,
-        duration: meeting.duration || analytics.totalDuration / 60,
+        duration: durationMinutes,
         participantCount: analytics.distribution.length,
         speakingTimeDistribution: analytics.distribution,
         engagementScore,
         efficiencyScore,
         participationBalanceScore: gini,
-        silencePeriods: analytics.silencePeriods,
+        silencePeriodsCount: analytics.silencePeriods, // silencePeriods type mismatch (mapped to Count)
         overlapRatio: analytics.overlapRatio,
         actionItemsGenerated: actionItemCount,
         lastAnalyzedAt: new Date(),
@@ -79,8 +85,10 @@ router.post("/meeting/:id/analyze", async (req, res) => {
  */
 router.get("/meeting/:id", async (req, res) => {
   try {
+    // Tenant authorization
     const analytics = await MeetingAnalytics.findOne({
       meetingId: req.params.id,
+      organization: req.user.organization,
     });
     if (!analytics) {
       return res.status(404).json({
@@ -103,7 +111,12 @@ router.get("/team/:teamId/summary", async (req, res) => {
     const { teamId } = req.params;
 
     const summary = await MeetingAnalytics.aggregate([
-      { $match: { teamId: require("mongoose").Types.ObjectId(teamId) } },
+      {
+        $match: {
+          teamId: new mongoose.Types.ObjectId(teamId),
+          organization: req.user.organization,
+        },
+      },
       {
         $group: {
           _id: null,
@@ -117,6 +130,47 @@ router.get("/team/:teamId/summary", async (req, res) => {
     ]);
 
     res.status(200).json({ success: true, data: summary[0] || {} });
+  } catch (_error) {
+    res.status(500).json({ success: false, error: "Server error" });
+  }
+});
+
+/**
+ * @route   GET /api/analytics/team/:teamId/recent
+ * @desc    Get recent meetings with joined analytics data
+ */
+router.get("/team/:teamId/recent", async (req, res) => {
+  try {
+    const { teamId } = req.params;
+    const limit = parseInt(req.query.limit) || 10;
+
+    const meetings = await Meeting.aggregate([
+      {
+        $match: {
+          teamId: new mongoose.Types.ObjectId(teamId),
+          organization: req.user.organization,
+        },
+      },
+      { $sort: { date: -1 } },
+      { $limit: limit },
+      {
+        $lookup: {
+          from: MeetingAnalytics.collection.collectionName,
+          localField: "_id",
+          foreignField: "meetingId",
+          as: "analytics",
+        },
+      },
+      { $unwind: { path: "$analytics", preserveNullAndEmptyArrays: true } },
+    ]);
+
+    res.status(200).json({
+      success: true,
+      data: {
+        meetings,
+        pagination: { limit, total: meetings.length },
+      },
+    });
   } catch (_error) {
     res.status(500).json({ success: false, error: "Server error" });
   }

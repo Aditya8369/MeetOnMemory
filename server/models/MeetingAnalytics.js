@@ -278,8 +278,6 @@ const meetingAnalyticsSchema = new mongoose.Schema(
     meetingId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Meeting",
-      unique: true,
-      index: true,
     },
     organization: {
       type: mongoose.Schema.Types.ObjectId,

@@ -22,12 +22,11 @@ const AnalyticsDashboard = ({ teamId }) => {
         );
         setSummary(summaryData.data);
 
-        // Fetch recent meetings with analytics
-        // Assuming a route exists to list meetings with their analytics scores
+        // Fetch recent meetings with analytics using the new dedicated endpoint
         const { data: meetingsData } = await api.get(
-          `/meetings?teamId=${teamId}&limit=10`,
+          `/analytics/team/${teamId}/recent?limit=10`,
         );
-        setRecentMeetings(meetingsData.data || []);
+        setRecentMeetings(meetingsData.data.meetings || []);
       } catch (error) {
         console.error("Failed to fetch analytics:", error);
       } finally {
