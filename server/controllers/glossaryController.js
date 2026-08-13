@@ -130,6 +130,16 @@ export const getTerms = async (req, res) => {
     }
 
     if (search) {
+      if (typeof search !== "string") {
+        return res
+          .status(400)
+          .json({ message: "Search query must be a string" });
+      }
+      if (search.length > 200) {
+        return res
+          .status(400)
+          .json({ message: "Search query cannot exceed 200 characters" });
+      }
       query.$text = { $search: search };
     }
 
