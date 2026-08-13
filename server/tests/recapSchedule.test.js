@@ -1,11 +1,19 @@
 import { jest } from "@jest/globals";
 import request from "supertest";
 import express from "express";
+import mongoose from "mongoose";
 
-// Mock middleware
+const ORG_ID = new mongoose.Types.ObjectId();
+const USER_ID = new mongoose.Types.ObjectId();
+
+// Mock middleware — authenticated org member (Issue #1381 requires membership)
 jest.unstable_mockModule("../middleware/userAuth.js", () => ({
   default: (req, res, next) => {
-    req.user = { _id: "user-1" };
+    req.user = {
+      _id: USER_ID,
+      organization: ORG_ID,
+      role: "member",
+    };
     next();
   },
 }));
@@ -32,7 +40,6 @@ jest.unstable_mockModule("../services/queueService.js", () => ({
   },
 }));
 
-// Now dynamically import the routes and controllers after mocks
 const { default: recapScheduleRoutes } =
   await import("../routes/recapScheduleRoutes.js");
 const { default: RecapSchedule } =
@@ -42,11 +49,6 @@ const { default: RecapDelivery } =
 
 const app = express();
 app.use(express.json());
-// Inject mock requireAuth manually for the tests in case the import one is skipped
-app.use((req, res, next) => {
-  req.user = { _id: "user-1" };
-  next();
-});
 app.use("/api/recap-schedule", recapScheduleRoutes);
 
 describe("Recap Schedule API", () => {
@@ -57,8 +59,8 @@ describe("Recap Schedule API", () => {
   describe("PUT /api/recap-schedule/:organizationId", () => {
     it("should create or update a schedule successfully", async () => {
       const mockSchedule = {
-        organizationId: "org-1",
-        userId: "user-1",
+        organizationId: ORG_ID.toString(),
+        userId: USER_ID.toString(),
         scheduleType: "daily",
         deliveryChannel: "email",
         preferredTime: "10:00",
@@ -67,7 +69,7 @@ describe("Recap Schedule API", () => {
 
       RecapSchedule.findOneAndUpdate.mockResolvedValue(mockSchedule);
 
-      const res = await request(app).put("/api/recap-schedule/org-1").send({
+      const res = await request(app).put(`/api/recap-schedule/${ORG_ID}`).send({
         scheduleType: "daily",
         deliveryChannel: "email",
         preferredTime: "10:00",
@@ -77,14 +79,14 @@ describe("Recap Schedule API", () => {
       expect(res.status).toBe(200);
       expect(res.body).toEqual(mockSchedule);
       expect(RecapSchedule.findOneAndUpdate).toHaveBeenCalledWith(
-        { organizationId: "org-1", userId: "user-1" },
+        { organizationId: ORG_ID.toString(), userId: USER_ID },
         expect.any(Object),
         { new: true, upsert: true },
       );
     });
 
     it("should return 400 for invalid data", async () => {
-      const res = await request(app).put("/api/recap-schedule/org-1").send({
+      const res = await request(app).put(`/api/recap-schedule/${ORG_ID}`).send({
         scheduleType: "invalid_type", // Invalid enum
       });
 
@@ -97,7 +99,7 @@ describe("Recap Schedule API", () => {
       const mockSchedule = { scheduleType: "weekly" };
       RecapSchedule.findOne.mockResolvedValue(mockSchedule);
 
-      const res = await request(app).get("/api/recap-schedule/org-1");
+      const res = await request(app).get(`/api/recap-schedule/${ORG_ID}`);
 
       expect(res.status).toBe(200);
       expect(res.body).toEqual(mockSchedule);
@@ -106,7 +108,7 @@ describe("Recap Schedule API", () => {
     it("should return 404 if schedule not found", async () => {
       RecapSchedule.findOne.mockResolvedValue(null);
 
-      const res = await request(app).get("/api/recap-schedule/org-1");
+      const res = await request(app).get(`/api/recap-schedule/${ORG_ID}`);
 
       expect(res.status).toBe(404);
     });
@@ -139,7 +141,7 @@ describe("Recap Schedule API", () => {
       RecapDelivery.findOne.mockResolvedValue({
         _id: "del-1",
         meetingId: "meet-1",
-        userId: "user-1",
+        userId: USER_ID,
       });
 
       const res = await request(app).post("/api/recap-schedule/retry/del-1");
