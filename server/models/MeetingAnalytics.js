@@ -230,6 +230,44 @@ const insightSchema = new mongoose.Schema({
   },
 });
 
+const speakingTimeDistributionSchema = new mongoose.Schema(
+  {
+    userId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+    },
+    userName: {
+      type: String,
+      trim: true,
+    },
+    duration: {
+      type: Number,
+      default: 0,
+      min: 0,
+      description: "Seconds spoken",
+    },
+    percentage: {
+      type: Number,
+      default: 0,
+      min: 0,
+      max: 100,
+      description: "% of total speaking time",
+    },
+    interruptions: {
+      type: Number,
+      default: 0,
+      min: 0,
+      description: "Times participant interrupted others",
+    },
+    questionsAsked: {
+      type: Number,
+      default: 0,
+      min: 0,
+    },
+  },
+  { _id: false },
+);
+
 const meetingAnalyticsSchema = new mongoose.Schema(
   {
     meeting: {
@@ -237,11 +275,85 @@ const meetingAnalyticsSchema = new mongoose.Schema(
       ref: "Meeting",
       required: true,
     },
+    meetingId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Meeting",
+      unique: true,
+      index: true,
+    },
     organization: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Organization",
       required: true,
       index: true,
+    },
+    teamId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Team",
+      index: true,
+    },
+    duration: {
+      type: Number,
+      min: 0,
+      description: "Total meeting duration in minutes",
+    },
+    participantCount: {
+      type: Number,
+      min: 0,
+    },
+    attendanceRate: {
+      type: Number,
+      default: 1.0,
+      min: 0,
+      max: 1,
+      description: "Attendance rate from 0.0 to 1.0",
+    },
+    speakingTimeDistribution: {
+      type: [speakingTimeDistributionSchema],
+      default: [],
+    },
+    engagementScore: {
+      type: Number,
+      default: 0,
+      min: 0,
+      max: 100,
+      description: "Overall meeting engagement score (0-100)",
+    },
+    efficiencyScore: {
+      type: Number,
+      default: 0,
+      min: 0,
+      max: 100,
+      description: "Overall meeting efficiency score (0-100)",
+    },
+    participationBalanceScore: {
+      type: Number,
+      default: 0,
+      min: 0,
+      max: 1,
+      description: "Gini coefficient (0 = equality, 1 = inequality)",
+    },
+    silencePeriodsCount: {
+      type: Number,
+      default: 0,
+      min: 0,
+      description: "Count of >10s silence gaps",
+    },
+    overlapRatio: {
+      type: Number,
+      default: 0,
+      min: 0,
+      max: 100,
+      description: "% of time with interruptions/crosstalk",
+    },
+    actionItemsGenerated: {
+      type: Number,
+      default: 0,
+      min: 0,
+    },
+    lastAnalyzedAt: {
+      type: Date,
+      default: Date.now,
     },
     speakers: {
       type: [speakerAnalyticsSchema],
@@ -289,7 +401,9 @@ const meetingAnalyticsSchema = new mongoose.Schema(
 
 // Indexes for efficient queries
 meetingAnalyticsSchema.index({ meeting: 1 }, { unique: true });
+meetingAnalyticsSchema.index({ meetingId: 1 }, { unique: true, sparse: true });
 meetingAnalyticsSchema.index({ organization: 1, createdAt: -1 });
+meetingAnalyticsSchema.index({ teamId: 1, createdAt: -1 });
 meetingAnalyticsSchema.index({ "speakers.userId": 1 });
 meetingAnalyticsSchema.index({ analyzedAt: -1 });
 
