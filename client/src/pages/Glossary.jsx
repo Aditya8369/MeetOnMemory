@@ -5,6 +5,7 @@ import {
   deleteTerm,
   approveTerm,
 } from "../services/glossaryApi";
+import ConfirmModal from "../components/ConfirmModal.jsx";
 
 const Glossary = () => {
   const [terms, setTerms] = useState([]);
@@ -19,6 +20,10 @@ const Glossary = () => {
     aliases: "",
     category: "",
   });
+
+  // Confirmation modal state (#1489)
+  const [deleteTarget, setDeleteTarget] = useState(null);
+  const [deleteLoading, setDeleteLoading] = useState(false);
 
   const loadTerms = useCallback(async () => {
     try {
@@ -35,6 +40,17 @@ const Glossary = () => {
   useEffect(() => {
     loadTerms();
   }, [loadTerms]);
+
+  // Keyboard Escape listener to close Add Term dialog (#1491)
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (e.key === "Escape" && showAddForm) {
+        setShowAddForm(false);
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [showAddForm]);
 
   const handleAddSubmit = async (e) => {
     e.preventDefault();
@@ -58,14 +74,18 @@ const Glossary = () => {
     }
   };
 
-  const handleDelete = async (id) => {
-    if (!window.confirm("Are you sure you want to delete this term?")) return;
+  const handleDeleteConfirm = async () => {
+    if (!deleteTarget) return;
+    setDeleteLoading(true);
     try {
-      await deleteTerm(id);
+      await deleteTerm(deleteTarget._id);
+      setDeleteTarget(null);
       loadTerms();
     } catch (error) {
       console.error("Failed to delete term:", error);
       alert("Failed to delete term");
+    } finally {
+      setDeleteLoading(false);
     }
   };
 
@@ -92,8 +112,9 @@ const Glossary = () => {
         </div>
         <div className="mt-4 flex md:mt-0 md:ml-4">
           <button
+            type="button"
             onClick={() => setShowAddForm(!showAddForm)}
-            className="ml-3 inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700"
+            className="ml-3 inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 cursor-pointer"
           >
             {showAddForm ? "Cancel" : "Add Term"}
           </button>
@@ -101,8 +122,16 @@ const Glossary = () => {
       </div>
 
       {showAddForm && (
-        <div className="bg-gray-50 p-6 rounded-lg mb-8 shadow-sm border border-gray-200">
-          <h3 className="text-lg font-medium text-gray-900 mb-4">
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="add-term-title"
+          className="bg-gray-50 p-6 rounded-lg mb-8 shadow-sm border border-gray-200"
+        >
+          <h3
+            id="add-term-title"
+            className="text-lg font-medium text-gray-900 mb-4"
+          >
             Add New Term
           </h3>
           <form onSubmit={handleAddSubmit} className="space-y-4">
@@ -149,8 +178,9 @@ const Glossary = () => {
                   setNewTerm({ ...newTerm, definition: e.target.value })
                 }
                 className="mt-1 block w-full border-gray-300 rounded-md shadow-sm p-2 border"
-                rows="2"
-              ></textarea>
+                rows={3}
+                placeholder="Definition of the term"
+              />
             </div>
 
             <div>
@@ -170,7 +200,7 @@ const Glossary = () => {
 
             <button
               type="submit"
-              className="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700"
+              className="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 cursor-pointer"
             >
               Save Term
             </button>
@@ -204,14 +234,16 @@ const Glossary = () => {
 
                 <div className="mt-4 flex space-x-2">
                   <button
+                    type="button"
                     onClick={() => handleApprove(term._id)}
-                    className="flex-1 bg-green-600 text-white py-1 rounded text-sm hover:bg-green-700"
+                    className="flex-1 bg-green-600 text-white py-1 rounded text-sm hover:bg-green-700 cursor-pointer"
                   >
                     Approve
                   </button>
                   <button
-                    onClick={() => handleDelete(term._id)}
-                    className="flex-1 bg-red-100 text-red-700 py-1 rounded text-sm hover:bg-red-200"
+                    type="button"
+                    onClick={() => setDeleteTarget(term)}
+                    className="flex-1 bg-red-100 text-red-700 py-1 rounded text-sm hover:bg-red-200 cursor-pointer"
                   >
                     Reject
                   </button>
@@ -265,8 +297,9 @@ const Glossary = () => {
                       )}
                     </div>
                     <button
-                      onClick={() => handleDelete(term._id)}
-                      className="text-red-500 hover:text-red-700"
+                      type="button"
+                      onClick={() => setDeleteTarget(term)}
+                      className="text-red-500 hover:text-red-700 cursor-pointer"
                     >
                       Delete
                     </button>
@@ -277,6 +310,18 @@ const Glossary = () => {
           </div>
         )}
       </div>
+
+      {/* Deletion Confirmation Modal (#1489) */}
+      <ConfirmModal
+        isOpen={Boolean(deleteTarget)}
+        onClose={() => setDeleteTarget(null)}
+        onConfirm={handleDeleteConfirm}
+        title="Delete Glossary Term"
+        message={`Are you sure you want to delete term "${deleteTarget?.term || "this term"}"? This action cannot be undone.`}
+        confirmText="Delete Term"
+        variant="danger"
+        isLoading={deleteLoading}
+      />
     </div>
   );
 };
