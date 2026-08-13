@@ -1,7 +1,14 @@
 import React, { useState } from "react";
 import { useKeyMoments } from "../../hooks/useKeyMoments";
-import { formatTime } from "../../utils/timeUtils"; // assuming a standard time formatter
 import { useUser } from "@clerk/clerk-react";
+
+// Simple time formatter for duration in seconds (e.g. 65 -> "1:05")
+const formatTime = (seconds) => {
+  if (isNaN(seconds) || seconds < 0) return "0:00";
+  const m = Math.floor(seconds / 60);
+  const s = Math.floor(seconds % 60);
+  return `${m}:${s < 10 ? "0" : ""}${s}`;
+};
 
 const CATEGORIES = [
   "decision",
