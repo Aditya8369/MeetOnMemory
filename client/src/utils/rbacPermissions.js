@@ -115,6 +115,50 @@ export const PERMISSIONS = {
     edit: ["owner", "admin"],
     delete: ["owner", "admin"],
   },
+  // Digest Preferences permissions
+  digest_preferences: {
+    view: ["owner", "admin", "moderator", "member", "viewer", "guest"],
+    edit: ["owner", "admin", "moderator", "member", "viewer", "guest"],
+  },
+  // Comments permissions
+  comments: {
+    view: ["owner", "admin", "moderator", "member", "viewer", "guest"],
+    create: ["owner", "admin", "moderator", "member"],
+    edit: ["owner", "admin", "moderator", "member"],
+    delete: ["owner", "admin", "moderator"],
+    react: ["owner", "admin", "moderator", "member", "viewer"],
+  },
+  // Attachments permissions
+  attachments: {
+    view: ["owner", "admin", "moderator", "member", "viewer", "guest"],
+    upload: ["owner", "admin", "moderator", "member"],
+    edit: ["owner", "admin", "moderator", "member"],
+    delete: ["owner", "admin", "moderator"],
+    download: ["owner", "admin", "moderator", "member", "viewer"],
+  },
+  // Bookmarks permissions
+  bookmarks: {
+    view: ["owner", "admin", "moderator", "member", "viewer", "guest"],
+    create: ["owner", "admin", "moderator", "member", "viewer"],
+    edit: ["owner", "admin", "moderator", "member", "viewer"],
+    delete: ["owner", "admin", "moderator", "member", "viewer"],
+  },
+  // Personal Notes permissions
+  personal_notes: {
+    view: ["owner", "admin", "moderator", "member", "viewer", "guest"],
+    create: ["owner", "admin", "moderator", "member", "viewer"],
+    edit: ["owner", "admin", "moderator", "member", "viewer"],
+    delete: ["owner", "admin", "moderator", "member", "viewer"],
+    pin: ["owner", "admin", "moderator", "member", "viewer"],
+  },
+  // Shared Links permissions
+  shared_links: {
+    view: ["owner", "admin", "moderator", "member", "viewer", "guest"],
+    create: ["owner", "admin", "moderator", "member"],
+    edit: ["owner", "admin", "moderator", "member"],
+    delete: ["owner", "admin", "moderator"],
+    revoke: ["owner", "admin", "moderator"],
+  },
 };
 
 /**

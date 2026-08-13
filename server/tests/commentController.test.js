@@ -85,6 +85,7 @@ describe("Comment Controller - Length Validation", () => {
         _id: new mongoose.Types.ObjectId().toString(),
         body: validBody,
         populate: jest.fn().mockResolvedValue({}),
+        toObject: jest.fn().mockReturnValue({}),
       });
 
       jest.spyOn(Comment.prototype, "save").mockImplementation(mockSave);

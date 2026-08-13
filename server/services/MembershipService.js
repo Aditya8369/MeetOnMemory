@@ -13,6 +13,7 @@ import { NotFoundError, ValidationError } from "../utils/errors.js";
  */
 const topologySupportsTransactions = () => {
   const type = mongoose.connection?.client?.topology?.description?.type;
+  console.log("TOPOLOGY TYPE:", type);
   return (
     type === "ReplicaSetWithPrimary" ||
     type === "ReplicaSetNoPrimary" ||

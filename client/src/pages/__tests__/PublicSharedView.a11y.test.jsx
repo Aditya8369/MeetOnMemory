@@ -9,6 +9,12 @@ vi.mock("../../services", () => ({
     getPublicResource: vi.fn(),
     verifyPasscode: vi.fn(),
   },
+
+  savedFilterApi: {
+    getSavedFilters: vi.fn().mockResolvedValue({ data: [] }),
+    createSavedFilter: vi.fn(),
+    deleteSavedFilter: vi.fn(),
+  },
 }));
 
 import { publicSharedApi } from "../../services";

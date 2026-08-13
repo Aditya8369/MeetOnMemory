@@ -26,6 +26,7 @@ const stripVotersIfAnonymous = (poll, currentUserId = null) => {
               return voteId === currentUserId.toString();
             })
           : false,
+      votes: [],
     }));
   }
 
@@ -59,7 +60,19 @@ const buildVotePipeline = (voterId, selectedObjectIds) => {
                     },
                   ],
                 },
-                "$$opt",
+                {
+                  $mergeObjects: [
+                    "$$opt",
+                    {
+                      votes: {
+                        $setDifference: [
+                          { $ifNull: ["$$opt.votes", []] },
+                          [voterId],
+                        ],
+                      },
+                    },
+                  ],
+                },
               ],
             },
           },
@@ -92,7 +105,10 @@ const loadPollForMutation = async (id, user) => {
     return { ok: false, status: 404, message: "Poll not found" };
   }
 
-  if (poll.organization.toString() !== user.organization.toString()) {
+  if (
+    !user.organization ||
+    poll.organization.toString() !== user.organization.toString()
+  ) {
     return {
       ok: false,
       status: 403,

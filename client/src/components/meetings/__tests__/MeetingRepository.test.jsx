@@ -17,6 +17,12 @@ vi.mock("../../../services", () => ({
     deleteMeeting: vi.fn(),
     updateMeeting: vi.fn(),
   },
+
+  savedFilterApi: {
+    getSavedFilters: vi.fn().mockResolvedValue({ data: [] }),
+    createSavedFilter: vi.fn(),
+    deleteSavedFilter: vi.fn(),
+  },
 }));
 
 vi.mock("../MeetingCard.jsx", () => ({

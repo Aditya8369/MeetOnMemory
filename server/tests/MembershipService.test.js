@@ -25,6 +25,10 @@ beforeAll(() => {
   mongoose.startSession = mockStartSession;
 });
 
+beforeEach(() => {
+  jest.clearAllMocks();
+});
+
 afterAll(() => {
   mongoose.startSession = originalStartSession;
 });
@@ -37,7 +41,6 @@ describe("MembershipService — syncMembershipAndUserRole (#1361)", () => {
   const userId = new mongoose.Types.ObjectId();
 
   beforeEach(() => {
-    jest.clearAllMocks();
     // Default: standalone topology (no multi-doc transactions)
     Object.defineProperty(mongoose.connection, "client", {
       configurable: true,

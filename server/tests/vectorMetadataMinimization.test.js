@@ -4,7 +4,7 @@ import { indexMeeting } from "../utils/embeddingUtils.js";
 import { indexTranscriptChunks } from "../utils/transcriptEmbeddingUtils.js";
 
 // Capture upsert parameters
-const mockUpsert = vi.fn();
+const { mockUpsert } = vi.hoisted(() => ({ mockUpsert: vi.fn() }));
 
 vi.mock("../utils/embeddingUtils.js", async (importOriginal) => {
   const original = await importOriginal();

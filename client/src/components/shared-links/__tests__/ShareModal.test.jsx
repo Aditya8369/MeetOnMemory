@@ -20,6 +20,12 @@ vi.mock("../../../services", () => ({
     createLink: vi.fn(),
     revokeLink: vi.fn(),
   },
+
+  savedFilterApi: {
+    getSavedFilters: vi.fn().mockResolvedValue({ data: [] }),
+    createSavedFilter: vi.fn(),
+    deleteSavedFilter: vi.fn(),
+  },
 }));
 
 const renderModal = (userData, links = []) => {

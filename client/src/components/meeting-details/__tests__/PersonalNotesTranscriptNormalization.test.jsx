@@ -19,6 +19,12 @@ vi.mock("../../../services", () => ({
     upsertNote: vi.fn().mockResolvedValue({ data: { success: true } }),
     togglePin: vi.fn().mockResolvedValue({ data: { success: true } }),
   },
+
+  savedFilterApi: {
+    getSavedFilters: vi.fn().mockResolvedValue({ data: [] }),
+    createSavedFilter: vi.fn(),
+    deleteSavedFilter: vi.fn(),
+  },
 }));
 
 describe("PersonalNotes Transcript Normalization and Safe Rendering", () => {

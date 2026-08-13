@@ -16,6 +16,14 @@ vi.mock("../../hooks/useRBAC.js", () => ({
   }),
 }));
 
+vi.mock("@clerk/clerk-react", () => ({
+  useUser: () => ({
+    user: { primaryEmailAddress: { emailAddress: "test@example.com" } },
+  }),
+  useClerk: () => ({ signOut: vi.fn() }),
+  UserButton: () => <div data-testid="user-button">User Button</div>,
+}));
+
 vi.mock("react-i18next", () => ({
   useTranslation: () => ({
     t: (key) => {

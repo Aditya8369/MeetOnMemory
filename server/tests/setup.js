@@ -1,6 +1,9 @@
 import { MongoMemoryServer } from "mongodb-memory-server";
 import mongoose from "mongoose";
 
+process.env.CALENDAR_ENCRYPTION_KEY =
+  "test_encryption_key_32_bytes_long_xxxxxxxxx";
+
 // ─── DOM polyfills for pdf-parse / pdfjs-dist ──────────────────────────────
 // pdfjs-dist (used by pdf-parse) expects browser globals like DOMMatrix,
 // ImageData, and Path2D.  In a Node.js test environment these don't exist,

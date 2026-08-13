@@ -17,8 +17,6 @@ describe("POST /api/transcripts/meeting/:meetingId/translate Authorization", () 
   let meetingId;
 
   beforeAll(async () => {
-    process.env.JWT_SECRET = "testsecret";
-
     // Generate valid ObjectIds
     const orgId = new mongoose.Types.ObjectId();
     const otherOrgId = new mongoose.Types.ObjectId();
@@ -30,6 +28,36 @@ describe("POST /api/transcripts/meeting/:meetingId/translate Authorization", () 
 
     // Setup mocks
     jest.spyOn(User, "findById").mockImplementation((id) => {
+      const users = {
+        [uploaderId.toString()]: {
+          _id: uploaderId,
+          organization: orgId,
+          role: "member",
+        },
+        [viewerId.toString()]: {
+          _id: viewerId,
+          organization: orgId,
+          role: "member",
+        },
+        [externalId.toString()]: {
+          _id: externalId,
+          organization: otherOrgId,
+          role: "member",
+        },
+        [adminId.toString()]: {
+          _id: adminId,
+          organization: orgId,
+          role: "admin",
+        },
+      };
+      return {
+        select: () => Promise.resolve(users[id.toString()]),
+      };
+    });
+
+    jest.spyOn(User, "findOne").mockImplementation((query) => {
+      const id = query.clerkUserId;
+      if (!id) return { select: () => Promise.resolve(null) };
       const users = {
         [uploaderId.toString()]: {
           _id: uploaderId,
@@ -88,19 +116,19 @@ describe("POST /api/transcripts/meeting/:meetingId/translate Authorization", () 
 
     // We will simulate JWT generation
     uploaderToken = jwt.sign(
-      { id: uploaderId, role: "member" },
+      { id: uploaderId, sub: uploaderId, role: "member" },
       process.env.JWT_SECRET,
     );
     viewerToken = jwt.sign(
-      { id: viewerId, role: "member" },
+      { id: viewerId, sub: viewerId, role: "member" },
       process.env.JWT_SECRET,
     );
     externalToken = jwt.sign(
-      { id: externalId, role: "member" },
+      { id: externalId, sub: externalId, role: "member" },
       process.env.JWT_SECRET,
     );
     adminToken = jwt.sign(
-      { id: adminId, role: "admin" },
+      { id: adminId, sub: adminId, role: "admin" },
       process.env.JWT_SECRET,
     );
   });
@@ -119,14 +147,14 @@ describe("POST /api/transcripts/meeting/:meetingId/translate Authorization", () 
   it("should reject translation request for a user outside the organization (403)", async () => {
     const res = await request(app)
       .post(`/api/transcripts/meeting/${meetingId}/translate`)
-      .set("Cookie", [`token=${externalToken}`]);
+      .set("Authorization", `Bearer ${externalToken}`);
     expect(res.status).toBe(403);
   });
 
   it("should reject translation request for an organization member who is not the uploader or admin (403)", async () => {
     const res = await request(app)
       .post(`/api/transcripts/meeting/${meetingId}/translate`)
-      .set("Cookie", [`token=${viewerToken}`]);
+      .set("Authorization", `Bearer ${viewerToken}`);
     expect(res.status).toBe(403);
     expect(res.body.message).toContain(
       "Forbidden: You do not own this meeting",
@@ -136,7 +164,7 @@ describe("POST /api/transcripts/meeting/:meetingId/translate Authorization", () 
   it("should allow translation request for the uploader (200)", async () => {
     const res = await request(app)
       .post(`/api/transcripts/meeting/${meetingId}/translate`)
-      .set("Cookie", [`token=${uploaderToken}`]);
+      .set("Authorization", `Bearer ${uploaderToken}`);
     expect(res.status).toBe(200);
     expect(res.body.message).toContain("Translation authorized");
   });
@@ -144,7 +172,7 @@ describe("POST /api/transcripts/meeting/:meetingId/translate Authorization", () 
   it("should allow translation request for an admin (200)", async () => {
     const res = await request(app)
       .post(`/api/transcripts/meeting/${meetingId}/translate`)
-      .set("Cookie", [`token=${adminToken}`]);
+      .set("Authorization", `Bearer ${adminToken}`);
     expect(res.status).toBe(200);
     expect(res.body.message).toContain("Translation authorized");
   });
