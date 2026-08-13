@@ -10,11 +10,26 @@ import {
 } from "../services/calendarService.js";
 import { triggerManualSync } from "../jobs/calendarSyncJob.js";
 import { buildCalendarOAuthClientRedirect } from "../utils/calendarOAuthRedirect.js";
+import {
+  createCalendarOAuthState,
+  verifyAndConsumeCalendarOAuthState,
+  CalendarOAuthStateError,
+} from "../utils/calendarOAuthState.js";
 
 const getUserId = (req) => {
   const id = req.user?._id || req.user?.id;
   if (!id) throw new Error("Unauthorized: User ID missing");
   return id;
+};
+
+const rejectOAuthState = (res, isGetRequest, redirectPath, error) => {
+  if (isGetRequest) {
+    return res.redirect(buildCalendarOAuthClientRedirect(redirectPath));
+  }
+  return res.status(error.status || 400).json({
+    success: false,
+    message: error.message || "Invalid OAuth state",
+  });
 };
 
 /**
@@ -53,7 +68,12 @@ export const getConnectionStatus = async (req, res) => {
  */
 export const getGoogleOAuthUrl = async (req, res) => {
   try {
-    const authUrl = getGoogleAuthUrl();
+    const userId = getUserId(req);
+    const state = createCalendarOAuthState({
+      userId,
+      provider: "google",
+    });
+    const authUrl = getGoogleAuthUrl(state);
     res.json({ success: true, authUrl, url: authUrl });
   } catch (error) {
     console.error("Error getting Google OAuth URL:", error.message);
@@ -68,9 +88,9 @@ export const handleGoogleCallback = async (req, res) => {
   const isGetRequest = req.method === "GET";
   try {
     const code = req.body?.code || req.query?.code;
-    const userId = req.user?._id || req.user?.id || req.query?.state;
+    const stateToken = req.body?.state || req.query?.state;
 
-    if (!code || !userId) {
+    if (!code) {
       if (isGetRequest) {
         return res.redirect(
           buildCalendarOAuthClientRedirect(
@@ -80,8 +100,28 @@ export const handleGoogleCallback = async (req, res) => {
       }
       return res.status(400).json({
         success: false,
-        message: "Authorization code and user state are required",
+        message: "Authorization code is required",
       });
+    }
+
+    let userId;
+    try {
+      const sessionUserId = req.user?._id || req.user?.id;
+      const claims = await verifyAndConsumeCalendarOAuthState(stateToken, {
+        expectedProvider: "google",
+        expectedUserId: sessionUserId ? sessionUserId.toString() : undefined,
+      });
+      userId = claims.userId;
+    } catch (error) {
+      if (error instanceof CalendarOAuthStateError) {
+        return rejectOAuthState(
+          res,
+          isGetRequest,
+          "/settings?error=google_sync_failed",
+          error,
+        );
+      }
+      throw error;
     }
 
     const tokens = await getGoogleTokens(code);
@@ -150,7 +190,12 @@ export const handleGoogleCallback = async (req, res) => {
  */
 export const getMicrosoftOAuthUrl = async (req, res) => {
   try {
-    const authUrl = await getMicrosoftAuthUrl();
+    const userId = getUserId(req);
+    const state = createCalendarOAuthState({
+      userId,
+      provider: "microsoft",
+    });
+    const authUrl = await getMicrosoftAuthUrl(state);
     res.json({ success: true, authUrl, url: authUrl });
   } catch (error) {
     console.error("Error getting Microsoft OAuth URL:", error.message);
@@ -165,9 +210,9 @@ export const handleMicrosoftCallback = async (req, res) => {
   const isGetRequest = req.method === "GET";
   try {
     const code = req.body?.code || req.query?.code;
-    const userId = req.user?._id || req.user?.id || req.query?.state;
+    const stateToken = req.body?.state || req.query?.state;
 
-    if (!code || !userId) {
+    if (!code) {
       if (isGetRequest) {
         return res.redirect(
           buildCalendarOAuthClientRedirect(
@@ -177,8 +222,28 @@ export const handleMicrosoftCallback = async (req, res) => {
       }
       return res.status(400).json({
         success: false,
-        message: "Authorization code and user state are required",
+        message: "Authorization code is required",
       });
+    }
+
+    let userId;
+    try {
+      const sessionUserId = req.user?._id || req.user?.id;
+      const claims = await verifyAndConsumeCalendarOAuthState(stateToken, {
+        expectedProvider: "microsoft",
+        expectedUserId: sessionUserId ? sessionUserId.toString() : undefined,
+      });
+      userId = claims.userId;
+    } catch (error) {
+      if (error instanceof CalendarOAuthStateError) {
+        return rejectOAuthState(
+          res,
+          isGetRequest,
+          "/settings?error=outlook_sync_failed",
+          error,
+        );
+      }
+      throw error;
     }
 
     const tokenResponse = await getMicrosoftTokens(code);
