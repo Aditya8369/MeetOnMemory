@@ -41,6 +41,17 @@ const Glossary = () => {
     loadTerms();
   }, [loadTerms]);
 
+  // Keyboard Escape listener to close Add Term dialog (#1491)
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (e.key === "Escape" && showAddForm) {
+        setShowAddForm(false);
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [showAddForm]);
+
   const handleAddSubmit = async (e) => {
     e.preventDefault();
     try {
@@ -111,8 +122,16 @@ const Glossary = () => {
       </div>
 
       {showAddForm && (
-        <div className="bg-gray-50 p-6 rounded-lg mb-8 shadow-sm border border-gray-200">
-          <h3 className="text-lg font-medium text-gray-900 mb-4">
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="add-term-title"
+          className="bg-gray-50 p-6 rounded-lg mb-8 shadow-sm border border-gray-200"
+        >
+          <h3
+            id="add-term-title"
+            className="text-lg font-medium text-gray-900 mb-4"
+          >
             Add New Term
           </h3>
           <form onSubmit={handleAddSubmit} className="space-y-4">
