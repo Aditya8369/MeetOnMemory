@@ -12,6 +12,7 @@ import MeetingMetadata from "../components/meeting-details/MeetingMetadata";
 import MeetingActions from "../components/meeting-details/MeetingActions";
 import TranscriptAnnotations from "../components/meeting-details/TranscriptAnnotations";
 import KeyMomentsPanel from "../components/meetings/KeyMomentsPanel";
+import MeetingGoalsPanel from "../components/meetings/MeetingGoalsPanel";
 import ShareModal from "../components/shared-links/ShareModal";
 import MeetingFollowUpBanner from "../components/meeting-details/MeetingFollowUpBanner";
 import PresentMode from "../components/meeting-details/PresentMode";
@@ -180,6 +181,7 @@ const MeetingDetails = () => {
         <TranscriptAnnotations meeting={meeting} />
         <MeetingParticipants meeting={meeting} />
         <PrepChecklist meeting={meeting} currentUser={currentUser} />
+        <MeetingGoalsPanel meeting={meeting} currentUser={currentUser} />
         <MeetingAgenda meeting={meeting} />
         <MeetingMetadata meeting={meeting} />
         <MeetingActions
