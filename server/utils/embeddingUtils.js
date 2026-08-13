@@ -182,6 +182,7 @@ export const indexMeeting = async (meeting) => {
     );
   } catch (error) {
     console.error("❌ Failed to index meeting:", error);
+    throw error;
   }
 };
 
@@ -319,7 +320,16 @@ export const searchVectorStore = async (query, filters = {}) => {
     return filteredResults;
   } catch (error) {
     console.error("❌ Pinecone vector search error:", error);
-    throw new Error("Vector search failed");
+    if (
+      error.message.includes(
+        "Organization context is required for vector search",
+      ) ||
+      error.message.includes("Empty query received for vector search") ||
+      error.message.includes("Invalid organization context provided")
+    ) {
+      throw error;
+    }
+    throw error;
   }
 };
 
