@@ -11,6 +11,7 @@ import MeetingAgenda from "../components/meeting-details/MeetingAgenda";
 import MeetingMetadata from "../components/meeting-details/MeetingMetadata";
 import MeetingActions from "../components/meeting-details/MeetingActions";
 import TranscriptAnnotations from "../components/meeting-details/TranscriptAnnotations";
+import KeyMomentsPanel from "../components/meetings/KeyMomentsPanel";
 import ShareModal from "../components/shared-links/ShareModal";
 import MeetingFollowUpBanner from "../components/meeting-details/MeetingFollowUpBanner";
 import PresentMode from "../components/meeting-details/PresentMode";
@@ -170,6 +171,11 @@ const MeetingDetails = () => {
         />
         <MeetingSummary meeting={meeting} />
         <MeetingCollaborativeNotes meeting={meeting} />
+
+        <div className="bg-white rounded-lg shadow-sm border border-gray-200 mt-6 mb-6 overflow-hidden h-[500px]">
+          <KeyMomentsPanel meetingId={meeting._id} />
+        </div>
+
         <MeetingTranscript meeting={meeting} />
         <TranscriptAnnotations meeting={meeting} />
         <MeetingParticipants meeting={meeting} />
