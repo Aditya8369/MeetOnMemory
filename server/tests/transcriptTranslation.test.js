@@ -17,8 +17,6 @@ describe("POST /api/transcripts/meeting/:meetingId/translate Authorization", () 
   let meetingId;
 
   beforeAll(async () => {
-    const JWT_SECRET = process.env.JWT_SECRET;
-
     // Generate valid ObjectIds
     const orgId = new mongoose.Types.ObjectId();
     const otherOrgId = new mongoose.Types.ObjectId();

@@ -89,12 +89,10 @@ export const updateFilter = async (req, res) => {
     // Ensure user owns the filter OR it's shared in their org and they have org access (though typically only owners should update)
     // For now, let's restrict updates to the owner
     if (filter.user.toString() !== req.user._id.toString()) {
-      return res
-        .status(403)
-        .json({
-          success: false,
-          message: "Not authorized to update this filter",
-        });
+      return res.status(403).json({
+        success: false,
+        message: "Not authorized to update this filter",
+      });
     }
 
     Object.keys(updates).forEach((key) => {
@@ -136,12 +134,10 @@ export const deleteFilter = async (req, res) => {
     }
 
     if (filter.user.toString() !== req.user._id.toString()) {
-      return res
-        .status(403)
-        .json({
-          success: false,
-          message: "Not authorized to delete this filter",
-        });
+      return res.status(403).json({
+        success: false,
+        message: "Not authorized to delete this filter",
+      });
     }
 
     await SavedFilter.findByIdAndDelete(id);
@@ -175,12 +171,10 @@ export const togglePin = async (req, res) => {
       filter.organization?.toString() === req.user.organization?.toString();
 
     if (!isOwner && !isSharedInOrg) {
-      return res
-        .status(403)
-        .json({
-          success: false,
-          message: "Not authorized to access this filter",
-        });
+      return res.status(403).json({
+        success: false,
+        message: "Not authorized to access this filter",
+      });
     }
 
     // Technically, `isPinned` state should be user-specific if shared filters can be pinned by different users.
