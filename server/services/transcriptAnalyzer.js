@@ -94,4 +94,4 @@ class TranscriptAnalyzer {
   }
 }
 
-module.exports = TranscriptAnalyzer;
+export default TranscriptAnalyzer;

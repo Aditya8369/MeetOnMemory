@@ -1,12 +1,12 @@
-const express = require("express");
-const mongoose = require("mongoose");
+import express from "express";
+import mongoose from "mongoose";
 const router = express.Router();
-const MeetingAnalytics = require("../models/MeetingAnalytics");
-const TranscriptAnalyzer = require("../services/transcriptAnalyzer");
-const EngagementScorer = require("../services/engagementScorer");
-const Meeting = require("../models/Meeting");
-const ActionItem = require("../models/ActionItem");
-const { protect } = require("../middleware/authMiddleware");
+import MeetingAnalytics from "../models/MeetingAnalytics.js";
+import TranscriptAnalyzer from "../services/transcriptAnalyzer.js";
+import EngagementScorer from "../services/engagementScorer.js";
+import Meeting from "../models/Meeting.js";
+import ActionItem from "../models/ActionItem.js";
+import { protect } from "../middleware/authMiddleware.js";
 
 router.use(protect);
 
@@ -176,4 +176,4 @@ router.get("/team/:teamId/recent", async (req, res) => {
   }
 });
 
-module.exports = router;
+export default router;

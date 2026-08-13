@@ -43,6 +43,7 @@ const MeetingAnalytics = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [analyzing, setAnalyzing] = useState(false);
+  const [goalStats, setGoalStats] = useState([]);
 
   // Owns the completion poll below, including its teardown on unmount (#1455).
   const { startPolling } = usePolling();
@@ -82,6 +83,26 @@ const MeetingAnalytics = () => {
   useEffect(() => {
     fetchAnalytics();
   }, [fetchAnalytics]);
+
+  useEffect(() => {
+    if (analytics?.meeting?.organization) {
+      const orgId =
+        typeof analytics.meeting.organization === "object"
+          ? analytics.meeting.organization._id
+          : analytics.meeting.organization;
+
+      fetch(`${backendUrl}/api/meeting-goals/org/${orgId}/stats`, {
+        credentials: "include",
+      })
+        .then((res) => res.json())
+        .then((data) => {
+          if (data.success && data.stats) {
+            setGoalStats(data.stats);
+          }
+        })
+        .catch((err) => console.error("Error fetching goal stats:", err));
+    }
+  }, [analytics, backendUrl]);
 
   const triggerAnalysis = async () => {
     try {
@@ -348,6 +369,51 @@ const MeetingAnalytics = () => {
             </PieChart>
           </ResponsiveContainer>
         </div>
+
+        {/* Goal Achievement Chart */}
+        {goalStats.length > 0 && (
+          <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-lg p-6 mb-8">
+            <h2 className="text-xl font-bold text-slate-900 dark:text-white mb-4 flex items-center gap-2">
+              <Target className="w-6 h-6 text-blue-500" />
+              Organizational Goal Achievement Rate
+            </h2>
+            <ResponsiveContainer width="100%" height={300}>
+              <LineChart
+                data={goalStats}
+                margin={{ top: 10, right: 30, left: 0, bottom: 0 }}
+              >
+                <CartesianGrid
+                  strokeDasharray="3 3"
+                  vertical={false}
+                  stroke="#334155"
+                />
+                <XAxis dataKey="monthName" stroke="#94a3b8" />
+                <YAxis unit="%" stroke="#94a3b8" />
+                <Tooltip
+                  formatter={(value) => [
+                    `${parseFloat(value).toFixed(1)}%`,
+                    "Achievement Rate",
+                  ]}
+                  contentStyle={{
+                    backgroundColor: "#1e293b",
+                    borderColor: "#334155",
+                    color: "#f8fafc",
+                  }}
+                />
+                <Legend />
+                <Line
+                  type="monotone"
+                  dataKey="achievementRate"
+                  name="Achievement Rate"
+                  stroke="#3b82f6"
+                  strokeWidth={3}
+                  dot={{ r: 4, strokeWidth: 2 }}
+                  activeDot={{ r: 6 }}
+                />
+              </LineChart>
+            </ResponsiveContainer>
+          </div>
+        )}
 
         {/* Detailed Speaker Table */}
         <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-lg p-6 mb-8">

@@ -153,10 +153,14 @@ export const getReadiness = async (req, res, next) => {
     }, {});
 
     const readiness = meeting.participants.map((p) => {
-      const uid = p.userId?.toString() || p._id?.toString() || p.id?.toString();
+      const uid =
+        p.user?.toString() ||
+        p.userId?.toString() ||
+        p._id?.toString() ||
+        p.id?.toString();
       const completedCount = uid ? userCompletions[uid] || 0 : 0;
       return {
-        userId: p.userId || p._id || p.id,
+        userId: p.user || p.userId || p._id || p.id,
         name: p.name || p.email || "Unknown",
         percentage:
           totalItems > 0 ? Math.round((completedCount / totalItems) * 100) : 0,
