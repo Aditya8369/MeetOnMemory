@@ -742,8 +742,9 @@ export const deleteMicrosoftEvent = async (userId, eventId) => {
 
 /**
  * Get Google OAuth authorization URL
+ * @param {string} state - Signed OAuth state (Issue #1387)
  */
-export const getGoogleAuthUrl = () => {
+export const getGoogleAuthUrl = (state) => {
   const oAuth2Client = new google.auth.OAuth2(
     process.env.GOOGLE_CLIENT_ID,
     process.env.GOOGLE_CLIENT_SECRET,
@@ -759,6 +760,7 @@ export const getGoogleAuthUrl = () => {
     access_type: "offline",
     scope: scopes,
     prompt: "consent",
+    state,
   });
 };
 
@@ -778,8 +780,9 @@ export const getGoogleTokens = async (code) => {
 
 /**
  * Get Microsoft OAuth authorization URL
+ * @param {string} state - Signed OAuth state (Issue #1387)
  */
-export const getMicrosoftAuthUrl = async () => {
+export const getMicrosoftAuthUrl = async (state) => {
   const msalConfig = {
     auth: {
       clientId: process.env.MICROSOFT_CLIENT_ID,
@@ -795,6 +798,7 @@ export const getMicrosoftAuthUrl = async () => {
   const authCodeUrlParameters = {
     scopes: ["https://graph.microsoft.com/Calendars.ReadWrite"],
     redirectUri: process.env.MICROSOFT_REDIRECT_URI,
+    state,
   };
 
   return pca.getAuthCodeUrl(authCodeUrlParameters);
