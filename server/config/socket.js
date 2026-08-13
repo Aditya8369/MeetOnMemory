@@ -7,6 +7,7 @@ import documentSync from "../socket/documentSync.js";
 import transcriptSocket from "../socket/transcriptSocket.js";
 import reactionSocket from "../socket/reactionSocket.js";
 import translationSocket from "../socket/translationSocket.js";
+import { initWorkspaceSocket } from "../socket/workspaceSocket.js";
 import authenticateSocket from "../middleware/socketAuth.js";
 
 export function configureSocket(server, app) {
@@ -88,6 +89,7 @@ export function configureSocket(server, app) {
   transcriptSocket(io);
   reactionSocket(io);
   translationSocket(io);
+  initWorkspaceSocket(io);
 
   return io;
 }

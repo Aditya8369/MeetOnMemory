@@ -2,6 +2,7 @@
 import mongoose from "mongoose";
 import Meeting from "../models/meetingModel.js";
 import { workspaceSyncService } from "../services/workspaceSyncService.js";
+import authenticateSocket from "../middleware/socketAuth.js";
 
 /**
  * Throttle utility to prevent cursor movement spam over WebSockets
@@ -20,60 +21,75 @@ const throttle = (func, limit) => {
 };
 
 /**
+ * Authorize workspace access using the Clerk-authenticated MongoDB user only.
+ * Never trust handshake.auth.userId / query.userId (Issue #1386).
+ */
+const authorizeWorkspaceAccess = async (socket, next) => {
+  try {
+    if (!socket.userId) {
+      return next(new Error("Authentication error: User not found"));
+    }
+
+    const meetingId =
+      socket.handshake.auth?.meetingId || socket.handshake.query?.meetingId;
+
+    if (!meetingId) {
+      return next(new Error("Meeting ID missing"));
+    }
+
+    if (!mongoose.Types.ObjectId.isValid(meetingId)) {
+      return next(new Error("Invalid Meeting ID format"));
+    }
+
+    const meeting = await Meeting.findById(meetingId).select(
+      "organization participants uploadedBy",
+    );
+    if (!meeting) {
+      return next(new Error("Meeting not found"));
+    }
+
+    const authenticatedUserId = socket.userId.toString();
+    const authenticatedEmail = socket.user?.email;
+
+    const isParticipant = meeting.participants.some(
+      (p) =>
+        p.user?.toString() === authenticatedUserId ||
+        (authenticatedEmail &&
+          p.email &&
+          p.email.toLowerCase() === authenticatedEmail.toLowerCase()),
+    );
+    const isOwner = meeting.uploadedBy?.toString() === authenticatedUserId;
+
+    if (!isParticipant && !isOwner) {
+      return next(
+        new Error("Forbidden: You are not a participant of this meeting"),
+      );
+    }
+
+    // Identity is already set by authenticateSocket — never overwrite from client.
+    socket.meetingId = meetingId;
+    socket.userName =
+      socket.user?.name || socket.handshake.auth?.userName || "Anonymous";
+    socket.userColor = socket.handshake.auth?.userColor || "#6366f1";
+
+    next();
+  } catch (error) {
+    console.error("❌ Workspace Socket Auth Error:", error.message);
+    next(new Error("Authentication failed"));
+  }
+};
+
+/**
  * Initialize Workspace WebSocket events for the Collaborative War Room
  * @param {Object} io - Socket.IO server instance
  */
 export const initWorkspaceSocket = (io) => {
   const workspaceNsp = io.of("/workspace");
 
-  // Authentication & Authorization Middleware for Socket Connections
-  workspaceNsp.use(async (socket, next) => {
-    try {
-      const userId =
-        socket.handshake.auth?.userId || socket.handshake.query?.userId;
-      const meetingId =
-        socket.handshake.auth?.meetingId || socket.handshake.query?.meetingId;
-
-      if (!userId || !meetingId) {
-        return next(new Error("Authentication credentials missing"));
-      }
-
-      if (!mongoose.Types.ObjectId.isValid(meetingId)) {
-        return next(new Error("Invalid Meeting ID format"));
-      }
-
-      const meeting = await Meeting.findById(meetingId).select(
-        "organization participants uploadedBy",
-      );
-      if (!meeting) {
-        return next(new Error("Meeting not found"));
-      }
-
-      // Verify user is participant or owner
-      const isParticipant = meeting.participants.some(
-        (p) =>
-          p.user?.toString() === userId ||
-          p.email === socket.handshake.auth?.email,
-      );
-      const isOwner = meeting.uploadedBy?.toString() === userId;
-
-      if (!isParticipant && !isOwner) {
-        return next(
-          new Error("Forbidden: You are not a participant of this meeting"),
-        );
-      }
-
-      socket.userId = userId;
-      socket.meetingId = meetingId;
-      socket.userName = socket.handshake.auth?.userName || "Anonymous";
-      socket.userColor = socket.handshake.auth?.userColor || "#6366f1";
-
-      next();
-    } catch (error) {
-      console.error("❌ Workspace Socket Auth Error:", error.message);
-      next(new Error("Authentication failed"));
-    }
-  });
+  // Clerk JWT → MongoDB user (authoritative identity)
+  workspaceNsp.use(authenticateSocket);
+  // Meeting participant/owner check against authenticated user only
+  workspaceNsp.use(authorizeWorkspaceAccess);
 
   workspaceNsp.on("connection", (socket) => {
     const room = `meeting-war-room-${socket.meetingId}`;
@@ -195,3 +211,5 @@ export const initWorkspaceSocket = (io) => {
     });
   });
 };
+
+export { authorizeWorkspaceAccess };
