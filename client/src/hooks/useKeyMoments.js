@@ -1,12 +1,14 @@
 import { useState, useEffect, useCallback } from "react";
 import { keyMomentApi } from "../services/keyMomentApi";
-import { useSocket } from "../contexts/SocketContext"; // assuming this exists based on standard patterns
+import { io } from "socket.io-client";
+import { createClerkSocketOptions } from "../services/apiClient";
 
 export const useKeyMoments = (meetingId) => {
   const [moments, setMoments] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
-  const { socket } = useSocket() || {};
+  const backendUrl =
+    import.meta.env.VITE_BACKEND_URL || "http://localhost:5000";
 
   const fetchMoments = useCallback(async () => {
     try {
@@ -28,36 +30,48 @@ export const useKeyMoments = (meetingId) => {
   }, [meetingId, fetchMoments]);
 
   useEffect(() => {
-    if (!socket || !meetingId) return;
+    if (!meetingId) return;
 
-    const handleCreated = (newMoment) => {
-      setMoments((prev) => {
-        // Prevent duplicates
-        if (prev.some((m) => m._id === newMoment._id)) return prev;
-        return [...prev, newMoment].sort((a, b) => a.startTime - b.startTime);
-      });
+    let socket;
+    let cancelled = false;
+
+    const initSocket = async () => {
+      const opts = await createClerkSocketOptions();
+      if (cancelled) return;
+
+      socket = io(backendUrl, opts);
+
+      const handleCreated = (newMoment) => {
+        setMoments((prev) => {
+          if (prev.some((m) => m._id === newMoment._id)) return prev;
+          return [...prev, newMoment].sort((a, b) => a.startTime - b.startTime);
+        });
+      };
+
+      const handleUpdated = (updatedMoment) => {
+        setMoments((prev) =>
+          prev.map((m) => (m._id === updatedMoment._id ? updatedMoment : m)),
+        );
+      };
+
+      const handleDeleted = (deletedId) => {
+        setMoments((prev) => prev.filter((m) => m._id !== deletedId));
+      };
+
+      socket.on("keyMoment:created", handleCreated);
+      socket.on("keyMoment:updated", handleUpdated);
+      socket.on("keyMoment:deleted", handleDeleted);
     };
 
-    const handleUpdated = (updatedMoment) => {
-      setMoments((prev) =>
-        prev.map((m) => (m._id === updatedMoment._id ? updatedMoment : m)),
-      );
-    };
-
-    const handleDeleted = (deletedId) => {
-      setMoments((prev) => prev.filter((m) => m._id !== deletedId));
-    };
-
-    socket.on("keyMoment:created", handleCreated);
-    socket.on("keyMoment:updated", handleUpdated);
-    socket.on("keyMoment:deleted", handleDeleted);
+    initSocket();
 
     return () => {
-      socket.off("keyMoment:created", handleCreated);
-      socket.off("keyMoment:updated", handleUpdated);
-      socket.off("keyMoment:deleted", handleDeleted);
+      cancelled = true;
+      if (socket) {
+        socket.disconnect();
+      }
     };
-  }, [socket, meetingId]);
+  }, [meetingId, backendUrl]);
 
   const addMoment = async (data) => {
     const response = await keyMomentApi.createMoment({ ...data, meetingId });
