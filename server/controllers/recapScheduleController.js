@@ -10,10 +10,25 @@ const scheduleSchema = z.object({
   timezone: z.string().optional(),
 });
 
+/**
+ * Server-resolved org from requireOrganizationParamMatch, with membership fallback.
+ * Never use req.params.organizationId for queries (Issue #1381).
+ */
+const resolveAuthorizedOrganizationId = (req) =>
+  req.authorizedOrganizationId ||
+  (req.user?.organization?._id || req.user?.organization)?.toString();
+
 export const upsertSchedule = async (req, res) => {
   try {
-    const { organizationId } = req.params;
+    const organizationId = resolveAuthorizedOrganizationId(req);
     const userId = req.user._id;
+
+    if (!organizationId) {
+      return res.status(403).json({
+        success: false,
+        message: "Forbidden: Organization membership required",
+      });
+    }
 
     const parsedData = scheduleSchema.parse(req.body);
 
@@ -35,8 +50,15 @@ export const upsertSchedule = async (req, res) => {
 
 export const getSchedule = async (req, res) => {
   try {
-    const { organizationId } = req.params;
+    const organizationId = resolveAuthorizedOrganizationId(req);
     const userId = req.user._id;
+
+    if (!organizationId) {
+      return res.status(403).json({
+        success: false,
+        message: "Forbidden: Organization membership required",
+      });
+    }
 
     const schedule = await RecapSchedule.findOne({ organizationId, userId });
     if (!schedule) {
