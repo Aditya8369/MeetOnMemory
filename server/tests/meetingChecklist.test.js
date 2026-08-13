@@ -85,8 +85,8 @@ describe("Meeting Checklist API", () => {
       uploadedBy: user._id,
       organization: organization._id,
       participants: [
-        { userId: user._id, name: "Test User" },
-        { userId: otherUser._id, name: "Other User" },
+        { user: user._id, name: "Test User" },
+        { user: otherUser._id, name: "Other User" },
       ],
       date: new Date().toISOString(),
     });

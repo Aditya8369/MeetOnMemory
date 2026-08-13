@@ -53,6 +53,7 @@ import workspaceRoutes from "./workspaceRoutes.js";
 import recapRoutes from "./recapRoutes.js";
 import meetingQualityRoutes from "./meetingQualityRoutes.js";
 import keyMomentRoutes from "./keyMomentRoutes.js";
+import meetingGoalRoutes from "./meetingGoalRoutes.js";
 
 import calendarRoutes from "./calendarRoutes.js";
 import assistantRoutes from "./assistantRoutes.js";
@@ -127,5 +128,6 @@ router.use("/api/meeting-quality", meetingQualityRoutes);
 router.use("/api/saved-filters", savedFilterRoutes);
 router.use("/api/key-moments", keyMomentRoutes);
 router.use("/api/speaking-time", speakingTimeRoutes);
+router.use("/api/meeting-goals", meetingGoalRoutes);
 
 export default router;
