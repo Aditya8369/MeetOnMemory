@@ -15,10 +15,13 @@ import KeyMomentsPanel from "../components/meetings/KeyMomentsPanel";
 import ShareModal from "../components/shared-links/ShareModal";
 import MeetingFollowUpBanner from "../components/meeting-details/MeetingFollowUpBanner";
 import PresentMode from "../components/meeting-details/PresentMode";
+import PrepChecklist from "../components/meetings/PrepChecklist";
+import { useUser } from "@clerk/clerk-react";
 
 const MeetingDetails = () => {
   const { id } = useParams();
   const navigate = useNavigate();
+  const { user: currentUser } = useUser();
   const [meeting, setMeeting] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -176,6 +179,7 @@ const MeetingDetails = () => {
         <MeetingTranscript meeting={meeting} />
         <TranscriptAnnotations meeting={meeting} />
         <MeetingParticipants meeting={meeting} />
+        <PrepChecklist meeting={meeting} currentUser={currentUser} />
         <MeetingAgenda meeting={meeting} />
         <MeetingMetadata meeting={meeting} />
         <MeetingActions

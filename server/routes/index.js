@@ -57,6 +57,7 @@ import keyMomentRoutes from "./keyMomentRoutes.js";
 import calendarRoutes from "./calendarRoutes.js";
 import assistantRoutes from "./assistantRoutes.js";
 import savedFilterRoutes from "./savedFilterRoutes.js";
+import meetingChecklistRoutes from "./meetingChecklistRoutes.js";
 
 const router = express.Router();
 
@@ -72,6 +73,7 @@ router.use(
 );
 router.use(["/api/invitation", "/api/invitations"], invitationRoutes);
 router.use("/api/meetings/timer", agendaTimerRoutes);
+router.use("/api/meetings/:meetingId/checklist", meetingChecklistRoutes);
 router.use("/api/meetings", meetingRoutes);
 router.use("/api/search", searchRoutes);
 router.use("/api/ai", aiRoutes);
