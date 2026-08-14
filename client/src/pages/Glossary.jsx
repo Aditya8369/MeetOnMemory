@@ -10,8 +10,8 @@ import ConfirmModal from "../components/ConfirmModal.jsx";
 const Glossary = () => {
   const [terms, setTerms] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
   const [searchTerm, setSearchTerm] = useState("");
-
   // New term form state
   const [showAddForm, setShowAddForm] = useState(false);
   const [newTerm, setNewTerm] = useState({
@@ -28,10 +28,12 @@ const Glossary = () => {
   const loadTerms = useCallback(async () => {
     try {
       setLoading(true);
+      setError(null);
       const data = await fetchTerms({ search: searchTerm });
       setTerms(data || []);
-    } catch (error) {
-      console.error("Failed to load glossary terms:", error);
+    } catch (loadError) {
+      console.error("Failed to load glossary terms:", loadError);
+      setError("We couldn't load the glossary right now. Please try again.");
     } finally {
       setLoading(false);
     }
@@ -68,8 +70,8 @@ const Glossary = () => {
       setShowAddForm(false);
       setNewTerm({ term: "", definition: "", aliases: "", category: "" });
       loadTerms();
-    } catch (error) {
-      console.error("Failed to add term:", error);
+    } catch (submitError) {
+      console.error("Failed to add term:", submitError);
       alert("Failed to add term");
     }
   };
@@ -81,8 +83,8 @@ const Glossary = () => {
       await deleteTerm(deleteTarget._id);
       setDeleteTarget(null);
       loadTerms();
-    } catch (error) {
-      console.error("Failed to delete term:", error);
+    } catch (deleteError) {
+      console.error("Failed to delete term:", deleteError);
       alert("Failed to delete term");
     } finally {
       setDeleteLoading(false);
@@ -93,8 +95,8 @@ const Glossary = () => {
     try {
       await approveTerm(id);
       loadTerms();
-    } catch (error) {
-      console.error("Failed to approve term:", error);
+    } catch (approveError) {
+      console.error("Failed to approve term:", approveError);
       alert("Failed to approve term");
     }
   };
@@ -166,7 +168,6 @@ const Glossary = () => {
                 />
               </div>
             </div>
-
             <div>
               <label className="block text-sm font-medium text-gray-700">
                 Definition
@@ -182,7 +183,6 @@ const Glossary = () => {
                 placeholder="Definition of the term"
               />
             </div>
-
             <div>
               <label className="block text-sm font-medium text-gray-700">
                 Aliases (comma separated)
@@ -197,7 +197,6 @@ const Glossary = () => {
                 placeholder="Return on Investment"
               />
             </div>
-
             <button
               type="submit"
               className="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 cursor-pointer"
@@ -231,7 +230,6 @@ const Glossary = () => {
                     {term.category}
                   </span>
                 )}
-
                 <div className="mt-4 flex space-x-2">
                   <button
                     type="button"
@@ -270,6 +268,20 @@ const Glossary = () => {
 
         {loading ? (
           <p className="text-gray-500">Loading terms...</p>
+        ) : error ? (
+          <div
+            role="alert"
+            className="rounded-md border border-red-200 bg-red-50 p-4"
+          >
+            <p className="text-sm text-red-700">{error}</p>
+            <button
+              type="button"
+              onClick={loadTerms}
+              className="mt-3 inline-flex items-center rounded-md bg-red-600 px-3 py-2 text-sm font-medium text-white hover:bg-red-700 cursor-pointer"
+            >
+              Retry
+            </button>
+          </div>
         ) : approvedTerms.length === 0 ? (
           <p className="text-gray-500">No approved terms found.</p>
         ) : (
