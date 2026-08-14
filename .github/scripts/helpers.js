@@ -198,6 +198,22 @@ export async function listOpenAssignedIssues(github, context, core) {
   );
 }
 
+export async function listOpenPullRequests(github, context, core) {
+  const records = await safeCall(
+    core,
+    "pulls.list(open)",
+    () =>
+      github.paginate(github.rest.pulls.list, {
+        owner: context.repo.owner,
+        repo: context.repo.repo,
+        state: "open",
+        per_page: 100,
+      }),
+    [],
+  );
+  return records || [];
+}
+
 /**
  * Find OPEN PRs (including drafts) that link to the given issue number.
  * Uses a scoped search + body/title parse to avoid listing every PR.
