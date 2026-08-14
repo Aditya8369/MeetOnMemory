@@ -82,6 +82,7 @@ const SpeakingTimeBreakdown = ({ meetingId }) => {
     if (meetingId) {
       fetchData();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [meetingId]);
 
   if (loading) {
