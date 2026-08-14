@@ -116,7 +116,12 @@ router.use("/api/speaker-mappings", speakerMappingRoutes);
 router.use("/api/note-versions", noteVersionRoutes);
 router.use("/api/reports", reportRoutes);
 router.use("/api/agenda-suggestions", agendaSuggestionRoutes);
-router.use("/api/translations", translationRoutes);
+// Both spellings are in live use by the client and neither can be dropped
+// without breaking a page: services/translationApi.js calls /api/translations,
+// while MultiLanguageTranscript.jsx and LanguagePreferences.jsx call
+// /api/translation, which was never mounted (Issue #1563). Aliased in the same
+// style as /api/organization and /api/user above.
+router.use(["/api/translation", "/api/translations"], translationRoutes);
 router.use("/api/personal-notes", personalNoteRoutes);
 router.use("/api/template-library", templateLibraryRoutes);
 router.use("/api/transcript-annotations", transcriptAnnotationRoutes);
