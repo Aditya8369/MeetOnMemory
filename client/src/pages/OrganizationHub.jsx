@@ -6,6 +6,7 @@ import OrganizationHeader from "../components/organization/OrganizationHeader";
 import OrganizationGrid from "../components/organization/OrganizationGrid";
 import OrganizationEmptyState from "../components/organization/OrganizationEmptyState";
 import TopContributorsWidget from "../components/organization/TopContributorsWidget";
+import ParkingLotBacklog from "../components/organization/ParkingLotBacklog";
 
 // Organization Hub page for managing user organizations
 const OrganizationHub = () => {
@@ -51,8 +52,9 @@ const OrganizationHub = () => {
               <h2 className="text-xl font-semibold text-gray-900 dark:text-gray-100 mb-4">
                 Engagement
               </h2>
-              <div className="sticky top-24 h-[400px]">
+              <div className="sticky top-24 h-[400px] flex flex-col gap-8">
                 <TopContributorsWidget organizationId={organizations[0]?._id} />
+                <ParkingLotBacklog organizationId={organizations[0]?._id} />
               </div>
             </div>
           </div>
