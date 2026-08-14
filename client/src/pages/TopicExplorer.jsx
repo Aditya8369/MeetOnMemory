@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useContext, useMemo } from "react";
-import { useAuth } from "@clerk/clerk-react";
-import axios from "axios";
 import AppContent from "../context/AppContent.js";
+import apiClient from "../services/apiClient.js";
 import {
   ScatterChart,
   Scatter,
@@ -23,7 +22,6 @@ const COLORS = [
 ];
 
 const TopicExplorer = () => {
-  const { getToken } = useAuth();
   const { userData } = useContext(AppContent);
   const [clusters, setClusters] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -40,12 +38,9 @@ const TopicExplorer = () => {
 
   const fetchClusters = async () => {
     try {
-      const token = await getToken();
       if (!orgId) return;
 
-      const res = await axios.get(`/api/topics/clusters/org/${orgId}`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
+      const res = await apiClient.get(`/api/topics/clusters/org/${orgId}`);
       setClusters(res.data.data);
     } catch (error) {
       console.error("Error fetching clusters", error);
@@ -56,14 +51,9 @@ const TopicExplorer = () => {
 
   const renameCluster = async (clusterId, newLabel) => {
     try {
-      const token = await getToken();
-      await axios.put(
-        `/api/topics/clusters/${clusterId}`,
-        { label: newLabel },
-        {
-          headers: { Authorization: `Bearer ${token}` },
-        },
-      );
+      await apiClient.put(`/api/topics/clusters/${clusterId}`, {
+        label: newLabel,
+      });
       fetchClusters(); // Refresh
     } catch (error) {
       console.error("Error renaming cluster", error);

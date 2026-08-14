@@ -1,6 +1,6 @@
-import React, { useState, useEffect, useContext, useCallback } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
-import AppContent from "../context/AppContent";
+import apiClient from "../services/apiClient.js";
 import Navbar from "../components/Navbar.jsx";
 import {
   BarChart,
@@ -35,7 +35,6 @@ import { toast } from "react-toastify";
 
 const FollowUpDashboard = () => {
   const navigate = useNavigate();
-  const { backendUrl } = useContext(AppContent);
 
   const [tasks, setTasks] = useState([]);
   const [analytics, setAnalytics] = useState(null);
@@ -47,27 +46,16 @@ const FollowUpDashboard = () => {
   const fetchTasks = useCallback(async () => {
     try {
       setLoading(true);
-      const params = new URLSearchParams({
+      const params = {
         page: page.toString(),
         limit: "20",
-      });
+      };
 
       if (statusFilter !== "all") {
-        params.append("status", statusFilter);
+        params.status = statusFilter;
       }
 
-      const response = await fetch(
-        `${backendUrl}/api/followup/tasks?${params}`,
-        {
-          credentials: "include",
-        },
-      );
-
-      if (!response.ok) {
-        throw new Error("Failed to fetch tasks");
-      }
-
-      const data = await response.json();
+      const { data } = await apiClient.get("/api/followup/tasks", { params });
       setTasks(data.tasks);
       setPagination(data.pagination);
     } catch (error) {
@@ -76,24 +64,16 @@ const FollowUpDashboard = () => {
     } finally {
       setLoading(false);
     }
-  }, [backendUrl, page, statusFilter]);
+  }, [page, statusFilter]);
 
   const fetchAnalytics = useCallback(async () => {
     try {
-      const response = await fetch(`${backendUrl}/api/followup/analytics`, {
-        credentials: "include",
-      });
-
-      if (!response.ok) {
-        throw new Error("Failed to fetch analytics");
-      }
-
-      const data = await response.json();
+      const { data } = await apiClient.get("/api/followup/analytics");
       setAnalytics(data);
     } catch (error) {
       console.error("Error fetching analytics:", error);
     }
-  }, [backendUrl]);
+  }, []);
 
   useEffect(() => {
     fetchTasks();
@@ -102,19 +82,7 @@ const FollowUpDashboard = () => {
 
   const updateTaskStatus = async (taskId, status) => {
     try {
-      const response = await fetch(
-        `${backendUrl}/api/followup/tasks/${taskId}/status`,
-        {
-          method: "PATCH",
-          headers: { "Content-Type": "application/json" },
-          credentials: "include",
-          body: JSON.stringify({ status }),
-        },
-      );
-
-      if (!response.ok) {
-        throw new Error("Failed to update status");
-      }
+      await apiClient.patch(`/api/followup/tasks/${taskId}/status`, { status });
 
       toast.success("Task status updated");
       fetchTasks();
@@ -127,17 +95,7 @@ const FollowUpDashboard = () => {
 
   const acknowledgeTask = async (taskId) => {
     try {
-      const response = await fetch(
-        `${backendUrl}/api/followup/tasks/${taskId}/acknowledge`,
-        {
-          method: "POST",
-          credentials: "include",
-        },
-      );
-
-      if (!response.ok) {
-        throw new Error("Failed to acknowledge task");
-      }
+      await apiClient.post(`/api/followup/tasks/${taskId}/acknowledge`);
 
       toast.success("Task acknowledged");
       fetchTasks();

@@ -7,6 +7,7 @@ import React, {
 } from "react";
 import AppContent from "../context/AppContent";
 import Navbar from "../components/Navbar.jsx";
+import apiClient from "../services/apiClient.js";
 import * as d3 from "d3";
 import {
   Network,
@@ -62,9 +63,12 @@ const getEdgeColor = (type) => {
 };
 
 const KnowledgeGraph = () => {
-  const { userData, backendUrl } = useContext(AppContent);
+  const { userData } = useContext(AppContent);
   const svgRef = useRef(null);
   const containerRef = useRef(null);
+
+  const organizationId =
+    userData?.organization?._id || userData?.organization || null;
 
   const [graph, setGraph] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -81,18 +85,16 @@ const KnowledgeGraph = () => {
   const [zoom, setZoom] = useState(1);
 
   const fetchGraph = useCallback(async () => {
+    if (!organizationId) {
+      setLoading(false);
+      return;
+    }
+
     try {
       setLoading(true);
-      const response = await fetch(
-        `${backendUrl}/api/graph/organization/${userData?.organization}`,
-        { credentials: "include" },
+      const { data } = await apiClient.get(
+        `/api/graph/organization/${organizationId}`,
       );
-
-      if (!response.ok) {
-        throw new Error("Failed to fetch graph");
-      }
-
-      const data = await response.json();
       setGraph(data);
     } catch (error) {
       console.error("Error fetching graph:", error);
@@ -100,7 +102,7 @@ const KnowledgeGraph = () => {
     } finally {
       setLoading(false);
     }
-  }, [backendUrl, userData?.organization]);
+  }, [organizationId]);
 
   useEffect(() => {
     fetchGraph();
@@ -243,31 +245,21 @@ const KnowledgeGraph = () => {
     }
   }, [graph, filters, zoom, renderGraph]);
 
-  const searchEntities = useCallback(
-    async (query) => {
-      if (!query.trim()) {
-        setSearchResults([]);
-        return;
-      }
+  const searchEntities = useCallback(async (query) => {
+    if (!query.trim()) {
+      setSearchResults([]);
+      return;
+    }
 
-      try {
-        const response = await fetch(
-          `${backendUrl}/api/graph/search?query=${encodeURIComponent(query)}`,
-          { credentials: "include" },
-        );
-
-        if (!response.ok) {
-          throw new Error("Search failed");
-        }
-
-        const data = await response.json();
-        setSearchResults(data.results || []);
-      } catch (error) {
-        console.error("Error searching:", error);
-      }
-    },
-    [backendUrl],
-  );
+    try {
+      const { data } = await apiClient.get("/api/graph/search", {
+        params: { query },
+      });
+      setSearchResults(data.results || []);
+    } catch (error) {
+      console.error("Error searching:", error);
+    }
+  }, []);
 
   const handleSearch = (e) => {
     const query = e.target.value;
@@ -279,41 +271,28 @@ const KnowledgeGraph = () => {
     }
   };
 
-  const exportGraph = useCallback(
-    async (format) => {
-      try {
-        const response = await fetch(`${backendUrl}/api/graph/export`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          credentials: "include",
-          body: JSON.stringify({ format, orgId: userData?.organization }),
+  const exportGraph = useCallback(async (format) => {
+    try {
+      const { data } = await apiClient.post("/api/graph/export", { format });
+
+      if (format === "json") {
+        const blob = new Blob([JSON.stringify(data, null, 2)], {
+          type: "application/json",
         });
-
-        if (!response.ok) {
-          throw new Error("Export failed");
-        }
-
-        if (format === "json") {
-          const data = await response.json();
-          const blob = new Blob([JSON.stringify(data, null, 2)], {
-            type: "application/json",
-          });
-          const url = URL.createObjectURL(blob);
-          const a = document.createElement("a");
-          a.href = url;
-          a.download = "knowledge-graph.json";
-          a.click();
-          URL.revokeObjectURL(url);
-        }
-
-        toast.success(`Graph exported as ${format.toUpperCase()}`);
-      } catch (error) {
-        console.error("Error exporting:", error);
-        toast.error("Failed to export graph");
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = "knowledge-graph.json";
+        a.click();
+        URL.revokeObjectURL(url);
       }
-    },
-    [backendUrl, userData?.organization],
-  );
+
+      toast.success(`Graph exported as ${format.toUpperCase()}`);
+    } catch (error) {
+      console.error("Error exporting:", error);
+      toast.error("Failed to export graph");
+    }
+  }, []);
 
   const handleZoomIn = () => {
     setZoom((z) => Math.min(z * 1.2, 4));
