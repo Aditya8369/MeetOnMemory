@@ -129,6 +129,7 @@ describe("Route Consolidation and Registration", () => {
       "/api/note-versions",
       "/api/reports",
       "/api/agenda-suggestions",
+      "/api/translation",
       "/api/translations",
       "/api/personal-notes",
       "/api/template-library",
