@@ -13,6 +13,7 @@ import geminiRoutes from "./geminiRoutes.js";
 import userRoutes from "./userRoutes.js";
 import notificationRoutes from "./notificationRoutes.js";
 import knowledgeRoutes from "./knowledgeRoutes.js";
+import knowledgeGraphRoutes from "./knowledgeGraphRoutes.js";
 import policyComplianceRoutes from "./policyComplianceRoutes.js";
 import sessionRoutes from "./sessionRoutes.js";
 import transcriptRoutes from "./transcriptRoutes.js";
@@ -25,6 +26,7 @@ import tagRoutes from "./tagRoutes.js";
 import pollRoutes from "./pollRoutes.js";
 import attachmentRoutes from "./attachmentRoutes.js";
 import meetingSeriesRoutes from "./meetingSeriesRoutes.js";
+import carryForwardRoutes from "./carryForwardRoutes.js";
 import comparisonRoutes from "./comparisonRoutes.js";
 import dashboardRoutes from "./dashboardRoutes.js";
 import agendaTimerRoutes from "./agendaTimerRoutes.js";
@@ -57,6 +59,7 @@ import meetingGoalRoutes from "./meetingGoalRoutes.js";
 import actionItemDependencyRoutes from "./actionItemDependencyRoutes.js";
 import parkingLotRoutes from "./parkingLotRoutes.js";
 import sentimentTimelineRoutes from "./sentimentTimelineRoutes.js";
+import meetingRsvpRoutes from "./meetingRsvpRoutes.js";
 
 import calendarRoutes from "./calendarRoutes.js";
 import assistantRoutes from "./assistantRoutes.js";
@@ -88,6 +91,10 @@ router.use("/api/gemini", geminiRoutes);
 router.use(["/api/user", "/api/users"], userRoutes);
 router.use(["/api/notification", "/api/notifications"], notificationRoutes);
 router.use("/api/knowledge", knowledgeRoutes);
+// The Knowledge Graph page (client/src/pages/KnowledgeGraph.jsx) and the
+// controller's own JSDoc both address this router as /api/graph. It had no
+// registration at all until Issue #1560, so every one of its endpoints 404'd.
+router.use("/api/graph", knowledgeGraphRoutes);
 router.use("/api/calendar", calendarRoutes);
 router.use("/api/compliance", policyComplianceRoutes);
 router.use("/api/sessions", sessionRoutes);
@@ -102,6 +109,7 @@ router.use("/api/tags", tagRoutes);
 router.use("/api/polls", pollRoutes);
 router.use("/api/meetings/:meetingId/attachments", attachmentRoutes);
 router.use("/api/meeting-series", meetingSeriesRoutes);
+router.use("/api/meeting-series", carryForwardRoutes);
 router.use("/api/comparison", comparisonRoutes);
 router.use("/api/dashboard", dashboardRoutes);
 router.use("/api/digest-preferences", digestRoutes);
@@ -139,5 +147,6 @@ router.use("/api/meeting-goals", meetingGoalRoutes);
 router.use("/api/action-item-dependencies", actionItemDependencyRoutes);
 router.use("/api/parking-lot", parkingLotRoutes);
 router.use("/api/sentiment-timeline", sentimentTimelineRoutes);
+router.use("/api/rsvps", meetingRsvpRoutes);
 
 export default router;

@@ -1,12 +1,4 @@
-import {
-  vi,
-  describe,
-  beforeEach,
-  afterEach,
-  afterAll,
-  it,
-  expect,
-} from "vitest";
+import { jest } from "@jest/globals";
 import mongoose from "mongoose";
 import request from "supertest";
 import { app } from "../server.js";
@@ -21,12 +13,12 @@ import {
 } from "../services/GenerativeAIService.js";
 
 // Mock AI Service
-vi.mock("../services/GenerativeAIService.js", () => ({
-  generateText: vi.fn(),
-  parseJsonOutput: vi.fn(),
+jest.mock("../services/GenerativeAIService.js", () => ({
+  generateText: jest.fn(),
+  parseJsonOutput: jest.fn(),
 }));
 
-vi.mock("../middleware/userAuth.js", () => ({
+jest.mock("../middleware/userAuth.js", () => ({
   default: (req, res, next) => {
     req.user = { _id: new mongoose.Types.ObjectId() };
     next();
@@ -95,7 +87,7 @@ describe("Sentiment Timeline Feature", () => {
   });
 
   afterEach(() => {
-    vi.clearAllMocks();
+    jest.clearAllMocks();
   });
 
   afterAll(async () => {
