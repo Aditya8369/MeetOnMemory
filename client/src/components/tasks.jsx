@@ -23,10 +23,12 @@ import {
   GitMerge,
   ShieldAlert,
 } from "lucide-react";
+import DependencyManager from "./DependencyManager";
 
 /**
  * Tasks.jsx
  * Displays and manages action items extracted from meeting summaries
+
  */
 
 const STATUS_STYLES = {
@@ -730,6 +732,9 @@ const Tasks = () => {
                       </button>
                     </div>
                   </div>
+
+                  {/* Dependencies Manager */}
+                  <DependencyManager task={selectedTask} />
                 </div>
               </div>
             </div>

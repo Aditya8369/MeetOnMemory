@@ -3,7 +3,7 @@ import {
   getSpeakingTimeBreakdown,
   getSpeakingTimeTrends,
 } from "../controllers/speakingTimeController.js";
-import { userAuth } from "../middleware/authMiddleware.js";
+import userAuth from "../middleware/userAuth.js";
 
 const router = express.Router();
 

@@ -1,6 +1,5 @@
 import { initRedis } from "../services/redisService.js";
 import {
-  initAIWorker,
   initAiResultsWorker,
   initDataExportWorker,
   initExportCleanupWorker,
@@ -60,7 +59,6 @@ export async function startWorkers(app) {
   // the resulting configuration visible in the boot log either way.
   console.log(describeRateLimitBacking().message);
 
-  await safeInit("AI Worker", () => initAIWorker(app));
   await safeInit("AI Results Worker", () => initAiResultsWorker(app));
   await safeInit("Data Export Worker", () => initDataExportWorker(app));
   await safeInit("Export Cleanup Worker", () => initExportCleanupWorker());

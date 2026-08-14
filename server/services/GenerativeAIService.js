@@ -432,3 +432,207 @@ Return ONLY a valid JSON array matching this structure (no markdown formatting, 
 
   return parsed;
 };
+
+const chunkTextByBudget = (text, { maxChars, overlapChars }) => {
+  if (!text) return [];
+  const chunks = [];
+  let startIndex = 0;
+  while (startIndex < text.length) {
+    let endIndex = startIndex + maxChars;
+    if (endIndex < text.length) {
+      const nextNewline = text.indexOf("\n", endIndex);
+      if (nextNewline !== -1 && nextNewline - endIndex < 500) {
+        endIndex = nextNewline;
+      }
+    }
+    chunks.push(text.slice(startIndex, endIndex));
+    startIndex = endIndex - overlapChars;
+    if (startIndex < 0) startIndex = 0;
+    if (endIndex >= text.length) break;
+  }
+  return chunks;
+};
+
+const buildMoMPrompt = (
+  transcriptSegment,
+  date,
+  title,
+  context = {},
+  customInstructions = null,
+) => {
+  const { part, totalParts } = context;
+  const chunkNotice =
+    part && totalParts > 1
+      ? `\n⚠️ This is part ${part} of ${totalParts} of a longer transcript. Extract only what is present in THIS part; do not invent content from the missing parts, and do not summarise the meeting as a whole.\n`
+      : "";
+  const customInstructionsNotice = customInstructions
+    ? `\n⚠️ CUSTOM INSTRUCTIONS: ${customInstructions}\n`
+    : "";
+
+  return `
+You are an advanced AI meeting assistant responsible for preparing *formal, well-structured Minutes of Meeting (MoM)*
+from the transcript provided below.
+The MoM should be factual, concise, and formatted for professional use in organizations, universities, or institutions.
+Avoid repetition, filler words, and unnecessary phrases. Capture key insights, outcomes, and responsibilities accurately.
+${chunkNotice}
+${customInstructionsNotice}
+🎯 Your goal is to return a clean JSON object with the following fields:
+{
+  "title": "A clear, professional meeting title (e.g., 'AI Integration Strategy Discussion')",
+  "date": "YYYY-MM-DD",
+  "summary": "A 2-3 paragraph professional executive summary",
+  "agenda": ["Topic 1", "Topic 2"],
+  "key_discussions": ["Discussion point 1", "Discussion point 2"],
+  "decisions": ["Decision 1", "Decision 2"],
+  "action_items": [
+    {
+      "task": "Specific action to be taken",
+      "owner": "Person responsible",
+      "due_date": "YYYY-MM-DD or 'TBD'"
+    }
+  ],
+  "attendees": ["Person 1", "Person 2"],
+  "questions_raised": ["Question 1", "Question 2"],
+  "keywords": ["Keyword1", "Keyword2"],
+  "notes": "Any other notable information not covered above"
+}
+
+Transcript:
+${transcriptSegment}
+`;
+};
+
+const mergeMoMParts = (parts) => {
+  const merged = { ...parts[0] };
+  for (let i = 1; i < parts.length; i++) {
+    const part = parts[i];
+    if (part.summary) merged.summary += "\n\n" + part.summary;
+    if (part.agenda)
+      merged.agenda = [...new Set([...merged.agenda, ...part.agenda])];
+    if (part.key_discussions)
+      merged.key_discussions = [
+        ...merged.key_discussions,
+        ...part.key_discussions,
+      ];
+    if (part.decisions)
+      merged.decisions = [...merged.decisions, ...part.decisions];
+    if (part.action_items)
+      merged.action_items = [...merged.action_items, ...part.action_items];
+    if (part.attendees)
+      merged.attendees = [...new Set([...merged.attendees, ...part.attendees])];
+    if (part.questions_raised)
+      merged.questions_raised = [
+        ...merged.questions_raised,
+        ...part.questions_raised,
+      ];
+    if (part.keywords)
+      merged.keywords = [...new Set([...merged.keywords, ...part.keywords])];
+    if (part.notes) merged.notes += "\n\n" + part.notes;
+  }
+  return merged;
+};
+
+const runLocalFallback = async (textToSummarize, date, title, degradation) => {
+  return {
+    title: title || "Local Summary",
+    date,
+    summary: textToSummarize.substring(0, 1024),
+    generation: { provider: "local", degraded: true, ...degradation },
+  };
+};
+
+export const generateMoMDetailed = async (
+  textToSummarize,
+  date,
+  title,
+  customInstructions = null,
+) => {
+  const source = String(textToSummarize ?? "");
+  const startedAt = Date.now();
+
+  let degradation = { reason: "unknown", errorKind: null };
+
+  try {
+    const chunks = chunkTextByBudget(source, {
+      maxChars: GEMINI_MAX_PROMPT_CHARS(),
+      overlapChars: GEMINI_CHUNK_OVERLAP_CHARS(),
+    });
+
+    if (chunks.length === 0) {
+      throw new Error("Transcript is empty — nothing to summarize.");
+    }
+
+    const maxChunks = GEMINI_MAX_CHUNKS();
+    const usedChunks = chunks.slice(0, maxChunks);
+    const droppedChunks = chunks.length - usedChunks.length;
+
+    const parts = [];
+    for (let index = 0; index < usedChunks.length; index += 1) {
+      const prompt = buildMoMPrompt(
+        usedChunks[index],
+        date,
+        title,
+        { part: index + 1, totalParts: usedChunks.length },
+        customInstructions,
+      );
+
+      const outputText = await generateText(
+        prompt,
+        `Gemini MoM part ${index + 1}/${usedChunks.length}`,
+      );
+
+      const parsed = parseJsonOutput(outputText);
+      parts.push(parsed ?? { rawText: outputText });
+    }
+
+    const structured =
+      usedChunks.length === 1 ? parts[0] : mergeMoMParts(parts);
+
+    return {
+      mom: structured,
+      generation: {
+        provider: "gemini",
+        model: GEMINI_MODEL,
+        degraded: droppedChunks > 0,
+        reason: droppedChunks > 0 ? "chunk_limit_exceeded" : null,
+        errorKind: null,
+        truncated: droppedChunks > 0,
+        inputCharsUsed: usedChunks.reduce((sum, c) => sum + c.length, 0),
+        inputCharsTotal: source.length,
+        chunks: usedChunks.length,
+        durationMs: Date.now() - startedAt,
+        generatedAt: new Date().toISOString(),
+      },
+    };
+  } catch (gemErr) {
+    degradation = {
+      reason: "gemini_failed",
+      errorKind: gemErr?.kind ?? AI_ERROR_KIND.UNKNOWN,
+    };
+  }
+
+  try {
+    const mom = await runLocalFallback(source, date, title, degradation);
+    return {
+      mom,
+      generation: { ...mom.generation, durationMs: Date.now() - startedAt },
+    };
+  } catch (hfErr) {
+    throw new Error("Both Gemini and Local fallback summarization failed");
+  }
+};
+
+export const generateMoMWithAI = async (
+  textToSummarize,
+  date,
+  title,
+  customInstructions = null,
+) => {
+  const { mom } = await generateMoMDetailed(
+    textToSummarize,
+    date,
+    title,
+    customInstructions,
+  );
+  return mom;
+};
