@@ -96,7 +96,11 @@ router.use("/api/knowledge", knowledgeRoutes);
 // registration at all until Issue #1560, so every one of its endpoints 404'd.
 router.use("/api/graph", knowledgeGraphRoutes);
 router.use("/api/calendar", calendarRoutes);
-router.use("/api/compliance", policyComplianceRoutes);
+// client/src/services/policyComplianceApi.js and every @route line in
+// policyComplianceController.js address this router as /api/policy-compliance.
+// It was mounted at /api/compliance, which nothing calls, so the whole
+// compliance dashboard 404'd (Issue #1562).
+router.use("/api/policy-compliance", policyComplianceRoutes);
 router.use("/api/sessions", sessionRoutes);
 router.use("/api/assistant", assistantRoutes);
 router.use("/api/transcripts", transcriptRoutes);
