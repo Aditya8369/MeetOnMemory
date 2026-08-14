@@ -64,6 +64,7 @@ export default {
     "automationRulesRbac.test.js",
     "calendarConnectionSync.test.js",
     "clerkUserProvisioningRace.test.js",
+    "reactionSocketAuthorization.test.js",
     "translationAuthorization.test.js",
     "policyComplianceRoutePrefix.test.js",
     "knowledgeGraphRouteMount.test.js",
