@@ -9,6 +9,8 @@ router.use(userAuth);
 
 router.post("/", meetingChecklistController.createChecklist);
 router.get("/", meetingChecklistController.getChecklist);
+router.put("/", meetingChecklistController.updateChecklist);
+router.delete("/", meetingChecklistController.deleteChecklist);
 router.patch("/toggle", meetingChecklistController.toggleItem);
 router.get("/readiness", meetingChecklistController.getReadiness);
 
