@@ -13,6 +13,7 @@ import geminiRoutes from "./geminiRoutes.js";
 import userRoutes from "./userRoutes.js";
 import notificationRoutes from "./notificationRoutes.js";
 import knowledgeRoutes from "./knowledgeRoutes.js";
+import knowledgeGraphRoutes from "./knowledgeGraphRoutes.js";
 import policyComplianceRoutes from "./policyComplianceRoutes.js";
 import sessionRoutes from "./sessionRoutes.js";
 import transcriptRoutes from "./transcriptRoutes.js";
@@ -88,6 +89,10 @@ router.use("/api/gemini", geminiRoutes);
 router.use(["/api/user", "/api/users"], userRoutes);
 router.use(["/api/notification", "/api/notifications"], notificationRoutes);
 router.use("/api/knowledge", knowledgeRoutes);
+// The Knowledge Graph page (client/src/pages/KnowledgeGraph.jsx) and the
+// controller's own JSDoc both address this router as /api/graph. It had no
+// registration at all until Issue #1560, so every one of its endpoints 404'd.
+router.use("/api/graph", knowledgeGraphRoutes);
 router.use("/api/calendar", calendarRoutes);
 router.use("/api/compliance", policyComplianceRoutes);
 router.use("/api/sessions", sessionRoutes);
