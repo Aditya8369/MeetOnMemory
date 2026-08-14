@@ -65,5 +65,6 @@ export default {
     "calendarConnectionSync.test.js",
     "clerkUserProvisioningRace.test.js",
     "policyComplianceRoutePrefix.test.js",
+    "knowledgeGraphRouteMount.test.js",
   ],
 };

@@ -8,21 +8,36 @@ import {
 } from "../utils/errors.js";
 import { sendSuccess } from "../utils/responseHandler.js";
 
+const checklistItemSchema = z.object({
+  text: z.string().min(1, "Item text is required"),
+  description: z.string().optional(),
+  required: z.boolean().optional(),
+});
+
 const createChecklistSchema = z.object({
-  items: z
-    .array(
-      z.object({
-        text: z.string().min(1, "Item text is required"),
-        description: z.string().optional(),
-        required: z.boolean().optional(),
-      }),
-    )
-    .min(1, "At least one item is required"),
+  items: z.array(checklistItemSchema).min(1, "At least one item is required"),
 });
 
 const toggleItemSchema = z.object({
   itemIndex: z.number().int().min(0),
 });
+
+const canManageChecklist = (meeting, req) =>
+  meeting.uploadedBy.toString() === req.user.id || req.user.role === "admin";
+
+const requireMeetingOwner = (meeting, req, message) => {
+  if (!canManageChecklist(meeting, req)) {
+    throw new UnauthorizedError(message);
+  }
+};
+
+const findMeetingOrThrow = async (meetingId) => {
+  const meeting = await Meeting.findById(meetingId);
+  if (!meeting) {
+    throw new NotFoundError("Meeting not found");
+  }
+  return meeting;
+};
 
 export const createChecklist = async (req, res, next) => {
   try {
@@ -30,16 +45,12 @@ export const createChecklist = async (req, res, next) => {
     const { items } = createChecklistSchema.parse(req.body);
     const userId = req.user.id;
 
-    const meeting = await Meeting.findById(meetingId);
-    if (!meeting) {
-      throw new NotFoundError("Meeting not found");
-    }
-
-    if (meeting.uploadedBy.toString() !== userId && req.user.role !== "admin") {
-      throw new UnauthorizedError(
-        "Only the meeting owner can create a checklist",
-      );
-    }
+    const meeting = await findMeetingOrThrow(meetingId);
+    requireMeetingOwner(
+      meeting,
+      req,
+      "Only the meeting owner can create a checklist",
+    );
 
     const existingChecklist = await MeetingChecklist.findOne({ meetingId });
     if (existingChecklist) {
@@ -63,14 +74,64 @@ export const createChecklist = async (req, res, next) => {
 export const getChecklist = async (req, res, next) => {
   try {
     const { meetingId } = req.params;
-
     const checklist = await MeetingChecklist.findOne({ meetingId });
+
     if (!checklist) {
-      // It's okay if a meeting doesn't have a checklist yet
       return sendSuccess(res, { checklist: null }, "No checklist found");
     }
 
     sendSuccess(res, { checklist }, "Checklist retrieved successfully");
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const updateChecklist = async (req, res, next) => {
+  try {
+    const { meetingId } = req.params;
+    const { items } = createChecklistSchema.parse(req.body);
+
+    const meeting = await findMeetingOrThrow(meetingId);
+    requireMeetingOwner(
+      meeting,
+      req,
+      "Only the meeting owner can update a checklist",
+    );
+
+    const checklist = await MeetingChecklist.findOne({ meetingId });
+    if (!checklist) {
+      throw new NotFoundError("Checklist not found");
+    }
+
+    checklist.items = items;
+    // Item indexes can change when the checklist is edited, so completions
+    // cannot safely be carried over to the new item ordering.
+    checklist.completions = [];
+    await checklist.save();
+
+    sendSuccess(res, { checklist }, "Checklist updated successfully");
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const deleteChecklist = async (req, res, next) => {
+  try {
+    const { meetingId } = req.params;
+
+    const meeting = await findMeetingOrThrow(meetingId);
+    requireMeetingOwner(
+      meeting,
+      req,
+      "Only the meeting owner can delete a checklist",
+    );
+
+    const checklist = await MeetingChecklist.findOneAndDelete({ meetingId });
+    if (!checklist) {
+      throw new NotFoundError("Checklist not found");
+    }
+
+    sendSuccess(res, { checklist }, "Checklist deleted successfully");
   } catch (error) {
     next(error);
   }
@@ -97,14 +158,12 @@ export const toggleItem = async (req, res, next) => {
 
     let updatedChecklist;
     if (completionIndex > -1) {
-      // Remove completion
       updatedChecklist = await MeetingChecklist.findOneAndUpdate(
         { meetingId },
         { $pull: { completions: { itemIndex, userId } } },
         { new: true },
       );
     } else {
-      // Add completion
       updatedChecklist = await MeetingChecklist.findOneAndUpdate(
         { meetingId },
         { $push: { completions: { itemIndex, userId } } },
@@ -127,24 +186,19 @@ export const getReadiness = async (req, res, next) => {
     const { meetingId } = req.params;
     const userId = req.user.id;
 
-    const meeting = await Meeting.findById(meetingId);
-    if (!meeting) {
-      throw new NotFoundError("Meeting not found");
-    }
-
-    if (meeting.uploadedBy.toString() !== userId && req.user.role !== "admin") {
-      throw new UnauthorizedError("Only the meeting owner can view readiness");
-    }
+    const meeting = await findMeetingOrThrow(meetingId);
+    requireMeetingOwner(
+      meeting,
+      req,
+      "Only the meeting owner can view readiness",
+    );
 
     const checklist = await MeetingChecklist.findOne({ meetingId });
     if (!checklist) {
       return sendSuccess(res, { readiness: [] }, "No checklist found");
     }
 
-    // Calculate readiness per participant
     const totalItems = checklist.items.length;
-
-    // Group completions by user
     const userCompletions = checklist.completions.reduce((acc, comp) => {
       const uid = comp.userId.toString();
       if (!acc[uid]) acc[uid] = 0;
@@ -159,6 +213,7 @@ export const getReadiness = async (req, res, next) => {
         p._id?.toString() ||
         p.id?.toString();
       const completedCount = uid ? userCompletions[uid] || 0 : 0;
+
       return {
         userId: p.user || p.userId || p._id || p.id,
         name: p.name || p.email || "Unknown",

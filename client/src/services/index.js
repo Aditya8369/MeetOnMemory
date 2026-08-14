@@ -26,3 +26,4 @@ export { default as meetingGoalApi } from "./meetingGoalApi";
 export * from "./actionItemDependencyApi";
 export * from "./parkingLotApi";
 export { default as sentimentTimelineApi } from "./sentimentTimelineApi";
+export { default as carryForwardApi } from "./carryForwardApi";

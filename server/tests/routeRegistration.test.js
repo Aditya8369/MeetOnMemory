@@ -70,6 +70,7 @@ describe("Route Consolidation and Registration", () => {
       "/api/glossary",
       "/api/ai-summary-templates",
       "/api/topics",
+      "/api/quality",
     ];
 
     for (const prefix of standaloneRoutePrefixes) {
@@ -139,6 +140,7 @@ describe("Route Consolidation and Registration", () => {
       "/api/meeting-health",
       "/api/workspace",
       "/api/recap",
+      "/api/quality",
     ];
 
     for (const routePath of expectedRoutes) {

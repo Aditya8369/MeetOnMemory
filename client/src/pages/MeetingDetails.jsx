@@ -11,6 +11,7 @@ import MeetingAgenda from "../components/meeting-details/MeetingAgenda";
 import MeetingMetadata from "../components/meeting-details/MeetingMetadata";
 import MeetingActions from "../components/meeting-details/MeetingActions";
 import TranscriptAnnotations from "../components/meeting-details/TranscriptAnnotations";
+import RsvpPanel from "../components/meeting-details/RsvpPanel";
 import KeyMomentsPanel from "../components/meetings/KeyMomentsPanel";
 import SentimentTimeline from "../components/meetings/SentimentTimeline";
 import MeetingGoalsPanel from "../components/meetings/MeetingGoalsPanel";
@@ -19,6 +20,7 @@ import MeetingFollowUpBanner from "../components/meeting-details/MeetingFollowUp
 import PresentMode from "../components/meeting-details/PresentMode";
 import PrepChecklist from "../components/meetings/PrepChecklist";
 import SpeakingTimeBreakdown from "../components/meetings/SpeakingTimeBreakdown";
+import CarryForwardConfig from "../components/meetings/CarryForwardConfig";
 import { useUser } from "@clerk/clerk-react";
 
 const MeetingDetails = () => {
@@ -224,8 +226,27 @@ const MeetingDetails = () => {
         </div>
 
         <MeetingParticipants meeting={meeting} />
+        <RsvpPanel
+          meetingId={meeting._id}
+          isOrganizer={
+            currentUser?.publicMetadata?.dbUserId === meeting.uploadedBy
+          }
+          participants={meeting.participants}
+        />
         <PrepChecklist meeting={meeting} currentUser={currentUser} />
         <MeetingGoalsPanel meeting={meeting} currentUser={currentUser} />
+
+        {meeting.series && (
+          <CarryForwardConfig
+            seriesId={meeting.series._id || meeting.series}
+            currentMeetingId={meeting._id}
+            onApplySuccess={() => {
+              // Reload meeting data to reflect new agenda items
+              window.location.reload();
+            }}
+          />
+        )}
+
         <MeetingAgenda meeting={meeting} />
         <MeetingMetadata meeting={meeting} />
         <MeetingActions
