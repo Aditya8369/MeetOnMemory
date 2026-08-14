@@ -553,7 +553,7 @@ export const togglePin = async (req, res) => {
         .json({ success: false, message: access.error.message });
     }
 
-    // Find the note
+    // Find the note first to check ownership
     let note = await PersonalNote.findOne({ userId, meetingId });
 
     if (note && note.userId.toString() !== userId.toString()) {
@@ -563,20 +563,35 @@ export const togglePin = async (req, res) => {
       });
     }
 
-    if (!note) {
-      // Create note if it doesn't exist (pinned by default or set explicitly)
-      note = await PersonalNote.create({
-        userId,
-        meetingId,
-        content: "",
-        title: "",
-        isPinned: req.body.isPinned !== undefined ? req.body.isPinned : true,
-      });
-    } else {
-      // Toggle pin status or set explicitly
-      note.isPinned =
-        req.body.isPinned !== undefined ? req.body.isPinned : !note.isPinned;
-      await note.save();
+    // Determine target pin state: use request body if provided, fallback to flipping current or defaulting to true
+    const targetIsPinned =
+      req.body.isPinned !== undefined
+        ? req.body.isPinned
+        : note
+          ? !note.isPinned
+          : true;
+
+    // Atomic update/upsert to avoid race conditions
+    try {
+      note = await PersonalNote.findOneAndUpdate(
+        { userId, meetingId },
+        {
+          $set: { isPinned: targetIsPinned },
+          $setOnInsert: { content: "", title: "", annotations: [] },
+        },
+        { new: true, upsert: true, runValidators: true },
+      );
+    } catch (err) {
+      if (err.code === 11000) {
+        // Retry findOneAndUpdate in case of concurrent insert duplicate key error
+        note = await PersonalNote.findOneAndUpdate(
+          { userId, meetingId },
+          { $set: { isPinned: targetIsPinned } },
+          { new: true, runValidators: true },
+        );
+      } else {
+        throw err;
+      }
     }
 
     res.status(200).json({

@@ -37,6 +37,7 @@ const PersonalNotesSidebar = ({ meetingId, isOpen }) => {
   const [saveStatus, setSaveStatus] = useState("idle"); // idle, saving, saved, error
   const [isClearing, setIsClearing] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [isPinning, setIsPinning] = useState(false);
 
   // Character limits (matching backend)
   const LIMITS = {
@@ -168,14 +169,26 @@ const PersonalNotesSidebar = ({ meetingId, isOpen }) => {
    * Toggle pin status of the note
    */
   const handleTogglePin = async () => {
+    if (isPinning) return;
+    setIsPinning(true);
+    const targetPinned = !note?.isPinned;
+    // Optimistic update
+    setNote((prev) => ({ ...prev, isPinned: targetPinned }));
     try {
-      const response = await personalNoteApi.togglePin(meetingId);
+      const response = await personalNoteApi.togglePin(meetingId, targetPinned);
       if (response.success) {
         setNote((prev) => ({ ...prev, isPinned: response.isPinned }));
+      } else {
+        // Revert on failure
+        setNote((prev) => ({ ...prev, isPinned: !targetPinned }));
       }
     } catch (err) {
       console.error("Error toggling pin:", err);
       setError("Failed to update pin status");
+      // Revert on error
+      setNote((prev) => ({ ...prev, isPinned: !targetPinned }));
+    } finally {
+      setIsPinning(false);
     }
   };
 
@@ -324,7 +337,8 @@ const PersonalNotesSidebar = ({ meetingId, isOpen }) => {
           {/* Pin Toggle Button */}
           <button
             onClick={handleTogglePin}
-            className={`p-2 rounded-lg transition-colors ${
+            disabled={isPinning}
+            className={`p-2 rounded-lg transition-colors ${isPinning ? "opacity-50 cursor-not-allowed" : ""} ${
               note.isPinned
                 ? "bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400"
                 : "text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-800"

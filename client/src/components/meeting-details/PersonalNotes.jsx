@@ -15,6 +15,7 @@ const PersonalNotes = ({ meeting }) => {
   const [isPinned, setIsPinned] = useState(false);
   const [saveStatus, setSaveStatus] = useState("saved"); // saving, saved, error
   const [annotations, setAnnotations] = useState([]);
+  const [isPinning, setIsPinning] = useState(false);
 
   const [tooltipVisible, setTooltipVisible] = useState(false);
   const [tooltipPosition, setTooltipPosition] = useState({ top: 0, left: 0 });
@@ -67,13 +68,28 @@ const PersonalNotes = ({ meeting }) => {
   }, [content, saveContent]);
 
   const togglePin = async () => {
+    if (isPinning) return;
+    setIsPinning(true);
     const newPinnedStatus = !isPinned;
+    // Optimistic update
     setIsPinned(newPinnedStatus);
     try {
-      await personalNoteApi.togglePin(meeting._id, newPinnedStatus);
+      const response = await personalNoteApi.togglePin(
+        meeting._id,
+        newPinnedStatus,
+      );
+      if (response.success) {
+        setIsPinned(response.isPinned);
+      } else {
+        // Revert on failure
+        setIsPinned(!newPinnedStatus);
+      }
     } catch (error) {
       console.error("Error toggling pin", error);
-      setIsPinned(!newPinnedStatus); // revert on error
+      // Revert on error
+      setIsPinned(!newPinnedStatus);
+    } finally {
+      setIsPinning(false);
     }
   };
 
@@ -202,7 +218,8 @@ const PersonalNotes = ({ meeting }) => {
           </div>
           <button
             onClick={togglePin}
-            className={`p-2 rounded-full transition-colors ${isPinned ? "bg-amber-100 text-amber-600 dark:bg-amber-900/30 dark:text-amber-400" : "bg-slate-100 text-slate-400 hover:text-amber-500 dark:bg-gray-700"}`}
+            disabled={isPinning}
+            className={`p-2 rounded-full transition-colors ${isPinning ? "opacity-50 cursor-not-allowed" : ""} ${isPinned ? "bg-amber-100 text-amber-600 dark:bg-amber-900/30 dark:text-amber-400" : "bg-slate-100 text-slate-400 hover:text-amber-500 dark:bg-gray-700"}`}
             title={isPinned ? "Unpin note" : "Pin note to dashboard"}
           >
             <Pin className="w-4 h-4" />

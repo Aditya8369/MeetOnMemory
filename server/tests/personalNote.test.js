@@ -94,6 +94,91 @@ describe("PersonalNote API", () => {
     expect(res.body.note.isPinned).toBe(true);
   });
 
+  it("should enforce idempotent pin status operations", async () => {
+    // 1. Send first request to pin
+    const res1 = await request(app)
+      .patch(`/api/personal-notes/${meeting._id}/pin`)
+      .set(authHeader(token))
+      .send({ isPinned: true });
+    expect(res1.statusCode).toBe(200);
+    expect(res1.body.isPinned).toBe(true);
+
+    // 2. Send second request to pin (idempotent, should still be true)
+    const res2 = await request(app)
+      .patch(`/api/personal-notes/${meeting._id}/pin`)
+      .set(authHeader(token))
+      .send({ isPinned: true });
+    expect(res2.statusCode).toBe(200);
+    expect(res2.body.isPinned).toBe(true);
+
+    // 3. Unpin
+    const res3 = await request(app)
+      .patch(`/api/personal-notes/${meeting._id}/pin`)
+      .set(authHeader(token))
+      .send({ isPinned: false });
+    expect(res3.statusCode).toBe(200);
+    expect(res3.body.isPinned).toBe(false);
+  });
+
+  it("should handle rapid concurrent pin/unpin requests safely", async () => {
+    const promises = [
+      request(app)
+        .patch(`/api/personal-notes/${meeting._id}/pin`)
+        .set(authHeader(token))
+        .send({ isPinned: true }),
+      request(app)
+        .patch(`/api/personal-notes/${meeting._id}/pin`)
+        .set(authHeader(token))
+        .send({ isPinned: false }),
+      request(app)
+        .patch(`/api/personal-notes/${meeting._id}/pin`)
+        .set(authHeader(token))
+        .send({ isPinned: true }),
+    ];
+
+    const results = await Promise.all(promises);
+
+    results.forEach((res) => {
+      expect(res.statusCode).toBe(200);
+      expect(res.body.success).toBe(true);
+    });
+
+    const finalNote = await PersonalNote.findOne({
+      userId: user._id,
+      meetingId: meeting._id,
+    });
+    expect(finalNote).not.toBeNull();
+  });
+
+  it("should reject pin requests if the user does not own the note", async () => {
+    const otherUser = await User.create({
+      name: "Other User",
+      email: "otheruser@test.com",
+      password: "password123",
+      role: "member",
+    });
+    otherUser.clerkUserId = `user_test_${otherUser._id}`;
+    await otherUser.save();
+
+    // Create a note owned by the other user
+    await PersonalNote.create({
+      userId: otherUser._id,
+      meetingId: meeting._id,
+      content: "Secret notes",
+      isPinned: false,
+    });
+
+    // Try to toggle pin using the original user's token
+    const res = await request(app)
+      .patch(`/api/personal-notes/${meeting._id}/pin`)
+      .set(authHeader(token))
+      .send({ isPinned: true });
+
+    expect(res.statusCode).toBe(403);
+    expect(res.body.success).toBe(false);
+    expect(res.body.message).toMatch(/Forbidden: You do not own this note/i);
+  });
+
   it("should fetch pinned notes", async () => {
     await PersonalNote.create({
       userId: user._id,
