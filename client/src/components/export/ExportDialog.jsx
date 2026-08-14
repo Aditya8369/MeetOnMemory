@@ -11,14 +11,17 @@ const ExportDialog = ({ meetingId, onClose }) => {
   const [format, setFormat] = useState("pdf");
   const [isGenerating, setIsGenerating] = useState(false);
   const [error, setError] = useState(null);
+  const [sectionOverrides, setSectionOverrides] = useState({});
 
   useEffect(() => {
     const fetchTemplates = async () => {
       try {
         const { data } = await api.get("/export/templates");
-        setTemplates(data.data || []);
-        if (data.data.length > 0) {
-          setSelectedTemplateId(data.data[0]._id);
+        const fetchedTemplates = data.data || [];
+        setTemplates(fetchedTemplates);
+        if (fetchedTemplates.length > 0) {
+          setSelectedTemplateId(fetchedTemplates[0]._id);
+          setSectionOverrides(fetchedTemplates[0].sections || {});
         }
       } catch (err) {
         console.error("Failed to fetch templates:", err);
@@ -26,6 +29,21 @@ const ExportDialog = ({ meetingId, onClose }) => {
     };
     fetchTemplates();
   }, []);
+
+  // Update section overrides when the selected template changes
+  useEffect(() => {
+    const selected = templates.find((t) => t._id === selectedTemplateId);
+    if (selected && selected.sections) {
+      setSectionOverrides(selected.sections);
+    }
+  }, [selectedTemplateId, templates]);
+
+  const handleToggleSection = (key) => {
+    setSectionOverrides((prev) => ({
+      ...prev,
+      [key]: !prev[key],
+    }));
+  };
 
   const handleExport = async () => {
     if (!selectedTemplateId) return;
@@ -36,7 +54,11 @@ const ExportDialog = ({ meetingId, onClose }) => {
     try {
       const response = await api.post(
         `/export/meeting/${meetingId}`,
-        { templateId: selectedTemplateId, format },
+        {
+          templateId: selectedTemplateId,
+          format,
+          sectionOverrides, // Send the toggled sections to the backend
+        },
         { responseType: "blob" }, // Important for file downloads
       );
 
@@ -151,22 +173,26 @@ const ExportDialog = ({ meetingId, onClose }) => {
           </div>
 
           {/* Section Toggles */}
-          {selectedTemplate && (
+          {selectedTemplate && selectedTemplate.sections && (
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
                 Include Sections
               </label>
               <div className="space-y-2">
                 {Object.entries(selectedTemplate.sections).map(
-                  ([key, value]) => (
+                  ([key, defaultValue]) => (
                     <label
                       key={key}
                       className="flex items-center gap-3 cursor-pointer"
                     >
                       <input
                         type="checkbox"
-                        checked={value}
-                        readOnly // In a full implementation, you'd allow toggling these per-export
+                        checked={
+                          sectionOverrides[key] !== undefined
+                            ? sectionOverrides[key]
+                            : defaultValue
+                        }
+                        onChange={() => handleToggleSection(key)}
                         className="w-5 h-5 text-indigo-600 rounded focus:ring-indigo-500"
                       />
                       <span className="text-sm text-gray-900 dark:text-white capitalize">

@@ -1,5 +1,5 @@
-const Meeting = require("../models/Meeting");
-const ActionItem = require("../models/ActionItem");
+import Meeting from "../models/Meeting.js";
+import ActionItem from "../models/ActionItem.js";
 
 /**
  * @desc Extracts and structures all relevant meeting data for template rendering.
@@ -97,4 +97,4 @@ class DataExtractor {
   }
 }
 
-module.exports = DataExtractor;
+export default DataExtractor;

@@ -1,38 +1,48 @@
-const express = require("express");
-const router = express.Router();
-const ExportTemplate = require("../models/ExportTemplate");
-const DataExtractor = require("../services/dataExtractor");
-const DocumentGenerator = require("../services/documentGenerator");
-const { protect } = require("../middleware/authMiddleware");
+import express from "express";
+import ExportTemplate from "../models/ExportTemplate.js";
+import DataExtractor from "../services/dataExtractor.js";
+import DocumentGenerator from "../services/documentGenerator.js";
+import { protect } from "../middleware/authMiddleware.js";
+import Meeting from "../models/Meeting.js";
 
+const router = express.Router();
 router.use(protect);
 
-/**
- * @route   GET /api/export/templates
- * @desc    Get all available export templates for the user's team
- */
+const VALID_FORMATS = ["pdf", "docx", "html"];
+
+// Helper to verify template access
+const verifyTemplateAccess = async (template, user) => {
+  if (template.organizationId.toString() !== user.organizationId.toString())
+    return false;
+  if (template.isPublic) return true;
+  if (template.teamId && template.teamId.toString() === user.teamId?.toString())
+    return true;
+  if (template.createdBy.toString() === user.id) return true;
+  return false;
+};
+
 router.get("/templates", async (req, res) => {
   try {
     const templates = await ExportTemplate.find({
-      $or: [{ teamId: req.user.teamId }, { isPublic: true }],
+      organizationId: req.user.organizationId,
+      $or: [
+        { teamId: req.user.teamId },
+        { isPublic: true },
+        { createdBy: req.user.id },
+      ],
     }).sort({ usageCount: -1 });
-
     res.status(200).json({ success: true, data: templates });
   } catch (_error) {
     res.status(500).json({ success: false, error: "Server error" });
   }
 });
 
-/**
- * @route   POST /api/export/templates
- * @desc    Create a new custom export template
- */
 router.post("/templates", async (req, res) => {
   try {
     const template = await ExportTemplate.create({
       ...req.body,
       createdBy: req.user.id,
-      teamId: req.user.teamId,
+      organizationId: req.user.organizationId,
     });
     res.status(201).json({ success: true, data: template });
   } catch (error) {
@@ -40,75 +50,74 @@ router.post("/templates", async (req, res) => {
   }
 });
 
-/**
- * @route   POST /api/export/meeting/:meetingId
- * @desc    Generate and download a meeting export document
- */
 router.post("/meeting/:meetingId", async (req, res) => {
   try {
     const { meetingId } = req.params;
-    const { templateId, format } = req.body; // format: 'pdf', 'docx', 'html'
+    const { templateId, format, sectionOverrides } = req.body;
 
-    // 1. Fetch template
-    const template = await ExportTemplate.findById(templateId);
-    if (!template)
+    if (!VALID_FORMATS.includes(format)) {
+      return res.status(400).json({
+        success: false,
+        error: "Invalid export format. Must be pdf, docx, or html.",
+      });
+    }
+
+    // 1. AuthZ Meeting
+    const meeting = await Meeting.findById(meetingId);
+    if (
+      !meeting ||
+      meeting.organizationId?.toString() !== req.user.organizationId?.toString()
+    ) {
       return res
-        .status(404)
-        .json({ success: false, error: "Template not found" });
+        .status(403)
+        .json({ success: false, error: "Unauthorized access to meeting" });
+    }
 
-    // 2. Extract meeting data
+    // 2. AuthZ Template
+    const template = await ExportTemplate.findById(templateId);
+    if (!template || !(await verifyTemplateAccess(template, req.user))) {
+      return res
+        .status(403)
+        .json({ success: false, error: "Unauthorized access to template" });
+    }
+
+    // 3. Extract & Filter
     let data = await DataExtractor.extractMeetingData(meetingId);
-    data = DataExtractor.applySectionFilters(data, template.sections);
+    const activeSections = { ...template.sections, ...sectionOverrides };
+    data = DataExtractor.applySectionFilters(data, activeSections);
 
-    // 3. Render content
+    // 4. Render
     const htmlContent = DocumentGenerator.renderHTML(
       template.templateContent,
       data,
     );
+    const fullHTML = `<!DOCTYPE html><html><head><style>${template.styles}</style></head><body>${htmlContent}</body></html>`;
 
-    let buffer;
-    let contentType;
-    let extension;
+    let buffer, contentType, extension;
 
-    // 4. Generate document based on format
     if (format === "pdf") {
-      buffer = await DocumentGenerator.generatePDF(
-        htmlContent,
-        template.branding,
-      );
+      buffer = await DocumentGenerator.generatePDF(fullHTML, template.branding);
       contentType = "application/pdf";
       extension = "pdf";
     } else if (format === "docx") {
-      buffer = await DocumentGenerator.generateDOCX(data, template.branding);
+      buffer = await DocumentGenerator.generateDOCX(
+        fullHTML,
+        template.branding,
+      );
       contentType =
         "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
       extension = "docx";
     } else {
-      // HTML fallback
-      const fullHTML = `
-        <!DOCTYPE html>
-        <html>
-          <head>
-            <title>${data.meeting.title}</title>
-            <style>${template.styles}</style>
-          </head>
-          <body>
-            ${htmlContent}
-          </body>
-        </html>
-      `;
       buffer = Buffer.from(fullHTML);
       contentType = "text/html";
       extension = "html";
     }
 
-    // Increment usage count
     await ExportTemplate.updateOne(
       { _id: templateId },
       { $inc: { usageCount: 1 } },
     );
 
-    // Send file
     res.setHeader("Content-Type", contentType);
     res.setHeader(
       "Content-Disposition",
@@ -116,7 +125,6 @@ router.post("/meeting/:meetingId", async (req, res) => {
     );
     res.send(buffer);
   } catch (error) {
-    console.error("Export error:", error);
     res.status(500).json({
       success: false,
       error: error.message || "Failed to generate export",
@@ -124,23 +132,16 @@ router.post("/meeting/:meetingId", async (req, res) => {
   }
 });
 
-/**
- * @route   POST /api/export/templates/:id/preview
- * @desc    Preview a template with sample data (returns HTML)
- */
-router.post("/templates/:id/preview", async (req, res) => {
+router.post("/templates/preview", async (req, res) => {
   try {
-    const { id: _id } = req.params;
     const { templateContent, meetingData } = req.body;
-
-    const htmlContent = DocumentGenerator.renderHTML(
-      templateContent,
-      meetingData,
-    );
-    res.status(200).json({ success: true, data: { html: htmlContent } });
+    const rawHtml = DocumentGenerator.renderHTML(templateContent, meetingData);
+    // Sanitize HTML to prevent XSS in preview
+    const safeHtml = DocumentGenerator.sanitizeHTML(rawHtml);
+    res.status(200).json({ success: true, data: { html: safeHtml } });
   } catch (error) {
     res.status(400).json({ success: false, error: error.message });
   }
 });
 
-module.exports = router;
+export default router;
