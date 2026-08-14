@@ -50,12 +50,10 @@ export const generateTimeline = async (req, res) => {
     return res.status(200).json({ success: true, timeline });
   } catch (error) {
     console.error("Error generating sentiment timeline:", error);
-    return res
-      .status(500)
-      .json({
-        success: false,
-        message: "Failed to generate timeline",
-        error: error.message,
-      });
+    return res.status(500).json({
+      success: false,
+      message: "Failed to generate timeline",
+      error: error.message,
+    });
   }
 };
