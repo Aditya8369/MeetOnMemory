@@ -11,6 +11,7 @@ import MeetingAgenda from "../components/meeting-details/MeetingAgenda";
 import MeetingMetadata from "../components/meeting-details/MeetingMetadata";
 import MeetingActions from "../components/meeting-details/MeetingActions";
 import TranscriptAnnotations from "../components/meeting-details/TranscriptAnnotations";
+import RsvpPanel from "../components/meeting-details/RsvpPanel";
 import KeyMomentsPanel from "../components/meetings/KeyMomentsPanel";
 import SentimentTimeline from "../components/meetings/SentimentTimeline";
 import MeetingGoalsPanel from "../components/meetings/MeetingGoalsPanel";
@@ -225,6 +226,13 @@ const MeetingDetails = () => {
         </div>
 
         <MeetingParticipants meeting={meeting} />
+        <RsvpPanel
+          meetingId={meeting._id}
+          isOrganizer={
+            currentUser?.publicMetadata?.dbUserId === meeting.uploadedBy
+          }
+          participants={meeting.participants}
+        />
         <PrepChecklist meeting={meeting} currentUser={currentUser} />
         <MeetingGoalsPanel meeting={meeting} currentUser={currentUser} />
 
