@@ -89,7 +89,11 @@ router.use(["/api/user", "/api/users"], userRoutes);
 router.use(["/api/notification", "/api/notifications"], notificationRoutes);
 router.use("/api/knowledge", knowledgeRoutes);
 router.use("/api/calendar", calendarRoutes);
-router.use("/api/compliance", policyComplianceRoutes);
+// client/src/services/policyComplianceApi.js and every @route line in
+// policyComplianceController.js address this router as /api/policy-compliance.
+// It was mounted at /api/compliance, which nothing calls, so the whole
+// compliance dashboard 404'd (Issue #1562).
+router.use("/api/policy-compliance", policyComplianceRoutes);
 router.use("/api/sessions", sessionRoutes);
 router.use("/api/assistant", assistantRoutes);
 router.use("/api/transcripts", transcriptRoutes);
