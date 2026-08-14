@@ -1,6 +1,6 @@
 import { Queue, Worker } from "bullmq";
 import Redis from "ioredis";
-import processAudioJob from "../jobs/processAudioJob.js";
+import processAiResultJob from "../jobs/processAiResultJob.js";
 import exportDataJob from "../jobs/exportDataJob.js";
 import cleanupExpiredExportsJob from "../jobs/cleanupExpiredExportsJob.js";
 import conflictScanJob from "./conflictDetection/conflictScanJob.js";
@@ -141,6 +141,7 @@ const createQueueFacade = (name) => ({
 });
 
 export const aiQueue = createQueueFacade("ai-mom-generation");
+export const aiResultsQueue = createQueueFacade("ai-mom-results");
 
 export const dataExportQueue = createQueueFacade("data-export-queue");
 
@@ -221,17 +222,11 @@ function createWorker({ name, label, processor, workerOptions = {} }) {
   return worker;
 }
 
-export const initAIWorker = (app) =>
+export const initAiResultsWorker = (app) =>
   createWorker({
-    name: "ai-mom-generation",
-    label: "AI Worker",
-    processor: async (job) => await processAudioJob(job, app),
-    workerOptions: {
-      limiter: {
-        max: 5, // Process max 5 jobs
-        duration: 60000, // per 60 seconds to match Gemini free tier limits
-      },
-    },
+    name: "ai-mom-results",
+    label: "AI Results Worker",
+    processor: async (job) => await processAiResultJob(job, app),
   });
 
 export const initDataExportWorker = (app) =>

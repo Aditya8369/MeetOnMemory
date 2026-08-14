@@ -1,10 +1,15 @@
 import axios from "axios"; // eslint-disable-line no-unused-vars
 import { GoogleGenerativeAI } from "@google/generative-ai";
+import { pipeline, env } from "@xenova/transformers";
 import {
   AI_ERROR_KIND,
   callWithResilience,
+  chunkTextByBudget,
   createCircuitBreaker,
 } from "../utils/aiResilience.js";
+
+env.useBrowserCache = false;
+let localSummarizer = null;
 
 const HUGGINGFACE_API_KEY = process.env.HUGGINGFACE_API_KEY; // eslint-disable-line no-unused-vars
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
@@ -140,6 +145,363 @@ export const parseJsonOutput = (outputText) => {
       return null;
     }
   }
+};
+
+/**
+ * Builds the MoM extraction prompt.
+ *
+ * @param {string} transcriptSegment
+ * @param {string} date
+ * @param {string} title
+ * @param {object} [context]
+ * @param {number} [context.part] 1-based chunk index, when chunked
+ * @param {number} [context.totalParts]
+ */
+const buildMoMPrompt = (
+  transcriptSegment,
+  date,
+  title,
+  context = {},
+  customInstructions = null,
+) => {
+  const { part, totalParts } = context;
+  const chunkNotice =
+    part && totalParts > 1
+      ? `\n⚠️ This is part ${part} of ${totalParts} of a longer transcript. Extract only what is present in THIS part; do not invent content from the missing parts, and do not summarise the meeting as a whole.\n`
+      : "";
+  const customInstructionsNotice = customInstructions
+    ? `\n⚠️ CUSTOM INSTRUCTIONS: ${customInstructions}\n`
+    : "";
+
+  return `
+You are an advanced AI meeting assistant responsible for preparing *formal, well-structured Minutes of Meeting (MoM)*
+from the transcript provided below.
+
+The MoM should be factual, concise, and formatted for professional use in organizations, universities, or institutions.
+Avoid repetition, filler words, and unnecessary phrases. Capture key insights, outcomes, and responsibilities accurately.
+${chunkNotice}
+${customInstructionsNotice}
+🎯 Your goal is to return a clean JSON object with the following fields:
+{
+  "title": "A clear, professional meeting title (e.g., 'AI Integration Strategy Discussion')",
+  "date": "${date}",
+  "summary": "A concise 4–6 sentence paragraph summarizing the meeting objectives, key points discussed, and overall conclusions. Use formal tone.",
+  "agenda": ["main agenda point 1", "main agenda point 2", "main agenda point 3"],
+  "key_discussions": [
+    "Summarize core discussion points or debates in neutral and objective language.",
+    "Mention who contributed if identifiable (optional)."
+  ],
+  "decisions": [
+    "List final decisions or outcomes agreed upon during the meeting, if any."
+  ],
+  "action_items": [
+    {"task": "Describe the specific task or next step", "owner": "Person responsible (if mentioned)", "due_date": "Deadline or expected date, if mentioned", "status": "Status if mentioned (e.g., 'pending', 'in progress', 'completed')"}
+  ],
+  "questions_raised": [
+    "List important unanswered questions or follow-up discussions that emerged during the meeting."
+  ],
+  "keywords": [
+    "Extract 5-10 relevant keywords and topics discussed during the meeting."
+  ],
+  "attendees": ["List attendees if mentioned or infer from transcript"],
+  "notes": "Include any follow-up requirements, risks, or additional remarks worth noting.",
+  "scheduling_intents": [
+    {
+      "topic": "Reason for follow up meeting",
+      "timeframe": "Suggested time (e.g., 'next week', 'tomorrow at 2 PM')",
+      "suggested_date_iso": "ISO 8601 date string for the suggested timeframe, relative to today's date."
+    }
+  ]
+}
+
+Transcript:
+${transcriptSegment}
+
+🧠 Instructions:
+- Return ONLY valid JSON (no Markdown, no commentary, no backticks).
+- Write in clear, formal English.
+- Ensure every array key is present — use [] or "" for missing info.
+- Avoid hallucinating or adding extra information.
+- Maintain factual tone based on transcript content only.
+- If user provided a title: ${title || "none"}, incorporate or refine it if appropriate.
+`;
+};
+
+/**
+ * Merges per-chunk MoM objects into one.
+ *
+ * Deduplication is case-insensitive on the rendered text, because the overlap
+ * window deliberately feeds the same sentences to two adjacent chunks and the
+ * model will usually restate a straddling decision in both.
+ *
+ * @param {object[]} parts
+ * @returns {object}
+ */
+const mergeMoMParts = (parts) => {
+  const merged = {
+    title: "",
+    date: "",
+    summary: "",
+    agenda: [],
+    key_discussions: [],
+    decisions: [],
+    action_items: [],
+    questions_raised: [],
+    keywords: [],
+    attendees: [],
+    notes: "",
+    scheduling_intents: [],
+  };
+
+  const seen = {};
+  const listKeys = [
+    "agenda",
+    "key_discussions",
+    "decisions",
+    "action_items",
+    "questions_raised",
+    "keywords",
+    "attendees",
+    "scheduling_intents",
+  ];
+  listKeys.forEach((key) => {
+    seen[key] = new Set();
+  });
+
+  const summaries = [];
+  const notes = [];
+
+  for (const part of parts) {
+    if (!part) continue;
+
+    if (!merged.title && part.title) merged.title = part.title;
+    if (!merged.date && part.date) merged.date = part.date;
+    if (part.summary) summaries.push(String(part.summary).trim());
+    if (part.notes) notes.push(String(part.notes).trim());
+
+    for (const key of listKeys) {
+      const values = Array.isArray(part[key]) ? part[key] : [];
+      for (const value of values) {
+        const fingerprint = (
+          typeof value === "string" ? value : JSON.stringify(value)
+        )
+          .toLowerCase()
+          .replace(/\s+/g, " ")
+          .trim();
+        if (!fingerprint || seen[key].has(fingerprint)) continue;
+        seen[key].add(fingerprint);
+        merged[key].push(value);
+      }
+    }
+  }
+
+  merged.summary = summaries.join(" ");
+  merged.notes = notes.join(" ");
+  return merged;
+};
+
+/**
+ * Local fallback summarisation.
+ *
+ * This path is genuinely lossy — distilbart has a small input window and
+ * produces no structured fields — so it reports exactly what it did rather than
+ * pretending to be a complete MoM. Previously the only trace was a free-text
+ * `notes` string, which nothing could query.
+ *
+ * @param {string} textToSummarize
+ * @param {string} date
+ * @param {string} title
+ * @param {object} degradation
+ */
+const runLocalFallback = async (textToSummarize, date, title, degradation) => {
+  if (!localSummarizer) {
+    console.log("⏳ Loading local summarization model fallback...");
+    localSummarizer = await pipeline(
+      "summarization",
+      "Xenova/distilbart-cnn-6-6",
+    );
+    console.log("✅ Local model loaded");
+  }
+
+  const FALLBACK_INPUT_CHARS = 1024; // distilbart's practical input window
+  const source = String(textToSummarize ?? "");
+  const truncated = source.length > FALLBACK_INPUT_CHARS;
+
+  const result = await localSummarizer(
+    source.substring(0, FALLBACK_INPUT_CHARS),
+    { max_new_tokens: 150 },
+  );
+
+  const hfText = result[0].summary_text;
+  console.log("✅ Local fallback summarization completed");
+
+  return {
+    title: title || `Meeting on ${date}`,
+    date,
+    summary: hfText,
+    agenda: [],
+    key_discussions: [],
+    decisions: [],
+    action_items: [],
+    questions_raised: [],
+    keywords: [],
+    attendees: [],
+    notes: "Generated using local fallback summarization model",
+    scheduling_intents: [],
+    generation: {
+      provider: "local-distilbart",
+      degraded: true,
+      reason: degradation.reason,
+      errorKind: degradation.errorKind ?? null,
+      truncated,
+      // The operator-relevant fact: this fraction of the meeting was never read.
+      inputCharsUsed: Math.min(source.length, FALLBACK_INPUT_CHARS),
+      inputCharsTotal: source.length,
+      chunks: 1,
+      generatedAt: new Date().toISOString(),
+    },
+  };
+};
+
+/**
+ * Generates a MoM and reports how it was produced.
+ *
+ * Returns `{ mom, generation }` so callers can persist the provenance. The
+ * original `generateMoMWithAI` is kept as a thin wrapper over this, so no
+ * existing caller is forced to change.
+ *
+ * @param {string} textToSummarize
+ * @param {string} date
+ * @param {string} title
+ * @param {string} [customInstructions]
+ * @returns {Promise<{mom: object, generation: object}>}
+ */
+export const generateMoMDetailed = async (
+  textToSummarize,
+  date,
+  title,
+  customInstructions = null,
+) => {
+  const source = String(textToSummarize ?? "");
+  const startedAt = Date.now();
+
+  let degradation = { reason: "unknown", errorKind: null };
+
+  try {
+    // Prompt budgeting. The old code interpolated the transcript unbounded, so
+    // the longest meetings — where a summary is most valuable — were the ones
+    // most likely to blow the context window and get dumped to the 1024-char
+    // fallback.
+    const chunks = chunkTextByBudget(source, {
+      maxChars: GEMINI_MAX_PROMPT_CHARS(),
+      overlapChars: GEMINI_CHUNK_OVERLAP_CHARS(),
+    });
+
+    if (chunks.length === 0) {
+      throw new Error("Transcript is empty — nothing to summarize.");
+    }
+
+    const maxChunks = GEMINI_MAX_CHUNKS();
+    const usedChunks = chunks.slice(0, maxChunks);
+    const droppedChunks = chunks.length - usedChunks.length;
+
+    if (droppedChunks > 0) {
+      console.warn(
+        `⚠️ Transcript exceeded ${maxChunks} chunks; ${droppedChunks} trailing chunk(s) skipped. ` +
+          `Raise GEMINI_MAX_CHUNKS to cover longer meetings.`,
+      );
+    }
+
+    console.log(
+      `📡 Using Gemini model: ${GEMINI_MODEL} (${usedChunks.length} chunk(s))`,
+    );
+
+    const parts = [];
+    for (let index = 0; index < usedChunks.length; index += 1) {
+      const prompt = buildMoMPrompt(
+        usedChunks[index],
+        date,
+        title,
+        {
+          part: index + 1,
+          totalParts: usedChunks.length,
+        },
+        customInstructions,
+      );
+
+      const outputText = await generateText(
+        prompt,
+        `Gemini MoM part ${index + 1}/${usedChunks.length}`,
+      );
+
+      const parsed = parseJsonOutput(outputText);
+      parts.push(parsed ?? { rawText: outputText });
+    }
+
+    const structured =
+      usedChunks.length === 1 ? parts[0] : mergeMoMParts(parts);
+
+    console.log("✅ Gemini response received");
+
+    return {
+      mom: structured,
+      generation: {
+        provider: "gemini",
+        model: GEMINI_MODEL,
+        degraded: droppedChunks > 0,
+        reason: droppedChunks > 0 ? "chunk_limit_exceeded" : null,
+        errorKind: null,
+        truncated: droppedChunks > 0,
+        inputCharsUsed: usedChunks.reduce((sum, c) => sum + c.length, 0),
+        inputCharsTotal: source.length,
+        chunks: usedChunks.length,
+        durationMs: Date.now() - startedAt,
+        generatedAt: new Date().toISOString(),
+      },
+    };
+  } catch (gemErr) {
+    degradation = {
+      reason: "gemini_failed",
+      errorKind: gemErr?.kind ?? AI_ERROR_KIND.UNKNOWN,
+    };
+    console.error(
+      `❌ Gemini API error (${degradation.errorKind}), falling back to local summarization:`,
+      gemErr.message,
+    );
+  }
+
+  try {
+    const mom = await runLocalFallback(source, date, title, degradation);
+    return {
+      mom,
+      generation: { ...mom.generation, durationMs: Date.now() - startedAt },
+    };
+  } catch (hfErr) {
+    console.error("❌ Local fallback also failed:", hfErr.message);
+    throw new Error("Both Gemini and Local fallback summarization failed");
+  }
+};
+
+/**
+ * Backwards-compatible entry point. Returns just the MoM object, exactly as
+ * before, so existing callers keep working unchanged.
+ *
+ * Prefer `generateMoMDetailed` in new code — it also returns the provenance
+ * needed to identify (and later reprocess) degraded meetings.
+ */
+export const generateMoMWithAI = async (
+  textToSummarize,
+  date,
+  title,
+  customInstructions = null,
+) => {
+  const { mom } = await generateMoMDetailed(
+    textToSummarize,
+    date,
+    title,
+    customInstructions,
+  );
+  return mom;
 };
 
 /**

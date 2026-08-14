@@ -47,45 +47,14 @@ export const sanitizeFilenameForHeader = (filename) => {
 };
 
 /**
- * Name used when a filename sanitizes down to nothing (Issue #1454).
- *
- * `sanitizeFilenameForHeader` strips quotes, backslashes and control
- * characters, so a name made only of those — `"""`, or a lone `\r\n` — reduces
- * to `""`. Emitting `filename=""` makes the browser fall back to the last URL
- * path segment, which for these routes is an ObjectId. A neutral placeholder is
- * more useful than a 24-character hex string.
- */
-export const FALLBACK_DOWNLOAD_FILENAME = "download";
-
-/**
- * Generates an RFC 8187 compliant Content-Disposition header value.
+ * Generates an RFC 8187 compliant Content-Disposition header value
  * Supports Unicode filenames safely.
  *
- * Two parameters are emitted on purpose:
- *
- *   - `filename="..."` — the sanitized ASCII form, for clients that do not
- *     implement RFC 5987/8187.
- *   - `filename*=UTF-8''...` — the percent-encoded original, which every
- *     current browser prefers. This is what keeps `स्थिति-रिपोर्ट.pdf` intact
- *     instead of arriving as mojibake.
- *
- * `encodeURIComponent` is applied to the *raw* name rather than the sanitized
- * one so nothing is lost from the parameter clients actually use; percent
- * encoding neutralises CR, LF and quotes on its own, so this cannot inject a
- * header either.
- *
  * @param {string} filename - The original filename
- * @param {object} [options]
- * @param {string} [options.fallback=FALLBACK_DOWNLOAD_FILENAME]
  * @returns {string} The formatted header value
  */
-export const getContentDispositionHeader = (
-  filename,
-  { fallback = FALLBACK_DOWNLOAD_FILENAME } = {},
-) => {
-  const raw = typeof filename === "string" ? filename : "";
-  const safeAscii = sanitizeFilenameForHeader(raw).trim() || fallback;
-  const encoded = encodeURIComponent(raw || fallback);
-
+export const getContentDispositionHeader = (filename) => {
+  const safeAscii = sanitizeFilenameForHeader(filename);
+  const encoded = encodeURIComponent(filename);
   return `attachment; filename="${safeAscii}"; filename*=UTF-8''${encoded}`;
 };
