@@ -20,12 +20,30 @@ export const submitFeedback = async (req, res, next) => {
     const validatedData = feedbackSchema.parse(req.body);
     const userId = req.user._id;
 
+    if (!mongoose.isValidObjectId(validatedData.meetingId)) {
+      return res
+        .status(400)
+        .json({ success: false, message: "Invalid meeting ID" });
+    }
+
     // Verify meeting exists and user is a participant or organizer
     const meeting = await Meeting.findById(validatedData.meetingId);
     if (!meeting) {
       return res
         .status(404)
         .json({ success: false, message: "Meeting not found" });
+    }
+
+    // Organization Isolation Check
+    if (
+      meeting.organization &&
+      (!req.user.organization ||
+        meeting.organization.toString() !== req.user.organization.toString())
+    ) {
+      return res.status(403).json({
+        success: false,
+        message: "Forbidden: Meeting belongs to another organization",
+      });
     }
 
     // Check if user is participant or the owner
@@ -95,6 +113,18 @@ export const getFeedbackForMeeting = async (req, res) => {
         .json({ success: false, message: "Meeting not found" });
     }
 
+    // Organization Isolation Check
+    if (
+      meeting.organization &&
+      (!req.user.organization ||
+        meeting.organization.toString() !== req.user.organization.toString())
+    ) {
+      return res.status(403).json({
+        success: false,
+        message: "Forbidden: Meeting belongs to another organization",
+      });
+    }
+
     const isOwner = meeting.uploadedBy.toString() === userId.toString();
     const isParticipant = meeting.participants?.some(
       (p) => p.user?.toString() === userId.toString(),
@@ -133,6 +163,38 @@ export const getUserFeedbackForMeeting = async (req, res) => {
       return res
         .status(400)
         .json({ success: false, message: "Invalid meeting ID" });
+    }
+
+    const meeting = await Meeting.findById(meetingId);
+    if (!meeting) {
+      return res
+        .status(404)
+        .json({ success: false, message: "Meeting not found" });
+    }
+
+    // Organization Isolation Check
+    if (
+      meeting.organization &&
+      (!req.user.organization ||
+        meeting.organization.toString() !== req.user.organization.toString())
+    ) {
+      return res.status(403).json({
+        success: false,
+        message: "Forbidden: Meeting belongs to another organization",
+      });
+    }
+
+    // User Access Check
+    const isOwner = meeting.uploadedBy.toString() === userId.toString();
+    const isParticipant = meeting.participants?.some(
+      (p) => p.user?.toString() === userId.toString(),
+    );
+
+    if (!isOwner && !isParticipant) {
+      return res.status(403).json({
+        success: false,
+        message: "Not authorized to view feedback for this meeting",
+      });
     }
 
     const feedback = await MeetingFeedback.findOne({ meetingId, userId });
@@ -226,6 +288,21 @@ export const deleteFeedback = async (req, res) => {
       return res
         .status(404)
         .json({ success: false, message: "Feedback not found" });
+    }
+
+    // Check meeting organization isolation if meeting exists
+    const meeting = await Meeting.findById(feedback.meetingId);
+    if (meeting) {
+      if (
+        meeting.organization &&
+        (!req.user.organization ||
+          meeting.organization.toString() !== req.user.organization.toString())
+      ) {
+        return res.status(403).json({
+          success: false,
+          message: "Forbidden: Meeting belongs to another organization",
+        });
+      }
     }
 
     if (feedback.userId.toString() !== req.user._id.toString()) {

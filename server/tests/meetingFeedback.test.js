@@ -3,6 +3,7 @@ import {
   getAggregateFeedback,
   deleteFeedback,
   getFeedbackForMeeting,
+  getUserFeedbackForMeeting,
 } from "../controllers/meetingFeedbackController.js";
 import MeetingFeedback from "../models/meetingFeedbackModel.js";
 import Meeting from "../models/meetingModel.js";
@@ -90,6 +91,52 @@ describe("Meeting Feedback Controller", () => {
         expect.objectContaining({ success: false }),
       );
     });
+
+    it("should fail if meeting belongs to a different organization", async () => {
+      const meetingId = new mongoose.Types.ObjectId().toString();
+      req.body = {
+        meetingId,
+        overallRating: 5,
+        summaryAccuracy: 5,
+        transcriptQuality: 5,
+      };
+
+      jest.spyOn(Meeting, "findById").mockResolvedValue({
+        _id: meetingId,
+        uploadedBy: new mongoose.Types.ObjectId().toString(),
+        organization: new mongoose.Types.ObjectId().toString(), // different org
+        participants: [{ user: req.user._id }],
+      });
+
+      await submitFeedback(req, res, next);
+
+      expect(res.status).toHaveBeenCalledWith(403);
+      expect(res.json).toHaveBeenCalledWith(
+        expect.objectContaining({
+          success: false,
+          message: "Forbidden: Meeting belongs to another organization",
+        }),
+      );
+    });
+
+    it("should return 400 for invalid meeting ID", async () => {
+      req.body = {
+        meetingId: "invalid-id",
+        overallRating: 5,
+        summaryAccuracy: 5,
+        transcriptQuality: 5,
+      };
+
+      await submitFeedback(req, res, next);
+
+      expect(res.status).toHaveBeenCalledWith(400);
+      expect(res.json).toHaveBeenCalledWith(
+        expect.objectContaining({
+          success: false,
+          message: "Invalid meeting ID",
+        }),
+      );
+    });
   });
 
   describe("getAggregateFeedback", () => {
@@ -149,6 +196,30 @@ describe("Meeting Feedback Controller", () => {
       expect(findSpy).not.toHaveBeenCalled();
     });
 
+    it("returns 403 when the meeting belongs to a different organization", async () => {
+      const meetingId = new mongoose.Types.ObjectId().toString();
+      req.params.meetingId = meetingId;
+
+      jest.spyOn(Meeting, "findById").mockResolvedValue({
+        _id: meetingId,
+        uploadedBy: new mongoose.Types.ObjectId().toString(),
+        organization: new mongoose.Types.ObjectId().toString(), // different org
+        participants: [{ user: req.user._id }],
+      });
+      const findSpy = jest.spyOn(MeetingFeedback, "find");
+
+      await getFeedbackForMeeting(req, res);
+
+      expect(res.status).toHaveBeenCalledWith(403);
+      expect(res.json).toHaveBeenCalledWith(
+        expect.objectContaining({
+          success: false,
+          message: "Forbidden: Meeting belongs to another organization",
+        }),
+      );
+      expect(findSpy).not.toHaveBeenCalled();
+    });
+
     it("returns 404 when the meeting does not exist", async () => {
       req.params.meetingId = new mongoose.Types.ObjectId().toString();
       jest.spyOn(Meeting, "findById").mockResolvedValue(null);
@@ -183,9 +254,15 @@ describe("Meeting Feedback Controller", () => {
   });
 
   describe("getUserFeedbackForMeeting", () => {
-    it("returns user feedback when found", async () => {
+    it("returns user feedback when found and authorized", async () => {
       const meetingId = new mongoose.Types.ObjectId().toString();
       req.params.meetingId = meetingId;
+
+      jest.spyOn(Meeting, "findById").mockResolvedValue({
+        _id: meetingId,
+        uploadedBy: req.user._id,
+        participants: [],
+      });
 
       jest.spyOn(MeetingFeedback, "findOne").mockResolvedValue({
         _id: "f1",
@@ -194,8 +271,6 @@ describe("Meeting Feedback Controller", () => {
         overallRating: 4,
       });
 
-      const { getUserFeedbackForMeeting } =
-        await import("../controllers/meetingFeedbackController.js");
       await getUserFeedbackForMeeting(req, res);
 
       expect(res.status).toHaveBeenCalledWith(200);
@@ -206,24 +281,106 @@ describe("Meeting Feedback Controller", () => {
         }),
       );
     });
+
+    it("returns 404 if meeting does not exist", async () => {
+      const meetingId = new mongoose.Types.ObjectId().toString();
+      req.params.meetingId = meetingId;
+
+      jest.spyOn(Meeting, "findById").mockResolvedValue(null);
+
+      await getUserFeedbackForMeeting(req, res);
+
+      expect(res.status).toHaveBeenCalledWith(404);
+    });
+
+    it("returns 403 if meeting belongs to a different organization", async () => {
+      const meetingId = new mongoose.Types.ObjectId().toString();
+      req.params.meetingId = meetingId;
+
+      jest.spyOn(Meeting, "findById").mockResolvedValue({
+        _id: meetingId,
+        uploadedBy: new mongoose.Types.ObjectId().toString(),
+        organization: new mongoose.Types.ObjectId().toString(),
+        participants: [{ user: req.user._id }],
+      });
+
+      await getUserFeedbackForMeeting(req, res);
+
+      expect(res.status).toHaveBeenCalledWith(403);
+      expect(res.json).toHaveBeenCalledWith(
+        expect.objectContaining({
+          success: false,
+          message: "Forbidden: Meeting belongs to another organization",
+        }),
+      );
+    });
+
+    it("returns 403 if user is not participant or owner", async () => {
+      const meetingId = new mongoose.Types.ObjectId().toString();
+      req.params.meetingId = meetingId;
+
+      jest.spyOn(Meeting, "findById").mockResolvedValue({
+        _id: meetingId,
+        uploadedBy: new mongoose.Types.ObjectId().toString(),
+        participants: [],
+      });
+
+      await getUserFeedbackForMeeting(req, res);
+
+      expect(res.status).toHaveBeenCalledWith(403);
+    });
   });
 
   describe("deleteFeedback", () => {
-    it("should delete feedback if owned by user", async () => {
+    it("should delete feedback if owned by user and authorized", async () => {
       const feedbackId = new mongoose.Types.ObjectId().toString();
+      const meetingId = new mongoose.Types.ObjectId().toString();
       req.params.id = feedbackId;
 
       const mockDeleteOne = jest.fn();
       jest.spyOn(MeetingFeedback, "findById").mockResolvedValue({
         _id: feedbackId,
+        meetingId,
         userId: req.user._id,
         deleteOne: mockDeleteOne,
+      });
+
+      jest.spyOn(Meeting, "findById").mockResolvedValue({
+        _id: meetingId,
+        organization: req.user.organization,
       });
 
       await deleteFeedback(req, res);
 
       expect(mockDeleteOne).toHaveBeenCalled();
       expect(res.status).toHaveBeenCalledWith(200);
+    });
+
+    it("should fail to delete if the associated meeting belongs to a different organization", async () => {
+      const feedbackId = new mongoose.Types.ObjectId().toString();
+      const meetingId = new mongoose.Types.ObjectId().toString();
+      req.params.id = feedbackId;
+
+      jest.spyOn(MeetingFeedback, "findById").mockResolvedValue({
+        _id: feedbackId,
+        meetingId,
+        userId: req.user._id,
+      });
+
+      jest.spyOn(Meeting, "findById").mockResolvedValue({
+        _id: meetingId,
+        organization: new mongoose.Types.ObjectId().toString(),
+      });
+
+      await deleteFeedback(req, res);
+
+      expect(res.status).toHaveBeenCalledWith(403);
+      expect(res.json).toHaveBeenCalledWith(
+        expect.objectContaining({
+          success: false,
+          message: "Forbidden: Meeting belongs to another organization",
+        }),
+      );
     });
   });
 });
