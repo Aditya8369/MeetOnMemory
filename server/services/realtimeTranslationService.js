@@ -441,10 +441,19 @@ export const getSupportedLanguages = () => {
 
 /**
  * Get translation quality metrics for segment
+ *
+ * The cache is keyed on `{ meeting, segmentId }` (see the unique index in
+ * models/TranslationCache.js), so `segmentId` alone does not identify a row.
+ * `meetingId` narrows the lookup to the meeting the caller has been authorized
+ * against; it is optional so existing callers keep working, but the HTTP layer
+ * always supplies it (Issue #1563).
  */
-export const getQualityMetrics = async (segmentId) => {
+export const getQualityMetrics = async (segmentId, meetingId) => {
   try {
-    const cache = await RealtimeTranslationCache.findOne({ segmentId });
+    const filter = { segmentId };
+    if (meetingId) filter.meeting = meetingId;
+
+    const cache = await RealtimeTranslationCache.findOne(filter);
 
     if (!cache) {
       throw new Error("Segment not found");

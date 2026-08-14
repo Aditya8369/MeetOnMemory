@@ -31,7 +31,7 @@ describe("Route Consolidation and Registration", () => {
       "/api/user",
       "/api/notifications",
       "/api/knowledge",
-      "/api/compliance",
+      "/api/policy-compliance",
       "/api/sessions",
       "/api/transcripts",
       "/api/search",
@@ -70,6 +70,7 @@ describe("Route Consolidation and Registration", () => {
       "/api/glossary",
       "/api/ai-summary-templates",
       "/api/topics",
+      "/api/quality",
     ];
 
     for (const prefix of standaloneRoutePrefixes) {
@@ -102,7 +103,7 @@ describe("Route Consolidation and Registration", () => {
       "/api/notifications",
       "/api/knowledge",
       "/api/calendar",
-      "/api/compliance",
+      "/api/policy-compliance",
       "/api/sessions",
       "/api/assistant",
       "/api/transcripts",
@@ -128,6 +129,7 @@ describe("Route Consolidation and Registration", () => {
       "/api/note-versions",
       "/api/reports",
       "/api/agenda-suggestions",
+      "/api/translation",
       "/api/translations",
       "/api/personal-notes",
       "/api/template-library",
@@ -139,6 +141,7 @@ describe("Route Consolidation and Registration", () => {
       "/api/meeting-health",
       "/api/workspace",
       "/api/recap",
+      "/api/quality",
     ];
 
     for (const routePath of expectedRoutes) {

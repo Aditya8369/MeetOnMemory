@@ -16,6 +16,8 @@ const TemplateLibrary = () => {
   const [selectedTemplate, setSelectedTemplate] = useState(null);
   const [ratingInput, setRatingInput] = useState(5);
   const [reviewInput, setReviewInput] = useState("");
+  const [cloningTemplateId, setCloningTemplateId] = useState(null);
+  const [ratingTemplateId, setRatingTemplateId] = useState(null);
 
   const fetchTemplates = async () => {
     setLoading(true);
@@ -39,16 +41,24 @@ const TemplateLibrary = () => {
   }, [categoryFilter, sortOption]);
 
   const handleClone = async (templateId) => {
+    if (cloningTemplateId) return;
+
+    setCloningTemplateId(templateId);
     try {
       await cloneTemplate(templateId);
       alert("Template cloned successfully!");
-      fetchTemplates(); // Refresh to update clone count
+      await fetchTemplates();
     } catch {
       alert("Failed to clone template");
+    } finally {
+      setCloningTemplateId(null);
     }
   };
 
   const handleRate = async (templateId) => {
+    if (ratingTemplateId) return;
+
+    setRatingTemplateId(templateId);
     try {
       await rateTemplate(templateId, {
         rating: ratingInput,
@@ -57,10 +67,12 @@ const TemplateLibrary = () => {
       alert("Rating submitted successfully!");
       setRatingInput(5);
       setReviewInput("");
-      fetchTemplates(); // Refresh to update rating
-      setSelectedTemplate(null); // Close modal
+      await fetchTemplates();
+      setSelectedTemplate(null);
     } catch {
       alert("Failed to submit rating");
+    } finally {
+      setRatingTemplateId(null);
     }
   };
 
@@ -158,7 +170,6 @@ const TemplateLibrary = () => {
         )}
       </div>
 
-      {/* Modal */}
       {selectedTemplate && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
           <div className="bg-white dark:bg-gray-800 rounded-xl max-w-lg w-full p-6">
@@ -168,6 +179,7 @@ const TemplateLibrary = () => {
             <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
               {selectedTemplate.description}
             </p>
+
             <div className="mb-6">
               <h4 className="font-semibold text-gray-700 dark:text-gray-300 mb-2">
                 Agenda Blocks
@@ -184,10 +196,14 @@ const TemplateLibrary = () => {
             <div className="flex gap-4 mb-6">
               <button
                 onClick={() => handleClone(selectedTemplate._id)}
-                className="flex-1 bg-blue-600 hover:bg-blue-700 text-white py-2 px-4 rounded-lg font-medium transition flex items-center justify-center"
+                disabled={cloningTemplateId === selectedTemplate._id}
+                aria-busy={cloningTemplateId === selectedTemplate._id}
+                className="flex-1 bg-blue-600 hover:bg-blue-700 disabled:opacity-60 disabled:cursor-not-allowed text-white py-2 px-4 rounded-lg font-medium transition flex items-center justify-center"
               >
                 <CopyPlus className="w-5 h-5 mr-2" />
-                Clone Template
+                {cloningTemplateId === selectedTemplate._id
+                  ? "Cloning..."
+                  : "Clone Template"}
               </button>
             </div>
 
@@ -206,7 +222,9 @@ const TemplateLibrary = () => {
                         ? "text-yellow-400 fill-current"
                         : "text-gray-300"
                     }`}
-                    onClick={() => setRatingInput(star)}
+                    onClick={() => {
+                      if (!ratingTemplateId) setRatingInput(star);
+                    }}
                   />
                 ))}
               </div>
@@ -214,21 +232,27 @@ const TemplateLibrary = () => {
                 value={reviewInput}
                 onChange={(e) => setReviewInput(e.target.value)}
                 placeholder="Leave a review..."
-                className="w-full border border-gray-300 dark:border-gray-600 rounded-lg p-2 text-sm mb-2 dark:bg-gray-700 dark:text-white"
+                disabled={ratingTemplateId === selectedTemplate._id}
+                className="w-full border border-gray-300 dark:border-gray-600 rounded-lg p-2 text-sm mb-2 dark:bg-gray-700 dark:text-white disabled:opacity-60"
                 rows="3"
               />
               <div className="flex justify-end gap-2">
                 <button
                   onClick={() => setSelectedTemplate(null)}
-                  className="px-4 py-2 text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition"
+                  disabled={Boolean(ratingTemplateId)}
+                  className="px-4 py-2 text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition disabled:opacity-60 disabled:cursor-not-allowed"
                 >
                   Cancel
                 </button>
                 <button
                   onClick={() => handleRate(selectedTemplate._id)}
-                  className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg transition"
+                  disabled={ratingTemplateId === selectedTemplate._id}
+                  aria-busy={ratingTemplateId === selectedTemplate._id}
+                  className="px-4 py-2 bg-green-600 hover:bg-green-700 disabled:opacity-60 disabled:cursor-not-allowed text-white rounded-lg transition"
                 >
-                  Submit Rating
+                  {ratingTemplateId === selectedTemplate._id
+                    ? "Submitting..."
+                    : "Submit Rating"}
                 </button>
               </div>
             </div>
