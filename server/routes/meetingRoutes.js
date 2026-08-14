@@ -54,6 +54,7 @@ import {
   getTranscript,
   retryTranscription,
   uploadTranscriptChunk,
+  storeEncryptedTranscript,
 } from "../controllers/transcriptController.js";
 
 import path from "path";
@@ -185,6 +186,16 @@ router.get(
   requireOrgMembership,
   requirePermission("meetings", "view"),
   getTranscript,
+);
+
+// POST /api/meetings/:meetingId/transcript/encrypted (Issue #1335 E2EE)
+router.post(
+  "/:meetingId/transcript/encrypted",
+  userAuth,
+  writeLimiter,
+  requireOrgMembership,
+  requirePermission("meetings", "edit"),
+  storeEncryptedTranscript,
 );
 
 // POST /api/meetings/:meetingId/transcript/retry

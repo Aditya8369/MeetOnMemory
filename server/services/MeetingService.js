@@ -30,6 +30,7 @@ import {
   deletedMeetingsFilter,
   escapeRegExp,
 } from "../utils/meetingSoftDelete.js";
+import { meetingSupportsServerAi } from "../utils/transcriptEncryption.js";
 
 // AI / calendar / queue / transcription stacks are loaded on demand. Static
 // imports pull @xenova/transformers, axios diamonds, and related graphs into
@@ -353,6 +354,13 @@ export const generateMeetingMoM = async (
     if (!hasAccess) {
       throw new ForbiddenError(
         "Forbidden: You do not have access to this meeting",
+      );
+    }
+
+    // Issue #1335 — encrypted meetings have no server-readable plaintext for AI
+    if (!meetingSupportsServerAi(meeting)) {
+      throw new ValidationError(
+        "This meeting uses end-to-end encryption. Server-side AI summarization is unavailable. Decrypt the transcript locally instead.",
       );
     }
 

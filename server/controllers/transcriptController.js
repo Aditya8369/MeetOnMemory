@@ -9,6 +9,11 @@ import {
 import { indexTranscriptChunks } from "../utils/transcriptEmbeddingUtils.js";
 import { getContentDispositionHeader } from "../utils/fileUtils.js";
 import { sendSuccess, sendError } from "../utils/responseHandler.js";
+import {
+  isE2eeEnabled,
+  normalizeEncryptedTranscriptPayload,
+  isMeetingTranscriptEncrypted,
+} from "../utils/transcriptEncryption.js";
 import fs from "fs";
 import path from "path";
 import os from "os";
@@ -28,6 +33,16 @@ const findInProgressTranscript = (meetingId) =>
     meeting: meetingId,
     status: { $in: IN_PROGRESS_STATUSES },
   });
+
+const assertMeetingAccess = (meeting, user) => {
+  const userId = user?.id || user?._id;
+  const isOwner = meeting.uploadedBy?.toString() === userId?.toString();
+  const isInSameOrg =
+    meeting.organization &&
+    user?.organization &&
+    meeting.organization.toString() === user.organization.toString();
+  return isOwner || isInSameOrg;
+};
 
 /**
  * @desc  Start a recording session for a meeting
@@ -460,12 +475,98 @@ export const getTranscript = async (req, res) => {
     res.status(200).json({
       success: true,
       transcript,
+      // Issue #1335 — surface meeting-level ciphertext so clients can decrypt
+      encryption: {
+        enabled: isMeetingTranscriptEncrypted(meeting),
+        encryptedTranscript: meeting.encryptedTranscript || null,
+        e2eeFeatureEnabled: isE2eeEnabled(),
+      },
     });
   } catch (error) {
     console.error("Error getting transcript:", error);
     res.status(500).json({
       success: false,
       message: error.message || "Failed to get transcript",
+    });
+  }
+};
+
+/**
+ * @desc  Persist a client-encrypted transcript (Issue #1335).
+ * @route POST /api/meetings/:meetingId/transcript/encrypted
+ * @access Private
+ *
+ * Server stores ciphertext only — never decrypts. Clears plaintext fields.
+ */
+export const storeEncryptedTranscript = async (req, res) => {
+  try {
+    if (!isE2eeEnabled()) {
+      return res.status(403).json({
+        success: false,
+        message: "E2EE is not enabled on this server (E2EE_ENABLED)",
+      });
+    }
+
+    const { meetingId } = req.params;
+    const meeting = await Meeting.findById(meetingId);
+    if (!meeting) {
+      return res.status(404).json({
+        success: false,
+        message: "Meeting not found",
+      });
+    }
+
+    if (!assertMeetingAccess(meeting, req.user)) {
+      return res.status(403).json({
+        success: false,
+        message: "Forbidden: You don't have access to this meeting",
+      });
+    }
+
+    const normalized = normalizeEncryptedTranscriptPayload(req.body || {});
+    if (!normalized.ok) {
+      return res.status(400).json({
+        success: false,
+        message: normalized.message,
+      });
+    }
+
+    const payload = normalized.payload;
+
+    meeting.encryptedTranscript = payload;
+    meeting.isTranscriptEncrypted = true;
+    meeting.transcriptEncryptionVersion = payload.encryptionVersion;
+    // Wipe plaintext — server must not retain readable transcript for E2EE meetings
+    meeting.transcript = "";
+    await meeting.save();
+
+    let transcript = await Transcript.findOne({ meeting: meetingId });
+    if (!transcript) {
+      transcript = new Transcript({
+        meeting: meetingId,
+        organizationId: meeting.organization || null,
+        status: "completed",
+      });
+    }
+    transcript.encryptedFullText = payload;
+    transcript.isEncrypted = true;
+    transcript.fullText = "";
+    transcript.segments = [];
+    transcript.status = "completed";
+    await transcript.save();
+
+    return res.status(200).json({
+      success: true,
+      message: "Encrypted transcript stored",
+      meetingId,
+      isTranscriptEncrypted: true,
+      encryptedTranscript: payload,
+    });
+  } catch (error) {
+    console.error("Error storing encrypted transcript:", error);
+    return res.status(500).json({
+      success: false,
+      message: error.message || "Failed to store encrypted transcript",
     });
   }
 };
@@ -679,13 +780,24 @@ export const getTranscriptByMeeting = async (req, res) => {
 
     const transcript = await Transcript.findOne({
       meeting: meetingId,
-    }).populate("meeting", "title date participants uploadedBy organization");
+    }).populate(
+      "meeting",
+      "title date participants uploadedBy organization transcript encryptedTranscript isTranscriptEncrypted",
+    );
 
     if (!transcript) {
       return sendError(res, 404, "Transcript not found");
     }
 
-    sendSuccess(res, transcript);
+    const meeting = transcript.meeting;
+    sendSuccess(res, {
+      ...transcript.toObject(),
+      encryption: {
+        enabled: isMeetingTranscriptEncrypted(meeting),
+        encryptedTranscript: meeting?.encryptedTranscript || null,
+        e2eeFeatureEnabled: isE2eeEnabled(),
+      },
+    });
   } catch (error) {
     console.error("Error fetching transcript:", error);
     sendError(res, 500, "Failed to fetch transcript");
@@ -708,6 +820,19 @@ export const searchTranscript = async (req, res) => {
 
     if (!transcript) {
       return sendError(res, 404, "Transcript not found");
+    }
+
+    if (transcript.isEncrypted || !transcript.fullText) {
+      const meeting = await Meeting.findById(meetingId).select(
+        "encryptedTranscript isTranscriptEncrypted",
+      );
+      if (isMeetingTranscriptEncrypted(meeting) || transcript.isEncrypted) {
+        return sendError(
+          res,
+          400,
+          "Server-side search is unavailable for end-to-end encrypted transcripts. Decrypt locally to search.",
+        );
+      }
     }
 
     const searchTerms = query.toLowerCase().split(" ");
