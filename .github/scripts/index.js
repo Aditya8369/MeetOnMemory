@@ -5,6 +5,7 @@ export {
   processPrMerged,
   processPrValidation,
   processFirstContributorWelcome,
+  processPrAutomation,
 } from "./pr.js";
 export { processIssueCommentGuidance } from "./issue-comments.js";
 export { processIssueLifecycle } from "./lifecycle.js";

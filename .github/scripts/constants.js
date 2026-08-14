@@ -13,6 +13,9 @@ export const AUTOMATION = Object.freeze({
   guidanceMarker: "mom:claim-guidance",
   overrideMarker: "mom:maintainer-override",
   ciValidationMarker: "mom:ci-validation",
+  prAutoClosedMarker: "mom:pr-auto-closed",
+  prChangesRequestedReminderMarker: "mom:pr-changes-requested-reminder",
+  prFailedChecksReminderMarker: "mom:pr-failed-checks-reminder",
 });
 
 export const COMMANDS = Object.freeze({
@@ -21,16 +24,18 @@ export const COMMANDS = Object.freeze({
 });
 
 export const LIMITS = Object.freeze({
-  maxActiveAssignedIssues: 4,
+  maxActiveAssignedIssues: 5,
   guidanceCooldownHours: 12,
 });
 
 export const TIMERS = Object.freeze({
-  // Reminders every 8 hours until the 48-hour claim window expires.
-  reminderHours: Object.freeze([8, 16, 24, 32, 40]),
-  expirationHours: 48,
+  // Reminders every 6 hours until the 24-hour claim window expires.
+  reminderHours: Object.freeze([6, 12, 18]),
+  expirationHours: 24,
   // Contributor-authored issues: exclusive claim window for the author.
   authorPriorityHours: 48,
+  // Close open PRs strictly after this many hours (uses PR created_at).
+  prAutoCloseHours: 48,
 });
 
 export function reminderMarker(hours) {
