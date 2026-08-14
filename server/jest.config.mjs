@@ -64,5 +64,6 @@ export default {
     "automationRulesRbac.test.js",
     "calendarConnectionSync.test.js",
     "clerkUserProvisioningRace.test.js",
+    "meetingQualityRoutePrefix.test.js",
   ],
 };
