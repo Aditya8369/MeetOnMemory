@@ -39,6 +39,7 @@ const ScheduleMeeting = ({ hookProps, loadingDuplicate = false }) => {
     aiSummaryTemplates,
     selectedAiSummaryTemplateId,
     setSelectedAiSummaryTemplateId,
+    setAgendaItems,
   } = hookProps;
 
   return (
@@ -133,6 +134,7 @@ const ScheduleMeeting = ({ hookProps, loadingDuplicate = false }) => {
 
         <AgendaSection
           agendaItems={agendaItems}
+          setAgendaItems={setAgendaItems}
           newAgenda={newAgenda}
           setNewAgenda={setNewAgenda}
           addAgendaItem={addAgendaItem}

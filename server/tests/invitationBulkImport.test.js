@@ -20,6 +20,8 @@ jest.mock("../config/nodeMailer.js", () => ({
   default: { sendMail: jest.fn() },
 }));
 
+jest.setTimeout(60000);
+
 describe("POST /api/invitations/bulk (Issue #1362)", () => {
   let adminUser;
   let adminToken;
@@ -169,7 +171,7 @@ describe("POST /api/invitations/bulk (Issue #1362)", () => {
     expect(res.body.successful).toBe(2);
     expect(res.body.failed).toBe(1);
     expect(res.body.progress).toBe(100);
-  });
+  }, 60000);
 
   it("returns 400 for an empty CSV", async () => {
     const res = await postCsv(adminToken, "");

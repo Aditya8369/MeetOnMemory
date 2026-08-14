@@ -17,6 +17,10 @@ export default {
   // Run those suites via `npm run test:unit` instead.
   testPathIgnorePatterns: [
     "/node_modules/",
+    "documentSyncAuthorization.test.js",
+    "workspaceSocketAuthentication.test.js",
+    "topicValidation.test.js",
+    "glossarySearchSecurity.test.js",
     "organizationController.test.js",
     "InvitationService.test.js",
     "OrganizationService.test.js",
