@@ -44,6 +44,7 @@ import {
   GitMerge,
   History,
   Archive,
+  Network,
 } from "lucide-react";
 
 const clerkPubKey = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY;
@@ -433,6 +434,12 @@ const Navbar = () => {
       label: "Knowledge Archive",
       href: "/knowledge/archive",
       icon: Archive,
+      permission: { resource: "knowledge", action: "view" },
+    },
+    {
+      label: "Knowledge Graph",
+      href: "/knowledge/graph",
+      icon: Network,
       permission: { resource: "knowledge", action: "view" },
     },
     {

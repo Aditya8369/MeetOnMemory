@@ -1,4 +1,5 @@
 import Decision from "../models/decisionModel.js";
+import mongoose from "mongoose";
 
 /**
  * @desc    Get the decision dependency graph for the current organization
@@ -122,6 +123,10 @@ export const getDecisionNeighbors = async (req, res) => {
   try {
     const { id } = req.params;
     const orgId = req.user.organization;
+
+    if (!mongoose.isValidObjectId(id)) {
+      return res.status(400).json({ message: "Invalid decision ID" });
+    }
 
     const decision = await Decision.findOne({ _id: id, organization: orgId })
       .select("relatesTo supersededByMemory")

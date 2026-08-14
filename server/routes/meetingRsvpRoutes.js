@@ -1,5 +1,5 @@
 import express from "express";
-import { requireAuth } from "../middleware/auth.js";
+import userAuth from "../middleware/userAuth.js";
 import {
   sendRsvpRequests,
   respondToRsvp,
@@ -10,7 +10,7 @@ import {
 const router = express.Router();
 
 // Require authentication for all RSVP routes
-router.use(requireAuth);
+router.use(userAuth);
 
 // Get pending RSVPs for the logged-in user
 router.get("/pending", getPendingRsvps);
