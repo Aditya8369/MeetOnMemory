@@ -19,6 +19,7 @@ import MeetingFollowUpBanner from "../components/meeting-details/MeetingFollowUp
 import PresentMode from "../components/meeting-details/PresentMode";
 import PrepChecklist from "../components/meetings/PrepChecklist";
 import SpeakingTimeBreakdown from "../components/meetings/SpeakingTimeBreakdown";
+import CarryForwardConfig from "../components/meetings/CarryForwardConfig";
 import { useUser } from "@clerk/clerk-react";
 
 const MeetingDetails = () => {
@@ -226,6 +227,18 @@ const MeetingDetails = () => {
         <MeetingParticipants meeting={meeting} />
         <PrepChecklist meeting={meeting} currentUser={currentUser} />
         <MeetingGoalsPanel meeting={meeting} currentUser={currentUser} />
+
+        {meeting.series && (
+          <CarryForwardConfig
+            seriesId={meeting.series._id || meeting.series}
+            currentMeetingId={meeting._id}
+            onApplySuccess={() => {
+              // Reload meeting data to reflect new agenda items
+              window.location.reload();
+            }}
+          />
+        )}
+
         <MeetingAgenda meeting={meeting} />
         <MeetingMetadata meeting={meeting} />
         <MeetingActions
