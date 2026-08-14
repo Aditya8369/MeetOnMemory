@@ -2,7 +2,12 @@ import React, { useEffect, useState, useRef } from "react";
 import { io } from "socket.io-client";
 import { toast } from "react-toastify";
 import { Loader2, Mic, AlertCircle } from "lucide-react";
-import { createClerkSocketOptions } from "../services/apiClient.js";
+import { useAuth } from "@clerk/clerk-react";
+import {
+  createClerkSocketOptions,
+  getClerkBearerToken,
+} from "../services/apiClient.js";
+import { getBackendUrl } from "../config/backendConfig.js";
 
 const LiveTranscriptPanel = ({ meetingId }) => {
   const [segments, setSegments] = useState([]);
@@ -10,9 +15,14 @@ const LiveTranscriptPanel = ({ meetingId }) => {
   const [error, setError] = useState(null);
   const socketRef = useRef(null);
   const transcriptEndRef = useRef(null);
+  const { isSignedIn, isLoaded } = useAuth();
 
   useEffect(() => {
     if (!meetingId) return;
+    if (!isLoaded || !isSignedIn) {
+      setStatus("disconnected");
+      return;
+    }
 
     let cancelled = false;
 
@@ -22,8 +32,22 @@ const LiveTranscriptPanel = ({ meetingId }) => {
       });
       if (cancelled) return;
 
-      // Initialize socket connection
-      socketRef.current = io("/", opts);
+      // Initialize socket connection using backendUrl
+      const backendUrl = getBackendUrl();
+      socketRef.current = io(backendUrl, opts);
+
+      socketRef.current.on("reconnect_attempt", async () => {
+        try {
+          const token = await getClerkBearerToken();
+          if (socketRef.current.auth) {
+            socketRef.current.auth.token = token;
+          } else {
+            socketRef.current.auth = { token };
+          }
+        } catch (error) {
+          console.error("Failed to refresh token on reconnect:", error);
+        }
+      });
 
       socketRef.current.on("connect", () => {
         console.log("Connected to transcript socket");
@@ -87,7 +111,7 @@ const LiveTranscriptPanel = ({ meetingId }) => {
         socketRef.current.disconnect();
       }
     };
-  }, [meetingId]);
+  }, [meetingId, isLoaded, isSignedIn]);
 
   const formatTime = (seconds) => {
     const mins = Math.floor(seconds / 60);
