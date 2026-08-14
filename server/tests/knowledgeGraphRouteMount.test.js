@@ -34,6 +34,7 @@ import {
   getAnalytics,
   exportGraph,
   search,
+  getEntity,
 } from "../controllers/knowledgeGraphController.js";
 
 const ORG_A = "507f1f77bcf86cd799439011";
@@ -371,6 +372,31 @@ describe("Knowledge Graph route mount and authorization (#1560)", () => {
 
       expect(res.statusCode).toBe(403);
       expect(searchEntities).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("getEntity", () => {
+    it("rejects a malformed ObjectId entity id with 400", async () => {
+      const req = createReq({ params: { type: "meeting", id: "not-an-id" } });
+      const res = createRes();
+
+      await getEntity(req, res);
+
+      expect(res.statusCode).toBe(400);
+      expect(buildOrganizationGraph).not.toHaveBeenCalled();
+    });
+
+    it("returns 404 when the entity is missing from the org graph", async () => {
+      buildOrganizationGraph.mockResolvedValue({ nodes: [], edges: [] });
+      const req = createReq({
+        params: { type: "meeting", id: MEETING_ID },
+      });
+      const res = createRes();
+
+      await getEntity(req, res);
+
+      expect(res.statusCode).toBe(404);
+      expect(buildOrganizationGraph).toHaveBeenCalledWith(ORG_A);
     });
   });
 });

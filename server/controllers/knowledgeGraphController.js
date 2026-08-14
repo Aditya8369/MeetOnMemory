@@ -128,6 +128,23 @@ export const getEntity = async (req, res) => {
       return res.status(403).json(FORBIDDEN);
     }
 
+    if (!type || !id || typeof id !== "string" || !id.trim()) {
+      return res.status(400).json({ message: "Invalid entity identifier" });
+    }
+
+    // Meeting / decision / person / action nodes use Mongo ObjectIds; topic
+    // nodes use slug ids. Reject clearly bad ids before building the graph.
+    const objectIdTypes = new Set([
+      "meeting",
+      "decision",
+      "person",
+      "action",
+      "action-item",
+    ]);
+    if (objectIdTypes.has(type) && !mongoose.isValidObjectId(id)) {
+      return res.status(400).json({ message: "Invalid entity identifier" });
+    }
+
     const graph = await buildOrganizationGraph(orgId);
     const { nodes, edges } = graph;
 
