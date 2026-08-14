@@ -57,7 +57,7 @@ const TranscriptViewer = () => {
       setLoading(true);
       const response = await api.get(`/transcripts/meeting/${meetingId}`);
 
-      const data = response.data;
+      const data = response.data?.data || response.data;
       if (data && data.segments) {
         data.segments = data.segments.filter(
           (segment, index, self) =>
@@ -70,6 +70,39 @@ const TranscriptViewer = () => {
             ),
         );
       }
+
+      // Issue #1335 — decrypt ciphertext locally when E2EE payload is present
+      if (data?.encryption?.enabled && data.encryption.encryptedTranscript) {
+        try {
+          const { loadMeetingKey, importKey, decryptTranscript } =
+            await import("../utils/encryption/index.js");
+          const stored = loadMeetingKey(meetingId);
+          if (!stored) {
+            toast.error("Meeting encryption key not found in this browser");
+          } else {
+            const key = await importKey(stored);
+            const plaintext = await decryptTranscript(
+              data.encryption.encryptedTranscript,
+              key,
+            );
+            data.fullText = plaintext;
+            if (!data.segments?.length) {
+              data.segments = [
+                {
+                  text: plaintext,
+                  speaker: "Transcript",
+                  startTime: 0,
+                  endTime: 0,
+                },
+              ];
+            }
+          }
+        } catch (decryptErr) {
+          console.error("E2EE decrypt failed:", decryptErr);
+          toast.error("Failed to decrypt transcript");
+        }
+      }
+
       setTranscript(data);
     } catch (error) {
       console.error("Error fetching transcript:", error);

@@ -111,8 +111,24 @@ const meetingSchema = new mongoose.Schema(
       default: "",
     },
     transcript: {
-      type: String, // Raw transcript text from AssemblyAI
+      type: String, // Raw transcript text from AssemblyAI (legacy plaintext)
       default: "",
+    },
+    /**
+     * Issue #1335 — Client-side E2EE ciphertext envelope.
+     * When set, `transcript` is cleared and the server never holds plaintext.
+     */
+    encryptedTranscript: {
+      type: mongoose.Schema.Types.Mixed,
+      default: null,
+    },
+    isTranscriptEncrypted: {
+      type: Boolean,
+      default: false,
+    },
+    transcriptEncryptionVersion: {
+      type: Number,
+      default: null,
     },
     summary: {
       type: String, // Human-readable MoM text
