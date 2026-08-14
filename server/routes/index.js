@@ -54,6 +54,7 @@ import recapRoutes from "./recapRoutes.js";
 import meetingQualityRoutes from "./meetingQualityRoutes.js";
 import keyMomentRoutes from "./keyMomentRoutes.js";
 import meetingGoalRoutes from "./meetingGoalRoutes.js";
+import actionItemDependencyRoutes from "./actionItemDependencyRoutes.js";
 import parkingLotRoutes from "./parkingLotRoutes.js";
 
 import calendarRoutes from "./calendarRoutes.js";
@@ -130,6 +131,7 @@ router.use("/api/saved-filters", savedFilterRoutes);
 router.use("/api/key-moments", keyMomentRoutes);
 router.use("/api/speaking-time", speakingTimeRoutes);
 router.use("/api/meeting-goals", meetingGoalRoutes);
+router.use("/api/action-item-dependencies", actionItemDependencyRoutes);
 router.use("/api/parking-lot", parkingLotRoutes);
 
 export default router;

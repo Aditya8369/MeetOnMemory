@@ -23,4 +23,5 @@ export { default as aiSummaryTemplateApi } from "./aiSummaryTemplateApi";
 export * from "./savedFilterApi";
 export * from "./speakingTimeApi";
 export { default as meetingGoalApi } from "./meetingGoalApi";
+export * from "./actionItemDependencyApi";
 export * from "./parkingLotApi";
