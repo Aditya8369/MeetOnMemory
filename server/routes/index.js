@@ -135,7 +135,11 @@ router.use("/api/automation-rules", automationRuleRoutes);
 router.use("/api/meeting-health", meetingHealthRoutes);
 router.use("/api/workspace", workspaceRoutes);
 router.use("/api/recap", recapRoutes);
-router.use("/api/meeting-quality", meetingQualityRoutes);
+// /api/quality is the prefix MeetingQuality.jsx calls and the prefix every
+// @route line in meetingQualityController.js documents. The router was mounted
+// at /api/meeting-quality, which nothing referenced, so the page 404'd on every
+// request (Issue #1561).
+router.use("/api/quality", meetingQualityRoutes);
 router.use("/api/saved-filters", savedFilterRoutes);
 router.use("/api/key-moments", keyMomentRoutes);
 router.use("/api/speaking-time", speakingTimeRoutes);
