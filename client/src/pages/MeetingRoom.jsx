@@ -21,8 +21,10 @@ import {
   NotebookPen,
   Captions,
   FileText,
+  Lightbulb,
 } from "lucide-react";
 import CollaborativeEditor from "../components/meetings/CollaborativeEditor.jsx";
+import ParkingLotPanel from "../components/meetings/ParkingLotPanel.jsx";
 import PeerVideo from "../components/meetings/PeerVideo.jsx";
 import MeetingHeader from "../components/meetings/MeetingHeader.jsx";
 import MeetingControlBar from "../components/meetings/MeetingControlBar.jsx";
@@ -102,6 +104,7 @@ const MeetingRoom = () => {
   // eslint-disable-next-line no-unused-vars
   const [duration, setDuration] = useState(0);
   const [showNotes, setShowNotes] = useState(false);
+  const [showParkingLot, setShowParkingLot] = useState(false);
 
   // Transcription state
   const [showCaptions] = useState(true);
@@ -578,6 +581,22 @@ const MeetingRoom = () => {
               </span>
             </button>
 
+            {/* Parking Lot Toggle */}
+            <button
+              onClick={() => setShowParkingLot((v) => !v)}
+              className={`flex items-center gap-1.5 text-sm font-semibold px-4 py-2 rounded-xl transition-all cursor-pointer ${
+                showParkingLot
+                  ? "bg-indigo-600 text-white hover:bg-indigo-700"
+                  : "bg-gray-800 text-gray-300 hover:text-white hover:bg-gray-700"
+              }`}
+              title={showParkingLot ? "Hide parking lot" : "Open parking lot"}
+            >
+              <Lightbulb size={16} />
+              <span className="hidden sm:inline">
+                {showParkingLot ? "Hide Ideas" : "Parking Lot"}
+              </span>
+            </button>
+
             {/* Transcription Toggle */}
             <button
               onClick={toggleTranscription}
@@ -694,6 +713,19 @@ const MeetingRoom = () => {
             {showNotes && (
               <div className="w-full md:w-[420px] lg:w-[480px] shrink-0 p-4 bg-gray-950 border-l border-gray-800 overflow-hidden flex flex-col">
                 <CollaborativeEditor meetingId={roomId} />
+              </div>
+            )}
+
+            {/* Parking Lot Panel */}
+            {showParkingLot && (
+              <div className="w-full md:w-[320px] lg:w-[360px] shrink-0 bg-gray-950 border-l border-gray-800 overflow-hidden flex flex-col">
+                <ParkingLotPanel
+                  organizationId={
+                    userData?.currentOrganization?._id ||
+                    userData?.organizations?.[0]
+                  }
+                  meetingId={roomId}
+                />
               </div>
             )}
 
