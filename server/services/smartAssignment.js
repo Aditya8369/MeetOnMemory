@@ -65,4 +65,4 @@ class SmartAssignment {
   }
 }
 
-module.exports = SmartAssignment;
+export default SmartAssignment;

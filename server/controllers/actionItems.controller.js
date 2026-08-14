@@ -1,54 +1,58 @@
-const ActionItem = require("../models/ActionItem");
-const Meeting = require("../models/Meeting");
-const ActionItemExtractor = require("../services/actionItemExtractor");
+import ActionItem from "../models/ActionItem.js";
+import ActionItemExtractor from "../services/actionItemExtractor.js";
 
 /**
- * @desc    Trigger AI extraction from meeting transcript
- * @route   POST /api/meetings/:meetingId/extract-actions
+ * @desc Trigger AI extraction from meeting transcript (Idempotent)
  */
-exports.extractFromMeeting = async (req, res) => {
+export const extractFromMeeting = async (req, res) => {
   try {
     const { meetingId } = req.params;
     const userId = req.user.id;
 
-    const meeting = await Meeting.findById(meetingId).populate(
-      "participants",
-      "name",
-    );
-    if (!meeting)
-      return res
-        .status(404)
-        .json({ success: false, error: "Meeting not found" });
-
-    if (!meeting.transcript || meeting.transcript.length < 100) {
+    // Idempotency check: Prevent duplicate extractions
+    const existingCount = await ActionItem.countDocuments({
+      meetingId,
+      aiConfidence: { $exists: true },
+    });
+    if (existingCount > 0) {
       return res.status(400).json({
         success: false,
-        error: "Transcript is too short to extract action items.",
+        error: "Action items have already been extracted for this meeting.",
       });
     }
 
-    // Run AI extraction
+    const meeting = req.meeting; // Populated by verifyMeetingAccess
+    if (!meeting.transcript || meeting.transcript.length < 100) {
+      return res
+        .status(400)
+        .json({ success: false, error: "Transcript is too short." });
+    }
+
     const extractedItems = await ActionItemExtractor.extractFromTranscript(
       meeting.transcript,
       meeting.participants,
     );
 
-    // Save to database
-    const savedItems = await ActionItem.insertMany(
-      extractedItems.map((item) => ({
+    // Explicitly handle state initialization since insertMany bypasses pre('save')
+    const now = new Date();
+    const itemsToInsert = extractedItems.map((item) => {
+      let status = "pending";
+      if (item.deadline && new Date(item.deadline) < now) status = "overdue";
+
+      return {
         ...item,
         meetingId,
         assignedBy: userId,
-      })),
-    );
-
-    res.status(201).json({
-      success: true,
-      count: savedItems.length,
-      data: savedItems,
+        status,
+        completedAt: null,
+      };
     });
+
+    const savedItems = await ActionItem.insertMany(itemsToInsert);
+    res
+      .status(201)
+      .json({ success: true, count: savedItems.length, data: savedItems });
   } catch (error) {
-    console.error("Error extracting action items:", error);
     res
       .status(500)
       .json({ success: false, error: error.message || "Server error" });
@@ -56,16 +60,17 @@ exports.extractFromMeeting = async (req, res) => {
 };
 
 /**
- * @desc    Get action items for the current user (Dashboard view)
- * @route   GET /api/action-items
+ * @desc Get action items for the current user
  */
-exports.getActionItems = async (req, res) => {
+export const getActionItems = async (req, res) => {
   try {
     const { status, priority, meetingId } = req.query;
     const userId = req.user.id;
+    const orgId = req.user.organizationId;
 
     const filter = {
       $or: [{ assignee: userId }, { assignedBy: userId }],
+      meetingId: { $in: await getOrgMeetingIds(orgId) }, // Scope to org
     };
 
     if (status) filter.status = status;
@@ -78,78 +83,68 @@ exports.getActionItems = async (req, res) => {
       .populate("assignedBy", "name")
       .populate("meetingId", "title date");
 
-    res.status(200).json({
-      success: true,
-      count: items.length,
-      data: items,
-    });
+    res.status(200).json({ success: true, count: items.length, data: items });
   } catch (_error) {
     res.status(500).json({ success: false, error: "Server error" });
   }
 };
 
 /**
- * @desc    Get action items for a specific meeting
- * @route   GET /api/action-items/meeting/:meetingId
+ * @desc Get action items for a specific meeting
  */
-exports.getMeetingActionItems = async (req, res) => {
+export const getMeetingActionItems = async (req, res) => {
   try {
     const { meetingId } = req.params;
-
     const items = await ActionItem.find({ meetingId })
       .sort({ createdAt: 1 })
       .populate("assignee", "name avatar")
       .populate("assignedBy", "name");
 
-    res.status(200).json({
-      success: true,
-      count: items.length,
-      data: items,
-    });
+    res.status(200).json({ success: true, count: items.length, data: items });
   } catch (_error) {
     res.status(500).json({ success: false, error: "Server error" });
   }
 };
 
 /**
- * @desc    Manually create an action item
- * @route   POST /api/action-items
+ * @desc Update action item (Whitelisted fields, explicit state transitions)
  */
-exports.createActionItem = async (req, res) => {
-  try {
-    const { meetingId, title, description, assignee, deadline, priority } =
-      req.body;
-    const userId = req.user.id;
-
-    const item = await ActionItem.create({
-      meetingId,
-      title,
-      description,
-      assignee,
-      assignedBy: userId,
-      deadline,
-      priority,
-    });
-
-    res.status(201).json({ success: true, data: item });
-  } catch (error) {
-    res.status(400).json({ success: false, error: error.message });
-  }
-};
-
-/**
- * @desc    Update action item status/details
- * @route   PATCH /api/action-items/:id
- */
-exports.updateActionItem = async (req, res) => {
+export const updateActionItem = async (req, res) => {
   try {
     const { id } = req.params;
-    const updates = req.body;
+    const item = req.actionItem; // Populated by verifyActionItemAccess
 
-    // Prevent unauthorized updates (simplified check)
-    const item = await ActionItem.findById(id);
-    if (!item)
-      return res.status(404).json({ success: false, error: "Not found" });
+    // Whitelist mutable fields
+    const allowedFields = [
+      "status",
+      "assignee",
+      "deadline",
+      "priority",
+      "title",
+      "description",
+    ];
+    const updates = {};
+    allowedFields.forEach((field) => {
+      if (req.body[field] !== undefined) updates[field] = req.body[field];
+    });
+
+    // Explicit state transitions
+    if (updates.status) {
+      if (updates.status === "completed" && item.status !== "completed") {
+        updates.completedAt = new Date();
+      } else if (updates.status !== "completed") {
+        updates.completedAt = null;
+      }
+
+      // Auto-mark overdue if deadline passed and not completed/cancelled
+      if (
+        updates.deadline &&
+        new Date(updates.deadline) < new Date() &&
+        !["completed", "cancelled"].includes(updates.status)
+      ) {
+        updates.status = "overdue";
+      }
+    }
 
     const updatedItem = await ActionItem.findByIdAndUpdate(id, updates, {
       new: true,
@@ -163,15 +158,20 @@ exports.updateActionItem = async (req, res) => {
 };
 
 /**
- * @desc    Delete an action item
- * @route   DELETE /api/action-items/:id
+ * @desc Delete an action item
  */
-exports.deleteActionItem = async (req, res) => {
+export const deleteActionItem = async (req, res) => {
   try {
-    const { id } = req.params;
-    await ActionItem.findByIdAndDelete(id);
+    await ActionItem.findByIdAndDelete(req.params.id);
     res.status(200).json({ success: true, data: {} });
   } catch (_error) {
     res.status(500).json({ success: false, error: "Server error" });
   }
 };
+
+// Helper to get meeting IDs for an org (simplified)
+async function getOrgMeetingIds(orgId) {
+  const Meeting = (await import("../models/Meeting.js")).default;
+  const meetings = await Meeting.find({ organizationId: orgId }).select("_id");
+  return meetings.map((m) => m._id);
+}

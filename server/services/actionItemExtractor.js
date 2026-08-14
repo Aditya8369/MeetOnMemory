@@ -1,5 +1,5 @@
-const OpenAI = require("openai"); // Or Anthropic SDK
-const smartAssignment = require("./smartAssignment");
+import OpenAI from "openai"; // Or Anthropic SDK
+import smartAssignment from "./smartAssignment.js";
 
 // Initialize AI client (Assuming OpenAI for this implementation)
 const openai = new OpenAI({
@@ -119,4 +119,4 @@ class ActionItemExtractor {
   }
 }
 
-module.exports = ActionItemExtractor;
+export default ActionItemExtractor;
