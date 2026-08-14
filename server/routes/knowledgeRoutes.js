@@ -7,6 +7,7 @@ import {
   getOpenActionItems,
   getDecisions,
   getArchivedMemories,
+  getLifecycleMemories,
   submitMemoryFeedback,
   recalculateImportance,
   updateActionItemStatus,
@@ -123,7 +124,13 @@ router.post(
   recalculateImportance,
 );
 
-// --- Memory Lifecycle Management (#377) ---
+// --- Memory Lifecycle Management (#377, #1552) ---
+router.get(
+  "/lifecycle",
+  requireOrgMembership,
+  requirePermission("knowledge", "view"),
+  getLifecycleMemories,
+);
 router.post(
   "/lifecycle/run",
   writeLimiter,
