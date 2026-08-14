@@ -11,8 +11,20 @@ vi.mock("socket.io-client", () => ({
   })),
 }));
 
+vi.mock("@clerk/clerk-react", () => ({
+  useAuth: () => ({
+    isSignedIn: true,
+    isLoaded: true,
+  }),
+}));
+
+vi.mock("../config/backendConfig.js", () => ({
+  getBackendUrl: vi.fn(() => "http://localhost:5000"),
+}));
+
 vi.mock("../services/apiClient.js", () => ({
   createClerkSocketOptions: vi.fn().mockResolvedValue({}),
+  getClerkBearerToken: vi.fn().mockResolvedValue("mock_token"),
 }));
 
 describe("LiveTranscriptPanel Dark Mode (#1340)", () => {
