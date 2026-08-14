@@ -12,6 +12,7 @@ import MeetingMetadata from "../components/meeting-details/MeetingMetadata";
 import MeetingActions from "../components/meeting-details/MeetingActions";
 import TranscriptAnnotations from "../components/meeting-details/TranscriptAnnotations";
 import KeyMomentsPanel from "../components/meetings/KeyMomentsPanel";
+import SentimentTimeline from "../components/meetings/SentimentTimeline";
 import MeetingGoalsPanel from "../components/meetings/MeetingGoalsPanel";
 import ShareModal from "../components/shared-links/ShareModal";
 import MeetingFollowUpBanner from "../components/meeting-details/MeetingFollowUpBanner";
@@ -181,6 +182,10 @@ const MeetingDetails = () => {
 
         <MeetingTranscript meeting={meeting} />
         <TranscriptAnnotations meeting={meeting} />
+
+        <div className="mt-6 mb-6">
+          <SentimentTimeline meetingId={meeting._id} />
+        </div>
 
         {/* Speaking Time Analytics Section */}
         <div className="bg-white rounded-lg shadow-sm border border-gray-200 mt-6 mb-6 p-6">

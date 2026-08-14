@@ -56,6 +56,7 @@ import keyMomentRoutes from "./keyMomentRoutes.js";
 import meetingGoalRoutes from "./meetingGoalRoutes.js";
 import actionItemDependencyRoutes from "./actionItemDependencyRoutes.js";
 import parkingLotRoutes from "./parkingLotRoutes.js";
+import sentimentTimelineRoutes from "./sentimentTimelineRoutes.js";
 
 import calendarRoutes from "./calendarRoutes.js";
 import assistantRoutes from "./assistantRoutes.js";
@@ -133,5 +134,6 @@ router.use("/api/speaking-time", speakingTimeRoutes);
 router.use("/api/meeting-goals", meetingGoalRoutes);
 router.use("/api/action-item-dependencies", actionItemDependencyRoutes);
 router.use("/api/parking-lot", parkingLotRoutes);
+router.use("/api/sentiment-timeline", sentimentTimelineRoutes);
 
 export default router;
