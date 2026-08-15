@@ -1,3 +1,4 @@
+import mongoose from "mongoose";
 import {
   getBreakdownForMeeting,
   getTrendsForUser,
@@ -11,6 +12,12 @@ export const getSpeakingTimeBreakdown = async (req, res) => {
   try {
     const { meetingId } = req.params;
     const userId = req.user._id;
+
+    if (!mongoose.Types.ObjectId.isValid(meetingId)) {
+      return res
+        .status(400)
+        .json({ success: false, message: "Invalid meeting ID format" });
+    }
 
     // Verify meeting exists and user has access
     const meeting = await Meeting.findById(meetingId);
@@ -51,8 +58,12 @@ export const getSpeakingTimeBreakdown = async (req, res) => {
 export const getSpeakingTimeTrends = async (req, res) => {
   try {
     const userId = req.user._id;
-    let limit = parseInt(req.query.limit, 10) || 10;
-    if (limit > 50) limit = 50;
+    let limit = parseInt(req.query.limit, 10);
+    if (isNaN(limit) || limit < 1) {
+      limit = 10;
+    } else if (limit > 50) {
+      limit = 50;
+    }
 
     const trends = await getTrendsForUser(userId, limit);
     return res.status(200).json({ success: true, data: trends });
