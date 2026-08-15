@@ -2,6 +2,7 @@ import React, { useState, useEffect, useContext } from "react";
 import { format } from "date-fns";
 import AppContent from "../context/AppContent";
 import Navbar from "../components/Navbar.jsx";
+import ConfirmModal from "../components/ConfirmModal.jsx";
 import { recapScheduleApi } from "../services/recapScheduleApi";
 import {
   Clock,
@@ -30,6 +31,8 @@ const RecapScheduleDashboard = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [retryingDeliveryId, setRetryingDeliveryId] = useState(null);
+  const [retryTarget, setRetryTarget] = useState(null);
+  const [retryLoading, setRetryLoading] = useState(false);
   const [saveMessage, setSaveMessage] = useState({ type: "", text: "" });
   const [retryMessage, setRetryMessage] = useState({ type: "", text: "" });
 
@@ -112,11 +115,15 @@ const RecapScheduleDashboard = () => {
     }
   };
 
-  const handleRetry = async (deliveryId) => {
+  const handleRetryConfirm = async () => {
+    if (!retryTarget) return;
+    const deliveryId = retryTarget._id;
     setRetryingDeliveryId(deliveryId);
+    setRetryLoading(true);
     setRetryMessage({ type: "", text: "" });
     try {
       await recapScheduleApi.retryDelivery(deliveryId);
+      setRetryTarget(null);
       setRetryMessage({
         type: "success",
         text: "Retry enqueued successfully.",
@@ -133,6 +140,7 @@ const RecapScheduleDashboard = () => {
       });
     } finally {
       setRetryingDeliveryId(null);
+      setRetryLoading(false);
     }
   };
 
@@ -339,7 +347,14 @@ const RecapScheduleDashboard = () => {
                             <td className="px-6 py-4 text-right">
                               <button
                                 type="button"
-                                onClick={() => handleRetry(delivery._id)}
+                                onClick={() =>
+                                  setRetryTarget({
+                                    _id: delivery._id,
+                                    meetingTitle:
+                                      delivery.meetingId?.title ||
+                                      "Unknown Meeting",
+                                  })
+                                }
                                 disabled={retryingDeliveryId === delivery._id}
                                 aria-label={`Retry delivery for ${delivery.meetingId?.title || "Unknown Meeting"}`}
                                 className="text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 font-medium cursor-pointer disabled:opacity-60 disabled:cursor-wait"
@@ -377,6 +392,18 @@ const RecapScheduleDashboard = () => {
           </div>
         )}
       </div>
+
+      {/* Confirmation Modal prior to retrying recap delivery (#1612) */}
+      <ConfirmModal
+        isOpen={Boolean(retryTarget)}
+        onClose={() => setRetryTarget(null)}
+        onConfirm={handleRetryConfirm}
+        title="Retry Recap Delivery"
+        message={`Are you sure you want to retry the recap delivery for "${retryTarget?.meetingTitle || "this meeting"}"?`}
+        confirmText="Retry Delivery"
+        variant="primary"
+        isLoading={retryLoading}
+      />
     </div>
   );
 };
