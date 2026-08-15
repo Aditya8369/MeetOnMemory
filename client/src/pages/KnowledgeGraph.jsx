@@ -92,10 +92,10 @@ const KnowledgeGraph = () => {
 
     try {
       setLoading(true);
-      const response = await apiClient.get(
+      const { data } = await apiClient.get(
         `/api/graph/organization/${organizationId}`,
       );
-      setGraph(response.data);
+      setGraph(data);
     } catch (error) {
       console.error("Error fetching graph:", error);
       toast.error("Failed to load knowledge graph");
@@ -252,10 +252,10 @@ const KnowledgeGraph = () => {
     }
 
     try {
-      const response = await apiClient.get("/api/graph/search", {
+      const { data } = await apiClient.get("/api/graph/search", {
         params: { query },
       });
-      setSearchResults(response.data.results || []);
+      setSearchResults(data.results || []);
     } catch (error) {
       console.error("Error searching:", error);
     }
@@ -273,10 +273,9 @@ const KnowledgeGraph = () => {
 
   const exportGraph = useCallback(async (format) => {
     try {
-      const response = await apiClient.post("/api/graph/export", { format });
+      const { data } = await apiClient.post("/api/graph/export", { format });
 
       if (format === "json") {
-        const data = response.data;
         const blob = new Blob([JSON.stringify(data, null, 2)], {
           type: "application/json",
         });

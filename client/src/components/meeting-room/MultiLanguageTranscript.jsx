@@ -7,7 +7,9 @@ import React, {
 } from "react";
 import AppContent from "../../context/AppContent";
 import { io } from "socket.io-client";
-import { createClerkSocketOptions } from "../../services/apiClient.js";
+import apiClient, {
+  createClerkSocketOptions,
+} from "../../services/apiClient.js";
 import {
   Languages,
   Settings,
@@ -33,25 +35,16 @@ const MultiLanguageTranscript = ({ meetingId }) => {
 
   const fetchLanguages = useCallback(async () => {
     try {
-      const response = await fetch(`${backendUrl}/api/translation/languages`, {
-        credentials: "include",
-      });
-      const data = await response.json();
+      const { data } = await apiClient.get("/api/translation/languages");
       setLanguages(data.languages || []);
     } catch (error) {
       console.error("Error fetching languages:", error);
     }
-  }, [backendUrl]);
+  }, []);
 
   const fetchPreferences = useCallback(async () => {
     try {
-      const response = await fetch(
-        `${backendUrl}/api/translation/preferences`,
-        {
-          credentials: "include",
-        },
-      );
-      const data = await response.json();
+      const { data } = await apiClient.get("/api/translation/preferences");
       if (
         data.defaultTargetLanguages &&
         data.defaultTargetLanguages.length > 0
@@ -61,22 +54,18 @@ const MultiLanguageTranscript = ({ meetingId }) => {
     } catch (error) {
       console.error("Error fetching preferences:", error);
     }
-  }, [backendUrl]);
+  }, []);
 
   const fetchTranscript = useCallback(async () => {
     try {
-      const response = await fetch(
-        `${backendUrl}/api/translation/cache/${meetingId}`,
-        {
-          credentials: "include",
-        },
+      const { data } = await apiClient.get(
+        `/api/translation/cache/${meetingId}`,
       );
-      const data = await response.json();
       setTranscript(data.translations || []);
     } catch (error) {
       console.error("Error fetching transcript:", error);
     }
-  }, [backendUrl, meetingId]);
+  }, [meetingId]);
 
   const connectSocket = useCallback(async () => {
     try {
@@ -219,21 +208,12 @@ const MultiLanguageTranscript = ({ meetingId }) => {
     if (!editingSegment || !editText.trim()) return;
 
     try {
-      const response = await fetch(`${backendUrl}/api/translation/correct`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify({
-          meetingId,
-          segmentId: editingSegment.segmentId,
-          language: editingSegment.language,
-          correctedText: editText,
-        }),
+      await apiClient.post("/api/translation/correct", {
+        meetingId,
+        segmentId: editingSegment.segmentId,
+        language: editingSegment.language,
+        correctedText: editText,
       });
-
-      if (!response.ok) {
-        throw new Error("Failed to submit correction");
-      }
 
       setEditingSegment(null);
       setEditText("");
@@ -246,25 +226,19 @@ const MultiLanguageTranscript = ({ meetingId }) => {
 
   const exportTranscript = async (format) => {
     try {
-      const response = await fetch(
-        `${backendUrl}/api/translation/export/${meetingId}`,
+      const response = await apiClient.post(
+        `/api/translation/export/${meetingId}`,
         {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          credentials: "include",
-          body: JSON.stringify({
-            format,
-            languages: [selectedLanguage],
-          }),
+          format,
+          languages: [selectedLanguage],
+        },
+        {
+          responseType: format === "json" ? "json" : "text",
         },
       );
 
-      if (!response.ok) {
-        throw new Error("Export failed");
-      }
-
       if (format === "json") {
-        const data = await response.json();
+        const data = response.data;
         const blob = new Blob([JSON.stringify(data, null, 2)], {
           type: "application/json",
         });
@@ -275,7 +249,7 @@ const MultiLanguageTranscript = ({ meetingId }) => {
         a.click();
         URL.revokeObjectURL(url);
       } else if (format === "srt") {
-        const text = await response.text();
+        const text = response.data;
         const blob = new Blob([text], { type: "text/plain" });
         const url = URL.createObjectURL(blob);
         const a = document.createElement("a");

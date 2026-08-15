@@ -2,6 +2,7 @@ import React, { useState, useEffect, useContext, useCallback } from "react";
 import { useParams } from "react-router-dom";
 import AppContent from "../context/AppContent";
 import { usePolling } from "../hooks/usePolling.js";
+import apiClient from "../services/apiClient.js";
 import Navbar from "../components/Navbar.jsx";
 import {
   BarChart,
@@ -45,7 +46,7 @@ import { toast } from "react-toastify";
 
 const MeetingQuality = () => {
   const { meetingId } = useParams();
-  const { userData, backendUrl } = useContext(AppContent);
+  const { userData } = useContext(AppContent);
 
   const [qualityData, setQualityData] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -55,34 +56,24 @@ const MeetingQuality = () => {
   // Owns the completion poll below, including its teardown on unmount (#1455).
   const { startPolling } = usePolling();
 
+  const organizationId =
+    userData?.organization?._id || userData?.organization || null;
+
   const fetchRecommendations = useCallback(async () => {
     try {
-      const response = await fetch(
-        `${backendUrl}/api/quality/recommendations/${userData._id}`,
-        { credentials: "include" },
+      const { data } = await apiClient.get(
+        `/api/quality/recommendations/${userData._id}`,
       );
-
-      if (response.ok) {
-        const data = await response.json();
-        setRecommendations(data);
-      }
+      setRecommendations(data);
     } catch (error) {
       console.error("Error fetching recommendations:", error);
     }
-  }, [backendUrl, userData._id]);
+  }, [userData._id]);
 
   const triggerCalculation = useCallback(async () => {
     try {
       setCalculating(true);
-      const response = await fetch(
-        `${backendUrl}/api/quality/calculate/${meetingId}`,
-        {
-          method: "POST",
-          credentials: "include",
-        },
-      );
-
-      if (!response.ok) throw new Error("Calculation failed");
+      await apiClient.post(`/api/quality/calculate/${meetingId}`);
 
       toast.info("Quality calculation started. This may take up to 5 seconds.");
 
@@ -91,30 +82,30 @@ const MeetingQuality = () => {
       // could clear them and navigating away left the poll running (#1455).
       startPolling(
         async ({ signal }) => {
-          const checkResponse = await fetch(
-            `${backendUrl}/api/quality/meeting/${meetingId}`,
-            { credentials: "include", signal },
-          );
+          try {
+            const { data } = await apiClient.get(
+              `/api/quality/meeting/${meetingId}`,
+              { signal },
+            );
 
-          if (!checkResponse.ok) return false;
+            if (data.status === "completed") {
+              setQualityData(data);
+              setCalculating(false);
+              toast.success("Quality score calculated!");
+              fetchRecommendations();
+              return true;
+            }
 
-          const data = await checkResponse.json();
+            if (data.status === "failed") {
+              setCalculating(false);
+              toast.error("Quality calculation failed");
+              return true;
+            }
 
-          if (data.status === "completed") {
-            setQualityData(data);
-            setCalculating(false);
-            toast.success("Quality score calculated!");
-            fetchRecommendations();
-            return true;
+            return false;
+          } catch {
+            return false;
           }
-
-          if (data.status === "failed") {
-            setCalculating(false);
-            toast.error("Quality calculation failed");
-            return true;
-          }
-
-          return false;
         },
         {
           intervalMs: 2000,
@@ -128,50 +119,37 @@ const MeetingQuality = () => {
       toast.error("Failed to start calculation");
       setCalculating(false);
     }
-  }, [backendUrl, meetingId, fetchRecommendations, startPolling]);
+  }, [meetingId, fetchRecommendations, startPolling]);
 
   const fetchQualityData = useCallback(async () => {
     try {
       setLoading(true);
-      const response = await fetch(
-        `${backendUrl}/api/quality/meeting/${meetingId}`,
-        { credentials: "include" },
-      );
-
-      if (!response.ok) {
-        const error = await response.json();
-        if (error.status === "not_calculated") {
-          toast.info("Calculating quality score...");
-          await triggerCalculation();
-          return;
-        }
-        throw new Error(error.message);
-      }
-
-      const data = await response.json();
+      const { data } = await apiClient.get(`/api/quality/meeting/${meetingId}`);
       setQualityData(data);
-
-      // Fetch recommendations
       fetchRecommendations();
     } catch (error) {
+      const data = error.response?.data;
+      if (data?.status === "not_calculated") {
+        toast.info("Calculating quality score...");
+        await triggerCalculation();
+        return;
+      }
       console.error("Error fetching quality data:", error);
       toast.error("Failed to load quality data");
     } finally {
       setLoading(false);
     }
-  }, [backendUrl, meetingId, fetchRecommendations, triggerCalculation]);
+  }, [meetingId, fetchRecommendations, triggerCalculation]);
 
   const fetchOrganizationData = useCallback(async () => {
     try {
       setLoading(true);
-      const response = await fetch(
-        `${backendUrl}/api/quality/organization/${userData.organization}`,
-        { credentials: "include" },
+      if (!organizationId) {
+        throw new Error("Organization required");
+      }
+      const { data } = await apiClient.get(
+        `/api/quality/organization/${organizationId}`,
       );
-
-      if (!response.ok) throw new Error("Failed to fetch");
-
-      const data = await response.json();
       setQualityData(data);
     } catch (error) {
       console.error("Error:", error);
@@ -179,7 +157,7 @@ const MeetingQuality = () => {
     } finally {
       setLoading(false);
     }
-  }, [backendUrl, userData.organization]);
+  }, [organizationId]);
 
   useEffect(() => {
     if (meetingId) {

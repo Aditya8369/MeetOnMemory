@@ -1,11 +1,10 @@
-import React, { useState, useEffect, useContext, useCallback } from "react";
-import AppContent from "../context/AppContent";
+import React, { useState, useEffect, useCallback } from "react";
+import apiClient from "../services/apiClient.js";
 import Navbar from "../components/Navbar.jsx";
 import { Languages, Save, Plus, Trash2, Globe, Settings } from "lucide-react";
 import { toast } from "react-toastify";
 
 const LanguagePreferences = () => {
-  const { backendUrl } = useContext(AppContent);
   const [preferences, setPreferences] = useState(null);
   const [languages, setLanguages] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -19,13 +18,7 @@ const LanguagePreferences = () => {
   const fetchPreferences = useCallback(async () => {
     try {
       setLoading(true);
-      const response = await fetch(
-        `${backendUrl}/api/translation/preferences`,
-        {
-          credentials: "include",
-        },
-      );
-      const data = await response.json();
+      const { data } = await apiClient.get("/api/translation/preferences");
       setPreferences(data);
     } catch (error) {
       console.error("Error fetching preferences:", error);
@@ -33,19 +26,16 @@ const LanguagePreferences = () => {
     } finally {
       setLoading(false);
     }
-  }, [backendUrl]);
+  }, []);
 
   const fetchLanguages = useCallback(async () => {
     try {
-      const response = await fetch(`${backendUrl}/api/translation/languages`, {
-        credentials: "include",
-      });
-      const data = await response.json();
+      const { data } = await apiClient.get("/api/translation/languages");
       setLanguages(data.languages || []);
     } catch (error) {
       console.error("Error fetching languages:", error);
     }
-  }, [backendUrl]);
+  }, []);
 
   useEffect(() => {
     fetchPreferences();
@@ -55,21 +45,10 @@ const LanguagePreferences = () => {
   const savePreferences = async () => {
     try {
       setSaving(true);
-      const response = await fetch(
-        `${backendUrl}/api/translation/preferences`,
-        {
-          method: "PUT",
-          headers: { "Content-Type": "application/json" },
-          credentials: "include",
-          body: JSON.stringify(preferences),
-        },
+      const { data } = await apiClient.put(
+        "/api/translation/preferences",
+        preferences,
       );
-
-      if (!response.ok) {
-        throw new Error("Failed to save preferences");
-      }
-
-      const data = await response.json();
       setPreferences(data);
       toast.success("Preferences saved successfully");
     } catch (error) {

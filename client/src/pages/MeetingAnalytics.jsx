@@ -1,7 +1,7 @@
-import React, { useState, useEffect, useContext, useCallback } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { useParams } from "react-router-dom";
-import AppContent from "../context/AppContent";
 import { usePolling } from "../hooks/usePolling.js";
+import apiClient from "../services/apiClient.js";
 import Navbar from "../components/Navbar.jsx";
 import {
   BarChart,
@@ -37,7 +37,6 @@ import { toast } from "react-toastify";
 
 const MeetingAnalytics = () => {
   const { meetingId } = useParams();
-  const { backendUrl } = useContext(AppContent);
 
   const [analytics, setAnalytics] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -53,32 +52,23 @@ const MeetingAnalytics = () => {
       setLoading(true);
       setError(null);
 
-      const response = await fetch(
-        `${backendUrl}/api/analytics/meetings/${meetingId}`,
-        {
-          credentials: "include",
-        },
+      const { data } = await apiClient.get(
+        `/api/analytics/meetings/${meetingId}`,
       );
-
-      if (!response.ok) {
-        const data = await response.json();
-        if (data.status === "not_analyzed") {
-          setError("not_analyzed");
-        } else {
-          throw new Error(data.message || "Failed to fetch analytics");
-        }
-      } else {
-        const data = await response.json();
-        setAnalytics(data);
-      }
+      setAnalytics(data);
     } catch (err) {
-      console.error("Error fetching analytics:", err);
-      setError(err.message);
-      toast.error("Failed to load analytics");
+      const data = err.response?.data;
+      if (data?.status === "not_analyzed") {
+        setError("not_analyzed");
+      } else {
+        console.error("Error fetching analytics:", err);
+        setError(data?.message || err.message || "Failed to fetch analytics");
+        toast.error("Failed to load analytics");
+      }
     } finally {
       setLoading(false);
     }
-  }, [backendUrl, meetingId]);
+  }, [meetingId]);
 
   useEffect(() => {
     fetchAnalytics();
@@ -91,33 +81,21 @@ const MeetingAnalytics = () => {
           ? analytics.meeting.organization._id
           : analytics.meeting.organization;
 
-      fetch(`${backendUrl}/api/meeting-goals/org/${orgId}/stats`, {
-        credentials: "include",
-      })
-        .then((res) => res.json())
-        .then((data) => {
+      apiClient
+        .get(`/api/meeting-goals/org/${orgId}/stats`)
+        .then(({ data }) => {
           if (data.success && data.stats) {
             setGoalStats(data.stats);
           }
         })
         .catch((err) => console.error("Error fetching goal stats:", err));
     }
-  }, [analytics, backendUrl]);
+  }, [analytics]);
 
   const triggerAnalysis = async () => {
     try {
       setAnalyzing(true);
-      const response = await fetch(
-        `${backendUrl}/api/analytics/analyze/${meetingId}`,
-        {
-          method: "POST",
-          credentials: "include",
-        },
-      );
-
-      if (!response.ok) {
-        throw new Error("Failed to trigger analysis");
-      }
+      await apiClient.post(`/api/analytics/analyze/${meetingId}`);
 
       toast.info("Analysis started. This may take up to 60 seconds.");
 
@@ -126,29 +104,29 @@ const MeetingAnalytics = () => {
       // could clear them and navigating away left the poll running (#1455).
       startPolling(
         async ({ signal }) => {
-          const checkResponse = await fetch(
-            `${backendUrl}/api/analytics/meetings/${meetingId}`,
-            { credentials: "include", signal },
-          );
+          try {
+            const { data } = await apiClient.get(
+              `/api/analytics/meetings/${meetingId}`,
+              { signal },
+            );
 
-          if (!checkResponse.ok) return false;
+            if (data.status === "completed") {
+              setAnalytics(data);
+              setAnalyzing(false);
+              toast.success("Analysis completed!");
+              return true;
+            }
 
-          const data = await checkResponse.json();
+            if (data.status === "failed") {
+              setAnalyzing(false);
+              toast.error("Analysis failed");
+              return true;
+            }
 
-          if (data.status === "completed") {
-            setAnalytics(data);
-            setAnalyzing(false);
-            toast.success("Analysis completed!");
-            return true;
+            return false;
+          } catch {
+            return false;
           }
-
-          if (data.status === "failed") {
-            setAnalyzing(false);
-            toast.error("Analysis failed");
-            return true;
-          }
-
-          return false;
         },
         {
           intervalMs: 5000,
@@ -163,7 +141,6 @@ const MeetingAnalytics = () => {
       setAnalyzing(false);
     }
   };
-
   const formatDuration = (seconds) => {
     if (seconds < 60) return `${Math.round(seconds)}s`;
     if (seconds < 3600) {
