@@ -2,6 +2,7 @@ import { z } from "zod";
 import mongoose from "mongoose";
 import KeyMoment from "../models/keyMomentModel.js";
 import Meeting from "../models/meetingModel.js";
+import { getKeyMomentsRoom } from "../socket/keyMomentSocket.js";
 
 const keyMomentSchema = z.object({
   meetingId: z.string().min(1, "Meeting ID is required"),
@@ -28,11 +29,10 @@ const updateKeyMomentSchema = z.object({
 // @desc    Create a new key moment
 // @route   POST /api/key-moments
 // @access  Private
-export const createKeyMoment = async (req, res, next) => {
+export const createKeyMoment = async (req, res) => {
   try {
     const validatedData = keyMomentSchema.parse(req.body);
     const userId = req.user._id;
-
     const meeting = await Meeting.findById(validatedData.meetingId);
     if (!meeting) {
       return res
@@ -44,7 +44,6 @@ export const createKeyMoment = async (req, res, next) => {
     const isParticipant = meeting.participants?.some(
       (p) => p.user?.toString() === userId.toString(),
     );
-
     if (!isOwner && !isParticipant) {
       return res.status(403).json({
         success: false,
@@ -58,7 +57,6 @@ export const createKeyMoment = async (req, res, next) => {
         message: "End time cannot be before start time",
       });
     }
-
     const newMoment = await KeyMoment.create({
       ...validatedData,
       userId,
@@ -72,9 +70,11 @@ export const createKeyMoment = async (req, res, next) => {
 
     const io = req.app.get("io");
     if (io) {
-      io.to(validatedData.meetingId).emit("keyMoment:created", populatedMoment);
+      io.to(getKeyMomentsRoom(validatedData.meetingId)).emit(
+        "keyMoment:created",
+        populatedMoment,
+      );
     }
-
     res.status(201).json({ success: true, keyMoment: populatedMoment });
   } catch (error) {
     if (error.code === 11000) {
@@ -110,7 +110,6 @@ export const getKeyMomentsForMeeting = async (req, res) => {
         .status(400)
         .json({ success: false, message: "Invalid meeting ID" });
     }
-
     const meeting = await Meeting.findById(meetingId);
     if (!meeting) {
       return res
@@ -122,7 +121,6 @@ export const getKeyMomentsForMeeting = async (req, res) => {
     const isParticipant = meeting.participants?.some(
       (p) => p.user?.toString() === userId.toString(),
     );
-
     if (!isOwner && !isParticipant) {
       return res.status(403).json({
         success: false,
@@ -133,7 +131,6 @@ export const getKeyMomentsForMeeting = async (req, res) => {
     const moments = await KeyMoment.find({ meetingId })
       .populate("userId", "name email profilePicture")
       .sort({ startTime: 1 });
-
     res.status(200).json({ success: true, keyMoments: moments });
   } catch (error) {
     console.error("Error fetching key moments:", error);
@@ -156,7 +153,6 @@ export const updateKeyMoment = async (req, res) => {
         .status(400)
         .json({ success: false, message: "Invalid key moment ID" });
     }
-
     const moment = await KeyMoment.findById(id);
     if (!moment) {
       return res
@@ -173,7 +169,6 @@ export const updateKeyMoment = async (req, res) => {
 
     Object.assign(moment, validatedData);
     await moment.save();
-
     const populatedMoment = await KeyMoment.findById(id).populate(
       "userId",
       "name email profilePicture",
@@ -181,12 +176,11 @@ export const updateKeyMoment = async (req, res) => {
 
     const io = req.app.get("io");
     if (io) {
-      io.to(moment.meetingId.toString()).emit(
+      io.to(getKeyMomentsRoom(moment.meetingId.toString())).emit(
         "keyMoment:updated",
         populatedMoment,
       );
     }
-
     res.status(200).json({ success: true, keyMoment: populatedMoment });
   } catch (error) {
     if (error instanceof z.ZodError) {
@@ -215,7 +209,6 @@ export const deleteKeyMoment = async (req, res) => {
         .status(400)
         .json({ success: false, message: "Invalid key moment ID" });
     }
-
     const moment = await KeyMoment.findById(id);
     if (!moment) {
       return res
@@ -232,10 +225,12 @@ export const deleteKeyMoment = async (req, res) => {
 
     const meetingId = moment.meetingId;
     await moment.deleteOne();
-
     const io = req.app.get("io");
     if (io) {
-      io.to(meetingId.toString()).emit("keyMoment:deleted", id);
+      io.to(getKeyMomentsRoom(meetingId.toString())).emit(
+        "keyMoment:deleted",
+        id,
+      );
     }
 
     res

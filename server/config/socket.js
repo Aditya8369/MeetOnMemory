@@ -7,6 +7,7 @@ import documentSync from "../socket/documentSync.js";
 import transcriptSocket from "../socket/transcriptSocket.js";
 import reactionSocket from "../socket/reactionSocket.js";
 import translationSocket from "../socket/translationSocket.js";
+import keyMomentSocket from "../socket/keyMomentSocket.js";
 import { initWorkspaceSocket } from "../socket/workspaceSocket.js";
 import authenticateSocket from "../middleware/socketAuth.js";
 
@@ -24,7 +25,6 @@ export function configureSocket(server, app) {
 
   // Authenticate main namespace connections once centrally
   io.use(authenticateSocket);
-
   // REDIS PUB/SUB ADAPTER (Horizontal Scaling)
   // Enables collaborative editing to work across multiple server instances.
   // Gracefully skips if Redis is not configured.
@@ -47,7 +47,6 @@ export function configureSocket(server, app) {
             },
           },
         };
-
         const pubClient = createClient(redisOptions);
         const subClient = pubClient.duplicate();
 
@@ -57,7 +56,6 @@ export function configureSocket(server, app) {
         subClient.on("error", (err) => {
           console.error("❌ Redis Adapter SubClient Error:", err.message);
         });
-
         pubClient.on("reconnecting", () =>
           console.log("🔄 Redis Adapter PubClient reconnecting..."),
         );
@@ -66,7 +64,6 @@ export function configureSocket(server, app) {
         );
 
         await Promise.all([pubClient.connect(), subClient.connect()]);
-
         io.adapter(createAdapter(pubClient, subClient));
         console.log(
           "✅ Socket.io Redis Pub/Sub adapter attached (horizontal scaling enabled for WebRTC Signaling)",
@@ -83,12 +80,12 @@ export function configureSocket(server, app) {
       );
     }
   })();
-
   meetingSocket(io);
   documentSync(io);
   transcriptSocket(io);
   reactionSocket(io);
   translationSocket(io);
+  keyMomentSocket(io);
   // Collaborative War Room namespace (/workspace) — registered exactly once here (#1399)
   initWorkspaceSocket(io);
 
