@@ -35,6 +35,12 @@ export const useKeyMoments = (meetingId) => {
     let socket;
     let cancelled = false;
 
+    const joinRoom = () => {
+      if (socket?.connected) {
+        socket.emit("join-key-moments-room", { meetingId });
+      }
+    };
+
     const initSocket = async () => {
       const opts = await createClerkSocketOptions();
       if (cancelled) return;
@@ -50,17 +56,31 @@ export const useKeyMoments = (meetingId) => {
 
       const handleUpdated = (updatedMoment) => {
         setMoments((prev) =>
-          prev.map((m) => (m._id === updatedMoment._id ? updatedMoment : m)),
+          prev
+            .map((m) => (m._id === updatedMoment._id ? updatedMoment : m))
+            .sort((a, b) => a.startTime - b.startTime),
         );
       };
 
       const handleDeleted = (deletedId) => {
-        setMoments((prev) => prev.filter((m) => m._id !== deletedId));
+        const id =
+          typeof deletedId === "object" && deletedId !== null
+            ? deletedId.id
+            : deletedId;
+        setMoments((prev) => prev.filter((m) => m._id !== id));
       };
 
+      const handleSocketError = (socketError) => {
+        console.warn("Key moments socket error:", socketError?.message);
+      };
+
+      socket.on("connect", joinRoom);
       socket.on("keyMoment:created", handleCreated);
       socket.on("keyMoment:updated", handleUpdated);
       socket.on("keyMoment:deleted", handleDeleted);
+      socket.on("keyMoment:error", handleSocketError);
+
+      joinRoom();
     };
 
     initSocket();
@@ -68,6 +88,8 @@ export const useKeyMoments = (meetingId) => {
     return () => {
       cancelled = true;
       if (socket) {
+        socket.emit("leave-key-moments-room", { meetingId });
+        socket.off("connect", joinRoom);
         socket.disconnect();
       }
     };
