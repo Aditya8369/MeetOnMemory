@@ -6,12 +6,16 @@ import {
   getOrganizationAnalyticsEndpoint,
   getSpeakerBreakdown,
   getTrends,
+  getAnalytics,
 } from "../controllers/meetingAnalyticsController.js";
 
 const router = express.Router();
 
 // Apply authentication to all routes
 router.use(userAuth);
+
+// Aggregated summary analytics
+router.get("/", getAnalytics);
 
 // Meeting-specific analytics
 router.get("/meetings/:meetingId", getMeetingAnalytics);
