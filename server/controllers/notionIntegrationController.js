@@ -9,12 +9,10 @@ export const initiateOAuth = async (req, res) => {
   try {
     const clientId = process.env.NOTION_CLIENT_ID;
     if (!clientId) {
-      return res
-        .status(500)
-        .json({
-          success: false,
-          message: "Notion integration is not configured on the server.",
-        });
+      return res.status(500).json({
+        success: false,
+        message: "Notion integration is not configured on the server.",
+      });
     }
 
     // We pass the organization ID in the state to retrieve it in the callback
@@ -31,12 +29,10 @@ export const initiateOAuth = async (req, res) => {
     res.json({ success: true, url: notionAuthUrl });
   } catch (error) {
     console.error("Error initiating Notion OAuth:", error);
-    res
-      .status(500)
-      .json({
-        success: false,
-        message: "Failed to initiate Notion connection",
-      });
+    res.status(500).json({
+      success: false,
+      message: "Failed to initiate Notion connection",
+    });
   }
 };
 
@@ -111,12 +107,10 @@ export const getDatabases = async (req, res) => {
     res.json({ success: true, databases });
   } catch (error) {
     console.error("Error fetching Notion databases:", error);
-    res
-      .status(500)
-      .json({
-        success: false,
-        message: "Failed to fetch databases from Notion",
-      });
+    res.status(500).json({
+      success: false,
+      message: "Failed to fetch databases from Notion",
+    });
   }
 };
 
@@ -163,12 +157,10 @@ export const getStatus = async (req, res) => {
     });
   } catch (error) {
     console.error("Error fetching Notion status:", error);
-    res
-      .status(500)
-      .json({
-        success: false,
-        message: "Failed to fetch Notion connection status",
-      });
+    res.status(500).json({
+      success: false,
+      message: "Failed to fetch Notion connection status",
+    });
   }
 };
 

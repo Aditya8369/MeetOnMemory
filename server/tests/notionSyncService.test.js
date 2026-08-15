@@ -6,12 +6,10 @@ jest.unstable_mockModule("@notionhq/client", () => {
     Client: jest.fn().mockImplementation(() => {
       return {
         pages: {
-          create: jest
-            .fn()
-            .mockResolvedValue({
-              id: "mock-page-id",
-              url: "https://notion.so/mock",
-            }),
+          create: jest.fn().mockResolvedValue({
+            id: "mock-page-id",
+            url: "https://notion.so/mock",
+          }),
         },
       };
     }),
