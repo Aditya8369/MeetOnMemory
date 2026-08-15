@@ -5,6 +5,7 @@ import { sendSuccess } from "../utils/responseHandler.js";
 import { ValidationError, NotFoundError } from "../utils/errors.js";
 import { buildPaginationMeta, parsePagination } from "../utils/pagination.js";
 import { caseInsensitiveEquals, escapeRegExp } from "../utils/regexUtils.js";
+import mongoose from "mongoose";
 
 // Validation schemas
 const createTagSchema = z.object({
@@ -86,8 +87,10 @@ export const updateTag = async (req, res, next) => {
     }
 
     const oldName = tag.name;
+    const isRename = Boolean(updates.name && updates.name !== oldName);
 
-    // If name is changing, check uniqueness
+    // If name is changing, check uniqueness using the same case-insensitive
+    // equality semantics used by tag creation.
     if (updates.name && updates.name.toLowerCase() !== tag.name.toLowerCase()) {
       const existingTag = await findTagByName(orgId, updates.name);
       if (existingTag) {
@@ -97,18 +100,126 @@ export const updateTag = async (req, res, next) => {
       }
     }
 
-    Object.assign(tag, updates);
-    await tag.save();
-
-    // Cascade rename in meetings if name changed
-    if (updates.name && updates.name !== oldName) {
-      await Meeting.updateMany(
-        { organization: orgId, tags: oldName },
-        { $set: { "tags.$": updates.name } },
-      );
+    if (!isRename) {
+      Object.assign(tag, updates);
+      await tag.save();
+      return sendSuccess(res, tag, "Tag updated successfully");
     }
 
-    return sendSuccess(res, tag, "Tag updated successfully");
+    const newName = updates.name;
+
+    // Replace every matching array element, not just the first one. The
+    // previous positional `$` update could leave stale occurrences when a
+    // meeting contained the same tag more than once.
+    const renameMeetings = (filter, options = {}) =>
+      Meeting.updateMany(
+        { organization: orgId, tags: oldName, ...filter },
+        [
+          {
+            $set: {
+              tags: {
+                $map: {
+                  input: "$tags",
+                  as: "tag",
+                  in: {
+                    $cond: [{ $eq: ["$$tag", oldName] }, newName, "$$tag"],
+                  },
+                },
+              },
+            },
+          },
+        ],
+        options,
+      );
+
+    // MongoDB transactions make the tag document and all meeting references
+    // commit/rollback together when the deployment supports transactions.
+    // The project's test MongoDB is standalone, so use a compensating rollback
+    // there to avoid leaving a partial rename behind if the second write fails.
+    const supportsTransactions = async () => {
+      try {
+        const hello = await mongoose.connection.db.admin().command({
+          hello: 1,
+        });
+        return Boolean(hello.setName || hello.msg === "isdbgrid");
+      } catch {
+        return false;
+      }
+    };
+
+    if (await supportsTransactions()) {
+      const session = await mongoose.startSession();
+      try {
+        let updatedTag;
+        await session.withTransaction(async () => {
+          const transactionalTag = await Tag.findOne({
+            _id: id,
+            organization: orgId,
+          }).session(session);
+
+          if (!transactionalTag) {
+            throw new NotFoundError("Tag not found");
+          }
+
+          // Re-check uniqueness inside the transaction to reduce the race
+          // window between the initial read and the rename commit.
+          const duplicate = await findTagByName(orgId, newName).session(
+            session,
+          );
+          if (duplicate && !duplicate._id.equals(transactionalTag._id)) {
+            throw new ValidationError(
+              "Tag with this name already exists in your organization.",
+            );
+          }
+
+          Object.assign(transactionalTag, updates);
+          await transactionalTag.save({ session });
+          await renameMeetings({}, { session });
+          updatedTag = transactionalTag;
+        });
+
+        return sendSuccess(res, updatedTag, "Tag updated successfully");
+      } finally {
+        await session.endSession();
+      }
+    }
+
+    // Standalone MongoDB fallback (including the repository's test server).
+    // Capture the exact affected documents so rollback cannot touch an
+    // unrelated meeting that already uses the new name.
+    const affectedMeetings = await Meeting.find({
+      organization: orgId,
+      tags: oldName,
+    })
+      .select("_id tags")
+      .lean();
+
+    let meetingsRenamed = false;
+    try {
+      await renameMeetings();
+      meetingsRenamed = true;
+
+      Object.assign(tag, updates);
+      await tag.save();
+
+      return sendSuccess(res, tag, "Tag updated successfully");
+    } catch (err) {
+      if (meetingsRenamed) {
+        try {
+          await Meeting.bulkWrite(
+            affectedMeetings.map(({ _id: meetingId, tags }) => ({
+              updateOne: {
+                filter: { _id: meetingId },
+                update: { $set: { tags } },
+              },
+            })),
+          );
+        } catch (rollbackError) {
+          err.rollbackError = rollbackError;
+        }
+      }
+      throw err;
+    }
   } catch (err) {
     next(err);
   }

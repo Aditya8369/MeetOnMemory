@@ -21,6 +21,7 @@ import PresentMode from "../components/meeting-details/PresentMode";
 import PrepChecklist from "../components/meetings/PrepChecklist";
 import SpeakingTimeBreakdown from "../components/meetings/SpeakingTimeBreakdown";
 import CarryForwardConfig from "../components/meetings/CarryForwardConfig";
+import DuplicateDetectionPanel from "../components/meeting-details/DuplicateDetectionPanel";
 import { useUser } from "@clerk/clerk-react";
 
 const MeetingDetails = () => {
@@ -169,6 +170,7 @@ const MeetingDetails = () => {
   return (
     <div className="min-h-screen bg-gray-50 p-6">
       <div className="max-w-6xl mx-auto">
+        <DuplicateDetectionPanel meetingId={meeting._id} />
         <MeetingFollowUpBanner meeting={meeting} />
         <MeetingHeader
           meeting={meeting}
