@@ -266,3 +266,26 @@ export const createInvitationCreateLimiter = (overrides = {}) =>
   });
 
 export const invitationCreateLimiter = createInvitationCreateLimiter();
+
+/**
+ * Per-user limiter for public product testimonial submissions (Issue #1572).
+ * Caps abuse while allowing legitimate create/update retries.
+ */
+export const createTestimonialSubmitLimiter = (overrides = {}) =>
+  rateLimit({
+    ...baseOptions,
+    windowMs: 60 * 60 * 1000, // 1 hour
+    max: 10,
+    keyGenerator: (req) => {
+      const userId = req.user?._id || req.user?.id;
+      return userId ? `user:${userId}` : `ip:${getClientIp(req)}`;
+    },
+    message: {
+      success: false,
+      message: "Too many testimonial submissions. Please try again later.",
+    },
+    store: createStore("rl:testimonial_submit:"),
+    ...overrides,
+  });
+
+export const testimonialSubmitLimiter = createTestimonialSubmitLimiter();

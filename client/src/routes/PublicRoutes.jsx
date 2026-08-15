@@ -18,10 +18,12 @@ import PublicSharedView from "../pages/PublicSharedView.jsx";
 import DeveloperDocs from "../pages/DeveloperDocs.jsx";
 import AcceptInvite from "../pages/AcceptInvite.jsx";
 import MeetingInviteJoin from "../pages/MeetingInviteJoin.jsx";
+import Testimonials from "../pages/Testimonials.jsx";
 
 const PublicRoutes = (
   <React.Fragment>
     <Route path="/" element={<Home />} />
+    <Route path="/testimonials" element={<Testimonials />} />
     {/* Clerk path-based auth (supports /login/factor-password, SSO callbacks, etc.) */}
     <Route path="/login/*" element={<Login />} />
     <Route path="/signup/*" element={<SignUp />} />

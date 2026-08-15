@@ -60,6 +60,9 @@ import actionItemDependencyRoutes from "./actionItemDependencyRoutes.js";
 import parkingLotRoutes from "./parkingLotRoutes.js";
 import sentimentTimelineRoutes from "./sentimentTimelineRoutes.js";
 import meetingRsvpRoutes from "./meetingRsvpRoutes.js";
+import testimonialRoutes, {
+  adminTestimonialRouter,
+} from "./testimonialRoutes.js";
 
 import calendarRoutes from "./calendarRoutes.js";
 import assistantRoutes from "./assistantRoutes.js";
@@ -157,5 +160,7 @@ router.use("/api/action-item-dependencies", actionItemDependencyRoutes);
 router.use("/api/parking-lot", parkingLotRoutes);
 router.use("/api/sentiment-timeline", sentimentTimelineRoutes);
 router.use("/api/rsvps", meetingRsvpRoutes);
+router.use("/api/testimonials", testimonialRoutes);
+router.use("/api/admin/testimonials", adminTestimonialRouter);
 
 export default router;
