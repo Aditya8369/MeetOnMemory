@@ -1,5 +1,5 @@
 import Reaction from "../models/reactionModel.js";
-import { verifyMeetingSocketAccess } from "../utils/meetingSocketAccess.js";
+import { resolveMeetingSocketAccess } from "../utils/meetingSocketAccess.js";
 
 /**
  * Rate limiting store, keyed on the authenticated user (Issue #1564).
@@ -50,60 +50,105 @@ const consumeRateLimit = (userId, now) => {
   return true;
 };
 
-const validEmojis = ["👍", "❤️", "😂", "🎉", "🤔", "👏"];
+const VALID_EMOJIS = new Set(["👍", "❤️", "😂", "🎉", "🤔", "👏"]);
+
+/**
+ * Validate reaction:send payload shape before any persistence (#1385).
+ * Client-supplied identity fields (userId, etc.) are intentionally ignored.
+ */
+const validateReactionPayload = (payload) => {
+  if (!payload || typeof payload !== "object") {
+    return { ok: false, message: "Invalid reaction payload" };
+  }
+
+  const { roomId, emoji, transcriptSegmentIndex } = payload;
+
+  if (!roomId || typeof roomId !== "string") {
+    return { ok: false, message: "roomId is required" };
+  }
+
+  if (!emoji || typeof emoji !== "string" || !VALID_EMOJIS.has(emoji)) {
+    return { ok: false, message: "Invalid reaction emoji" };
+  }
+
+  if (
+    transcriptSegmentIndex !== undefined &&
+    transcriptSegmentIndex !== null &&
+    (typeof transcriptSegmentIndex !== "number" ||
+      !Number.isFinite(transcriptSegmentIndex) ||
+      transcriptSegmentIndex < 0)
+  ) {
+    return { ok: false, message: "Invalid transcriptSegmentIndex" };
+  }
+
+  return {
+    ok: true,
+    roomId,
+    emoji,
+    transcriptSegmentIndex:
+      typeof transcriptSegmentIndex === "number"
+        ? transcriptSegmentIndex
+        : undefined,
+  };
+};
 
 export default (io) => {
   io.on("connection", (socket) => {
+    // Issue #1385: authorize roomId → meeting on EVERY reaction:send.
+    // Never trust handshake.auth.userId, payload.userId, or prior socket.join.
     socket.on("reaction:send", async (payload) => {
       try {
-        const { roomId, emoji, transcriptSegmentIndex } = payload || {};
-
-        if (!roomId || !emoji || !validEmojis.includes(emoji)) {
+        const validated = validateReactionPayload(payload);
+        if (!validated.ok) {
+          socket.emit("reaction:error", { message: validated.message });
           return;
         }
 
-        // Must be authenticated via the middleware in meetingSocket.js
+        // Identity comes only from Clerk-authenticated socket context.
         if (!socket.userId) {
-          return;
-        }
-
-        // `roomId` comes straight from the client. Authorize it before anything
-        // is broadcast or written — the previous order emitted to the room and
-        // created the Reaction first, so a caller from another organization
-        // could inject reactions into any meeting by id, and the injected row
-        // then surfaced (with their name and email) through the properly
-        // guarded reaction timeline endpoint.
-        const authorized = await verifyMeetingSocketAccess(roomId, socket);
-        if (!authorized) {
           socket.emit("reaction:error", {
-            message: "Forbidden: You don't have access to this meeting",
+            message: "Unauthorized: Authentication required",
           });
           return;
         }
 
-        if (!consumeRateLimit(socket.userId.toString(), Date.now())) {
+        const access = await resolveMeetingSocketAccess(
+          validated.roomId,
+          socket,
+        );
+        if (!access.authorized) {
+          socket.emit("reaction:error", {
+            message:
+              access.message ||
+              "Forbidden: You don't have access to this meeting",
+          });
+          return;
+        }
+
+        const authenticatedUserId = access.user._id.toString();
+        if (!consumeRateLimit(authenticatedUserId, Date.now())) {
           socket.emit("reaction:error", {
             message: "Rate limit exceeded. Try again later.",
           });
           return;
         }
 
-        // Persist first so a broadcast never advertises a reaction that failed
-        // to save — an invalid payload used to emit anyway and swallow the
-        // write error into console.error.
+        // Persist against the server-resolved meeting id and authenticated user.
+        const authorizedMeetingId = access.meeting._id;
         await Reaction.create({
-          meeting: roomId,
-          user: socket.userId,
-          emoji,
+          meeting: authorizedMeetingId,
+          user: authenticatedUserId,
+          emoji: validated.emoji,
           timestamp: new Date(),
-          transcriptSegmentIndex,
+          transcriptSegmentIndex: validated.transcriptSegmentIndex,
         });
 
-        socket.to(roomId).emit("reaction:new", {
-          userId: socket.userId,
-          emoji,
+        const roomKey = authorizedMeetingId.toString();
+        socket.to(roomKey).emit("reaction:new", {
+          userId: authenticatedUserId,
+          emoji: validated.emoji,
           timestamp: new Date().toISOString(),
-          transcriptSegmentIndex,
+          transcriptSegmentIndex: validated.transcriptSegmentIndex,
         });
       } catch (error) {
         console.error("Error handling reaction:", error);
