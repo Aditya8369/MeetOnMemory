@@ -71,6 +71,7 @@ const MeetingHealthDashboard = () => {
         height={height}
         viewBox={`0 0 ${width} ${height}`}
         className="w-full"
+        aria-label="Meeting health composite score chart"
       >
         {/* Y Axis */}
         <line
@@ -177,7 +178,11 @@ const MeetingHealthDashboard = () => {
         </div>
 
         {/* Trend Chart */}
-        <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
+        <div
+          role="region"
+          aria-label="Composite score trend chart"
+          className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700"
+        >
           <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">
             Composite Score Trend
           </h2>
@@ -216,7 +221,14 @@ const MeetingHealthDashboard = () => {
                       {factor.value}%
                     </span>
                   </div>
-                  <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
+                  <div
+                    role="progressbar"
+                    aria-valuenow={factor.value}
+                    aria-valuemin={0}
+                    aria-valuemax={100}
+                    aria-label={`${factor.label} percentage`}
+                    className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2"
+                  >
                     <div
                       className={`h-2 rounded-full ${factor.value >= 80 ? "bg-green-500" : factor.value >= 60 ? "bg-yellow-500" : "bg-red-500"}`}
                       style={{ width: `${factor.value}%` }}
