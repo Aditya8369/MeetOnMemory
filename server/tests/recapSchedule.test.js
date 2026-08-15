@@ -116,7 +116,12 @@ describe("Recap Schedule API", () => {
 
   describe("GET /api/recap-schedule/history/deliveries", () => {
     it("should return delivery history", async () => {
-      const mockDeliveries = [{ _id: "del-1" }];
+      const mockDeliveries = [
+        {
+          _id: "del-1",
+          meetingId: { title: "Sync", organization: ORG_ID },
+        },
+      ];
       const mockPopulate = jest.fn().mockReturnThis();
       const mockSort = jest.fn().mockReturnThis();
       const mockLimit = jest.fn().mockResolvedValue(mockDeliveries);
@@ -127,21 +132,62 @@ describe("Recap Schedule API", () => {
         limit: mockLimit,
       });
 
+      // Chain: find().populate().sort().limit()
+      mockPopulate.mockReturnValue({
+        sort: mockSort,
+      });
+      mockSort.mockReturnValue({
+        limit: mockLimit,
+      });
+
       const res = await request(app).get(
         "/api/recap-schedule/history/deliveries",
       );
 
       expect(res.status).toBe(200);
       expect(res.body).toEqual(mockDeliveries);
+      expect(mockPopulate).toHaveBeenCalledWith(
+        expect.objectContaining({
+          path: "meetingId",
+          match: { organization: ORG_ID.toString() },
+        }),
+      );
+    });
+
+    it("filters out rows whose meeting did not match the org populate", async () => {
+      RecapDelivery.find.mockReturnValue({
+        populate: jest.fn().mockReturnValue({
+          sort: jest.fn().mockReturnValue({
+            limit: jest.fn().mockResolvedValue([
+              { _id: "gone", meetingId: null },
+              {
+                _id: "kept",
+                meetingId: { title: "Ok", organization: ORG_ID },
+              },
+            ]),
+          }),
+        }),
+      });
+
+      const res = await request(app).get(
+        "/api/recap-schedule/history/deliveries",
+      );
+
+      expect(res.status).toBe(200);
+      expect(res.body).toEqual([
+        { _id: "kept", meetingId: { title: "Ok", organization: ORG_ID } },
+      ]);
     });
   });
 
   describe("POST /api/recap-schedule/retry/:deliveryId", () => {
     it("should enqueue retry job and return 200", async () => {
-      RecapDelivery.findOne.mockResolvedValue({
-        _id: "del-1",
-        meetingId: "meet-1",
-        userId: USER_ID,
+      RecapDelivery.findOne.mockReturnValue({
+        populate: jest.fn().mockResolvedValue({
+          _id: "del-1",
+          meetingId: { _id: "meet-1", organization: ORG_ID },
+          userId: USER_ID,
+        }),
       });
 
       const res = await request(app).post("/api/recap-schedule/retry/del-1");
@@ -151,7 +197,9 @@ describe("Recap Schedule API", () => {
     });
 
     it("should return 404 if delivery not found", async () => {
-      RecapDelivery.findOne.mockResolvedValue(null);
+      RecapDelivery.findOne.mockReturnValue({
+        populate: jest.fn().mockResolvedValue(null),
+      });
 
       const res = await request(app).post(
         "/api/recap-schedule/retry/invalid-del",
