@@ -1,4 +1,4 @@
-import axiosInstance from "./axiosInstance.js";
+import axiosInstance from "./apiClient.js";
 
 const BASE_URL = "/bulk/meetings";
 
