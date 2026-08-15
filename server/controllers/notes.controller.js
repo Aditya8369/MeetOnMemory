@@ -19,20 +19,6 @@ export const getNoteState = async (req, res) => {
         .json({ success: false, error: "Meeting not found" });
     }
 
-<<<<<<< Updated upstream
-    // Organization authorization: enforce matching organization
-    if (
-      meeting.organization &&
-      req.user.organization &&
-      meeting.organization.toString() !== req.user.organization.toString()
-    ) {
-      return res
-        .status(403)
-        .json({
-          success: false,
-          error: "Access denied: organization mismatch",
-        });
-=======
     // Organization authorization: fail closed if meeting belongs to an org
     if (meeting.organization) {
       if (
@@ -44,7 +30,6 @@ export const getNoteState = async (req, res) => {
           error: "Access denied: organization mismatch",
         });
       }
->>>>>>> Stashed changes
     }
 
     // Check if user is participant or organizer
@@ -92,19 +77,6 @@ export const getNoteHistory = async (req, res) => {
         .json({ success: false, error: "Meeting not found" });
     }
 
-<<<<<<< Updated upstream
-    if (
-      meeting.organization &&
-      req.user.organization &&
-      meeting.organization.toString() !== req.user.organization.toString()
-    ) {
-      return res
-        .status(403)
-        .json({
-          success: false,
-          error: "Access denied: organization mismatch",
-        });
-=======
     if (meeting.organization) {
       if (
         !req.user.organization ||
@@ -115,7 +87,6 @@ export const getNoteHistory = async (req, res) => {
           error: "Access denied: organization mismatch",
         });
       }
->>>>>>> Stashed changes
     }
 
     const hasAccess =
@@ -176,19 +147,6 @@ export const createSnapshot = async (req, res) => {
         .json({ success: false, error: "Meeting not found" });
     }
 
-<<<<<<< Updated upstream
-    if (
-      meeting.organization &&
-      req.user.organization &&
-      meeting.organization.toString() !== req.user.organization.toString()
-    ) {
-      return res
-        .status(403)
-        .json({
-          success: false,
-          error: "Access denied: organization mismatch",
-        });
-=======
     if (meeting.organization) {
       if (
         !req.user.organization ||
@@ -199,7 +157,6 @@ export const createSnapshot = async (req, res) => {
           error: "Access denied: organization mismatch",
         });
       }
->>>>>>> Stashed changes
     }
 
     const hasAccess =
@@ -247,19 +204,6 @@ export const getSnapshotByVersion = async (req, res) => {
         .json({ success: false, error: "Meeting not found" });
     }
 
-<<<<<<< Updated upstream
-    if (
-      meeting.organization &&
-      req.user.organization &&
-      meeting.organization.toString() !== req.user.organization.toString()
-    ) {
-      return res
-        .status(403)
-        .json({
-          success: false,
-          error: "Access denied: organization mismatch",
-        });
-=======
     if (meeting.organization) {
       if (
         !req.user.organization ||
@@ -270,7 +214,6 @@ export const getSnapshotByVersion = async (req, res) => {
           error: "Access denied: organization mismatch",
         });
       }
->>>>>>> Stashed changes
     }
 
     const hasAccess =
