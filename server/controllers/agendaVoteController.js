@@ -99,12 +99,10 @@ export const autoSortByVotes = async (req, res) => {
       });
     }
 
-    res
-      .status(200)
-      .json({
-        message: "Agenda sorted successfully",
-        agendaItems: updatedAgenda,
-      });
+    res.status(200).json({
+      message: "Agenda sorted successfully",
+      agendaItems: updatedAgenda,
+    });
   } catch (error) {
     console.error("Error auto-sorting agenda:", error);
     res
