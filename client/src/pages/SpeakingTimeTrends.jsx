@@ -105,7 +105,11 @@ const SpeakingTimeTrends = () => {
           </div>
         ) : (
           <>
-            <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
+            <div
+              role="region"
+              aria-label="Talk ratio over time chart"
+              className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700"
+            >
               <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-6">
                 Talk Ratio Over Time (%)
               </h2>
@@ -169,19 +173,36 @@ const SpeakingTimeTrends = () => {
               </div>
             </div>
 
-            <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
+            <div
+              role="region"
+              aria-label="Recent meetings speaking breakdown"
+              className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700"
+            >
               <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
                 Recent Meetings Breakdown
               </h2>
               <div className="overflow-x-auto">
-                <table className="w-full text-left text-sm text-gray-600 dark:text-gray-400">
+                <table
+                  aria-label="Speaking time breakdown table"
+                  className="w-full text-left text-sm text-gray-600 dark:text-gray-400"
+                >
                   <thead className="text-xs uppercase bg-gray-50 dark:bg-gray-700 dark:text-gray-400">
                     <tr>
-                      <th className="px-6 py-3 rounded-tl-lg">Meeting</th>
-                      <th className="px-6 py-3">Date</th>
-                      <th className="px-6 py-3">Talk Ratio</th>
-                      <th className="px-6 py-3">Duration</th>
-                      <th className="px-6 py-3 rounded-tr-lg">Interrupts</th>
+                      <th scope="col" className="px-6 py-3 rounded-tl-lg">
+                        Meeting
+                      </th>
+                      <th scope="col" className="px-6 py-3">
+                        Date
+                      </th>
+                      <th scope="col" className="px-6 py-3">
+                        Talk Ratio
+                      </th>
+                      <th scope="col" className="px-6 py-3">
+                        Duration
+                      </th>
+                      <th scope="col" className="px-6 py-3 rounded-tr-lg">
+                        Interrupts
+                      </th>
                     </tr>
                   </thead>
                   <tbody>
