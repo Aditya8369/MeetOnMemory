@@ -198,6 +198,24 @@ export async function listOpenAssignedIssues(github, context, core) {
   );
 }
 
+export async function listOpenUnassignedIssues(github, context, core) {
+  const records = await safeCall(
+    core,
+    "issues.listForRepo(open unassigned)",
+    () =>
+      github.paginate(github.rest.issues.listForRepo, {
+        owner: context.repo.owner,
+        repo: context.repo.repo,
+        state: "open",
+        per_page: 100,
+      }),
+    [],
+  );
+  return (records || []).filter(
+    (item) => !item.pull_request && (item.assignees || []).length === 0,
+  );
+}
+
 export async function listOpenPullRequests(github, context, core) {
   const records = await safeCall(
     core,

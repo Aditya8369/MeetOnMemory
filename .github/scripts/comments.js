@@ -37,8 +37,16 @@ export const comments = {
 
   wrongIssueAuthorClaimAttempt: ({ user, issueAuthor }) =>
     `Hi @${user}, thank you for your interest in this issue! 🙏\n\n` +
-    `This particular issue was opened by @${issueAuthor}. Contributor-opened issues have an exclusive **48-hour** claim window for the author.\n\n` +
+    `This particular issue was opened by @${issueAuthor}. Contributor-opened issues have an exclusive **${TIMERS.authorPriorityHours}-hour** claim window for the author.\n\n` +
     `After that window ends, anyone may claim the issue with \`${COMMANDS.claim}\`. In the meantime, please feel free to browse our other open issues!`,
+
+  authorPriorityExpired: ({ author }) =>
+    withMarker(
+      AUTOMATION.authorPriorityExpiredMarker,
+      `Hi @${author}, a quick update! 👋\n\n` +
+        `The exclusive **${TIMERS.authorPriorityHours}-hour** claim window for this issue has ended, and it is still unclaimed.\n\n` +
+        `Anyone may now claim it with \`${COMMANDS.claim}\`. If you'd still like to work on it, you're welcome to claim it first!`,
+    ),
 
   manualAssignmentProtected: ({ actor, assignee }) =>
     `Hi @${actor}, thanks for checking in! 😊\n\n` +

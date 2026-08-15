@@ -6,7 +6,7 @@ import { getAuthorPriorityExpiresAt, issueAuthorRole } from "./permissions.js";
 /**
  * Automatically applies the 'ECSoC26' label to contributor-created Issues and Pull Requests.
  * Skipping labeling if the author is a maintainer (OWNER, MEMBER, COLLABORATOR).
- * For contributor-created issues, also stamps authorPriorityExpiresAt (48h exclusive window).
+ * For contributor-created issues, also stamps authorPriorityExpiresAt (exclusive window).
  */
 export async function autoLabelEcs({ github, context, core }) {
   if (!isExpectedRepository(context)) {

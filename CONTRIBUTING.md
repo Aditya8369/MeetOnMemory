@@ -80,6 +80,7 @@ MeetOnMemory uses a GitHub Actions bot to manage issue claims, assignment timers
 | ---------------------------------- | -------------------------------------------- |
 | Maximum active claims              | **5** (a 6th claim is rejected)              |
 | Issue assignment window (`/claim`) | **24 hours** of inactivity before expiration |
+| Author-priority window             | **24 hours** for contributor-opened issues   |
 | Inactivity reminders (`/claim`)    | **6h**, **12h**, **18h** after last activity |
 | Stale PR threshold                 | **More than 48 hours** open (strict `>48h`)  |
 | Stale PR action                    | Automatically **closed** (never merged)      |
@@ -124,7 +125,7 @@ The issue is released for other contributors.
 - **Already assigned:** If someone else is assigned, `/claim` is rejected.
 - **Duplicate claim:** If you are already assigned, `/claim` is ignored.
 - **Unavailable issues:** Closed, locked, or archived issues cannot be claimed.
-- **Author priority (contributor-opened issues):** When a contributor opens an issue, the author has an exclusive **48-hour** window to claim it before others may use `/claim`. Maintainer-opened issues are not subject to this window.
+- **Author priority (contributor-opened issues):** When a contributor opens an issue, the author has an exclusive **24-hour** window to claim it (active through 23:59:59; expired at 24:00:00). After that window ends, anyone may `/claim`. If the issue is still unclaimed at 24 hours, the bot notifies the author once. Maintainer-opened issues are not subject to this window.
 - **Manual assignments:** If a maintainer assigns you directly, `/claim` is not used. Only a **maintainer** can `/unclaim` or reassign a manual assignment — the assignee cannot release it with `/unclaim`.
 
 ---

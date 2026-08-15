@@ -143,11 +143,19 @@ function createGithub(issueFactory) {
           }));
       }
       if (apiMethod === this.rest.issues.listForRepo) {
-        return Object.keys(state.assignees).map((n) => ({
+        const assigned = Object.keys(state.assignees).map((n) => ({
           number: Number(n),
           state: "open",
           assignees: [{ login: state.assignees[n] }],
         }));
+        const unassigned = Object.keys(state.issues)
+          .filter((n) => !state.assignees[n])
+          .map((n) => ({
+            number: Number(n),
+            state: "open",
+            assignees: [],
+          }));
+        return [...assigned, ...unassigned];
       }
       return Object.keys(state.assignees).map((n) => ({
         number: Number(n),
@@ -856,7 +864,57 @@ test("claim: author priority blocks others while active", async () => {
   };
   await processClaim({ github, context, core: createCore() });
   assert.equal(github.state.assignees[10], undefined);
-  assert.ok(github.state.comments.some((c) => c.body.includes("48-hour")));
+  assert.ok(github.state.comments.some((c) => c.body.includes("24-hour")));
+});
+
+test("claim: author priority still active at 23:59:59", async () => {
+  process.env.GITHUB_REPOSITORY = "org/repo";
+  const github = createGithub(issueFactory);
+  const context = baseContext();
+  context.payload.comment.user.login = "other-contributor";
+  const created = new Date(
+    Date.now() - 24 * 60 * 60 * 1000 + 1000,
+  ).toISOString();
+  github.state.issues[10] = {
+    user: { login: "issue-author" },
+    author_association: "CONTRIBUTOR",
+    created_at: created,
+  };
+  await processClaim({ github, context, core: createCore() });
+  assert.equal(github.state.assignees[10], undefined);
+  assert.ok(github.state.comments.some((c) => c.body.includes("24-hour")));
+});
+
+test("claim: author priority expired at 24:00:00 allows others to claim", async () => {
+  process.env.GITHUB_REPOSITORY = "org/repo";
+  const github = createGithub(issueFactory);
+  const context = baseContext();
+  context.payload.comment.user.login = "other-contributor";
+  const created = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+  github.state.issues[10] = {
+    user: { login: "issue-author" },
+    author_association: "CONTRIBUTOR",
+    created_at: created,
+  };
+  await processClaim({ github, context, core: createCore() });
+  assert.equal(github.state.assignees[10], "other-contributor");
+});
+
+test("claim: stored 48h author-priority metadata is capped to 24h", async () => {
+  process.env.GITHUB_REPOSITORY = "org/repo";
+  const github = createGithub(issueFactory);
+  const context = baseContext();
+  context.payload.comment.user.login = "other-contributor";
+  const created = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+  const legacyExpiry = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
+  github.state.issues[10] = {
+    user: { login: "issue-author" },
+    author_association: "CONTRIBUTOR",
+    created_at: created,
+    body: `<!-- mom:metadata:start -->\n{"authorPriorityExpiresAt":"${legacyExpiry}"}\n<!-- mom:metadata:end -->`,
+  };
+  await processClaim({ github, context, core: createCore() });
+  assert.equal(github.state.assignees[10], "other-contributor");
 });
 
 test("claim: author priority expired allows public reclaim", async () => {
@@ -864,7 +922,7 @@ test("claim: author priority expired allows public reclaim", async () => {
   const github = createGithub(issueFactory);
   const context = baseContext();
   context.payload.comment.user.login = "other-contributor";
-  const old = new Date(Date.now() - 49 * 60 * 60 * 1000).toISOString();
+  const old = new Date(Date.now() - 25 * 60 * 60 * 1000).toISOString();
   github.state.issues[10] = {
     user: { login: "issue-author" },
     author_association: "CONTRIBUTOR",
@@ -873,6 +931,164 @@ test("claim: author priority expired allows public reclaim", async () => {
   };
   await processClaim({ github, context, core: createCore() });
   assert.equal(github.state.assignees[10], "other-contributor");
+});
+
+test("author priority: unclaimed after 24h reminds the author", async () => {
+  process.env.GITHUB_REPOSITORY = "org/repo";
+  const created = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+  const github = createGithub((number, state) =>
+    issueFactory(number, state, {
+      user: { login: "issue-author" },
+      author_association: "CONTRIBUTOR",
+      created_at: created,
+    }),
+  );
+  github.state.issues[90] = {
+    user: { login: "issue-author" },
+    author_association: "CONTRIBUTOR",
+    created_at: created,
+  };
+  await processClaimExpiration({
+    github,
+    context: {
+      eventName: "schedule",
+      repo: { owner: "org", repo: "repo" },
+      payload: {},
+    },
+    core: createCore(),
+  });
+  assert.equal(
+    github.state.comments.filter((c) =>
+      c.body.includes("mom:author-priority-expired"),
+    ).length,
+    1,
+  );
+});
+
+test("author priority: no reminder if author claimed before 24h", async () => {
+  process.env.GITHUB_REPOSITORY = "org/repo";
+  const created = new Date(Date.now() - 25 * 60 * 60 * 1000).toISOString();
+  const recent = new Date().toISOString();
+  const github = createGithub((number, state) =>
+    issueFactory(number, state, {
+      user: { login: "issue-author" },
+      author_association: "CONTRIBUTOR",
+      created_at: created,
+      body: `<!-- mom:metadata:start -->\n{"assignedAt":"${recent}","lastActivityAt":"${recent}"}\n<!-- mom:metadata:end -->`,
+    }),
+  );
+  github.state.assignees[91] = "issue-author";
+  await processClaimExpiration({
+    github,
+    context: {
+      eventName: "schedule",
+      repo: { owner: "org", repo: "repo" },
+      payload: {},
+    },
+    core: createCore(),
+  });
+  assert.equal(github.state.assignees[91], "issue-author");
+  assert.equal(
+    github.state.comments.filter((c) =>
+      c.body.includes("mom:author-priority-expired"),
+    ).length,
+    0,
+  );
+});
+
+test("author priority: no reminder if already claimed by someone else", async () => {
+  process.env.GITHUB_REPOSITORY = "org/repo";
+  const created = new Date(Date.now() - 25 * 60 * 60 * 1000).toISOString();
+  const recent = new Date().toISOString();
+  const github = createGithub((number, state) =>
+    issueFactory(number, state, {
+      user: { login: "issue-author" },
+      author_association: "CONTRIBUTOR",
+      created_at: created,
+      body: `<!-- mom:metadata:start -->\n{"assignedAt":"${recent}","lastActivityAt":"${recent}"}\n<!-- mom:metadata:end -->`,
+    }),
+  );
+  github.state.assignees[92] = "other-contributor";
+  await processClaimExpiration({
+    github,
+    context: {
+      eventName: "schedule",
+      repo: { owner: "org", repo: "repo" },
+      payload: {},
+    },
+    core: createCore(),
+  });
+  assert.equal(github.state.assignees[92], "other-contributor");
+  assert.equal(
+    github.state.comments.filter((c) =>
+      c.body.includes("mom:author-priority-expired"),
+    ).length,
+    0,
+  );
+});
+
+test("author priority: repeated workflow does not duplicate reminder", async () => {
+  process.env.GITHUB_REPOSITORY = "org/repo";
+  const created = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+  const github = createGithub((number, state) =>
+    issueFactory(number, state, {
+      user: { login: "issue-author" },
+      author_association: "CONTRIBUTOR",
+      created_at: created,
+    }),
+  );
+  github.state.issues[93] = {
+    user: { login: "issue-author" },
+    author_association: "CONTRIBUTOR",
+    created_at: created,
+  };
+  const context = {
+    eventName: "schedule",
+    repo: { owner: "org", repo: "repo" },
+    payload: {},
+  };
+  await processClaimExpiration({ github, context, core: createCore() });
+  await processClaimExpiration({ github, context, core: createCore() });
+  assert.equal(
+    github.state.comments.filter((c) =>
+      c.body.includes("mom:author-priority-expired"),
+    ).length,
+    1,
+  );
+});
+
+test("author priority: no reminder before 24h while still unclaimed", async () => {
+  process.env.GITHUB_REPOSITORY = "org/repo";
+  const created = new Date(
+    Date.now() - 24 * 60 * 60 * 1000 + 1000,
+  ).toISOString();
+  const github = createGithub((number, state) =>
+    issueFactory(number, state, {
+      user: { login: "issue-author" },
+      author_association: "CONTRIBUTOR",
+      created_at: created,
+    }),
+  );
+  github.state.issues[94] = {
+    user: { login: "issue-author" },
+    author_association: "CONTRIBUTOR",
+    created_at: created,
+  };
+  await processClaimExpiration({
+    github,
+    context: {
+      eventName: "schedule",
+      repo: { owner: "org", repo: "repo" },
+      payload: {},
+    },
+    core: createCore(),
+  });
+  assert.equal(
+    github.state.comments.filter((c) =>
+      c.body.includes("mom:author-priority-expired"),
+    ).length,
+    0,
+  );
 });
 
 test("unclaim: assignee cannot release manual assignment", async () => {

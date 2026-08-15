@@ -1,12 +1,14 @@
-import { TIMERS, reminderMarker } from "./constants.js";
+import { AUTOMATION, TIMERS, reminderMarker } from "./constants.js";
 import { syncActivityFromOpenPullRequests } from "./activity.js";
 import { comments } from "./comments.js";
 import {
   createComment,
+  findCommentByMarker,
   getIssue,
   hasOpenLinkedPullRequest,
   listComments,
   listOpenAssignedIssues,
+  listOpenUnassignedIssues,
   removeAssignee,
 } from "./helpers.js";
 import {
@@ -17,6 +19,7 @@ import {
   touchAssigneeActivity,
   updateIssueMetadata,
 } from "./metadata.js";
+import { isAuthorPriorityActive, issueAuthorRole } from "./permissions.js";
 import { hasMarker, hoursSince, isIgnoredBotUser, nowIso } from "./utils.js";
 
 function isAssigneeProgressComment(comment, assignee) {
@@ -143,6 +146,46 @@ export async function processClaimExpiration({ github, context, core }) {
         break;
       }
     }
+  }
+
+  await notifyExpiredAuthorPriorityWindows({ github, context, core });
+}
+
+async function notifyExpiredAuthorPriorityWindows({ github, context, core }) {
+  const issues = await listOpenUnassignedIssues(github, context, core);
+
+  for (const issueSummary of issues) {
+    const issue = await getIssue(github, context, core, issueSummary.number);
+    if (!issue || issue.state !== "open" || issue.locked) continue;
+    if ((issue.assignees || []).length > 0) continue;
+
+    const author = issue.user?.login;
+    if (!author) continue;
+    if (
+      ["owner", "maintainer", "collaborator"].includes(issueAuthorRole(issue))
+    ) {
+      continue;
+    }
+
+    const metadata = readMetadata(issue.body);
+    if (isAuthorPriorityActive(issue, metadata)) continue;
+
+    const existing = await findCommentByMarker(
+      github,
+      context,
+      core,
+      issue.number,
+      AUTOMATION.authorPriorityExpiredMarker,
+    );
+    if (existing) continue;
+
+    await createComment(
+      github,
+      context,
+      core,
+      issue.number,
+      comments.authorPriorityExpired({ author }),
+    );
   }
 }
 

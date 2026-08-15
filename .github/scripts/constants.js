@@ -16,6 +16,7 @@ export const AUTOMATION = Object.freeze({
   prAutoClosedMarker: "mom:pr-auto-closed",
   prChangesRequestedReminderMarker: "mom:pr-changes-requested-reminder",
   prFailedChecksReminderMarker: "mom:pr-failed-checks-reminder",
+  authorPriorityExpiredMarker: "mom:author-priority-expired",
 });
 
 export const COMMANDS = Object.freeze({
@@ -33,7 +34,7 @@ export const TIMERS = Object.freeze({
   reminderHours: Object.freeze([6, 12, 18]),
   expirationHours: 24,
   // Contributor-authored issues: exclusive claim window for the author.
-  authorPriorityHours: 48,
+  authorPriorityHours: 24,
   // Close open PRs strictly after this many hours (uses PR created_at).
   prAutoCloseHours: 48,
 });
