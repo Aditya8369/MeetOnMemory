@@ -24,6 +24,11 @@ import {
   ALLOWED_ARCHIVE_TYPES,
   getArchivedMemoriesPage,
 } from "../services/archivedKnowledgeService.js";
+import {
+  ALLOWED_LIFECYCLE_TYPES,
+  ALLOWED_LIFECYCLE_STATES,
+  getLifecycleMemoriesPage,
+} from "../services/lifecycleKnowledgeService.js";
 import AuditLog from "../models/auditLogModel.js";
 import eventBus from "../services/eventBus.js";
 import { buildPaginationMeta, parsePagination } from "../utils/pagination.js";
@@ -514,6 +519,62 @@ export const getArchivedMemories = async (req, res) => {
     }
     console.error("getArchivedMemories error:", error);
     sendError(res, 500, "Failed to fetch archived memories");
+  }
+};
+
+/**
+ * Unified Memory Lifecycle list with server-side pagination (Issue #1552).
+ * Unions decisions + action items before skip/limit so pages stay correct
+ * when filtering by type "all".
+ */
+export const getLifecycleMemories = async (req, res) => {
+  try {
+    const { type = "all", search, lifecycleState = "all" } = req.query || {};
+    const organization = sanitizeOrg(req.user?.organization);
+
+    if (!organization) {
+      return sendError(res, 400, "Organization required");
+    }
+
+    if (typeof type !== "string" || !ALLOWED_LIFECYCLE_TYPES.includes(type)) {
+      return sendError(
+        res,
+        400,
+        `Invalid type. Allowed values: ${ALLOWED_LIFECYCLE_TYPES.join(", ")}`,
+      );
+    }
+
+    if (
+      typeof lifecycleState !== "string" ||
+      !ALLOWED_LIFECYCLE_STATES.includes(lifecycleState)
+    ) {
+      return sendError(
+        res,
+        400,
+        `Invalid lifecycleState. Allowed values: ${ALLOWED_LIFECYCLE_STATES.join(", ")}`,
+      );
+    }
+
+    if (search !== undefined && search !== null && typeof search !== "string") {
+      return sendError(res, 400, "Invalid search");
+    }
+
+    const result = await getLifecycleMemoriesPage({
+      organization,
+      type,
+      lifecycleState,
+      search,
+      page: req.query.page,
+      limit: req.query.limit,
+    });
+
+    sendSuccess(res, result);
+  } catch (error) {
+    if (error.statusCode) {
+      return sendError(res, error.statusCode, error.message);
+    }
+    console.error("getLifecycleMemories error:", error);
+    sendError(res, 500, "Failed to fetch lifecycle memories");
   }
 };
 

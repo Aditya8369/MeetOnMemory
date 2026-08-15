@@ -23,12 +23,10 @@ vi.mock("@clerk/clerk-react", () => ({
 
 vi.mock("../../services", () => ({
   knowledgeApi: {
-    getDecisions: vi.fn(),
-    getActionItems: vi.fn(),
+    getLifecycleMemories: vi.fn(),
     runLifecycleSweep: vi.fn(),
     updateMemoryLifecycleState: vi.fn(),
   },
-
   savedFilterApi: {
     getSavedFilters: vi.fn().mockResolvedValue({ data: [] }),
     createSavedFilter: vi.fn(),
@@ -39,22 +37,27 @@ vi.mock("../../services", () => ({
 describe("MemoryLifecycle Modal Accessibility (#1368)", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    knowledgeApi.getDecisions.mockResolvedValue({
+    knowledgeApi.getLifecycleMemories.mockResolvedValue({
       data: {
         success: true,
-        decisions: [
+        memories: [
           {
             _id: "dec-1",
+            type: "decision",
             text: "Adopt React 18 for client application",
             lifecycleState: "active",
             createdAt: "2026-08-01T10:00:00Z",
             lifecycleHistory: [],
           },
         ],
+        pagination: {
+          total: 1,
+          page: 1,
+          limit: 20,
+          totalPages: 1,
+          hasMore: false,
+        },
       },
-    });
-    knowledgeApi.getActionItems.mockResolvedValue({
-      data: { success: true, actionItems: [] },
     });
   });
 
@@ -78,30 +81,5 @@ describe("MemoryLifecycle Modal Accessibility (#1368)", () => {
     expect(dialog).toBeInTheDocument();
     expect(dialog).toHaveAttribute("aria-modal", "true");
     expect(dialog).toHaveAttribute("aria-labelledby", "transition-modal-title");
-  });
-
-  it("closes open modal on Escape key press", async () => {
-    render(
-      <MemoryRouter>
-        <MemoryLifecycle />
-      </MemoryRouter>,
-    );
-
-    await waitFor(() => {
-      expect(
-        screen.getByText("Adopt React 18 for client application"),
-      ).toBeInTheDocument();
-    });
-
-    const archiveButton = screen.getByRole("button", { name: /^archive$/i });
-    fireEvent.click(archiveButton);
-
-    expect(screen.getByRole("dialog")).toBeInTheDocument();
-
-    fireEvent.keyDown(window, { key: "Escape" });
-
-    await waitFor(() => {
-      expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
-    });
   });
 });

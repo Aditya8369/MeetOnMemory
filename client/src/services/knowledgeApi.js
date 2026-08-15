@@ -44,6 +44,20 @@ export const knowledgeApi = {
     const query = params.toString();
     return apiClient.get(`/api/knowledge/archive${query ? `?${query}` : ""}`);
   },
+  /**
+   * Unified Memory Lifecycle list with server-side pagination (#1552).
+   */
+  getLifecycleMemories: (options = {}) => {
+    const params = new URLSearchParams();
+    if (options.type) params.append("type", options.type);
+    if (options.lifecycleState)
+      params.append("lifecycleState", options.lifecycleState);
+    if (options.search) params.append("search", options.search);
+    if (options.page) params.append("page", String(options.page));
+    if (options.limit) params.append("limit", String(options.limit));
+    const query = params.toString();
+    return apiClient.get(`/api/knowledge/lifecycle${query ? `?${query}` : ""}`);
+  },
   getDecisionLineage: (decisionId) =>
     apiClient.get(`/api/knowledge/decisions/${decisionId}/lineage`),
   submitFeedback: (type, id, rating) =>
