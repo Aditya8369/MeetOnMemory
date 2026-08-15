@@ -212,4 +212,92 @@ describe("Meeting Goal API", () => {
     // G1 (1) + G2 (0.5) / 3 = 1.5/3 = 50%
     expect(res.body.stats[0].achievementRate).toBe(50);
   });
+
+  describe("Multi-tenant Organization Isolation", () => {
+    let otherOrgId;
+    let otherOrgToken;
+    let otherOrgMeeting;
+
+    beforeEach(async () => {
+      otherOrgId = new mongoose.Types.ObjectId();
+      await Organization.create({
+        _id: otherOrgId,
+        name: "Other Org",
+        slug: "other-org-" + Date.now(),
+        owner: new mongoose.Types.ObjectId(),
+      });
+
+      otherOrgToken = jwt.sign(
+        {
+          id: new mongoose.Types.ObjectId(),
+          role: "user",
+          organization: otherOrgId,
+        },
+        process.env.JWT_SECRET,
+      );
+
+      otherOrgMeeting = await Meeting.create({
+        title: "Other Org Meeting",
+        uploadedBy: new mongoose.Types.ObjectId(),
+        organization: otherOrgId,
+        date: new Date(Date.now() + 86400000).toISOString(),
+      });
+    });
+
+    it("should prevent setting goals for a meeting in another organization", async () => {
+      const res = await request(app)
+        .post(`/api/meeting-goals/meeting/${otherOrgMeeting._id}`)
+        .set("Authorization", `Bearer ${token}`)
+        .send({
+          goals: [{ text: "Cross-org goal setting" }],
+        });
+
+      expect(res.status).toBe(404);
+    });
+
+    it("should prevent retrieving goals for a meeting in another organization", async () => {
+      await MeetingGoal.create({
+        meetingId: otherOrgMeeting._id,
+        organization: otherOrgId,
+        createdBy: new mongoose.Types.ObjectId(),
+        goals: [{ text: "Secret goal", status: "pending" }],
+      });
+
+      const res = await request(app)
+        .get(`/api/meeting-goals/meeting/${otherOrgMeeting._id}`)
+        .set("Authorization", `Bearer ${token}`);
+
+      expect(res.status).toBe(403);
+    });
+
+    it("should prevent updating goal status for a meeting in another organization", async () => {
+      otherOrgMeeting.date = new Date(Date.now() - 86400000).toISOString();
+      await otherOrgMeeting.save();
+
+      const otherOrgGoal = await MeetingGoal.create({
+        meetingId: otherOrgMeeting._id,
+        organization: otherOrgId,
+        createdBy: new mongoose.Types.ObjectId(),
+        goals: [{ text: "Secret goal", status: "pending" }],
+      });
+      const goalId = otherOrgGoal.goals[0]._id;
+
+      const res = await request(app)
+        .patch(
+          `/api/meeting-goals/meeting/${otherOrgMeeting._id}/goal/${goalId}`,
+        )
+        .set("Authorization", `Bearer ${token}`)
+        .send({ status: "achieved" });
+
+      expect(res.status).toBe(404);
+    });
+
+    it("should prevent fetching statistics of another organization", async () => {
+      const res = await request(app)
+        .get(`/api/meeting-goals/org/${otherOrgId}/stats`)
+        .set("Authorization", `Bearer ${token}`);
+
+      expect(res.status).toBe(403);
+    });
+  });
 });

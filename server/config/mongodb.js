@@ -41,6 +41,38 @@ const connectDB = async () => {
       const resolvedDbName = connectionUri.split("/").pop();
       console.log("Mongo URI:", sanitizedUri);
       console.log("Database:", resolvedDbName);
+
+      // Asynchronously migrate existing MeetingGoal records missing organization context
+      (async () => {
+        try {
+          const { default: MeetingGoal } =
+            await import("../models/meetingGoalModel.js");
+          const { default: Meeting } =
+            await import("../models/meetingModel.js");
+          const unmigrated = await MeetingGoal.find({
+            $or: [{ organization: { $exists: false } }, { organization: null }],
+          });
+          if (unmigrated.length > 0) {
+            console.log(
+              `🧹 Found ${unmigrated.length} MeetingGoal records to migrate...`,
+            );
+            for (const goal of unmigrated) {
+              const meeting = await Meeting.findById(goal.meetingId).select(
+                "organization",
+              );
+              if (meeting && meeting.organization) {
+                goal.organization = meeting.organization;
+                await goal.save();
+              }
+            }
+            console.log(
+              "✅ MeetingGoal organization context migration completed successfully.",
+            );
+          }
+        } catch (migErr) {
+          console.error("⚠️ MeetingGoal migration error:", migErr.message);
+        }
+      })();
     } catch (err) {
       if (
         err.message.includes("ECONNREFUSED") &&
