@@ -10,6 +10,7 @@ import aiRoutes from "./aiRoutes.js";
 import policyRoutes from "./policyRoutes.js";
 import analyticsRoutes from "./analyticsRoutes.js";
 import geminiRoutes from "./geminiRoutes.js";
+import notesRoutes from "./notes.routes.js";
 import userRoutes from "./userRoutes.js";
 import notificationRoutes from "./notificationRoutes.js";
 import knowledgeRoutes from "./knowledgeRoutes.js";
@@ -72,6 +73,7 @@ import speakingTimeRoutes from "./speakingTimeRoutes.js";
 import keywordAlertRoutes from "./keywordAlertRoutes.js";
 import agendaVoteRoutes from "./agendaVoteRoutes.js";
 
+import notionIntegrationRoutes from "./notionIntegrationRoutes.js";
 const router = express.Router();
 
 // ==========================================
@@ -94,6 +96,7 @@ router.use("/api/ai", aiRoutes);
 router.use("/api/policies", policyRoutes);
 router.use("/api/analytics", analyticsRoutes);
 router.use("/api/gemini", geminiRoutes);
+router.use("/api/notes", notesRoutes);
 router.use(["/api/user", "/api/users"], userRoutes);
 router.use(["/api/notification", "/api/notifications"], notificationRoutes);
 router.use("/api/knowledge", knowledgeRoutes);
@@ -167,5 +170,5 @@ router.use("/api/rsvps", meetingRsvpRoutes);
 router.use("/api/testimonials", testimonialRoutes);
 router.use("/api/admin/testimonials", adminTestimonialRouter);
 router.use("/api/alerts/keywords", keywordAlertRoutes);
-
+router.use("/api/integrations/notion", notionIntegrationRoutes);
 export default router;
