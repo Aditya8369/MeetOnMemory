@@ -9,12 +9,21 @@ import {
   Edit2,
   Eye,
   MoreVertical,
+  Check,
 } from "lucide-react";
 
 import useExport from "../../hooks/useExport.js";
 import ConfirmModal from "../ConfirmModal.jsx";
 
-const MeetingCard = ({ meeting, onDelete, onRename, onView }) => {
+const MeetingCard = ({
+  meeting,
+  onDelete,
+  onRename,
+  onView,
+  isBulkMode,
+  isSelected,
+  onToggleSelect,
+}) => {
   const { exportMeeting, isExporting } = useExport();
   const [showMenu, setShowMenu] = useState(false);
   const [showExportSubMenu, setShowExportSubMenu] = useState(false);
@@ -74,10 +83,36 @@ const MeetingCard = ({ meeting, onDelete, onRename, onView }) => {
   return (
     <div
       data-testid="meeting-card"
-      className="bg-white dark:bg-gray-900 rounded-xl shadow-md hover:shadow-lg dark:shadow-none dark:hover:shadow-none transition-shadow duration-200 overflow-hidden border border-gray-100 dark:border-gray-800"
+      onClick={() => {
+        if (isBulkMode && onToggleSelect) {
+          onToggleSelect(meeting._id);
+        }
+      }}
+      className={`relative bg-white dark:bg-gray-900 rounded-xl shadow-md transition-shadow duration-200 overflow-hidden border ${
+        isSelected
+          ? "border-blue-500 ring-2 ring-blue-500/30 dark:border-blue-500 dark:ring-blue-500/30"
+          : "border-gray-100 dark:border-gray-800 hover:shadow-lg dark:shadow-none dark:hover:shadow-none"
+      } ${isBulkMode ? "cursor-pointer" : ""}`}
     >
+      {/* Bulk Mode Checkbox */}
+      {isBulkMode && (
+        <div className="absolute top-5 left-5 z-10 pointer-events-none">
+          <div
+            className={`w-5 h-5 rounded flex items-center justify-center border transition-colors ${
+              isSelected
+                ? "bg-blue-600 border-blue-600"
+                : "bg-white border-gray-300 dark:bg-gray-800 dark:border-gray-600"
+            }`}
+          >
+            {isSelected && <Check size={14} className="text-white" />}
+          </div>
+        </div>
+      )}
+
       {/* Card Header */}
-      <div className="p-5 border-b border-gray-100 dark:border-gray-800">
+      <div
+        className={`p-5 border-b border-gray-100 dark:border-gray-800 ${isBulkMode ? "pl-12" : ""}`}
+      >
         <div className="flex items-start justify-between gap-3">
           {isRenaming ? (
             <form onSubmit={handleRenameSubmit} className="flex-1">
@@ -226,7 +261,7 @@ const MeetingCard = ({ meeting, onDelete, onRename, onView }) => {
       </div>
 
       {/* Card Body */}
-      <div className="p-5 space-y-3">
+      <div className={`p-5 space-y-3 ${isBulkMode ? "pl-12" : ""}`}>
         {/* Date and Duration */}
         <div className="flex items-center gap-4 text-sm text-gray-600 dark:text-gray-400">
           <div className="flex items-center gap-1.5">
@@ -299,8 +334,16 @@ const MeetingCard = ({ meeting, onDelete, onRename, onView }) => {
           Created {formatDate(meeting.createdAt)}
         </span>
         <button
-          onClick={() => onView(meeting)}
-          className="text-sm text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 font-medium flex items-center gap-1"
+          onClick={(e) => {
+            e.stopPropagation();
+            onView(meeting);
+          }}
+          disabled={isBulkMode}
+          className={`text-sm font-medium flex items-center gap-1 ${
+            isBulkMode
+              ? "text-gray-400 cursor-not-allowed"
+              : "text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300"
+          }`}
         >
           <Eye size={16} />
           View Details

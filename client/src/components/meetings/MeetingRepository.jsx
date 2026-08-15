@@ -11,7 +11,9 @@ import useApiRequest from "../../hooks/useApiRequest.js";
 import { savedFilterApi } from "../../services";
 import SavedFilterBar from "./SavedFilterBar.jsx";
 import SaveFilterModal from "./SaveFilterModal.jsx";
-import { BookmarkPlus } from "lucide-react";
+import { BookmarkPlus, ListChecks } from "lucide-react";
+import useBulkMeetingActions from "../../hooks/useBulkMeetingActions.js";
+import BulkActionBar from "./BulkActionBar.jsx";
 
 const MeetingRepository = () => {
   const navigate = useNavigate();
@@ -98,6 +100,18 @@ const MeetingRepository = () => {
   useEffect(() => {
     fetchMeetings();
   }, [fetchMeetings]);
+
+  const {
+    isBulkMode,
+    toggleBulkMode,
+    selectedMeetings,
+    toggleSelection,
+    isProcessing,
+    handleBulkArchive,
+    handleBulkTag,
+    handleBulkSoftDelete,
+    handleBulkExport,
+  } = useBulkMeetingActions(fetchMeetings);
 
   // Apply filters and search
   useEffect(() => {
@@ -315,6 +329,18 @@ const MeetingRepository = () => {
             <BookmarkPlus className="w-4 h-4" />
             Save View
           </button>
+          <button
+            onClick={toggleBulkMode}
+            className={`flex items-center gap-1.5 px-3 py-2 text-sm font-medium rounded-lg transition-colors whitespace-nowrap cursor-pointer ${
+              isBulkMode
+                ? "bg-blue-600 text-white hover:bg-blue-700"
+                : "text-gray-700 bg-gray-100 hover:bg-gray-200 dark:text-gray-300 dark:bg-gray-800 dark:hover:bg-gray-700"
+            }`}
+            title="Toggle bulk selection mode"
+          >
+            <ListChecks className="w-4 h-4" />
+            Bulk Mode
+          </button>
         </div>
       </div>
 
@@ -374,6 +400,9 @@ const MeetingRepository = () => {
                 onDelete={handleDelete}
                 onRename={handleRename}
                 onView={handleView}
+                isBulkMode={isBulkMode}
+                isSelected={selectedMeetings.has(meeting._id)}
+                onToggleSelect={toggleSelection}
               />
             ))}
           </div>
@@ -395,6 +424,18 @@ const MeetingRepository = () => {
         onSave={handleSaveFilter}
         initialFilters={{ ...filters, searchQuery }}
       />
+
+      {isBulkMode && (
+        <BulkActionBar
+          selectedCount={selectedMeetings.size}
+          isProcessing={isProcessing}
+          onArchive={handleBulkArchive}
+          onDelete={handleBulkSoftDelete}
+          onExport={handleBulkExport}
+          onTag={handleBulkTag}
+          onCancel={toggleBulkMode}
+        />
+      )}
     </div>
   );
 };
