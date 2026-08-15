@@ -1,4 +1,4 @@
-import { subtractMonthsClamped } from "../controllers/analyticsController.js";
+import { subtractMonthsClamped } from "../controllers/meetingAnalyticsController.js";
 
 describe("subtractMonthsClamped", () => {
   test("clamps a month-end date to the final day of a shorter month", () => {
