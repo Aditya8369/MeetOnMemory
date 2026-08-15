@@ -1,5 +1,4 @@
 import { Client } from "@notionhq/client";
-import NotionIntegration from "../models/notionIntegrationModel.js";
 
 // Notion OAuth endpoints
 const NOTION_TOKEN_URL = "https://api.notion.com/v1/oauth/token";
