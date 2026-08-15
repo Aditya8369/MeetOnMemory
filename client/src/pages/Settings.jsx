@@ -28,6 +28,7 @@ import WebhooksManager from "../components/WebhooksManager.jsx";
 import DigestPreferences from "../components/DigestPreferences.jsx";
 import RecapPreferences from "../components/RecapPreferences.jsx";
 import { ClerkManageAccountButton } from "../components/ClerkUserControls.jsx";
+import KeywordWatchlistPanel from "../components/notifications/KeywordWatchlistPanel.jsx";
 import apiClient from "../services/apiClient.js";
 import { notificationApi } from "../services/notificationApi.js";
 import { userApi } from "../services/userApi.js";
@@ -753,6 +754,11 @@ const Settings = () => {
                 </>
               )}
             </div>
+          </div>
+
+          {/* Keyword Watchlist Section */}
+          <div className="fade-in-up stagger-4">
+            <KeywordWatchlistPanel />
           </div>
 
           {/* Email Digest Section */}

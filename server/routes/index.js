@@ -69,6 +69,7 @@ import assistantRoutes from "./assistantRoutes.js";
 import savedFilterRoutes from "./savedFilterRoutes.js";
 import meetingChecklistRoutes from "./meetingChecklistRoutes.js";
 import speakingTimeRoutes from "./speakingTimeRoutes.js";
+import keywordAlertRoutes from "./keywordAlertRoutes.js";
 
 const router = express.Router();
 
@@ -163,5 +164,6 @@ router.use("/api/sentiment-timeline", sentimentTimelineRoutes);
 router.use("/api/rsvps", meetingRsvpRoutes);
 router.use("/api/testimonials", testimonialRoutes);
 router.use("/api/admin/testimonials", adminTestimonialRouter);
+router.use("/api/alerts/keywords", keywordAlertRoutes);
 
 export default router;
