@@ -71,6 +71,7 @@ import savedFilterRoutes from "./savedFilterRoutes.js";
 import meetingChecklistRoutes from "./meetingChecklistRoutes.js";
 import speakingTimeRoutes from "./speakingTimeRoutes.js";
 import keywordAlertRoutes from "./keywordAlertRoutes.js";
+import agendaVoteRoutes from "./agendaVoteRoutes.js";
 import meetingDuplicateRoutes from "./meetingDuplicateRoutes.js";
 
 import notionIntegrationRoutes from "./notionIntegrationRoutes.js";
@@ -91,6 +92,7 @@ router.use("/api/meetings/timer", agendaTimerRoutes);
 router.use("/api/meetings/:meetingId/checklist", meetingChecklistRoutes);
 router.use("/api/meetings/:id/duplicates", meetingDuplicateRoutes);
 router.use("/api/meetings", meetingRoutes);
+router.use("/api/meetings", agendaVoteRoutes);
 router.use("/api/search", searchRoutes);
 router.use("/api/ai", aiRoutes);
 router.use("/api/policies", policyRoutes);
