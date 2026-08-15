@@ -125,6 +125,7 @@ router.use("/api/attendance-analytics", attendanceAnalyticsRoutes);
 router.use("/api/feedback", meetingFeedbackRoutes);
 router.use("/api/meeting-cost", meetingCostRoutes);
 router.use("/api/follow-up-threads", followUpThreadRoutes);
+// Recap schedule + delivery history (GET /history/deliveries) — Issue #1401
 router.use("/api/recap-schedule", recapScheduleRoutes);
 router.use("/api/clips", meetingClipRoutes);
 router.use("/api/speaker-mappings", speakerMappingRoutes);

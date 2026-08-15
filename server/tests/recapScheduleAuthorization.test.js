@@ -109,14 +109,29 @@ beforeEach(() => {
   deliveryFindSpy.mockReturnValue({
     populate: jest.fn().mockReturnValue({
       sort: jest.fn().mockReturnValue({
-        limit: jest.fn().mockResolvedValue([{ _id: DELIVERY_ID }]),
+        limit: jest.fn().mockResolvedValue([
+          {
+            _id: DELIVERY_ID,
+            meetingId: {
+              _id: new mongoose.Types.ObjectId(),
+              title: "Standup",
+              organization: ORG_A,
+            },
+          },
+        ]),
       }),
     }),
   });
-  deliveryFindOneSpy.mockResolvedValue({
-    _id: DELIVERY_ID,
-    meetingId: new mongoose.Types.ObjectId(),
-    userId: USER_A,
+  deliveryFindOneSpy.mockReturnValue({
+    populate: jest.fn().mockResolvedValue({
+      _id: DELIVERY_ID,
+      meetingId: {
+        _id: new mongoose.Types.ObjectId(),
+        organization: ORG_A,
+        title: "Standup",
+      },
+      userId: USER_A,
+    }),
   });
 });
 
@@ -282,7 +297,7 @@ describe("Recap schedule organization authorization (#1381)", () => {
     });
   });
 
-  describe("GET /api/recap-schedule/history/deliveries", () => {
+  describe("GET /api/recap-schedule/history/deliveries (#1401)", () => {
     it("allows org members to list their delivery history", async () => {
       currentUser = aliceMember;
 
@@ -292,6 +307,61 @@ describe("Recap schedule organization authorization (#1381)", () => {
 
       expect(res.status).toBe(200);
       expect(deliveryFindSpy).toHaveBeenCalledWith({ userId: USER_A });
+      expect(res.body).toHaveLength(1);
+      expect(res.body[0].meetingId.organization.toString()).toBe(
+        ORG_A.toString(),
+      );
+    });
+
+    it("scopes populate to the caller's organization (not client-supplied org)", async () => {
+      currentUser = aliceMember;
+      const populateSpy = jest.fn().mockReturnValue({
+        sort: jest.fn().mockReturnValue({
+          limit: jest.fn().mockResolvedValue([]),
+        }),
+      });
+      deliveryFindSpy.mockReturnValue({ populate: populateSpy });
+
+      await request(app).get("/api/recap-schedule/history/deliveries");
+
+      expect(populateSpy).toHaveBeenCalledWith(
+        expect.objectContaining({
+          path: "meetingId",
+          match: { organization: ORG_A.toString() },
+        }),
+      );
+    });
+
+    it("omits deliveries whose meeting is outside the caller's organization", async () => {
+      currentUser = aliceMember;
+      deliveryFindSpy.mockReturnValue({
+        populate: jest.fn().mockReturnValue({
+          sort: jest.fn().mockReturnValue({
+            limit: jest.fn().mockResolvedValue([
+              {
+                _id: DELIVERY_ID,
+                // populate match left meetingId null (foreign org)
+                meetingId: null,
+              },
+              {
+                _id: new mongoose.Types.ObjectId(),
+                meetingId: {
+                  title: "In-org",
+                  organization: ORG_A,
+                },
+              },
+            ]),
+          }),
+        }),
+      });
+
+      const res = await request(app).get(
+        "/api/recap-schedule/history/deliveries",
+      );
+
+      expect(res.status).toBe(200);
+      expect(res.body).toHaveLength(1);
+      expect(res.body[0].meetingId.title).toBe("In-org");
     });
 
     it("denies users without organization membership", async () => {
@@ -331,6 +401,28 @@ describe("Recap schedule organization authorization (#1381)", () => {
         userId: USER_A,
       });
       expect(queueAddSpy).toHaveBeenCalled();
+    });
+
+    it("denies retry when the linked meeting belongs to another organization", async () => {
+      currentUser = aliceMember;
+      deliveryFindOneSpy.mockReturnValue({
+        populate: jest.fn().mockResolvedValue({
+          _id: DELIVERY_ID,
+          meetingId: {
+            _id: new mongoose.Types.ObjectId(),
+            organization: ORG_B,
+            title: "Foreign",
+          },
+          userId: USER_A,
+        }),
+      });
+
+      const res = await request(app).post(
+        `/api/recap-schedule/retry/${DELIVERY_ID}`,
+      );
+
+      expect(res.status).toBe(403);
+      expect(queueAddSpy).not.toHaveBeenCalled();
     });
 
     it("denies users without organization membership", async () => {
