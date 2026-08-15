@@ -1,3 +1,4 @@
+import mongoose from "mongoose";
 import RecapSchedule from "../models/recapScheduleModel.js";
 import RecapDelivery from "../models/recapDeliveryModel.js";
 import { recapDeliveryQueue } from "../services/queueService.js";
@@ -6,8 +7,14 @@ import { z } from "zod";
 const scheduleSchema = z.object({
   scheduleType: z.enum(["immediate", "daily", "weekly"]),
   deliveryChannel: z.enum(["email", "webhook", "in_app"]).optional(),
-  preferredTime: z.string().optional(),
-  timezone: z.string().optional(),
+  preferredTime: z
+    .string()
+    .max(10, "Preferred time cannot exceed 10 characters")
+    .optional(),
+  timezone: z
+    .string()
+    .max(50, "Timezone cannot exceed 50 characters")
+    .optional(),
 });
 
 /**
@@ -110,6 +117,10 @@ export const retryDelivery = async (req, res) => {
     const { deliveryId } = req.params;
     const userId = req.user._id;
     const organizationId = resolveAuthorizedOrganizationId(req);
+
+    if (!mongoose.Types.ObjectId.isValid(deliveryId)) {
+      return res.status(400).json({ error: "Invalid delivery ID format" });
+    }
 
     if (!organizationId) {
       return res.status(403).json({
