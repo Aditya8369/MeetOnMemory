@@ -1,6 +1,9 @@
 import * as Y from "yjs";
 import Meeting from "../models/meetingModel.js";
+<<<<<<< Updated upstream
 import NoteVersion from "../models/noteVersionModel.js";
+=======
+>>>>>>> Stashed changes
 import { snapshotNoteVersion } from "../controllers/noteVersionController.js";
 
 /**
@@ -25,7 +28,11 @@ export default class CrdtService {
       Y.applyUpdate(ydoc, new Uint8Array(meeting.crdtState));
     } else {
       // Initialize with default content if it's a brand new document
+<<<<<<< Updated upstream
       const ytext = ydoc.getText("notes"); // Compatible with documentSync.js using 'notes'
+=======
+      const ytext = ydoc.getText("notes");
+>>>>>>> Stashed changes
 
       // Use a transaction to batch the initial insertion
       ydoc.transact(() => {
@@ -55,7 +62,11 @@ export default class CrdtService {
     Y.applyUpdate(ydoc, new Uint8Array(update));
 
     // Extract the updated plain text for search indexing
+<<<<<<< Updated upstream
     const ytext = ydoc.getText("notes"); // Compatible with documentSync.js using 'notes'
+=======
+    const ytext = ydoc.getText("notes");
+>>>>>>> Stashed changes
     const plainText = ytext.toString();
 
     // Encode the full state to persist in the database
@@ -86,9 +97,13 @@ export default class CrdtService {
    * Generates a snapshot of the current document state for version history.
    * @param {string} meetingId
    * @param {string} userId - The user triggering the snapshot.
-   * @param {string} title - Optional title for the snapshot.
+   * @param {string} [_title="Manual Snapshot"] - Optional title for the snapshot.
    */
+<<<<<<< Updated upstream
   static async createSnapshot(meetingId, userId, title = "Manual Snapshot") {
+=======
+  static async createSnapshot(meetingId, userId, _title = "Manual Snapshot") {
+>>>>>>> Stashed changes
     const meeting = await Meeting.findById(meetingId);
     if (!meeting || !meeting.crdtState) {
       throw new Error("Document not found or empty");
@@ -97,7 +112,11 @@ export default class CrdtService {
     const ydoc = new Y.Doc();
     Y.applyUpdate(ydoc, new Uint8Array(meeting.crdtState));
 
+<<<<<<< Updated upstream
     const ytext = ydoc.getText("notes"); // Compatible with documentSync.js using 'notes'
+=======
+    const ytext = ydoc.getText("notes");
+>>>>>>> Stashed changes
     const snapshotContent = ytext.toString();
 
     // Create NoteVersion snapshot using noteVersionController
