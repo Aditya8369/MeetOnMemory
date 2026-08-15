@@ -43,6 +43,8 @@ const loadGenerativeAI = () => import("./GenerativeAIService.js");
 const loadCalendarService = () => import("./calendarService.js");
 const loadQueueService = () => import("./queueService.js");
 const loadTranscriptionService = () => import("./TranscriptionService.js");
+const loadKeywordAlertService = () => import("./keywordAlertService.js");
+
 const scheduleIndexMeeting = (meeting) => {
   loadEmbeddingUtils()
     .then(({ indexMeeting }) => indexMeeting(meeting))
@@ -58,6 +60,17 @@ const scheduleDeleteFromPinecone = (meetingId) => {
     )
     .catch((err) =>
       console.error("⚠️ Pinecone deletion error (continuing):", err.message),
+    );
+};
+
+const scheduleKeywordScan = (meeting, transcript) => {
+  if (!transcript) return;
+  loadKeywordAlertService()
+    .then(({ scanTranscriptForKeywords }) =>
+      scanTranscriptForKeywords(meeting, transcript),
+    )
+    .catch((err) =>
+      console.error("⚠️ Keyword scan error (continuing):", err.message),
     );
 };
 export const isValidObjectId = (id) =>
@@ -270,6 +283,7 @@ export const uploadAndTranscribeMeeting = async (
   });
 
   scheduleIndexMeeting(meeting);
+  scheduleKeywordScan(meeting, transcriptText);
 
   try {
     await fs.promises.unlink(validatePath(filePath));
@@ -311,6 +325,7 @@ export const uploadAudioForExistingMeeting = async (
   await meeting.save();
 
   scheduleIndexMeeting(meeting);
+  scheduleKeywordScan(meeting, transcriptText);
 
   try {
     await fs.promises.unlink(validatePath(filePath));
