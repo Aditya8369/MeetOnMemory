@@ -89,6 +89,7 @@ export function configureSocket(server, app) {
   transcriptSocket(io);
   reactionSocket(io);
   translationSocket(io);
+  // Collaborative War Room namespace (/workspace) — registered exactly once here (#1399)
   initWorkspaceSocket(io);
 
   return io;

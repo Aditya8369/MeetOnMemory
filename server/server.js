@@ -82,6 +82,7 @@ configureErrorHandling(app);
 const server = http.createServer(app);
 
 // SOCKET.IO
+// SOCKET.IO — namespaces (including /workspace) registered inside configureSocket (#1399)
 const io = configureSocket(server, app);
 
 // Initialize notification event listeners

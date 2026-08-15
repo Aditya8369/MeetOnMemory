@@ -1,8 +1,7 @@
 // server/socket/workspaceSocket.js
-import mongoose from "mongoose";
-import Meeting from "../models/meetingModel.js";
 import { workspaceSyncService } from "../services/workspaceSyncService.js";
 import authenticateSocket from "../middleware/socketAuth.js";
+import { authorizeCollaborativeDocAccess } from "../utils/collaborativeDocAccess.js";
 
 /**
  * Throttle utility to prevent cursor movement spam over WebSockets
@@ -21,10 +20,11 @@ const throttle = (func, limit) => {
 };
 
 /**
- * Authorize workspace access using the Clerk-authenticated MongoDB user only.
- * Never trust handshake.auth.userId / query.userId (Issue #1386).
+ * Authorize workspace access using Clerk-authenticated identity only.
+ * Reuses collaborative meeting access (owner / same-org / participant).
+ * Never trust handshake.auth.userId / query.userId / payload.userId (#1386 / #1399).
  */
-const authorizeWorkspaceAccess = async (socket, next) => {
+export const authorizeWorkspaceAccess = async (socket, next) => {
   try {
     if (!socket.userId) {
       return next(new Error("Authentication error: User not found"));
@@ -37,39 +37,22 @@ const authorizeWorkspaceAccess = async (socket, next) => {
       return next(new Error("Meeting ID missing"));
     }
 
-    if (!mongoose.Types.ObjectId.isValid(meetingId)) {
-      return next(new Error("Invalid Meeting ID format"));
-    }
-
-    const meeting = await Meeting.findById(meetingId).select(
-      "organization participants uploadedBy",
-    );
-    if (!meeting) {
-      return next(new Error("Meeting not found"));
-    }
-
-    const authenticatedUserId = socket.userId.toString();
-    const authenticatedEmail = socket.user?.email;
-
-    const isParticipant = meeting.participants.some(
-      (p) =>
-        p.user?.toString() === authenticatedUserId ||
-        (authenticatedEmail &&
-          p.email &&
-          p.email.toLowerCase() === authenticatedEmail.toLowerCase()),
-    );
-    const isOwner = meeting.uploadedBy?.toString() === authenticatedUserId;
-
-    if (!isParticipant && !isOwner) {
-      return next(
-        new Error("Forbidden: You are not a participant of this meeting"),
-      );
+    const access = await authorizeCollaborativeDocAccess(socket, meetingId);
+    if (!access.ok) {
+      const message =
+        access.code === "not_found"
+          ? "Meeting not found"
+          : access.code === "invalid_meeting"
+            ? "Invalid Meeting ID format"
+            : access.message ||
+              "Forbidden: You are not authorized for this workspace";
+      return next(new Error(message));
     }
 
     // Identity is already set by authenticateSocket — never overwrite from client.
-    socket.meetingId = meetingId;
-    socket.userName =
-      socket.user?.name || socket.handshake.auth?.userName || "Anonymous";
+    socket.meetingId = String(access.meeting._id || meetingId);
+    socket.userName = access.user?.name || socket.user?.name || "Anonymous";
+    // Display-only cosmetic; never used for authorization.
     socket.userColor = socket.handshake.auth?.userColor || "#6366f1";
 
     next();
@@ -80,15 +63,54 @@ const authorizeWorkspaceAccess = async (socket, next) => {
 };
 
 /**
- * Initialize Workspace WebSocket events for the Collaborative War Room
+ * Re-validate meeting access for a connected socket before handling events.
+ * Join-time auth alone is insufficient after org/participant removals (#1399).
+ */
+export const ensureWorkspaceEventAccess = async (socket) => {
+  if (!socket?.userId || !socket?.meetingId) {
+    return {
+      ok: false,
+      message: "Unauthorized: Authentication required",
+    };
+  }
+
+  const access = await authorizeCollaborativeDocAccess(
+    socket,
+    socket.meetingId,
+  );
+  if (!access.ok) {
+    return {
+      ok: false,
+      message:
+        access.message ||
+        "Forbidden: You are not authorized for this workspace",
+    };
+  }
+
+  return { ok: true, access };
+};
+
+let isInitialized = false;
+/** @type {import("socket.io").Namespace | null} */
+let workspaceNsp = null;
+
+/**
+ * Initialize Workspace WebSocket events for the Collaborative War Room.
+ * Idempotent — safe under hot reload / repeated configureSocket calls (#1399).
+ *
  * @param {Object} io - Socket.IO server instance
  */
 export const initWorkspaceSocket = (io) => {
-  const workspaceNsp = io.of("/workspace");
+  if (isInitialized) {
+    console.warn("⚠️ Workspace socket namespace already initialized");
+    return workspaceNsp;
+  }
+
+  workspaceNsp = io.of("/workspace");
 
   // Clerk JWT → MongoDB user (authoritative identity)
   workspaceNsp.use(authenticateSocket);
-  // Meeting participant/owner check against authenticated user only
+  // Meeting owner / same-org / participant check against authenticated user only
   workspaceNsp.use(authorizeWorkspaceAccess);
 
   workspaceNsp.on("connection", (socket) => {
@@ -109,7 +131,10 @@ export const initWorkspaceSocket = (io) => {
     });
 
     // --- CURSOR AWARENESS ---
-    const broadcastCursor = throttle((data) => {
+    const broadcastCursor = throttle(async (data) => {
+      const gate = await ensureWorkspaceEventAccess(socket);
+      if (!gate.ok) return;
+
       socket.to(room).emit("workspace:cursor-move", {
         userId: socket.userId,
         userName: socket.userName,
@@ -124,10 +149,17 @@ export const initWorkspaceSocket = (io) => {
 
     // --- CANVAS STATE SYNC ---
     socket.on("workspace:canvas-draw", async (data) => {
+      const gate = await ensureWorkspaceEventAccess(socket);
+      if (!gate.ok) {
+        socket.emit("workspace:error", { message: gate.message });
+        return;
+      }
+
       // data: { type: 'node' | 'path', payload: {...} }
+      // Ignore any client-supplied userId — always use Clerk-resolved identity.
       socket.to(room).emit("workspace:canvas-draw", {
-        userId: socket.userId,
         ...data,
+        userId: socket.userId,
       });
 
       // Persist to DB in background (fire and forget for low latency)
@@ -139,22 +171,34 @@ export const initWorkspaceSocket = (io) => {
     });
 
     socket.on("workspace:canvas-clear", async () => {
+      const gate = await ensureWorkspaceEventAccess(socket);
+      if (!gate.ok) {
+        socket.emit("workspace:error", { message: gate.message });
+        return;
+      }
+
       socket.to(room).emit("workspace:canvas-clear", { userId: socket.userId });
       await workspaceSyncService.clearCanvas(socket.meetingId);
     });
 
     // --- ACTION ITEM DRAG & DROP ---
     socket.on("workspace:action-move", async (data) => {
+      const gate = await ensureWorkspaceEventAccess(socket);
+      if (!gate.ok) {
+        socket.emit("workspace:error", { message: gate.message });
+        return;
+      }
+
       // data: { actionId, fromColumn, toColumn, newIndex, item? }
       // Relay immediately (include client item when present) so remotes can
       // hydrate without a "Syncing..." placeholder (Issue #1213).
       socket.to(room).emit("workspace:action-move", {
         userId: socket.userId,
-        actionId: data.actionId,
-        fromColumn: data.fromColumn,
-        toColumn: data.toColumn,
-        newIndex: data.newIndex,
-        item: data.item || null,
+        actionId: data?.actionId,
+        fromColumn: data?.fromColumn,
+        toColumn: data?.toColumn,
+        newIndex: data?.newIndex,
+        item: data?.item || null,
       });
 
       try {
@@ -193,11 +237,18 @@ export const initWorkspaceSocket = (io) => {
     });
 
     // --- LIVE VOTING / REACTIONS ---
-    socket.on("workspace:vote-topic", (data) => {
+    socket.on("workspace:vote-topic", async (data) => {
+      const gate = await ensureWorkspaceEventAccess(socket);
+      if (!gate.ok) {
+        socket.emit("workspace:error", { message: gate.message });
+        return;
+      }
+
       // data: { topicId, voteType: 'up' | 'down' }
       socket.to(room).emit("workspace:vote-topic", {
         userId: socket.userId,
-        ...data,
+        topicId: data?.topicId,
+        voteType: data?.voteType,
       });
     });
 
@@ -210,6 +261,19 @@ export const initWorkspaceSocket = (io) => {
       });
     });
   });
+
+  isInitialized = true;
+  console.log("✅ Workspace /workspace namespace registered");
+  return workspaceNsp;
 };
 
-export { authorizeWorkspaceAccess };
+/**
+ * Test helper — clears the once-only registration guard.
+ * Production shutdown relies on Socket.IO `io.close()` for namespace teardown.
+ */
+export const resetWorkspaceSocketRegistration = () => {
+  isInitialized = false;
+  workspaceNsp = null;
+};
+
+export const isWorkspaceSocketInitialized = () => isInitialized;
