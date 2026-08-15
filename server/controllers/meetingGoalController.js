@@ -24,11 +24,18 @@ export const setGoals = async (req, res, next) => {
     const { meetingId } = req.params;
     const { goals } = setGoalsSchema.parse(req.body);
     const userId = req.user._id;
+    const userOrg = req.user.organization || req.user.activeOrganization;
+
+    if (!userOrg) {
+      return res
+        .status(403)
+        .json({ success: false, message: "Organization required" });
+    }
 
     // Verify meeting exists and belongs to the user's organization
     const meeting = await Meeting.findOne({
       _id: meetingId,
-      organization: req.user.activeOrganization,
+      organization: userOrg,
       deletedAt: null,
     });
 
@@ -46,15 +53,19 @@ export const setGoals = async (req, res, next) => {
       });
     }
 
-    let meetingGoal = await MeetingGoal.findOne({ meetingId });
+    let meetingGoal = await MeetingGoal.findOne({
+      meetingId,
+      organization: userOrg,
+    });
 
     if (meetingGoal) {
       meetingGoal.goals = goals.map((g) => ({ ...g, status: "pending" }));
+      meetingGoal.organization = meeting.organization; // Force context from the authorized meeting
       await meetingGoal.save();
     } else {
       meetingGoal = await MeetingGoal.create({
         meetingId,
-        organization: meeting.organization,
+        organization: meeting.organization, // Derived from authorized meeting context
         createdBy: userId,
         goals: goals.map((g) => ({ ...g, status: "pending" })),
       });
@@ -74,10 +85,31 @@ export const setGoals = async (req, res, next) => {
 export const getGoals = async (req, res, next) => {
   try {
     const { meetingId } = req.params;
+    const userOrg = req.user.organization || req.user.activeOrganization;
+
+    if (!userOrg) {
+      return res
+        .status(403)
+        .json({ success: false, message: "Organization required" });
+    }
+
+    // Ensure the meeting itself belongs to the authorized organization (multi-tenant boundary)
+    const meeting = await Meeting.findOne({
+      _id: meetingId,
+      organization: userOrg,
+      deletedAt: null,
+    });
+
+    if (!meeting) {
+      return res.status(403).json({
+        success: false,
+        message: "Access denied: different organization or meeting not found",
+      });
+    }
 
     const meetingGoal = await MeetingGoal.findOne({
       meetingId,
-      organization: req.user.activeOrganization,
+      organization: userOrg,
     });
 
     if (!meetingGoal) {
@@ -95,10 +127,17 @@ export const updateGoalStatus = async (req, res, next) => {
     const { meetingId, goalId } = req.params;
     const { status, outcomeNote } = updateGoalStatusSchema.parse(req.body);
     const userId = req.user._id;
+    const userOrg = req.user.organization || req.user.activeOrganization;
+
+    if (!userOrg) {
+      return res
+        .status(403)
+        .json({ success: false, message: "Organization required" });
+    }
 
     const meeting = await Meeting.findOne({
       _id: meetingId,
-      organization: req.user.activeOrganization,
+      organization: userOrg,
       deletedAt: null,
     });
 
@@ -116,7 +155,10 @@ export const updateGoalStatus = async (req, res, next) => {
       });
     }
 
-    const meetingGoal = await MeetingGoal.findOne({ meetingId });
+    const meetingGoal = await MeetingGoal.findOne({
+      meetingId,
+      organization: userOrg,
+    });
     if (!meetingGoal) {
       return res
         .status(404)
@@ -153,9 +195,10 @@ export const updateGoalStatus = async (req, res, next) => {
 export const getOrgGoalStats = async (req, res, next) => {
   try {
     const { orgId } = req.params;
+    const userOrg = req.user.organization || req.user.activeOrganization;
 
     // Check if user is part of the org
-    if (req.user.activeOrganization.toString() !== orgId) {
+    if (!userOrg || userOrg.toString() !== orgId) {
       return res.status(403).json({
         success: false,
         message: "Unauthorized for this organization",
@@ -165,9 +208,7 @@ export const getOrgGoalStats = async (req, res, next) => {
     const pipeline = [
       {
         $match: {
-          organization: new mongoose.Types.ObjectId(
-            req.user.activeOrganization,
-          ),
+          organization: new mongoose.Types.ObjectId(userOrg),
         },
       },
       { $unwind: "$goals" },
