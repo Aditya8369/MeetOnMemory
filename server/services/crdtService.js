@@ -1,12 +1,13 @@
-const Y = require("yjs");
-const CollaborativeNote = require("../models/CollaborativeNote");
-const NoteSnapshot = require("../models/NoteSnapshot"); // Assumed existing model for history
+import * as Y from "yjs";
+import Meeting from "../models/meetingModel.js";
+import NoteVersion from "../models/noteVersionModel.js";
+import { snapshotNoteVersion } from "../controllers/noteVersionController.js";
 
 /**
  * @desc Service layer for handling Yjs CRDT operations, state encoding/decoding,
  * and snapshot generation for version history.
  */
-class CrdtService {
+export default class CrdtService {
   /**
    * Initializes or retrieves a Yjs document for a specific meeting.
    * @param {string} meetingId - The ID of the meeting.
@@ -14,15 +15,17 @@ class CrdtService {
    * @returns {Promise<Y.Doc>} The initialized Yjs document.
    */
   static async getOrInitDocument(meetingId, initialContent = "") {
-    const note = await CollaborativeNote.findOne({ meetingId });
+    const meeting = await Meeting.findById(meetingId);
+    if (!meeting) throw new Error("Meeting not found");
+
     const ydoc = new Y.Doc();
 
-    if (note && note.yjsState) {
+    if (meeting.crdtState) {
       // Apply existing binary state to the new Yjs document
-      Y.applyUpdate(ydoc, new Uint8Array(note.yjsState));
+      Y.applyUpdate(ydoc, new Uint8Array(meeting.crdtState));
     } else {
       // Initialize with default content if it's a brand new document
-      const ytext = ydoc.getText("collaborative-note");
+      const ytext = ydoc.getText("notes"); // Compatible with documentSync.js using 'notes'
 
       // Use a transaction to batch the initial insertion
       ydoc.transact(() => {
@@ -31,16 +34,9 @@ class CrdtService {
 
       // Save the initial state to the database
       const encodedState = Y.encodeStateAsUpdate(ydoc);
-      await CollaborativeNote.findOneAndUpdate(
-        { meetingId },
-        {
-          meetingId,
-          yjsState: Buffer.from(encodedState),
-          plainTextContent: initialContent,
-          version: 1,
-        },
-        { upsert: true, new: true },
-      );
+      meeting.crdtState = Buffer.from(encodedState);
+      meeting.collaborativeNotes = initialContent;
+      await meeting.save();
     }
 
     return ydoc;
@@ -59,21 +55,30 @@ class CrdtService {
     Y.applyUpdate(ydoc, new Uint8Array(update));
 
     // Extract the updated plain text for search indexing
-    const ytext = ydoc.getText("collaborative-note");
+    const ytext = ydoc.getText("notes"); // Compatible with documentSync.js using 'notes'
     const plainText = ytext.toString();
 
     // Encode the full state to persist in the database
     const encodedState = Y.encodeStateAsUpdate(ydoc);
 
-    await CollaborativeNote.findOneAndUpdate(
-      { meetingId },
+    await Meeting.findByIdAndUpdate(
+      meetingId,
       {
-        yjsState: Buffer.from(encodedState),
-        plainTextContent: plainText,
-        lastModifiedBy: userId,
-        lastModifiedAt: new Date(),
+        $set: {
+          crdtState: Buffer.from(encodedState),
+          collaborativeNotes: plainText,
+        },
       },
-      { upsert: true },
+      { new: true },
+    );
+
+    // Automatically snapshot changes using noteVersionController
+    await snapshotNoteVersion(
+      meetingId,
+      "collaborativeNotes",
+      plainText,
+      "user_edit",
+      userId,
     );
   }
 
@@ -84,29 +89,30 @@ class CrdtService {
    * @param {string} title - Optional title for the snapshot.
    */
   static async createSnapshot(meetingId, userId, title = "Manual Snapshot") {
-    const note = await CollaborativeNote.findOne({ meetingId });
-    if (!note) throw new Error("Document not found");
+    const meeting = await Meeting.findById(meetingId);
+    if (!meeting || !meeting.crdtState) {
+      throw new Error("Document not found or empty");
+    }
 
     const ydoc = new Y.Doc();
-    Y.applyUpdate(ydoc, new Uint8Array(note.yjsState));
+    Y.applyUpdate(ydoc, new Uint8Array(meeting.crdtState));
 
-    const ytext = ydoc.getText("collaborative-note");
+    const ytext = ydoc.getText("notes"); // Compatible with documentSync.js using 'notes'
     const snapshotContent = ytext.toString();
 
-    // Increment version and save to snapshot collection
-    const newVersion = note.version + 1;
-
-    await NoteSnapshot.create({
+    // Create NoteVersion snapshot using noteVersionController
+    const snapshot = await snapshotNoteVersion(
       meetingId,
-      version: newVersion,
+      "collaborativeNotes",
+      snapshotContent,
+      "user_edit",
+      userId,
+    );
+
+    return {
+      version: snapshot ? snapshot.version : 1,
       content: snapshotContent,
-      createdBy: userId,
-      title,
-    });
-
-    await CollaborativeNote.updateOne({ meetingId }, { $inc: { version: 1 } });
-
-    return { version: newVersion, content: snapshotContent };
+    };
   }
 
   /**
@@ -115,13 +121,13 @@ class CrdtService {
    * @returns {Promise<Uint8Array>} The state vector.
    */
   static async getStateVector(meetingId) {
-    const note = await CollaborativeNote.findOne({ meetingId });
-    if (!note || !note.yjsState) return Y.encodeStateVector(new Y.Doc());
+    const meeting = await Meeting.findById(meetingId);
+    if (!meeting || !meeting.crdtState) {
+      return Y.encodeStateVector(new Y.Doc());
+    }
 
     const ydoc = new Y.Doc();
-    Y.applyUpdate(ydoc, new Uint8Array(note.yjsState));
+    Y.applyUpdate(ydoc, new Uint8Array(meeting.crdtState));
     return Y.encodeStateVector(ydoc);
   }
 }
-
-module.exports = CrdtService;
