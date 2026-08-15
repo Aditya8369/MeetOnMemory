@@ -11,9 +11,7 @@ const router = express.Router();
 
 router.use(protect, requireOrgMembership);
 
-router.route("/")
-  .get(getWatchlist)
-  .put(updateWatchlist);
+router.route("/").get(getWatchlist).put(updateWatchlist);
 
 router.patch("/toggle", toggleAlerts);
 

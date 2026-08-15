@@ -13,7 +13,10 @@ export const getWatchlist = async (req, res, next) => {
       return res.status(403).json({ message: "Organization is required" });
     }
 
-    let alert = await KeywordAlert.findOne({ user: userId, organization: organizationId });
+    let alert = await KeywordAlert.findOne({
+      user: userId,
+      organization: organizationId,
+    });
 
     if (!alert) {
       alert = await KeywordAlert.create({
@@ -53,9 +56,9 @@ export const updateWatchlist = async (req, res, next) => {
           ...(typeof notifyViaEmail === "boolean" && { notifyViaEmail }),
           ...(typeof notifyViaApp === "boolean" && { notifyViaApp }),
           ...(typeof isActive === "boolean" && { isActive }),
-        }
+        },
       },
-      { new: true, upsert: true, runValidators: true }
+      { new: true, upsert: true, runValidators: true },
     );
 
     res.status(200).json(alert);
@@ -80,7 +83,7 @@ export const toggleAlerts = async (req, res, next) => {
     const alert = await KeywordAlert.findOneAndUpdate(
       { user: userId, organization: organizationId },
       { $set: { isActive: !!isActive } },
-      { new: true }
+      { new: true },
     );
 
     if (!alert) {

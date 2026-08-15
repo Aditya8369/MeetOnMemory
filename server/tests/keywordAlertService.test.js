@@ -8,13 +8,21 @@ import EmailService from "../services/EmailService.js";
 describe.skip("KeywordAlertService", () => {
   beforeEach(() => {
     jest.clearAllMocks();
-    jest.spyOn(notificationService, "createNotifications").mockResolvedValue([]);
+    jest
+      .spyOn(notificationService, "createNotifications")
+      .mockResolvedValue([]);
     jest.spyOn(EmailService, "sendMail").mockResolvedValue(true);
   });
 
   describe("scanTranscriptForKeywords", () => {
     it("should do nothing if transcript is empty", async () => {
-      await scanTranscriptForKeywords({ _id: new mongoose.Types.ObjectId(), organization: new mongoose.Types.ObjectId() }, "");
+      await scanTranscriptForKeywords(
+        {
+          _id: new mongoose.Types.ObjectId(),
+          organization: new mongoose.Types.ObjectId(),
+        },
+        "",
+      );
       expect(notificationService.createNotifications).not.toHaveBeenCalled();
     });
 
@@ -27,7 +35,10 @@ describe.skip("KeywordAlertService", () => {
         populate: jest.fn().mockResolvedValue([]),
       });
 
-      await scanTranscriptForKeywords({ _id: meetingId, organization: orgId, title: "Test" }, "some text");
+      await scanTranscriptForKeywords(
+        { _id: meetingId, organization: orgId, title: "Test" },
+        "some text",
+      );
 
       expect(notificationService.createNotifications).not.toHaveBeenCalled();
       KeywordAlert.find.mockRestore();
@@ -53,9 +64,13 @@ describe.skip("KeywordAlertService", () => {
         populate: jest.fn().mockResolvedValue(mockAlerts),
       });
 
-      const transcript = "In today's meeting we discussed PROJECT TITAN and other matters. However, budget cuts were not on the agenda.";
+      const transcript =
+        "In today's meeting we discussed PROJECT TITAN and other matters. However, budget cuts were not on the agenda.";
 
-      await scanTranscriptForKeywords({ _id: meetingId, organization: orgId, title: "Test Meeting" }, transcript);
+      await scanTranscriptForKeywords(
+        { _id: meetingId, organization: orgId, title: "Test Meeting" },
+        transcript,
+      );
 
       // Verify app notification
       expect(notificationService.createNotifications).toHaveBeenCalledTimes(1);
@@ -65,7 +80,7 @@ describe.skip("KeywordAlertService", () => {
           title: "Keyword Alert",
           description: expect.stringContaining("Project Titan, budget cuts"),
           category: "system",
-        })
+        }),
       );
 
       // Verify email notification
@@ -75,7 +90,7 @@ describe.skip("KeywordAlertService", () => {
           to: "test@example.com",
           subject: "MeetOnMemory: Keyword Alert - Test Meeting",
           html: expect.stringContaining("Project Titan, budget cuts"),
-        })
+        }),
       );
 
       KeywordAlert.find.mockRestore();
@@ -101,7 +116,10 @@ describe.skip("KeywordAlertService", () => {
         populate: jest.fn().mockResolvedValue(mockAlerts),
       });
 
-      await scanTranscriptForKeywords({ _id: meetingId, organization: orgId, title: "Test Meeting" }, "This is a secret.");
+      await scanTranscriptForKeywords(
+        { _id: meetingId, organization: orgId, title: "Test Meeting" },
+        "This is a secret.",
+      );
 
       expect(notificationService.createNotifications).not.toHaveBeenCalled();
       expect(EmailService.sendMail).toHaveBeenCalledTimes(1);

@@ -65,7 +65,7 @@ export const scanTranscriptForKeywords = async (meeting, transcript) => {
     // 3. Dispatch in-app notifications
     if (usersToNotifyApp.length > 0) {
       // Create personalized notifications by looping since each might have different matched keywords,
-      // or we can just send a generic one using bulk if we simplify. 
+      // or we can just send a generic one using bulk if we simplify.
       // To be precise with keywords, we create individually. The createNotifications takes an array of users but sends the same payload.
       // So we will just loop and use createNotifications for each.
       const promises = usersToNotifyApp.map((userId) => {
@@ -88,7 +88,7 @@ export const scanTranscriptForKeywords = async (meeting, transcript) => {
         const userIdStr = alert.user._id.toString();
         const { matchedKeywords } = matchedKeywordsMap.get(userIdStr);
         const keywordStr = matchedKeywords.join(", ");
-        
+
         return EmailService.sendMail({
           to: alert.user.email,
           subject: `MeetOnMemory: Keyword Alert - ${meetingTitle}`,

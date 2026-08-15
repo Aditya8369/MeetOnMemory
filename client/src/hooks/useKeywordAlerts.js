@@ -23,7 +23,11 @@ export const useKeywordAlerts = () => {
         isActive: data.isActive ?? true,
       });
     } catch (err) {
-      setError(err?.response?.data?.message || err.message || "Failed to fetch keyword alerts");
+      setError(
+        err?.response?.data?.message ||
+          err.message ||
+          "Failed to fetch keyword alerts",
+      );
     } finally {
       setLoading(false);
     }
@@ -41,7 +45,11 @@ export const useKeywordAlerts = () => {
       });
       return true;
     } catch (err) {
-      setError(err?.response?.data?.message || err.message || "Failed to update keyword alerts");
+      setError(
+        err?.response?.data?.message ||
+          err.message ||
+          "Failed to update keyword alerts",
+      );
       return false;
     }
   };
@@ -49,11 +57,17 @@ export const useKeywordAlerts = () => {
   const toggleAlerts = async (isActive) => {
     try {
       setError(null);
-      const { data } = await apiClient.patch("/alerts/keywords/toggle", { isActive });
+      const { data } = await apiClient.patch("/alerts/keywords/toggle", {
+        isActive,
+      });
       setWatchlist((prev) => ({ ...prev, isActive: data.isActive }));
       return true;
     } catch (err) {
-      setError(err?.response?.data?.message || err.message || "Failed to toggle keyword alerts");
+      setError(
+        err?.response?.data?.message ||
+          err.message ||
+          "Failed to toggle keyword alerts",
+      );
       return false;
     }
   };

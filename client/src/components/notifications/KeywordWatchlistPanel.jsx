@@ -3,14 +3,15 @@ import { X, Bell, Mail, Power, Loader2, Save } from "lucide-react";
 import { useKeywordAlerts } from "../../hooks/useKeywordAlerts";
 
 const KeywordWatchlistPanel = () => {
-  const { watchlist, loading, error, updateWatchlist, toggleAlerts } = useKeywordAlerts();
-  
+  const { watchlist, loading, error, updateWatchlist, toggleAlerts } =
+    useKeywordAlerts();
+
   const [keywords, setKeywords] = useState([]);
   const [inputValue, setInputValue] = useState("");
   const [notifyViaEmail, setNotifyViaEmail] = useState(true);
   const [notifyViaApp, setNotifyViaApp] = useState(true);
   const [isActive, setIsActive] = useState(true);
-  
+
   const [isSaving, setIsSaving] = useState(false);
   const [saveMessage, setSaveMessage] = useState("");
 
@@ -27,7 +28,11 @@ const KeywordWatchlistPanel = () => {
     if (e.key === "Enter" || e.key === ",") {
       e.preventDefault();
       const newKeyword = inputValue.trim();
-      if (newKeyword && !keywords.includes(newKeyword) && newKeyword.length >= 3) {
+      if (
+        newKeyword &&
+        !keywords.includes(newKeyword) &&
+        newKeyword.length >= 3
+      ) {
         setKeywords([...keywords, newKeyword]);
         setInputValue("");
       }
@@ -47,7 +52,7 @@ const KeywordWatchlistPanel = () => {
       notifyViaApp,
       isActive,
     });
-    
+
     if (success) {
       setSaveMessage("Settings saved successfully.");
       setTimeout(() => setSaveMessage(""), 3000);
@@ -69,10 +74,13 @@ const KeywordWatchlistPanel = () => {
         <div>
           <h3 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
             Keyword Watchlist
-            <span className="text-xs px-2 py-1 bg-blue-100 text-blue-700 rounded-full font-medium">New</span>
+            <span className="text-xs px-2 py-1 bg-blue-100 text-blue-700 rounded-full font-medium">
+              New
+            </span>
           </h3>
           <p className="text-sm text-gray-500 mt-1">
-            Get notified when specific projects, clients, or topics are mentioned in meetings.
+            Get notified when specific projects, clients, or topics are
+            mentioned in meetings.
           </p>
         </div>
         <button
@@ -95,7 +103,9 @@ const KeywordWatchlistPanel = () => {
         </div>
       )}
 
-      <div className={`space-y-6 ${!isActive ? "opacity-50 pointer-events-none" : ""}`}>
+      <div
+        className={`space-y-6 ${!isActive ? "opacity-50 pointer-events-none" : ""}`}
+      >
         {/* Keywords Input */}
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -132,7 +142,9 @@ const KeywordWatchlistPanel = () => {
 
         {/* Notification Channels */}
         <div>
-          <h4 className="text-sm font-medium text-gray-700 mb-3">Notification Channels</h4>
+          <h4 className="text-sm font-medium text-gray-700 mb-3">
+            Notification Channels
+          </h4>
           <div className="space-y-3">
             <label className="flex items-center gap-3 cursor-pointer">
               <input
@@ -171,7 +183,11 @@ const KeywordWatchlistPanel = () => {
             disabled={isSaving}
             className="flex items-center gap-2 bg-primary hover:bg-primary-dark text-white px-4 py-2 rounded-md font-medium transition-colors text-sm disabled:opacity-70 disabled:cursor-not-allowed"
           >
-            {isSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+            {isSaving ? (
+              <Loader2 className="w-4 h-4 animate-spin" />
+            ) : (
+              <Save className="w-4 h-4" />
+            )}
             Save Changes
           </button>
         </div>
