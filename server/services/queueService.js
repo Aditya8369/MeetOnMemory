@@ -1,6 +1,7 @@
 import { Queue, Worker } from "bullmq";
 import Redis from "ioredis";
 import processAiResultJob from "../jobs/processAiResultJob.js";
+import processAudioJob from "../jobs/processAudioJob.js";
 import exportDataJob from "../jobs/exportDataJob.js";
 import cleanupExpiredExportsJob from "../jobs/cleanupExpiredExportsJob.js";
 import conflictScanJob from "./conflictDetection/conflictScanJob.js";
@@ -227,6 +228,13 @@ export const initAiResultsWorker = (app) =>
     name: "ai-mom-results",
     label: "AI Results Worker",
     processor: async (job) => await processAiResultJob(job, app),
+  });
+
+export const initAiGenerationWorker = (app) =>
+  createWorker({
+    name: "ai-mom-generation",
+    label: "AI Generation Worker",
+    processor: async (job) => await processAudioJob(job, app),
   });
 
 export const initDataExportWorker = (app) =>

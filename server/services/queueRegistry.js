@@ -57,6 +57,11 @@ export const QUEUE_DEFINITIONS = Object.freeze({
     jobOptions: { attempts: 5, backoff: { type: "exponential", delay: 15000 } },
     workerOptions: { concurrency: 1 },
   }),
+  "ai-mom-results": Object.freeze({
+    // Consumes processed AI MoM results and updates the database.
+    jobOptions: { attempts: 3 },
+    workerOptions: { concurrency: 2 },
+  }),
   "data-export-queue": Object.freeze({
     // Exports write a file and email a link; a duplicate delivery is far less
     // bad than a silently dropped export, so retries stay on.

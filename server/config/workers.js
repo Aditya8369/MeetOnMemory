@@ -1,6 +1,7 @@
 import { initRedis } from "../services/redisService.js";
 import {
   initAiResultsWorker,
+  initAiGenerationWorker,
   initDataExportWorker,
   initExportCleanupWorker,
   initConflictScanWorker,
@@ -60,6 +61,7 @@ export async function startWorkers(app) {
   console.log(describeRateLimitBacking().message);
 
   await safeInit("AI Results Worker", () => initAiResultsWorker(app));
+  await safeInit("AI MoM Worker", () => initAiGenerationWorker(app));
   await safeInit("Data Export Worker", () => initDataExportWorker(app));
   await safeInit("Export Cleanup Worker", () => initExportCleanupWorker());
   await safeInit("Conflict Scan Worker", () => initConflictScanWorker(app));
