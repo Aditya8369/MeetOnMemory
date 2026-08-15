@@ -10,12 +10,11 @@ import {
 
 const router = express.Router();
 
-router.use(protect); // Ensure all routes are protected
+// Every saved-filter operation requires an authenticated Clerk-backed user.
+router.use(protect);
 
 router.route("/").post(createFilter).get(getFilters);
-
 router.route("/:id").put(updateFilter).delete(deleteFilter);
-
 router.put("/:id/pin", togglePin);
 
 export default router;
