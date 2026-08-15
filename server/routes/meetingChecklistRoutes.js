@@ -1,17 +1,18 @@
 import express from "express";
+
 import * as meetingChecklistController from "../controllers/meetingChecklistController.js";
 import userAuth from "../middleware/userAuth.js";
 
 const router = express.Router({ mergeParams: true });
 
-// All routes require user authentication
+// Every checklist endpoint is authenticated. Controllers additionally resolve
+// the meeting and enforce organization + meeting/RBAC permissions.
 router.use(userAuth);
 
 router.post("/", meetingChecklistController.createChecklist);
 router.get("/", meetingChecklistController.getChecklist);
-router.put("/", meetingChecklistController.updateChecklist);
-router.delete("/", meetingChecklistController.deleteChecklist);
 router.patch("/toggle", meetingChecklistController.toggleItem);
+router.delete("/", meetingChecklistController.deleteChecklist);
 router.get("/readiness", meetingChecklistController.getReadiness);
 
 export default router;
