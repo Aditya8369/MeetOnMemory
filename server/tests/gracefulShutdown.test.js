@@ -28,13 +28,14 @@ const makeIo = (order) => ({
 });
 
 describe("createGracefulShutdown (Issue #975)", () => {
-  it("closes HTTP, then Socket.IO, then workers, then datastores", async () => {
+  it("closes HTTP, then Socket.IO, then background jobs, then workers, then datastores", async () => {
     const order = [];
     const exit = jest.fn();
 
     const shutdownController = createGracefulShutdown({
       server: makeServer(order),
       io: makeIo(order),
+      stopBackgroundJobs: jest.fn(async () => order.push("jobs")),
       closeQueues: jest.fn(async () => order.push("queues")),
       closeDatabase: jest.fn(async () => order.push("db")),
       closeRedis: jest.fn(async () => order.push("redis")),
@@ -44,9 +45,8 @@ describe("createGracefulShutdown (Issue #975)", () => {
 
     await shutdownController.shutdown("SIGTERM");
 
-    // Workers must drain before Mongo/Redis close, because a draining job is
-    // still issuing queries against both.
-    expect(order).toEqual(["http", "io", "queues", "db", "redis"]);
+    // Cron/timers stop before workers drain; workers before Mongo/Redis close.
+    expect(order).toEqual(["http", "io", "jobs", "queues", "db", "redis"]);
     expect(exit).toHaveBeenCalledWith(0);
   });
 

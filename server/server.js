@@ -38,6 +38,10 @@ import { startCalendarSyncJob } from "./jobs/calendarSyncJob.js";
 import startPollExpirationJob from "./jobs/pollExpirationJob.js";
 import startFollowUpReminderJob from "./jobs/followUpReminderJob.js";
 import { initChecklistReminderJob } from "./jobs/checklistReminderJob.js";
+import {
+  startActionItemReminderJob,
+  stopActionItemReminderJob,
+} from "./jobs/actionItemReminderJob.js";
 import { createClient } from "redis"; // eslint-disable-line no-unused-vars
 import {
   initDataExportWorker, // eslint-disable-line no-unused-vars
@@ -120,6 +124,9 @@ if (process.env.NODE_ENV !== "test") {
 
   // Start checklist reminder job
   initChecklistReminderJob();
+
+  // Start action-item reminder job (Issue #1397)
+  startActionItemReminderJob();
 }
 
 // (AI, Data Export, and Webhook workers are initialized inside server.listen callback)
@@ -128,6 +135,9 @@ if (process.env.NODE_ENV !== "test") {
 const gracefulShutdown = createGracefulShutdown({
   server,
   io,
+  stopBackgroundJobs: () => {
+    stopActionItemReminderJob();
+  },
   closeQueues: shutdownQueues,
   closeDatabase: () => mongoose.connection.close(),
   closeRedis,

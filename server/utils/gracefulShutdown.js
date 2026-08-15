@@ -38,6 +38,7 @@
  * @param {object} deps
  * @param {import("http").Server} deps.server
  * @param {object} [deps.io] Socket.IO server
+ * @param {Function} [deps.stopBackgroundJobs] async|sync () => void — cron/timers
  * @param {Function} [deps.closeQueues] async () => void
  * @param {Function} [deps.closeDatabase] async () => void
  * @param {Function} [deps.closeRedis] async () => void
@@ -48,6 +49,7 @@
 export const createGracefulShutdown = ({
   server,
   io = null,
+  stopBackgroundJobs = null,
   closeQueues = null,
   closeDatabase = null,
   closeRedis = null,
@@ -117,6 +119,8 @@ export const createGracefulShutdown = ({
     inFlight = (async () => {
       await step("HTTP server closed", closeHttpServer);
       await step("Socket.IO closed", closeSocketIo);
+      // Stop cron/timers before draining queues so no new sweeps enqueue work.
+      await step("Background jobs stopped", stopBackgroundJobs);
       // Workers before datastores: a draining job still needs Mongo and Redis.
       await step("Background workers drained", closeQueues);
       await step("Database connection closed", closeDatabase);

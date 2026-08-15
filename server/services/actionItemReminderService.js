@@ -19,6 +19,9 @@ import { CASE_INSENSITIVE_COLLATION } from "../utils/regexUtils.js";
  * The lookup wants case-insensitive *equality* on the name, so it is now an
  * equality query with a collation: same semantics, no compilation step, and it
  * can use an index on `name`.
+ *
+ * Recipients are always resolved within the action item's organization so
+ * reminders cannot cross tenant boundaries (#1397).
  */
 const resolveTargetUserId = async (owner, organizationId, meetingOrganizer) => {
   if (!owner || owner === "Unassigned") {
@@ -26,7 +29,20 @@ const resolveTargetUserId = async (owner, organizationId, meetingOrganizer) => {
   }
 
   if (mongoose.Types.ObjectId.isValid(owner)) {
-    return owner.toString();
+    try {
+      const query = { _id: owner };
+      if (organizationId) {
+        query.organization = organizationId;
+      }
+      const user = await userModel.findOne(query).select("_id");
+      if (user) return user._id.toString();
+    } catch (err) {
+      console.error(
+        "Error resolving ObjectId owner for action item reminder:",
+        err,
+      );
+    }
+    return meetingOrganizer ? meetingOrganizer.toString() : null;
   }
 
   // Try finding user by email or name within the organization
@@ -55,6 +71,15 @@ const resolveTargetUserId = async (owner, organizationId, meetingOrganizer) => {
 /**
  * Processes automated reminders for upcoming and overdue action items.
  *
+ * Eligibility (existing model semantics — do not invent statuses):
+ * - status in open | in-progress (excludes resolved / superseded)
+ * - dueDate present
+ * - remindersEnabled not false
+ * - lifecycleState not archived | expired
+ * - not merged away (supersededByMemory unset)
+ *
+ * Duplicate prevention reuses `reminderSent.upcoming` / `reminderSent.overdue`.
+ *
  * @param {Object} options
  * @param {string|mongoose.Types.ObjectId} [options.organization] - Optional org filter
  * @returns {Promise<Object>} Summary of processed reminders
@@ -67,6 +92,10 @@ export const processActionItemReminders = async ({ organization } = {}) => {
     status: { $in: ["open", "in-progress"] },
     dueDate: { $ne: null },
     remindersEnabled: { $ne: false },
+    // Archived / expired memories must not generate reminders (#1397).
+    lifecycleState: { $nin: ["archived", "expired"] },
+    // Merged-away duplicates are kept for history but are not actionable.
+    supersededByMemory: null,
   };
 
   if (organization) {
@@ -81,82 +110,92 @@ export const processActionItemReminders = async ({ organization } = {}) => {
   let upcomingCount = 0;
   let overdueCount = 0;
   let processedCount = 0;
+  let errorCount = 0;
 
   for (const item of items) {
-    if (!item.dueDate) continue;
+    try {
+      if (!item.dueDate) continue;
 
-    const dueDate = new Date(item.dueDate);
-    const orgId = item.organization || item.sourceMeetingId?.organization;
-    const meetingOrganizer = item.sourceMeetingId?.organizer;
+      const dueDate = new Date(item.dueDate);
+      const orgId = item.organization || item.sourceMeetingId?.organization;
+      const meetingOrganizer = item.sourceMeetingId?.organizer;
 
-    const targetUserId = await resolveTargetUserId(
-      item.owner,
-      orgId,
-      meetingOrganizer,
-    );
-    if (!targetUserId) continue;
-
-    let updated = false;
-
-    // Check for Upcoming Reminder (due within 24 hours)
-    if (
-      dueDate > now &&
-      dueDate <= upcomingWindow &&
-      !item.reminderSent?.upcoming
-    ) {
-      const meetingTitle = item.sourceMeetingId?.title
-        ? ` (${item.sourceMeetingId.title})`
-        : "";
-      await createNotification(
-        targetUserId,
-        `⏰ Action Item Due Soon`,
-        `Your action item "${item.text}"${meetingTitle} is due on ${dueDate.toLocaleDateString()}.`,
-        // Issue #977: these were filed under "meetings", so the
-        // `pushTaskAssignments` toggle governed nothing while
-        // `pushMeetingReminders` silently killed task reminders — the switches
-        // were wired to the wrong behaviour.
-        "tasks",
-        "/tasks",
-        "View Action Items",
-        { actionItemId: item._id, reminderType: "upcoming", dueDate },
+      const targetUserId = await resolveTargetUserId(
+        item.owner,
+        orgId,
+        meetingOrganizer,
       );
+      if (!targetUserId) continue;
 
-      if (!item.reminderSent) {
-        item.reminderSent = { upcoming: false, overdue: false };
+      let updated = false;
+
+      // Check for Upcoming Reminder (due within 24 hours)
+      if (
+        dueDate > now &&
+        dueDate <= upcomingWindow &&
+        !item.reminderSent?.upcoming
+      ) {
+        const meetingTitle = item.sourceMeetingId?.title
+          ? ` (${item.sourceMeetingId.title})`
+          : "";
+        await createNotification(
+          targetUserId,
+          `⏰ Action Item Due Soon`,
+          `Your action item "${item.text}"${meetingTitle} is due on ${dueDate.toLocaleDateString()}.`,
+          // Issue #977: these were filed under "meetings", so the
+          // `pushTaskAssignments` toggle governed nothing while
+          // `pushMeetingReminders` silently killed task reminders — the switches
+          // were wired to the wrong behaviour.
+          "tasks",
+          "/tasks",
+          "View Action Items",
+          { actionItemId: item._id, reminderType: "upcoming", dueDate },
+        );
+
+        if (!item.reminderSent) {
+          item.reminderSent = { upcoming: false, overdue: false };
+        }
+        item.reminderSent.upcoming = true;
+        item.reminderSent.upcomingSentAt = now;
+        updated = true;
+        upcomingCount++;
       }
-      item.reminderSent.upcoming = true;
-      item.reminderSent.upcomingSentAt = now;
-      updated = true;
-      upcomingCount++;
-    }
 
-    // Check for Overdue Reminder (due in the past)
-    if (dueDate < now && !item.reminderSent?.overdue) {
-      const meetingTitle = item.sourceMeetingId?.title
-        ? ` (${item.sourceMeetingId.title})`
-        : "";
-      await createNotification(
-        targetUserId,
-        `⚠️ Action Item Overdue`,
-        `Your action item "${item.text}"${meetingTitle} was due on ${dueDate.toLocaleDateString()}.`,
-        "tasks",
-        "/tasks",
-        "View Action Items",
-        { actionItemId: item._id, reminderType: "overdue", dueDate },
+      // Check for Overdue Reminder (due in the past)
+      if (dueDate < now && !item.reminderSent?.overdue) {
+        const meetingTitle = item.sourceMeetingId?.title
+          ? ` (${item.sourceMeetingId.title})`
+          : "";
+        await createNotification(
+          targetUserId,
+          `⚠️ Action Item Overdue`,
+          `Your action item "${item.text}"${meetingTitle} was due on ${dueDate.toLocaleDateString()}.`,
+          "tasks",
+          "/tasks",
+          "View Action Items",
+          { actionItemId: item._id, reminderType: "overdue", dueDate },
+        );
+
+        if (!item.reminderSent) {
+          item.reminderSent = { upcoming: false, overdue: false };
+        }
+        item.reminderSent.overdue = true;
+        item.reminderSent.overdueSentAt = now;
+        updated = true;
+        overdueCount++;
+      }
+
+      if (updated) {
+        await item.save();
+        processedCount++;
+      }
+    } catch (err) {
+      // One item failure must not abort the rest of the sweep (#1397).
+      errorCount++;
+      console.error(
+        `Error processing action item reminder for ${item?._id}:`,
+        err,
       );
-
-      if (!item.reminderSent) {
-        item.reminderSent = { upcoming: false, overdue: false };
-      }
-      item.reminderSent.overdue = true;
-      item.reminderSent.overdueSentAt = now;
-      updated = true;
-      overdueCount++;
-    }
-
-    if (updated) {
-      await item.save();
-      processedCount++;
     }
   }
 
@@ -164,5 +203,6 @@ export const processActionItemReminders = async ({ organization } = {}) => {
     processedCount,
     upcomingCount,
     overdueCount,
+    errorCount,
   };
 };
