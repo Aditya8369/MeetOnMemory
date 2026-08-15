@@ -42,6 +42,7 @@ import {
   startActionItemReminderJob,
   stopActionItemReminderJob,
 } from "./jobs/actionItemReminderJob.js";
+import { startRecapBatchJob, stopRecapBatchJob } from "./jobs/recapBatchJob.js";
 import { createClient } from "redis"; // eslint-disable-line no-unused-vars
 import {
   initDataExportWorker, // eslint-disable-line no-unused-vars
@@ -127,6 +128,9 @@ if (process.env.NODE_ENV !== "test") {
 
   // Start action-item reminder job (Issue #1397)
   startActionItemReminderJob();
+
+  // Start recap batch email jobs (Issue #1398)
+  startRecapBatchJob();
 }
 
 // (AI, Data Export, and Webhook workers are initialized inside server.listen callback)
@@ -137,6 +141,7 @@ const gracefulShutdown = createGracefulShutdown({
   io,
   stopBackgroundJobs: () => {
     stopActionItemReminderJob();
+    stopRecapBatchJob();
   },
   closeQueues: shutdownQueues,
   closeDatabase: () => mongoose.connection.close(),
