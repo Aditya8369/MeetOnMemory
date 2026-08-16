@@ -126,6 +126,26 @@ const actionItemSchema = new mongoose.Schema(
       default: null,
     },
 
+    // --- Jira Integration ---
+    externalJiraIssueId: {
+      type: String, // Jira uses string keys like "PROJ-123"
+      default: null,
+    },
+    externalJiraIssueUrl: {
+      type: String,
+      default: null,
+    },
+
+    // --- Linear Integration ---
+    externalLinearIssueId: {
+      type: String, // Linear uses UUIDs or string keys
+      default: null,
+    },
+    externalLinearIssueUrl: {
+      type: String,
+      default: null,
+    },
+
     resolvedInMeetingId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Meeting",

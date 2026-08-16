@@ -20,7 +20,6 @@ import {
   CheckCircle2,
   XCircle,
   RefreshCw,
-  Zap,
 } from "lucide-react";
 import CalendarIntegrations from "../components/CalendarIntegrations.jsx";
 import useTheme from "../context/useTheme.jsx";
