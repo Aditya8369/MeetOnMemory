@@ -497,14 +497,15 @@ const Notifications = () => {
                       </div>
 
                       {/* Actions */}
-                      <div className="flex-shrink-0 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <div className="flex-shrink-0 flex items-center gap-1 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 focus-within:opacity-100 transition-opacity duration-200">
                         {!notification.isRead && (
                           <button
                             onClick={(e) => {
                               e.stopPropagation();
                               handleMarkAsRead(notification._id);
                             }}
-                            className="p-2 text-slate-400 hover:text-blue-600 dark:hover:text-blue-400 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors"
+                            aria-label={`Mark "${notification.title}" as read`}
+                            className="p-3 sm:p-2 text-slate-400 hover:text-blue-600 dark:hover:text-blue-400 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:outline-none"
                             title="Mark as read"
                           >
                             <Check className="w-4 h-4" />
@@ -515,7 +516,8 @@ const Notifications = () => {
                             e.stopPropagation();
                             handleDelete(notification._id);
                           }}
-                          className="p-2 text-slate-400 hover:text-red-600 dark:hover:text-red-400 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors"
+                          aria-label={`Delete notification "${notification.title}"`}
+                          className="p-3 sm:p-2 text-slate-400 hover:text-red-600 dark:hover:text-red-400 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors focus-visible:ring-2 focus-visible:ring-red-500 focus-visible:outline-none"
                           title="Delete"
                         >
                           <Trash2 className="w-4 h-4" />
