@@ -15,11 +15,16 @@ import {
   isPasscodeLocked,
 } from "../utils/sharedLinkSecurity.js";
 
-const getSharedLinkJwtSecret = () =>
-  process.env.SHARED_LINK_JWT_SECRET ||
-  process.env.SHARED_LINK_SECRET ||
-  process.env.JWT_SECRET ||
-  "default_shared_link_secret";
+export const getSharedLinkJwtSecret = () => {
+  const secret =
+    process.env.SHARED_LINK_JWT_SECRET ||
+    process.env.SHARED_LINK_SECRET ||
+    process.env.JWT_SECRET;
+  if (!secret) {
+    throw new Error("SHARED_LINK_JWT_SECRET is not configured");
+  }
+  return secret;
+};
 
 /**
  * Maps shareable resource types to their Mongoose models.
