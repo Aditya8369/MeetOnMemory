@@ -149,7 +149,11 @@ const MeetingRepository = () => {
 
   // Meeting actions
   const handleDelete = async (meetingId) => {
-    if (!window.confirm("Are you sure you want to delete this meeting?")) {
+    if (
+      !window.confirm(
+        "Move this meeting to the Recycle Bin? You can restore it from the Recycle Bin later.",
+      )
+    ) {
       return;
     }
 
@@ -157,7 +161,17 @@ const MeetingRepository = () => {
       const response = await meetingApi.deleteMeeting(meetingId);
 
       if (response.data?.success) {
-        toast.success("Meeting deleted successfully");
+        toast.success(
+          <span>
+            Meeting moved to Recycle Bin.{" "}
+            <button
+              onClick={() => navigate("/recycle-bin")}
+              className="underline font-medium"
+            >
+              View Recycle Bin
+            </button>
+          </span>,
+        );
         fetchMeetings();
       } else {
         toast.error(response.data?.message || "Failed to delete meeting");
