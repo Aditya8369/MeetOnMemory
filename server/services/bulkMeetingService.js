@@ -1,11 +1,7 @@
 import Meeting from "../models/meetingModel.js";
 import ExportService from "./ExportService.js";
-import archiver from "archiver";
-import {
-  ValidationError,
-  ForbiddenError,
-  NotFoundError,
-} from "../utils/errors.js";
+import { ZipArchive } from "archiver";
+import { ValidationError, ForbiddenError } from "../utils/errors.js";
 
 const MAX_BULK_LIMIT = 50;
 
@@ -121,7 +117,7 @@ class BulkMeetingService {
       .populate("participants.user", "name email")
       .lean();
 
-    const archive = archiver("zip", {
+    const archive = new ZipArchive({
       zlib: { level: 9 }, // Sets the compression level.
     });
 

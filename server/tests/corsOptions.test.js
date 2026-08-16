@@ -10,15 +10,22 @@ describe("corsOptions", () => {
     });
   });
 
+  it("allows the production Vercel frontend origin", () => {
+    corsOptions.origin("https://meetonmemory.vercel.app", (err, allow) => {
+      expect(err).toBeNull();
+      expect(allow).toBe(true);
+    });
+  });
+
   it("rejects untrusted origins", () => {
-    corsOptions.origin("http://untrusted.com", (err, allow) => {
+    corsOptions.origin("http://untrusted.com", (err, _allow) => {
       expect(err).toBeInstanceOf(Error);
       expect(err.message).toBe("Not allowed by CORS");
     });
   });
 
   it("explicitly rejects null origin", () => {
-    corsOptions.origin("null", (err, allow) => {
+    corsOptions.origin("null", (err, _allow) => {
       expect(err).toBeInstanceOf(Error);
       expect(err.message).toBe("Not allowed by CORS");
     });
@@ -31,30 +38,7 @@ describe("corsOptions", () => {
     });
   });
 
-  it("grants credentials only to approved origins", () => {
-    const approvedOrigin = allowedOrigins[0];
-    const reqApproved = { headers: { origin: approvedOrigin } };
-    corsOptions.credentials(reqApproved, (err, allow) => {
-      expect(err).toBeNull();
-      expect(allow).toBe(true);
-    });
-
-    const reqNull = { headers: { origin: "null" } };
-    corsOptions.credentials(reqNull, (err, allow) => {
-      expect(err).toBeNull();
-      expect(allow).toBe(false);
-    });
-
-    const reqMissing = { headers: {} };
-    corsOptions.credentials(reqMissing, (err, allow) => {
-      expect(err).toBeNull();
-      expect(allow).toBe(false);
-    });
-
-    const reqUntrusted = { headers: { origin: "http://untrusted.com" } };
-    corsOptions.credentials(reqUntrusted, (err, allow) => {
-      expect(err).toBeNull();
-      expect(allow).toBe(false);
-    });
+  it("enables credentials for axios withCredentials cross-origin requests", () => {
+    expect(corsOptions.credentials).toBe(true);
   });
 });
