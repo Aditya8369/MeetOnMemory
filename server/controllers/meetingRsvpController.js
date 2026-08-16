@@ -108,6 +108,23 @@ export const getMeetingSummary = async (req, res) => {
   try {
     const { meetingId } = req.params;
 
+    // 1. Verify meeting exists before fetching RSVP data
+    const meeting = await Meeting.findById(meetingId);
+    if (!meeting) {
+      return res.status(404).json({ success: false, message: "meeting_not_found" });
+    }
+
+    // 2. Perform Organization Authorization Check
+    const isAdmin = req.user.role === 'admin' || req.user.role === 'superadmin';
+    const isSameOrganization = req.user.organization && meeting.organization && 
+                               req.user.organization.toString() === meeting.organization.toString();
+
+    if (!isAdmin && !isSameOrganization) {
+      // Fail closed: Return 404 to avoid exposing that a foreign meeting ID is valid
+      return res.status(404).json({ success: false, message: "meeting_not_found" });
+    }
+
+    // 3. Retrieve summary now that access is strictly authorized
     const summary = await getMeetingRsvpSummary(meetingId);
 
     res.status(200).json({
