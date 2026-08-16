@@ -1,7 +1,30 @@
 import React from "react";
 import { Calendar, Search, FileText } from "lucide-react";
+import { Link } from "react-router-dom";
 import RoleGate from "../RoleGate.jsx";
 import { useRBAC } from "../../hooks/useRBAC.js";
+
+const ActionLink = ({ href, children, className }) => {
+  if (!href) return null;
+  const isExternal = href.startsWith("http") || href.startsWith("//");
+  if (isExternal) {
+    return (
+      <a
+        href={href}
+        className={className}
+        target="_blank"
+        rel="noopener noreferrer"
+      >
+        {children}
+      </a>
+    );
+  }
+  return (
+    <Link to={href} className={className}>
+      {children}
+    </Link>
+  );
+};
 
 const EmptyState = ({ type }) => {
   const { hasPermission } = useRBAC();
@@ -53,20 +76,20 @@ const EmptyState = ({ type }) => {
       {state.actionLink &&
         (state.requiresCreate ? (
           <RoleGate resource="meetings" action="create">
-            <a
+            <ActionLink
               href={state.actionLink}
               className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium transition-colors"
             >
               {state.actionText}
-            </a>
+            </ActionLink>
           </RoleGate>
         ) : (
-          <a
+          <ActionLink
             href={state.actionLink}
             className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium transition-colors"
           >
             {state.actionText}
-          </a>
+          </ActionLink>
         ))}
     </div>
   );
