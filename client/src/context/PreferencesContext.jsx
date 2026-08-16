@@ -6,20 +6,26 @@ import React, {
   useCallback,
 } from "react";
 import i18n from "../i18n.js";
-import { DEFAULT_LANGUAGE } from "../constants/languages.js";
-import { DEFAULT_DATE_FORMAT } from "../utils/dateFormat.js";
+import { LANGUAGES, DEFAULT_LANGUAGE } from "../constants/languages.js";
+import { DATE_FORMATS, DEFAULT_DATE_FORMAT } from "../utils/dateFormat.js";
 
 const PreferencesContext = createContext(undefined);
 
-// Helper to get initial dateFormat synchronously (same pattern as theme)
+const isSupportedLanguage = (code) =>
+  LANGUAGES.some((lang) => lang.code === code);
+
+// Helper to get initial dateFormat synchronously (same pattern as theme).
+// Falls back to the default if localStorage holds something we don't
+// recognize (stale value from a removed format, manual tampering, etc).
 const getInitialDateFormat = () => {
   const saved = localStorage.getItem("dateFormat");
-  return saved || DEFAULT_DATE_FORMAT;
+  return DATE_FORMATS.includes(saved) ? saved : DEFAULT_DATE_FORMAT;
 };
 
 export const PreferencesProvider = ({ children }) => {
   // language state mirrors i18n.language, which i18n.js already
-  // initializes from localStorage on startup and persists on change.
+  // initializes from localStorage (validated against LANGUAGES) on
+  // startup and persists on change.
   const [language, setLanguageState] = useState(
     () => i18n.language || DEFAULT_LANGUAGE,
   );
@@ -35,12 +41,14 @@ export const PreferencesProvider = ({ children }) => {
   }, []);
 
   const setLanguage = useCallback((langCode) => {
+    if (!isSupportedLanguage(langCode)) return;
     // i18n.js listens for "languageChanged" and persists to localStorage,
     // and the effect above keeps `language` state in sync automatically.
     i18n.changeLanguage(langCode);
   }, []);
 
   const setDateFormat = useCallback((format) => {
+    if (!DATE_FORMATS.includes(format)) return;
     setDateFormatState(format);
     localStorage.setItem("dateFormat", format);
   }, []);

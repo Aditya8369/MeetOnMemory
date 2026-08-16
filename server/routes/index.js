@@ -64,6 +64,7 @@ import bulkMeetingRoutes from "./bulkMeetingRoutes.js";
 import parkingLotRoutes from "./parkingLotRoutes.js";
 import sentimentTimelineRoutes from "./sentimentTimelineRoutes.js";
 import meetingRsvpRoutes from "./meetingRsvpRoutes.js";
+import favoriteRoutes from "./favoriteRoutes.js";
 import testimonialRoutes, {
   adminTestimonialRouter,
 } from "./testimonialRoutes.js";
@@ -103,6 +104,7 @@ router.use("/api/policies", policyRoutes);
 router.use("/api/analytics", analyticsRoutes);
 router.use("/api/gemini", geminiRoutes);
 router.use("/api/notes", notesRoutes);
+router.use("/api/favorites", favoriteRoutes);
 router.use(["/api/user", "/api/users"], userRoutes);
 router.use(["/api/notification", "/api/notifications"], notificationRoutes);
 router.use("/api/knowledge", knowledgeRoutes);

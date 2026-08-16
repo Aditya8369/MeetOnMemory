@@ -10,11 +10,12 @@ import {
   Eye,
   MoreVertical,
   Check,
+  Star,
 } from "lucide-react";
 
 import useExport from "../../hooks/useExport.js";
 import ConfirmModal from "../ConfirmModal.jsx";
-
+import { favoriteApi } from "../../services";
 const MeetingCard = ({
   meeting,
   onDelete,
@@ -30,6 +31,8 @@ const MeetingCard = ({
   const [isRenaming, setIsRenaming] = useState(false);
   const [newTitle, setNewTitle] = useState(meeting.title);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [isFavorite, setIsFavorite] = useState(false);
+  const [isFavoriteLoading, setIsFavoriteLoading] = useState(false);
   const menuRef = useRef(null);
 
   useEffect(() => {
@@ -48,6 +51,28 @@ const MeetingCard = ({
       document.removeEventListener("mousedown", handleClickOutside);
     };
   }, [showMenu]);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const loadFavoriteStatus = async () => {
+      try {
+        const response = await favoriteApi.getFavoriteStatus(meeting._id);
+
+        if (!cancelled && response.data?.favorited !== undefined) {
+         setIsFavorite(response.data.favorited);
+        }
+      } catch (error) {
+        console.error("Failed to load favorite status:", error);
+      }
+    };
+
+    loadFavoriteStatus();
+
+    return () => {
+    cancelled = true;
+    };
+  }, [meeting._id]);
 
   const handleRenameSubmit = (e) => {
     e.preventDefault();
@@ -77,6 +102,28 @@ const MeetingCard = ({
         return "bg-red-100 text-red-700 dark:bg-red-950/70 dark:text-red-300 border border-red-200 dark:border-red-800";
       default:
         return "bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300 border border-gray-200 dark:border-gray-700";
+    }
+  };
+
+  const handleFavoriteToggle = async (event) => {
+    event.stopPropagation();
+
+    if (isFavoriteLoading) {
+      return;
+    }
+
+    setIsFavoriteLoading(true);
+
+    try {
+      const response = await favoriteApi.toggleFavorite(meeting._id);
+
+      if (response.data?.favorited !== undefined) {
+        setIsFavorite(response.data.favorited);
+      }
+    } catch (error) {
+      console.error("Failed to toggle favorite:", error);
+    } finally {
+      setIsFavoriteLoading(false);
     }
   };
 
@@ -133,6 +180,26 @@ const MeetingCard = ({
               {meeting.title || "Untitled Meeting"}
             </h3>
           )}
+
+          <button
+            type="button"
+            onClick={handleFavoriteToggle}
+            disabled={isFavoriteLoading}
+            aria-label={isFavorite ? "Remove from favorites" : "Add to favorites"}
+            aria-pressed={isFavorite}
+            data-testid="favorite-button"
+            className="p-1.5 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors disabled:opacity-50"
+          >
+          <Star
+            size={18}
+            className={
+              isFavorite
+              ? "fill-yellow-400 text-yellow-400"
+              : "text-gray-400 dark:text-gray-500"
+            }
+          />
+          </button>
+
           <div className="relative" ref={menuRef}>
             <button
               onClick={() => {
