@@ -226,7 +226,7 @@ const MeetingRepository = () => {
           <span>
             Meeting moved to Recycle Bin.{" "}
             <button
-              onClick={() => navigate("/recycle-bin")}
+              onClick={() => navigate("/meetings/recycle-bin")}
               className="underline font-medium"
             >
               View Recycle Bin

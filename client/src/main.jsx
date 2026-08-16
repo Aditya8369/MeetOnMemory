@@ -7,6 +7,7 @@ import App from "./App.jsx";
 import { BrowserRouter } from "react-router-dom";
 import { AppContextProvider } from "./context/AppContext.jsx";
 import { ThemeProvider } from "./context/ThemeContext.jsx";
+import { PreferencesProvider } from "./context/PreferencesContext.jsx";
 import { ClerkAuthProvider } from "./context/ClerkAuthProvider.jsx";
 import { ClerkSessionSync } from "./components/ClerkSessionSync.jsx";
 import { AssistantProvider } from "./context/AssistantContext.jsx";
@@ -27,12 +28,14 @@ createRoot(document.getElementById("root")).render(
   <BrowserRouter>
     <ClerkAuthProvider>
       <ThemeProvider>
-        <AppContextProvider>
-          <ClerkSessionSync />
-          <AssistantProvider>
-            <App />
-          </AssistantProvider>
-        </AppContextProvider>
+        <PreferencesProvider>
+          <AppContextProvider>
+            <ClerkSessionSync />
+            <AssistantProvider>
+              <App />
+            </AssistantProvider>
+          </AppContextProvider>
+        </PreferencesProvider>
       </ThemeProvider>
     </ClerkAuthProvider>
   </BrowserRouter>,

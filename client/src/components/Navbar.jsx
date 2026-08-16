@@ -162,6 +162,10 @@ const Navbar = () => {
   const [unreadCount, setUnreadCount] = useState(0);
   const [notifications, setNotifications] = useState([]);
 
+  // Formats a notification's raw timestamp for display. Called at render
+  // time (see the JSX below) rather than baked into state, so it always
+  // reflects the current dateFormat preference without needing dateFormat
+  // in any effect's dependency array (Issue review on #1687).
   const formatTimeAgo = (dateString) => {
     const date = new Date(dateString);
     const now = new Date();
@@ -196,7 +200,7 @@ const Navbar = () => {
                 id: n.id,
                 title: n.title,
                 description: n.description,
-                time: formatTimeAgo(n.createdAt),
+                createdAt: n.createdAt,
                 unread: !n.isRead,
               })),
             );
@@ -241,7 +245,7 @@ const Navbar = () => {
             id: newNotif.id,
             title: newNotif.title,
             description: newNotif.description,
-            time: "Just now",
+            createdAt: newNotif.createdAt || new Date().toISOString(),
             unread: true,
           };
           // Keep only top 5 recent notifications
@@ -778,7 +782,7 @@ const Navbar = () => {
                                   {notif.title}
                                 </p>
                                 <span className="text-[10px] text-gray-400 dark:text-gray-500 font-medium whitespace-nowrap">
-                                  {notif.time}
+                                  {formatTimeAgo(notif.createdAt)}
                                 </span>
                               </div>
                               <p className="text-xs text-gray-500 dark:text-gray-400 leading-relaxed">
