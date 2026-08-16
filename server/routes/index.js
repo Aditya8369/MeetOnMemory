@@ -38,6 +38,7 @@ import meetingFeedbackRoutes from "./meetingFeedbackRoutes.js";
 import meetingCostRoutes from "./meetingCostRoutes.js";
 import followUpThreadRoutes from "./followUpThreadRoutes.js";
 import followUpRoutes from "./followUpRoutes.js";
+import schedulerRoutes from "./scheduler.routes.js";
 import recapScheduleRoutes from "./recapScheduleRoutes.js";
 import meetingClipRoutes from "./meetingClipRoutes.js";
 import speakerMappingRoutes from "./speakerMappingRoutes.js";
@@ -139,6 +140,8 @@ router.use("/api/follow-up-threads", followUpThreadRoutes);
 // Follow-Up Workflow REST API (tasks/reminders/analytics) — Issue #1529.
 // Distinct from /api/follow-up-threads (discussion threads). Frontend uses /api/followup/*.
 router.use("/api/followup", followUpRoutes);
+// Smart Scheduler — propose / retrieve / confirm (Issue #1530)
+router.use("/api/scheduler", schedulerRoutes);
 // Recap schedule + delivery history (GET /history/deliveries) — Issue #1401
 router.use("/api/recap-schedule", recapScheduleRoutes);
 router.use("/api/clips", meetingClipRoutes);

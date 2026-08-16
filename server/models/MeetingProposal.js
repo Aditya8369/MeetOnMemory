@@ -1,8 +1,8 @@
-const mongoose = require("mongoose");
+import mongoose from "mongoose";
 
 /**
- * @desc Schema for storing meeting scheduling proposals and selected time slots.
- * Tracks the organizer, participants, proposed slots with scores, and final confirmation.
+ * Meeting scheduling proposals (Smart Scheduler).
+ * Tracks organizer, org scope, proposed slots, and confirmation linkage.
  */
 const meetingProposalSchema = new mongoose.Schema(
   {
@@ -13,17 +13,23 @@ const meetingProposalSchema = new mongoose.Schema(
     },
     organizer: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: "User",
+      ref: "user",
       required: true,
+    },
+    organization: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Organization",
+      default: null,
+      index: true,
     },
     participants: [
       {
         type: mongoose.Schema.Types.ObjectId,
-        ref: "User",
+        ref: "user",
       },
     ],
     duration: {
-      type: Number, // in minutes
+      type: Number, // minutes
       required: true,
       default: 30,
     },
@@ -35,14 +41,19 @@ const meetingProposalSchema = new mongoose.Schema(
       {
         startTime: { type: Date, required: true },
         endTime: { type: Date, required: true },
-        score: { type: Number, default: 0 }, // 0-100 optimality score
-        conflicts: [{ type: mongoose.Schema.Types.ObjectId, ref: "User" }], // Users who are busy
+        score: { type: Number, default: 0 },
+        conflicts: [{ type: mongoose.Schema.Types.ObjectId, ref: "user" }],
         attendeeCount: { type: Number, default: 0 },
       },
     ],
     selectedSlot: {
       startTime: Date,
       endTime: Date,
+    },
+    meetingId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Meeting",
+      default: null,
     },
     status: {
       type: String,
@@ -54,20 +65,22 @@ const meetingProposalSchema = new mongoose.Schema(
         { type: String, enum: ["morning", "afternoon", "evening"] },
       ],
       avoidWeekends: { type: Boolean, default: true },
-      bufferTime: { type: Number, default: 15 }, // minutes between meetings
+      bufferTime: { type: Number, default: 15 },
     },
     expiresAt: {
       type: Date,
-      default: () => new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 7 days
+      default: () => new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
     },
   },
-  {
-    timestamps: true,
-  },
+  { timestamps: true },
 );
 
-// Index for fetching proposals by organizer or participant
 meetingProposalSchema.index({ organizer: 1, status: 1 });
+meetingProposalSchema.index({ organization: 1, status: 1 });
 meetingProposalSchema.index({ participants: 1, status: 1 });
 
-module.exports = mongoose.model("MeetingProposal", meetingProposalSchema);
+const MeetingProposal =
+  mongoose.models.MeetingProposal ||
+  mongoose.model("MeetingProposal", meetingProposalSchema);
+
+export default MeetingProposal;
