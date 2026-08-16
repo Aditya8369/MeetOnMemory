@@ -76,6 +76,20 @@ const TagBrowser = () => {
     setEditingTag(null);
   };
 
+  // Escape dismisses the create/edit modal while it is open (#845)
+  useEffect(() => {
+    if (!isModalOpen) return;
+
+    const handleKeyDown = (e) => {
+      if (e.key === "Escape") {
+        handleCloseModal();
+      }
+    };
+
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
+  }, [isModalOpen]);
+
   const handleSaveTag = async (e) => {
     e.preventDefault();
     try {
@@ -316,17 +330,32 @@ const TagBrowser = () => {
 
       {/* Modal */}
       {isModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm"
+          onClick={(e) => {
+            if (e.target === e.currentTarget) {
+              handleCloseModal();
+            }
+          }}
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="tag-modal-title"
+        >
           <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl w-full max-w-md overflow-hidden animate-fade-in-up">
             <div className="flex items-center justify-between p-6 border-b border-gray-100 dark:border-gray-700">
-              <h3 className="text-xl font-bold text-gray-900 dark:text-white">
+              <h3
+                id="tag-modal-title"
+                className="text-xl font-bold text-gray-900 dark:text-white"
+              >
                 {editingTag ? "Edit Tag" : "New Tag"}
               </h3>
               <button
+                type="button"
                 onClick={handleCloseModal}
                 className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200"
+                aria-label="Close"
               >
-                <X className="w-5 h-5" />
+                <X className="w-5 h-5" aria-hidden="true" />
               </button>
             </div>
             <form onSubmit={handleSaveTag} className="p-6 space-y-4">

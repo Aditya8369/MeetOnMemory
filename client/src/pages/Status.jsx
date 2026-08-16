@@ -16,8 +16,10 @@ import {
   Info,
 } from "lucide-react";
 
+import { getBackendUrl } from "../config/backendConfig.js";
+
 // Get backend URL
-const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || "http://localhost:4000";
+const BACKEND_URL = getBackendUrl();
 
 const Status = () => {
   const [refreshCountdown, setRefreshCountdown] = useState(15);
@@ -394,7 +396,7 @@ const Status = () => {
     <div className="flex flex-col min-h-screen bg-slate-50 dark:bg-slate-950 transition-colors duration-300">
       <Navbar />
 
-      <main className="flex-grow max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-10">
+      <div className="flex-grow max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-10">
         {/* Header Block */}
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8">
           <div>
@@ -1216,7 +1218,7 @@ const Status = () => {
             Contact Support
           </a>
         </div>
-      </main>
+      </div>
     </div>
   );
 };

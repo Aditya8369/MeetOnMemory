@@ -8,6 +8,8 @@ const reactionSchema = new mongoose.Schema(
   { _id: false },
 );
 
+export const MAX_COMMENT_LENGTH = 2000;
+
 const commentSchema = new mongoose.Schema(
   {
     meeting: {
@@ -29,6 +31,10 @@ const commentSchema = new mongoose.Schema(
       type: String,
       required: true,
       trim: true,
+      maxlength: [
+        MAX_COMMENT_LENGTH,
+        `Comment content exceeds maximum length of ${MAX_COMMENT_LENGTH} characters`,
+      ],
     },
     parentComment: {
       type: mongoose.Schema.Types.ObjectId,

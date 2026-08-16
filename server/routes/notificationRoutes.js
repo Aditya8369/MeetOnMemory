@@ -30,7 +30,7 @@ notificationRouter.get(
 notificationRouter.patch(
   "/mark-all-read",
   writeLimiter,
-  requirePermission("notifications", "manage"),
+  requirePermission("notifications", "self_manage"),
   markAllAsRead,
 );
 notificationRouter.patch(
@@ -47,14 +47,14 @@ notificationRouter.get(
 notificationRouter.put(
   "/preferences",
   writeLimiter,
-  requirePermission("notifications", "manage"),
+  requirePermission("notifications", "self_manage"),
   updatePreferences,
 );
 
 notificationRouter.delete(
   "/:id",
   writeLimiter,
-  requirePermission("notifications", "manage"),
+  requirePermission("notifications", "self_manage"),
   deleteNotification,
 );
 

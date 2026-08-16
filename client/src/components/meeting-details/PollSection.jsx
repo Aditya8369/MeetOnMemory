@@ -8,6 +8,8 @@ import {
   closePoll,
   deletePoll,
 } from "../../api/pollApi";
+import { createClerkSocketOptions } from "../../services/apiClient.js";
+import { toast } from "react-toastify";
 
 const PollSection = ({ meetingId }) => {
   const { userData, backendUrl } = useContext(AppContent);
@@ -37,41 +39,47 @@ const PollSection = ({ meetingId }) => {
     };
     fetchPolls();
 
-    // Socket connection for real-time
-    socketRef.current = io(backendUrl, {
-      withCredentials: true,
-      transports: ["websocket"],
-    });
+    let cancelled = false;
 
-    socketRef.current.on("connect", () => {
-      socketRef.current.emit("join-meeting", {
-        roomId: meetingId,
-        userInfo: { name: userData?.name },
+    (async () => {
+      const opts = await createClerkSocketOptions({
+        transports: ["websocket"],
       });
-    });
+      if (cancelled) return;
 
-    socketRef.current.on("poll:created", (newPoll) => {
-      setPolls((prev) => [newPoll, ...prev]);
-    });
+      socketRef.current = io(backendUrl, opts);
 
-    socketRef.current.on("poll:vote", (updatedPoll) => {
-      setPolls((prev) =>
-        prev.map((p) => (p._id === updatedPoll._id ? updatedPoll : p)),
-      );
-    });
+      socketRef.current.on("connect", () => {
+        socketRef.current.emit("join-meeting", {
+          roomId: meetingId,
+          userInfo: { name: userData?.name },
+        });
+      });
 
-    socketRef.current.on("poll:closed", (updatedPoll) => {
-      setPolls((prev) =>
-        prev.map((p) => (p._id === updatedPoll._id ? updatedPoll : p)),
-      );
-    });
+      socketRef.current.on("poll:created", (newPoll) => {
+        setPolls((prev) => [newPoll, ...prev]);
+      });
 
-    socketRef.current.on("poll:deleted", ({ id }) => {
-      setPolls((prev) => prev.filter((p) => p._id !== id));
-    });
+      socketRef.current.on("poll:vote", (updatedPoll) => {
+        setPolls((prev) =>
+          prev.map((p) => (p._id === updatedPoll._id ? updatedPoll : p)),
+        );
+      });
+
+      socketRef.current.on("poll:closed", (updatedPoll) => {
+        setPolls((prev) =>
+          prev.map((p) => (p._id === updatedPoll._id ? updatedPoll : p)),
+        );
+      });
+
+      socketRef.current.on("poll:deleted", ({ id }) => {
+        setPolls((prev) => prev.filter((p) => p._id !== id));
+      });
+    })();
 
     return () => {
-      socketRef.current.disconnect();
+      cancelled = true;
+      socketRef.current?.disconnect();
     };
   }, [meetingId, backendUrl, userData]);
 
@@ -94,7 +102,7 @@ const PollSection = ({ meetingId }) => {
     e.preventDefault();
     const validOptions = options.filter((opt) => opt.trim() !== "");
     if (!question.trim() || validOptions.length < 2) {
-      alert("Please provide a question and at least two valid options.");
+      toast.error("Please provide a question and at least two valid options.");
       return;
     }
 
@@ -119,35 +127,47 @@ const PollSection = ({ meetingId }) => {
       setPollType("single");
       setIsAnonymous(false);
       setExpiresInMinutes("");
+      toast.success("Poll created successfully!");
     } catch (err) {
       console.error(err);
-      alert(err.response?.data?.message || "Error creating poll");
+      toast.error(err.response?.data?.message || "Error creating poll");
     }
   };
 
   const handleVote = async (pollId, pollType, optionId) => {
     try {
-      let selectedOptionIds = [optionId];
-
-      if (pollType === "multiple") {
-        // Toggle logic for multiple choice - would need local state to manage this better before submitting
-        // But for simplicity in this implementation, we will just send the single option ID clicked
-        // and allow backend to toggle it if we want, or we can prompt the user with a "Submit Vote" button.
-        // Let's implement an immediate vote cast for simplicity.
-        // Wait, multiple choice without a submit button is tricky. We'll leave it as single click for now,
-        // which might overwrite in the backend if we don't handle array correctly.
-        // The backend expects an array of optionIds.
-        // If it's a multiple-choice poll, the user should be able to select multiple and submit.
-      }
-
+      const selectedOptionIds = [optionId];
       await castVote(pollId, selectedOptionIds);
+      toast.success("Vote submitted successfully!");
     } catch (err) {
       console.error(err);
-      alert(err.response?.data?.message || "Error casting vote");
+      toast.error(err.response?.data?.message || "Error casting vote");
     }
   };
 
-  // Multiple choice voting component
+  const handleClosePoll = async (pollId) => {
+    try {
+      await closePoll(pollId);
+      toast.success("Poll closed successfully!");
+    } catch (err) {
+      console.error(err);
+      toast.error(err.response?.data?.message || "Error closing poll");
+    }
+  };
+
+  const handleDeletePoll = async (pollId) => {
+    if (!window.confirm("Delete this poll?")) return;
+
+    try {
+      await deletePoll(pollId);
+      setPolls((prev) => prev.filter((p) => p._id !== pollId));
+      toast.success("Poll deleted successfully!");
+    } catch (err) {
+      console.error(err);
+      toast.error(err.response?.data?.message || "Error deleting poll");
+    }
+  };
+
   const MultipleChoiceVoteForm = ({ poll }) => {
     const [selected, setSelected] = useState([]);
 
@@ -163,9 +183,10 @@ const PollSection = ({ meetingId }) => {
       if (selected.length === 0) return;
       try {
         await castVote(poll._id, selected);
+        toast.success("Votes submitted successfully!");
       } catch (err) {
         console.error(err);
-        alert(err.response?.data?.message || "Error casting votes");
+        toast.error(err.response?.data?.message || "Error casting votes");
       }
     };
 
@@ -207,9 +228,9 @@ const PollSection = ({ meetingId }) => {
     const isCreator = poll.createdBy?._id === userData?._id;
     const canManage = isCreator || isAdminOrOwner;
 
-    // Check if current user has voted
+    // Check if current user has voted using the hasVoted flag from backend
     const hasVoted = poll.isAnonymous
-      ? false // We can't know for sure if anonymous from backend payload, could store locally, but let's assume they can vote again and backend handles rejection or overwriting
+      ? poll.options.some((opt) => opt.hasVoted)
       : poll.options.some((opt) =>
           opt.votes.some((v) => v._id === userData?._id || v === userData?._id),
         );
@@ -234,7 +255,7 @@ const PollSection = ({ meetingId }) => {
           <div className="flex gap-2">
             {!poll.isClosed && canManage && (
               <button
-                onClick={() => closePoll(poll._id)}
+                onClick={() => handleClosePoll(poll._id)}
                 className="text-xs text-orange-600 dark:text-orange-400 hover:underline"
               >
                 Close Poll
@@ -242,9 +263,7 @@ const PollSection = ({ meetingId }) => {
             )}
             {canManage && (
               <button
-                onClick={() => {
-                  if (window.confirm("Delete this poll?")) deletePoll(poll._id);
-                }}
+                onClick={() => handleDeletePoll(poll._id)}
                 className="text-xs text-red-600 dark:text-red-400 hover:underline"
               >
                 Delete
@@ -253,8 +272,13 @@ const PollSection = ({ meetingId }) => {
           </div>
         </div>
 
-        {poll.isClosed ? (
+        {poll.isClosed || hasVoted ? (
           <div className="space-y-3">
+            {hasVoted && !poll.isClosed && (
+              <div className="mb-3 p-2 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded text-sm text-green-700 dark:text-green-300">
+                ✓ You have already voted in this poll
+              </div>
+            )}
             {poll.options.map((opt) => {
               const votes = poll.isAnonymous ? opt.voteCount : opt.votes.length;
               const percentage =
@@ -279,7 +303,7 @@ const PollSection = ({ meetingId }) => {
           </div>
         ) : (
           <div>
-            {poll.pollType === "multiple" && !hasVoted ? (
+            {poll.pollType === "multiple" ? (
               <MultipleChoiceVoteForm poll={poll} />
             ) : (
               <div className="space-y-3">
@@ -309,7 +333,6 @@ const PollSection = ({ meetingId }) => {
                         )
                       }
                     >
-                      {/* Progress bar background */}
                       <div
                         className="absolute top-0 left-0 h-full bg-blue-100 dark:bg-blue-900/30 opacity-50 z-0 transition-all duration-500"
                         style={{ width: `${percentage}%` }}
@@ -381,7 +404,7 @@ const PollSection = ({ meetingId }) => {
                   type="text"
                   value={opt}
                   onChange={(e) => handleOptionChange(index, e.target.value)}
-                  className="flex-1 p-2 border rounded dark:bg-bg-gray-700 dark:border-gray-600 dark:bg-gray-700 dark:text-white"
+                  className="flex-1 p-2 border rounded dark:bg-gray-700 dark:border-gray-600 dark:text-white"
                   placeholder={`Option ${index + 1}`}
                   required={index < 2}
                 />

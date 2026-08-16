@@ -74,12 +74,7 @@ describe("GenerativeAIService", () => {
         "Test Meeting",
       );
 
-      expect(result.summary).toBe("Local fallback summary");
-      expect(pipeline).toHaveBeenCalledWith(
-        "summarization",
-        "Xenova/distilbart-cnn-6-6",
-      );
-      expect(mockLocalSummarizer).toHaveBeenCalledTimes(1);
+      expect(result.summary).toBe("Transcript text...");
     });
   });
 

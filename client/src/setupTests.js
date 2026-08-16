@@ -1,4 +1,5 @@
 import "@testing-library/jest-dom";
+import { vi } from "vitest";
 
 // jsdom does not implement IntersectionObserver. Provide a minimal browser-like
 // constructor so components that call `new IntersectionObserver(...)` work in tests.
@@ -42,3 +43,14 @@ if (typeof globalThis.IntersectionObserver === "undefined") {
     }
   };
 }
+
+// jsdom does not implement ResizeObserver. Provide a minimal browser-like mock.
+if (typeof globalThis.ResizeObserver === "undefined") {
+  globalThis.ResizeObserver = class ResizeObserver {
+    observe() {}
+    unobserve() {}
+    disconnect() {}
+  };
+}
+
+vi.stubEnv("VITE_CLERK_PUBLISHABLE_KEY", "pk_test_bW9jay1jbGVyay1rZXk");

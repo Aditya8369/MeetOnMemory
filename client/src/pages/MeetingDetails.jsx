@@ -7,22 +7,33 @@ import MeetingSummary from "../components/meeting-details/MeetingSummary";
 import MeetingCollaborativeNotes from "../components/meeting-details/MeetingCollaborativeNotes";
 import MeetingTranscript from "../components/meeting-details/MeetingTranscript";
 import MeetingParticipants from "../components/meeting-details/MeetingParticipants";
+import MeetingAgenda from "../components/meeting-details/MeetingAgenda";
 import MeetingMetadata from "../components/meeting-details/MeetingMetadata";
 import MeetingActions from "../components/meeting-details/MeetingActions";
+import TranscriptAnnotations from "../components/meeting-details/TranscriptAnnotations";
+import RsvpPanel from "../components/meeting-details/RsvpPanel";
+import KeyMomentsPanel from "../components/meetings/KeyMomentsPanel";
+import SentimentTimeline from "../components/meetings/SentimentTimeline";
+import MeetingGoalsPanel from "../components/meetings/MeetingGoalsPanel";
 import ShareModal from "../components/shared-links/ShareModal";
 import MeetingFollowUpBanner from "../components/meeting-details/MeetingFollowUpBanner";
 import PresentMode from "../components/meeting-details/PresentMode";
-import CommentSection from "../components/meeting-details/CommentSection";
-import PollSection from "../components/meeting-details/PollSection";
+import PrepChecklist from "../components/meetings/PrepChecklist";
+import SpeakingTimeBreakdown from "../components/meetings/SpeakingTimeBreakdown";
+import CarryForwardConfig from "../components/meetings/CarryForwardConfig";
+import DuplicateDetectionPanel from "../components/meeting-details/DuplicateDetectionPanel";
+import { useUser } from "@clerk/clerk-react";
 
 const MeetingDetails = () => {
   const { id } = useParams();
   const navigate = useNavigate();
+  const { user: currentUser } = useUser();
   const [meeting, setMeeting] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [shareModalOpen, setShareModalOpen] = useState(false);
   const [isPresentModeOpen, setIsPresentModeOpen] = useState(false);
+  const [isAnalyticsExpanded, setIsAnalyticsExpanded] = useState(false);
 
   useEffect(() => {
     const fetchMeetingDetails = async () => {
@@ -159,6 +170,7 @@ const MeetingDetails = () => {
   return (
     <div className="min-h-screen bg-gray-50 p-6">
       <div className="max-w-6xl mx-auto">
+        <DuplicateDetectionPanel meetingId={meeting._id} />
         <MeetingFollowUpBanner meeting={meeting} />
         <MeetingHeader
           meeting={meeting}
@@ -167,16 +179,83 @@ const MeetingDetails = () => {
         />
         <MeetingSummary meeting={meeting} />
         <MeetingCollaborativeNotes meeting={meeting} />
+
+        <div className="bg-white rounded-lg shadow-sm border border-gray-200 mt-6 mb-6 overflow-hidden h-[500px]">
+          <KeyMomentsPanel meetingId={meeting._id} />
+        </div>
+
         <MeetingTranscript meeting={meeting} />
+        <TranscriptAnnotations meeting={meeting} />
+
+        <div className="mt-6 mb-6">
+          <SentimentTimeline meetingId={meeting._id} />
+        </div>
+
+        {/* Speaking Time Analytics Section */}
+        <div className="bg-white rounded-lg shadow-sm border border-gray-200 mt-6 mb-6 p-6">
+          <div className="flex justify-between items-center mb-6">
+            <h2
+              className="text-xl font-bold text-gray-900 dark:text-white flex items-center gap-2 cursor-pointer"
+              onClick={() => setIsAnalyticsExpanded(!isAnalyticsExpanded)}
+            >
+              <button className="p-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-full transition-colors">
+                <svg
+                  className={`w-5 h-5 transform transition-transform ${isAnalyticsExpanded ? "rotate-180" : ""}`}
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M19 9l-7 7-7-7"
+                  />
+                </svg>
+              </button>
+              Speaking Time Analytics
+            </h2>
+            <button
+              onClick={() => navigate("/speaking-time-trends")}
+              className="text-sm text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 font-medium"
+            >
+              View My Trends →
+            </button>
+          </div>
+          {isAnalyticsExpanded && (
+            <SpeakingTimeBreakdown meetingId={meeting._id} />
+          )}
+        </div>
+
         <MeetingParticipants meeting={meeting} />
+        <RsvpPanel
+          meetingId={meeting._id}
+          isOrganizer={
+            currentUser?.publicMetadata?.dbUserId === meeting.uploadedBy
+          }
+          participants={meeting.participants}
+        />
+        <PrepChecklist meeting={meeting} currentUser={currentUser} />
+        <MeetingGoalsPanel meeting={meeting} currentUser={currentUser} />
+
+        {meeting.series && (
+          <CarryForwardConfig
+            seriesId={meeting.series._id || meeting.series}
+            currentMeetingId={meeting._id}
+            onApplySuccess={() => {
+              // Reload meeting data to reflect new agenda items
+              window.location.reload();
+            }}
+          />
+        )}
+
+        <MeetingAgenda meeting={meeting} />
         <MeetingMetadata meeting={meeting} />
         <MeetingActions
           meeting={meeting}
           onDelete={handleDelete}
           onRename={handleRename}
         />
-        <PollSection meetingId={meeting._id} />
-        <CommentSection meetingId={meeting._id} />
       </div>
 
       <ShareModal

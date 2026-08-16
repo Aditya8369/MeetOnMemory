@@ -14,9 +14,11 @@ import {
   X,
   Sparkles,
   ClipboardList,
+  MessageSquareQuote,
 } from "lucide-react";
 import Navbar from "../components/Navbar.jsx";
 import TemplateBuilder from "../components/admin/TemplateBuilder.jsx";
+import TestimonialsModeration from "../components/admin/TestimonialsModeration.jsx";
 
 const MODULES = [
   {
@@ -66,6 +68,14 @@ const MODULES = [
     icon: ClipboardList,
     iconBg: "bg-fuchsia-50 dark:bg-fuchsia-900/30",
     iconColor: "text-fuchsia-600 dark:text-fuchsia-400",
+  },
+  {
+    id: "testimonials",
+    labelKey: "Testimonials",
+    descriptionKey: "Moderate public product ratings and comments",
+    icon: MessageSquareQuote,
+    iconBg: "bg-sky-50 dark:bg-sky-900/30",
+    iconColor: "text-sky-600 dark:text-sky-400",
   },
   {
     id: "policies",
@@ -214,7 +224,7 @@ const AdminPanel = () => {
         )}
 
         {/* Main content */}
-        <main className="flex-1 min-w-0 px-4 sm:px-6 lg:px-8 py-6">
+        <div className="flex-1 min-w-0 px-4 sm:px-6 lg:px-8 py-6">
           <div className="flex items-start gap-3 mb-6">
             <button
               type="button"
@@ -275,6 +285,8 @@ const AdminPanel = () => {
             </div>
           ) : activeModule === "templates" ? (
             <TemplateBuilder />
+          ) : activeModule === "testimonials" ? (
+            <TestimonialsModeration />
           ) : (
             <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-2xl p-8 shadow-sm text-center">
               <div
@@ -297,7 +309,7 @@ const AdminPanel = () => {
               </span>
             </div>
           )}
-        </main>
+        </div>
       </div>
     </div>
   );

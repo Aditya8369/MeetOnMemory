@@ -1,10 +1,9 @@
-import request from "supertest"; // eslint-disable-line no-unused-vars
-import jwt from "jsonwebtoken";
+import request from "supertest";
 import mongoose from "mongoose";
 import axios from "axios";
 import { jest } from "@jest/globals";
-import { app } from "../server.js"; // eslint-disable-line no-unused-vars
-import { createCsrfAgent, refreshCsrfToken } from "./helpers/csrfHelper.js"; // eslint-disable-line no-unused-vars
+import { app } from "../server.js";
+import { createClerkTestToken, authHeader } from "./helpers/clerkTestAuth.js";
 import User from "../models/userModel.js";
 import Organization from "../models/organizationModel.js";
 import Membership from "../models/membershipModel.js";
@@ -19,9 +18,11 @@ jest.mock("../config/nodeMailer.js", () => ({
 describe("Gemini AI Endpoint Authentication and Authorization", () => {
   let user;
   let guestUser;
+  let noOrgUser;
   let organization;
   let userToken;
   let guestToken;
+  let noOrgToken;
   let axiosSpy;
 
   beforeAll(() => {
@@ -49,6 +50,8 @@ describe("Gemini AI Endpoint Authentication and Authorization", () => {
   });
 
   beforeEach(async () => {
+    axiosSpy.mockClear();
+
     // Set up test organization
     organization = await Organization.create({
       name: "Acme Analytics",
@@ -64,10 +67,12 @@ describe("Gemini AI Endpoint Authentication and Authorization", () => {
       organization: organization._id,
       role: "admin",
     });
-    userToken = jwt.sign(
-      { id: user._id },
-      process.env.JWT_SECRET || "fallback_secret",
-    );
+    user.clerkUserId = `user_test_${user._id}`;
+    await user.save();
+    userToken = createClerkTestToken({
+      clerkUserId: user.clerkUserId,
+      email: user.email,
+    });
 
     await Membership.create({
       user: user._id,
@@ -84,43 +89,100 @@ describe("Gemini AI Endpoint Authentication and Authorization", () => {
       organization: organization._id,
       role: "guest",
     });
-    guestToken = jwt.sign(
-      { id: guestUser._id },
-      process.env.JWT_SECRET || "fallback_secret",
-    );
+    guestUser.clerkUserId = `user_test_${guestUser._id}`;
+    await guestUser.save();
+    guestToken = createClerkTestToken({
+      clerkUserId: guestUser.clerkUserId,
+      email: guestUser.email,
+    });
+
+    // Authenticated user with no organization (org isolation)
+    noOrgUser = await User.create({
+      name: "No Org User",
+      email: `no-org-${Math.random()}@example.com`,
+      password: "password123",
+      role: "admin",
+    });
+    noOrgUser.clerkUserId = `user_test_${noOrgUser._id}`;
+    await noOrgUser.save();
+    noOrgToken = createClerkTestToken({
+      clerkUserId: noOrgUser.clerkUserId,
+      email: noOrgUser.email,
+    });
   });
 
   describe("POST /api/gemini/insights", () => {
+    const validBody = { summary: { totalMeetings: 5, activePolicies: 2 } };
+
     it("should reject unauthenticated requests with 401", async () => {
-      const { agent, csrfToken } = await createCsrfAgent();
-      const res = await agent
+      const res = await request(app)
         .post("/api/gemini/insights")
-        .set("X-CSRF-Token", csrfToken)
-        .send({ summary: { totalMeetings: 5, activePolicies: 2 } });
+        .send(validBody);
 
       expect(res.statusCode).toEqual(401);
       expect(res.body.success).toBe(false);
     });
 
-    it("should reject unauthorized requests from guest with 403", async () => {
-      const { agent, csrfToken } = await createCsrfAgent();
-      const res = await agent
+    it("should reject users without organization membership with 403", async () => {
+      const res = await request(app)
         .post("/api/gemini/insights")
-        .set("Authorization", `Bearer ${guestToken}`)
-        .set("X-CSRF-Token", csrfToken)
-        .send({ summary: { totalMeetings: 5, activePolicies: 2 } });
+        .set(authHeader(noOrgToken))
+        .send(validBody);
+
+      expect(res.statusCode).toEqual(403);
+      expect(res.body.success).toBe(false);
+      expect(axiosSpy).not.toHaveBeenCalled();
+    });
+
+    it("should reject unauthorized requests from guest with 403", async () => {
+      const res = await request(app)
+        .post("/api/gemini/insights")
+        .set(authHeader(guestToken))
+        .send(validBody);
 
       expect(res.statusCode).toEqual(403);
       expect(res.body.success).toBe(false);
     });
 
-    it("should allow authenticated member with view reports permission to generate insights", async () => {
-      const { agent, csrfToken } = await createCsrfAgent();
-      const res = await agent
+    it("should reject missing summary with 400", async () => {
+      const res = await request(app)
         .post("/api/gemini/insights")
-        .set("Authorization", `Bearer ${userToken}`)
-        .set("X-CSRF-Token", csrfToken)
-        .send({ summary: { totalMeetings: 5, activePolicies: 2 } });
+        .set(authHeader(userToken))
+        .send({});
+
+      expect(res.statusCode).toEqual(400);
+      expect(res.body.success).toBe(false);
+      expect(res.body.message).toBe("Validation failed");
+      expect(axiosSpy).not.toHaveBeenCalled();
+    });
+
+    it("should reject non-object summary with 400", async () => {
+      const res = await request(app)
+        .post("/api/gemini/insights")
+        .set(authHeader(userToken))
+        .send({ summary: "not-an-object" });
+
+      expect(res.statusCode).toEqual(400);
+      expect(res.body.success).toBe(false);
+      expect(axiosSpy).not.toHaveBeenCalled();
+    });
+
+    it("should reject oversized summary with 400", async () => {
+      const res = await request(app)
+        .post("/api/gemini/insights")
+        .set(authHeader(userToken))
+        .send({ summary: { blob: "x".repeat(10_001) } });
+
+      expect(res.statusCode).toEqual(400);
+      expect(res.body.success).toBe(false);
+      expect(axiosSpy).not.toHaveBeenCalled();
+    });
+
+    it("should allow authenticated member with view reports permission to generate insights", async () => {
+      const res = await request(app)
+        .post("/api/gemini/insights")
+        .set(authHeader(userToken))
+        .send(validBody);
 
       expect(res.statusCode).toEqual(200);
       expect(res.body.success).toBe(true);
