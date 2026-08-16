@@ -1,6 +1,7 @@
 import ActionItem from "../models/ActionItem.js";
 import ActionItemExtractor from "../services/actionItemExtractor.js";
 import { syncActionItemToGitHub } from "../services/githubSyncService.js";
+import eventBus from "../services/eventBus.js";
 
 /**
  * @desc Trigger AI extraction from meeting transcript (Idempotent)
@@ -171,6 +172,14 @@ export const updateActionItem = async (req, res) => {
       new: true,
       runValidators: true,
     }).populate("assignee", "name avatar");
+
+    if (updates.status === "completed") {
+      eventBus.emit("actionItem.completed", {
+        userId: updatedItem.assignee?._id || req.user.id,
+        organizationId: req.user.organizationId,
+        actionItemId: updatedItem._id,
+      });
+    }
 
     res.status(200).json({ success: true, data: updatedItem });
   } catch (error) {

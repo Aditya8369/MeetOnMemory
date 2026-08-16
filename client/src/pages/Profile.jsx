@@ -1,4 +1,5 @@
 import React, { useState, useContext, useEffect } from "react";
+import axios from "axios";
 import Navbar from "../components/Navbar.jsx";
 import { toast } from "react-toastify";
 import { userApi } from "../services";
@@ -22,10 +23,26 @@ const Profile = () => {
   const [isEditing, setIsEditing] = useState(false);
   const [loading, setLoading] = useState(false);
   const [profilePicFailed, setProfilePicFailed] = useState(false);
+  const [gamificationData, setGamificationData] = useState(null);
 
   useEffect(() => {
     setProfilePicFailed(false);
   }, [userData?.profilePic]);
+
+  useEffect(() => {
+    if (userData) {
+      axios
+        .get("/api/gamification/score", { withCredentials: true })
+        .then((res) => {
+          if (res.data.success) {
+            setGamificationData(res.data.data);
+          }
+        })
+        .catch((err) =>
+          console.error("Failed to fetch gamification score", err),
+        );
+    }
+  }, [userData]);
 
   // Form State
   const [name, setName] = useState("");
@@ -283,6 +300,32 @@ const Profile = () => {
                   {userData.bio || "No bio added yet. Tell us about yourself!"}
                 </p>
               </div>
+
+              {/* Gamification section */}
+              {gamificationData && (
+                <div className="pt-6 border-t border-slate-100 dark:border-slate-800 space-y-4">
+                  <div className="text-[11px] text-slate-400 dark:text-slate-500 font-bold uppercase tracking-wider">
+                    Trophy Case
+                  </div>
+                  <div className="flex items-center gap-4">
+                    <div className="bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 px-4 py-2 rounded-lg font-bold">
+                      {gamificationData.totalPoints} Points
+                    </div>
+                  </div>
+                  {gamificationData.unlockedBadges?.length > 0 && (
+                    <div className="flex flex-wrap gap-2 mt-2">
+                      {gamificationData.unlockedBadges.map((ub, idx) => (
+                        <div
+                          key={idx}
+                          className="bg-yellow-100 dark:bg-yellow-900/30 text-yellow-800 dark:text-yellow-200 text-xs px-3 py-1 rounded-full font-medium flex items-center gap-1 border border-yellow-200 dark:border-yellow-700/50"
+                        >
+                          🏅 {ub.badge?.name || "Badge"}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
           ) : (
             // ================= EDIT STATE =================

@@ -59,6 +59,7 @@ import AutomationRules from "../pages/AutomationRules.jsx";
 import TopicExplorer from "../pages/TopicExplorer.jsx";
 import ConflictResolution from "../pages/ConflictResolution.jsx";
 import SpeakingTimeTrends from "../pages/SpeakingTimeTrends.jsx";
+import Leaderboard from "../pages/Leaderboard.jsx";
 
 const ProtectedRoutes = (
   <React.Fragment>
@@ -483,6 +484,14 @@ const ProtectedRoutes = (
     <Route path="/meeting-templates" element={<MeetingTemplates />} />
     <Route path="/ai-summary-templates" element={<AiSummaryTemplates />} />
     <Route path="/access-denied" element={<AccessDenied />} />
+    <Route
+      path="/leaderboard"
+      element={
+        <ProtectedRoute>
+          <Leaderboard />
+        </ProtectedRoute>
+      }
+    />
 
     <Route
       path="/admin-panel"
