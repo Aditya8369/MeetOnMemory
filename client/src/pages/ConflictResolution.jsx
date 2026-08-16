@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from "react";
 import Navbar from "../components/Navbar.jsx";
+import ConfirmModal from "../components/ConfirmModal.jsx";
 import { knowledgeApi } from "../services";
 import { toast } from "react-toastify";
 import {
@@ -14,7 +15,7 @@ import {
 } from "lucide-react";
 
 /**
- * ConflictResolution.jsx
+ * ConflictResolution.jsx (#1342)
  * Lets org admins/moderators scan for contradictory decisions/action
  * items, review the AI-generated explanation for each conflict, and
  * resolve it by keeping one member, entering a corrected value, or
@@ -26,30 +27,49 @@ const MODEL_OPTIONS = [
   { value: "actionItem", label: "Action Items" },
 ];
 
+const STATUS_OPTIONS = [
+  { value: "open", label: "Open Conflicts" },
+  { value: "resolved", label: "Resolved" },
+  { value: "dismissed", label: "Dismissed" },
+  { value: "all", label: "All Conflicts" },
+];
+
 const ConflictResolution = () => {
   const [selectedModel, setSelectedModel] = useState("decision");
+  const [selectedStatus, setSelectedStatus] = useState("open");
   const [scanning, setScanning] = useState(false);
   const [conflicts, setConflicts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [resolvingId, setResolvingId] = useState(null);
   const [customValues, setCustomValues] = useState({});
 
+  // Confirmation modal state (#1342)
+  const [confirmConfig, setConfirmConfig] = useState({
+    isOpen: false,
+    conflictId: null,
+    resolutionType: null,
+    extra: {},
+    title: "",
+    message: "",
+  });
+
   const loadConflicts = useCallback(async () => {
     setLoading(true);
     try {
       const res = await knowledgeApi.getConflicts({
         model: selectedModel,
-        status: "open",
+        status: selectedStatus,
       });
       if (res.data?.success) {
         setConflicts(res.data.conflicts || []);
       }
     } catch (err) {
       console.error("Failed to load conflicts", err);
+      toast.error("Failed to load conflicts.");
     } finally {
       setLoading(false);
     }
-  }, [selectedModel]);
+  }, [selectedModel, selectedStatus]);
 
   useEffect(() => {
     loadConflicts();
@@ -93,6 +113,14 @@ const ConflictResolution = () => {
       });
       if (res.data?.success) {
         toast.success("Conflict resolved.");
+        setConfirmConfig({
+          isOpen: false,
+          conflictId: null,
+          resolutionType: null,
+          extra: {},
+          title: "",
+          message: "",
+        });
         setConflicts((prev) => prev.filter((c) => c._id !== conflictId));
       } else {
         toast.error(res.data?.message || "Failed to resolve conflict.");
@@ -103,6 +131,23 @@ const ConflictResolution = () => {
     } finally {
       setResolvingId(null);
     }
+  };
+
+  const promptResolve = (
+    conflictId,
+    resolutionType,
+    extra = {},
+    title = "Confirm Resolution",
+    message = "Are you sure you want to apply this conflict resolution?",
+  ) => {
+    setConfirmConfig({
+      isOpen: true,
+      conflictId,
+      resolutionType,
+      extra,
+      title,
+      message,
+    });
   };
 
   return (
@@ -122,24 +167,38 @@ const ConflictResolution = () => {
             </p>
           </div>
 
-          <select
-            value={selectedModel}
-            onChange={(e) => setSelectedModel(e.target.value)}
-            className="rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-3 py-2 text-sm"
-          >
-            {MODEL_OPTIONS.map((opt) => (
-              <option key={opt.value} value={opt.value}>
-                {opt.label}
-              </option>
-            ))}
-          </select>
+          <div className="flex items-center gap-3">
+            <select
+              value={selectedModel}
+              onChange={(e) => setSelectedModel(e.target.value)}
+              className="rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-3 py-2 text-sm"
+            >
+              {MODEL_OPTIONS.map((opt) => (
+                <option key={opt.value} value={opt.value}>
+                  {opt.label}
+                </option>
+              ))}
+            </select>
+            <select
+              value={selectedStatus}
+              onChange={(e) => setSelectedStatus(e.target.value)}
+              className="rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-3 py-2 text-sm"
+            >
+              {STATUS_OPTIONS.map((opt) => (
+                <option key={opt.value} value={opt.value}>
+                  {opt.label}
+                </option>
+              ))}
+            </select>
+          </div>
         </div>
 
         <div className="flex flex-wrap gap-3">
           <button
+            type="button"
             onClick={runScan}
             disabled={scanning}
-            className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-amber-600 text-white text-sm font-medium hover:bg-amber-700 disabled:opacity-50"
+            className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-amber-600 text-white text-sm font-medium hover:bg-amber-700 disabled:opacity-50 cursor-pointer"
           >
             {scanning ? (
               <Loader2 className="w-4 h-4 animate-spin" />
@@ -149,8 +208,9 @@ const ConflictResolution = () => {
             Scan for conflicts
           </button>
           <button
+            type="button"
             onClick={loadConflicts}
-            className="inline-flex items-center gap-2 px-4 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-sm font-medium hover:bg-slate-50 dark:hover:bg-slate-800"
+            className="inline-flex items-center gap-2 px-4 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-sm font-medium hover:bg-slate-50 dark:hover:bg-slate-800 cursor-pointer"
           >
             <RefreshCw className="w-4 h-4" />
             Refresh
@@ -198,15 +258,24 @@ const ConflictResolution = () => {
                         {member.text}
                       </p>
                       <button
+                        type="button"
                         onClick={() =>
-                          resolve(conflict._id, "kept_member", {
-                            keptMemoryId: member.memoryId,
-                          })
+                          promptResolve(
+                            conflict._id,
+                            "kept_member",
+                            { keptMemoryId: member.memoryId },
+                            "Keep Selected Memory Version",
+                            `Are you sure you want to resolve this conflict by keeping "${member.text}"?`,
+                          )
                         }
                         disabled={resolvingId === conflict._id}
-                        className="shrink-0 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-emerald-600 text-white text-xs font-medium hover:bg-emerald-700 disabled:opacity-50"
+                        className="shrink-0 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-emerald-600 text-white text-xs font-medium hover:bg-emerald-700 disabled:opacity-50 cursor-pointer"
                       >
-                        <CheckCircle2 className="w-3.5 h-3.5" />
+                        {resolvingId === conflict._id ? (
+                          <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                        ) : (
+                          <CheckCircle2 className="w-3.5 h-3.5" />
+                        )}
                         Keep this
                       </button>
                     </div>
@@ -227,26 +296,48 @@ const ConflictResolution = () => {
                     className="flex-1 min-w-[220px] rounded-md border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-3 py-1.5 text-sm"
                   />
                   <button
+                    type="button"
                     onClick={() =>
-                      resolve(conflict._id, "custom_value", {
-                        customValue: customValues[conflict._id] || "",
-                      })
+                      promptResolve(
+                        conflict._id,
+                        "custom_value",
+                        { customValue: customValues[conflict._id] || "" },
+                        "Apply Custom Correction",
+                        `Are you sure you want to update this memory entry to "${customValues[conflict._id]}"?`,
+                      )
                     }
                     disabled={
                       resolvingId === conflict._id ||
                       !customValues[conflict._id]
                     }
-                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-xs font-medium hover:bg-slate-50 dark:hover:bg-slate-800 disabled:opacity-50"
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-xs font-medium hover:bg-slate-50 dark:hover:bg-slate-800 disabled:opacity-50 cursor-pointer"
                   >
-                    <PenLine className="w-3.5 h-3.5" />
+                    {resolvingId === conflict._id ? (
+                      <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                    ) : (
+                      <PenLine className="w-3.5 h-3.5" />
+                    )}
                     Save correction
                   </button>
                   <button
-                    onClick={() => resolve(conflict._id, "dismissed")}
+                    type="button"
+                    onClick={() =>
+                      promptResolve(
+                        conflict._id,
+                        "dismissed",
+                        {},
+                        "Dismiss Conflict",
+                        "Are you sure you want to mark this conflict as a false positive and dismiss it?",
+                      )
+                    }
                     disabled={resolvingId === conflict._id}
-                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-slate-500 dark:text-slate-400 text-xs font-medium hover:text-slate-700 dark:hover:text-slate-200 disabled:opacity-50"
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-slate-500 dark:text-slate-400 text-xs font-medium hover:text-slate-700 dark:hover:text-slate-200 disabled:opacity-50 cursor-pointer"
                   >
-                    <XCircle className="w-3.5 h-3.5" />
+                    {resolvingId === conflict._id ? (
+                      <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                    ) : (
+                      <XCircle className="w-3.5 h-3.5" />
+                    )}
                     Not a conflict
                   </button>
                 </div>
@@ -255,6 +346,33 @@ const ConflictResolution = () => {
           </div>
         </div>
       </div>
+
+      {/* Resolution Confirmation Modal (#1342) */}
+      <ConfirmModal
+        isOpen={confirmConfig.isOpen}
+        onClose={() =>
+          setConfirmConfig({
+            isOpen: false,
+            conflictId: null,
+            resolutionType: null,
+            extra: {},
+            title: "",
+            message: "",
+          })
+        }
+        onConfirm={() =>
+          resolve(
+            confirmConfig.conflictId,
+            confirmConfig.resolutionType,
+            confirmConfig.extra,
+          )
+        }
+        title={confirmConfig.title}
+        message={confirmConfig.message}
+        confirmText="Confirm Resolution"
+        variant="warning"
+        isLoading={resolvingId === confirmConfig.conflictId}
+      />
     </div>
   );
 };

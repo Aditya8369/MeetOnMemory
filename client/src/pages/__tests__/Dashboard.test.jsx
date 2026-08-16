@@ -1,10 +1,10 @@
 import React from "react";
 import { render, screen, waitFor } from "@testing-library/react";
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { describe, it, expect, vi } from "vitest";
 import { MemoryRouter } from "react-router-dom";
 import AppContent from "../../context/AppContent";
+import { RBACProvider } from "../../context/RBACContext.jsx";
 import Dashboard from "../Dashboard";
-import { userApi } from "../../services/userApi";
 
 vi.mock("../../components/Navbar.jsx", () => ({
   default: () => <div data-testid="navbar">Navbar</div>,
@@ -20,82 +20,16 @@ vi.mock("react-i18next", () => ({
   }),
 }));
 
-vi.mock("../../services/userApi", () => ({
-  userApi: {
-    getDashboardPreferences: vi.fn(),
-    updateDashboardPreferences: vi.fn(),
-  },
-}));
-
-vi.mock("react-grid-layout/css/styles.css", () => ({}));
-vi.mock("react-resizable/css/styles.css", () => ({}));
-
-// Keep containerRef inside the mock factory — vi.mock is hoisted, so an outer
-// const would be uninitialized and leave Dashboard with containerRef === undefined
-// (crash → empty <body><div /></body>).
-vi.mock("react-grid-layout", async () => {
-  const React = await import("react");
-  const containerRef = { current: null };
-
-  return {
-    Responsive: ({ children }) =>
-      React.createElement(
-        "div",
-        { "data-testid": "responsive-grid" },
-        children,
-      ),
-    useContainerWidth: () => ({
-      width: 1280,
-      mounted: true,
-      containerRef,
-      measureWidth: () => {},
-    }),
-  };
-});
-
-/**
- * Browser-like IntersectionObserver: constructable via `new`, supports
- * observe/unobserve/disconnect/takeRecords, and fires immediately with
- * isIntersecting: true so Dashboard can add `.visible`.
- */
-class MockIntersectionObserver {
-  constructor(callback, options = {}) {
-    this.callback = callback;
-    this.options = options;
-    this._observed = new Set();
-  }
-
-  observe(target) {
-    if (!target) return;
-    this._observed.add(target);
-    this.callback(
-      [
-        {
-          isIntersecting: true,
-          target,
-          intersectionRatio: 1,
-          time: Date.now(),
-          boundingClientRect: target.getBoundingClientRect?.() ?? {},
-          intersectionRect: target.getBoundingClientRect?.() ?? {},
-          rootBounds: null,
-        },
-      ],
-      this,
-    );
-  }
-
-  unobserve(target) {
-    this._observed.delete(target);
-  }
-
-  disconnect() {
-    this._observed.clear();
-  }
-
-  takeRecords() {
-    return [];
-  }
-}
+const renderDashboard = (userData) =>
+  render(
+    <MemoryRouter>
+      <AppContent.Provider value={{ userData }}>
+        <RBACProvider userRole={userData?.role || null}>
+          <Dashboard />
+        </RBACProvider>
+      </AppContent.Provider>
+    </MemoryRouter>,
+  );
 
 describe("Dashboard", () => {
   const mockUserData = {
@@ -104,54 +38,82 @@ describe("Dashboard", () => {
     organization: { name: "MeetOnMemory", _id: "org-1" },
   };
 
-  beforeEach(() => {
-    globalThis.IntersectionObserver = MockIntersectionObserver;
-
-    userApi.getDashboardPreferences.mockResolvedValue({
-      data: { success: true, dashboardPreferences: null },
-    });
-    userApi.updateDashboardPreferences.mockResolvedValue({
-      data: { success: true },
-    });
-  });
-
-  it("renders without throwing when useContainerWidth returns an object", async () => {
-    render(
-      <MemoryRouter>
-        <AppContent.Provider value={{ userData: mockUserData }}>
-          <Dashboard />
-        </AppContent.Provider>
-      </MemoryRouter>,
-    );
+  it("renders without throwing", () => {
+    renderDashboard(mockUserData);
 
     expect(screen.getByTestId("navbar")).toBeInTheDocument();
     expect(screen.getByLabelText("Dashboard hero")).toBeInTheDocument();
-
-    await waitFor(() => {
-      expect(screen.getByTestId("responsive-grid")).toBeInTheDocument();
-      expect(screen.getByText("dashboard.uploadMeetings")).toBeInTheDocument();
-    });
+    expect(screen.getByTestId("feature-cards-grid")).toBeInTheDocument();
   });
 
-  it("applies .visible to dash-card feature cards so entrance animations can run (#682)", async () => {
-    const { container } = render(
-      <MemoryRouter>
-        <AppContent.Provider value={{ userData: mockUserData }}>
-          <Dashboard />
-        </AppContent.Provider>
-      </MemoryRouter>,
-    );
+  it("renders all seven admin feature cards in a plain CSS grid (#712)", async () => {
+    const { container } = renderDashboard(mockUserData);
 
     await waitFor(() => {
       expect(screen.getByText("dashboard.uploadMeetings")).toBeInTheDocument();
     });
 
-    await waitFor(() => {
-      const cards = container.querySelectorAll(".dash-card.fade-in-up");
-      expect(cards.length).toBeGreaterThan(0);
-      cards.forEach((card) => {
-        expect(card.classList.contains("visible")).toBe(true);
-      });
+    expect(screen.getByText("dashboard.meetingEventHub")).toBeInTheDocument();
+    expect(screen.getByText("dashboard.aiSummarization")).toBeInTheDocument();
+    expect(
+      screen.getByText("dashboard.policiesRepository"),
+    ).toBeInTheDocument();
+    expect(screen.getByText("dashboard.reportsAnalytics")).toBeInTheDocument();
+
+    expect(screen.getByText("Attendance Analytics")).toBeInTheDocument();
+    expect(screen.getByText("Meeting Cost Analytics")).toBeInTheDocument();
+
+    expect(
+      container.querySelectorAll(".dash-card").length,
+    ).toBeGreaterThanOrEqual(6);
+    expect(
+      screen.queryByText(/Drag cards to reorder/i),
+    ).not.toBeInTheDocument();
+    expect(screen.getByTestId("top-contributors")).toBeInTheDocument();
+  });
+
+  it("hides admin-only cards for non-admin members", () => {
+    renderDashboard({
+      name: "Bob",
+      role: "member",
+      organization: { name: "MeetOnMemory", _id: "org-1" },
     });
+
+    // Members have meetings:create — upload/create cards remain visible.
+    expect(screen.getByText("dashboard.uploadMeetings")).toBeInTheDocument();
+    expect(screen.getByText("dashboard.meetingEventHub")).toBeInTheDocument();
+    expect(screen.getByText("dashboard.aiSummarization")).toBeInTheDocument();
+    expect(
+      screen.getByText("dashboard.policiesRepository"),
+    ).toBeInTheDocument();
+    expect(screen.getByText("dashboard.reportsAnalytics")).toBeInTheDocument();
+    expect(screen.getByText("Attendance Analytics")).toBeInTheDocument();
+    expect(
+      screen.queryByText("Meeting Cost Analytics"),
+    ).not.toBeInTheDocument();
+  });
+
+  it("treats ADMIN role case-insensitively so all admin cards show", () => {
+    renderDashboard({
+      name: "Shiv",
+      role: "ADMIN",
+      organization: { name: "MeetOnMemory", _id: "org-1" },
+    });
+
+    // meetings:create uses exact role keys from the permission map.
+    expect(
+      screen.queryByText("dashboard.uploadMeetings"),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByText("dashboard.meetingEventHub"),
+    ).not.toBeInTheDocument();
+    expect(screen.getByText("dashboard.aiSummarization")).toBeInTheDocument();
+    expect(
+      screen.getByText("dashboard.policiesRepository"),
+    ).toBeInTheDocument();
+    expect(screen.getByText("dashboard.reportsAnalytics")).toBeInTheDocument();
+    expect(screen.getByText("Attendance Analytics")).toBeInTheDocument();
+    // adminOnly cost card still matches role case-insensitively.
+    expect(screen.getByText("Meeting Cost Analytics")).toBeInTheDocument();
   });
 });

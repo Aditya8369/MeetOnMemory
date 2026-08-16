@@ -1,18 +1,37 @@
 import { google } from "googleapis";
 import CryptoJS from "crypto-js";
+import axios from "axios";
 import { ClientSecretCredential } from "@azure/identity"; // eslint-disable-line no-unused-vars
 import { Client } from "@microsoft/microsoft-graph-client";
 import CalendarConnection from "../models/calendarConnectionModel.js";
 
-// Encryption key from environment (should be a long random string)
+// Encryption key from environment
 const ENCRYPTION_KEY =
-  process.env.CALENDAR_ENCRYPTION_KEY || "default-key-change-in-production";
+  process.env.CALENDAR_ENCRYPTION_KEY || process.env.TOKEN_ENCRYPTION_KEY;
+
+if (!ENCRYPTION_KEY) {
+  console.warn(
+    "Calendar encryption key is not configured. Set CALENDAR_ENCRYPTION_KEY or TOKEN_ENCRYPTION_KEY to enable calendar token encryption.",
+  );
+}
 
 /**
  * Encrypt a token for storage
  */
 export const encryptToken = (token) => {
+  if (!ENCRYPTION_KEY) {
+    throw new Error("Calendar encryption key is not configured");
+  }
+
   return CryptoJS.AES.encrypt(token, ENCRYPTION_KEY).toString();
+};
+
+export const getGoogleOAuthClient = () => {
+  return new google.auth.OAuth2(
+    process.env.GOOGLE_CLIENT_ID,
+    process.env.GOOGLE_CLIENT_SECRET,
+    process.env.GOOGLE_REDIRECT_URI,
+  );
 };
 
 /**
@@ -20,6 +39,11 @@ export const encryptToken = (token) => {
  */
 export const decryptToken = (encryptedToken) => {
   if (!encryptedToken) return null;
+
+  if (!ENCRYPTION_KEY) {
+    throw new Error("Calendar encryption key is not configured");
+  }
+
   try {
     const bytes = CryptoJS.AES.decrypt(encryptedToken, ENCRYPTION_KEY);
     return bytes.toString(CryptoJS.enc.Utf8);
@@ -71,6 +95,55 @@ const refreshGoogleToken = async (connection) => {
 };
 
 /**
+ * Refresh Microsoft access token if expired
+ */
+export const refreshMicrosoftToken = async (connection) => {
+  try {
+    const refreshToken = decryptToken(connection.refreshToken);
+    if (!refreshToken) {
+      throw new Error("No refresh token available");
+    }
+    const msClientId =
+      process.env.MICROSOFT_CLIENT_ID || process.env.MS_CLIENT_ID;
+    const msClientSecret =
+      process.env.MICROSOFT_CLIENT_SECRET || process.env.MS_CLIENT_SECRET;
+    const msTenantId =
+      process.env.MICROSOFT_TENANT_ID || process.env.MS_TENANT_ID || "common";
+
+    const params = new URLSearchParams({
+      client_id: msClientId,
+      client_secret: msClientSecret,
+      grant_type: "refresh_token",
+      refresh_token: refreshToken,
+    });
+
+    const res = await axios.post(
+      `https://login.microsoftonline.com/${msTenantId}/oauth2/v2.0/token`,
+      params,
+    );
+
+    connection.accessToken = encryptToken(res.data.access_token);
+    if (res.data.refresh_token) {
+      connection.refreshToken = encryptToken(res.data.refresh_token);
+    }
+    connection.tokenExpiresAt = new Date(
+      Date.now() + (res.data.expires_in || 3600) * 1000,
+    );
+    connection.syncStatus = "connected";
+    connection.syncError = null;
+    await connection.save();
+
+    return res.data.access_token;
+  } catch (error) {
+    console.error("Error refreshing Microsoft token:", error.message);
+    connection.syncStatus = "needs_reauth";
+    connection.syncError = "Token refresh failed";
+    await connection.save();
+    throw error;
+  }
+};
+
+/**
  * Get Google OAuth2 client with automatic token refresh
  */
 export const getGoogleOAuth2Client = async (connection) => {
@@ -105,7 +178,7 @@ export const getGoogleOAuth2Client = async (connection) => {
  * Get Microsoft Graph client with automatic token refresh
  */
 export const getMicrosoftClient = async (connection) => {
-  const accessToken = decryptToken(connection.accessToken);
+  let accessToken = decryptToken(connection.accessToken);
 
   if (!accessToken) {
     throw new Error("No access token available");
@@ -113,12 +186,11 @@ export const getMicrosoftClient = async (connection) => {
 
   // Check if token is expired
   if (connection.tokenExpiresAt && new Date() >= connection.tokenExpiresAt) {
-    // Microsoft token refresh would go here
-    // For now, mark as needs reauth
-    connection.syncStatus = "needs_reauth";
-    connection.syncError = "Token expired - needs re-authentication";
-    await connection.save();
-    throw new Error("Token expired");
+    try {
+      accessToken = await refreshMicrosoftToken(connection);
+    } catch (_err) {
+      throw new Error("Token expired and refresh failed");
+    }
   }
 
   const authProvider = {
@@ -140,6 +212,150 @@ const parseMeetingDateTime = (meetingDetails) => {
   }
   return startDateTime;
 };
+
+/**
+ * @desc Service for integrating with external calendar providers (Google, Outlook).
+ * Fetches free/busy data and creates calendar events with invites.
+ */
+class CalendarService {
+  constructor() {
+    this.oauth2Client = new google.auth.OAuth2(
+      process.env.GOOGLE_CLIENT_ID,
+      process.env.GOOGLE_CLIENT_SECRET,
+      process.env.GOOGLE_REDIRECT_URI,
+    );
+  }
+
+  /**
+   * Fetches free/busy intervals for a list of users from Google Calendar.
+   * @param {Array<string>} emails - List of participant email addresses.
+   * @param {Date} timeMin - Start of the search range.
+   * @param {Date} timeMax - End of the search range.
+   * @param {string} accessToken - OAuth token for the organizer.
+   * @returns {Promise<Object>} Map of email to busy intervals.
+   */
+  async getGoogleFreeBusy(emails, timeMin, timeMax, accessToken) {
+    this.oauth2Client.setCredentials({ access_token: accessToken });
+    const calendar = google.calendar({
+      version: "v3",
+      auth: this.oauth2Client,
+    });
+
+    try {
+      const response = await calendar.freebusy.query({
+        requestBody: {
+          timeMin: timeMin.toISOString(),
+          timeMax: timeMax.toISOString(),
+          timeZone: "UTC",
+          items: emails.map((email) => ({ id: email })),
+        },
+      });
+
+      return response.data.calendars;
+    } catch (error) {
+      console.error("[CalendarService] Google FreeBusy error:", error.message);
+      // Fallback: Return empty busy array to allow manual scheduling
+      return emails.reduce((acc, email) => {
+        acc[email] = { busy: [] };
+        return acc;
+      }, {});
+    }
+  }
+
+  /**
+   * Fetches free/busy data from Microsoft Graph API (Outlook).
+   * @param {Array<string>} emails
+   * @param {Date} timeMin
+   * @param {Date} timeMax
+   * @param {string} accessToken
+   * @returns {Promise<Object>} Map of email to busy intervals.
+   */
+  async getOutlookFreeBusy(emails, timeMin, timeMax, accessToken) {
+    try {
+      const response = await axios.post(
+        "https://graph.microsoft.com/v1.0/me/calendar/getSchedule",
+        {
+          schedules: emails,
+          startTime: { dateTime: timeMin.toISOString(), timeZone: "UTC" },
+          endTime: { dateTime: timeMax.toISOString(), timeZone: "UTC" },
+          availabilityViewInterval: 15,
+        },
+        {
+          headers: { Authorization: `Bearer ${accessToken}` },
+        },
+      );
+
+      // Transform Graph response to match Google's format for unified processing
+      const result = {};
+      response.data.value.forEach((schedule) => {
+        result[schedule.scheduleId] = {
+          busy: schedule.scheduleItems.map((item) => ({
+            start: item.start.dateTime,
+            end: item.end.dateTime,
+          })),
+        };
+      });
+
+      return result;
+    } catch (error) {
+      console.error("[CalendarService] Outlook FreeBusy error:", error.message);
+      return emails.reduce((acc, email) => {
+        acc[email] = { busy: [] };
+        return acc;
+      }, {});
+    }
+  }
+
+  /**
+   * Creates a calendar event and sends invites to all participants.
+   * @param {string} provider - "google" or "outlook"
+   * @param {Object} eventData - { title, description, startTime, endTime, attendees, timeZone }
+   * @param {string} accessToken
+   * @returns {Promise<Object>} Created event details.
+   */
+  async createEvent(provider, eventData, accessToken) {
+    if (provider === "google") {
+      this.oauth2Client.setCredentials({ access_token: accessToken });
+      const calendar = google.calendar({
+        version: "v3",
+        auth: this.oauth2Client,
+      });
+
+      const event = {
+        summary: eventData.title,
+        description: eventData.description,
+        start: {
+          dateTime: eventData.startTime,
+          timeZone: eventData.timeZone || "UTC",
+        },
+        end: {
+          dateTime: eventData.endTime,
+          timeZone: eventData.timeZone || "UTC",
+        },
+        attendees: (eventData.attendees || []).map((email) => ({ email })),
+        reminders: {
+          useDefault: false,
+          overrides: [
+            { method: "email", minutes: 24 * 60 },
+            { method: "popup", minutes: 10 },
+          ],
+        },
+      };
+
+      const response = await calendar.events.insert({
+        calendarId: "primary",
+        resource: event,
+        sendUpdates: "all",
+      });
+
+      return response.data;
+    }
+
+    throw new Error("Provider not supported");
+  }
+}
+
+export const calendarService = new CalendarService();
 
 /**
  * Create Google Calendar event
@@ -340,7 +556,7 @@ export const createMicrosoftEvent = async (userId, meetingDetails) => {
   try {
     const connection = await CalendarConnection.findOne({
       user: userId,
-      provider: "microsoft",
+      provider: { $in: ["microsoft", "outlook"] },
       syncStatus: "connected",
     });
 
@@ -417,7 +633,7 @@ export const updateMicrosoftEvent = async (userId, meetingDetails, eventId) => {
   try {
     const connection = await CalendarConnection.findOne({
       user: userId,
-      provider: "microsoft",
+      provider: { $in: ["microsoft", "outlook"] },
       syncStatus: "connected",
     });
 
@@ -490,7 +706,7 @@ export const deleteMicrosoftEvent = async (userId, eventId) => {
   try {
     const connection = await CalendarConnection.findOne({
       user: userId,
-      provider: "microsoft",
+      provider: { $in: ["microsoft", "outlook"] },
       syncStatus: "connected",
     });
 
@@ -526,8 +742,9 @@ export const deleteMicrosoftEvent = async (userId, eventId) => {
 
 /**
  * Get Google OAuth authorization URL
+ * @param {string} state - Signed OAuth state (Issue #1387)
  */
-export const getGoogleAuthUrl = () => {
+export const getGoogleAuthUrl = (state) => {
   const oAuth2Client = new google.auth.OAuth2(
     process.env.GOOGLE_CLIENT_ID,
     process.env.GOOGLE_CLIENT_SECRET,
@@ -543,6 +760,7 @@ export const getGoogleAuthUrl = () => {
     access_type: "offline",
     scope: scopes,
     prompt: "consent",
+    state,
   });
 };
 
@@ -562,8 +780,9 @@ export const getGoogleTokens = async (code) => {
 
 /**
  * Get Microsoft OAuth authorization URL
+ * @param {string} state - Signed OAuth state (Issue #1387)
  */
-export const getMicrosoftAuthUrl = async () => {
+export const getMicrosoftAuthUrl = async (state) => {
   const msalConfig = {
     auth: {
       clientId: process.env.MICROSOFT_CLIENT_ID,
@@ -579,6 +798,7 @@ export const getMicrosoftAuthUrl = async () => {
   const authCodeUrlParameters = {
     scopes: ["https://graph.microsoft.com/Calendars.ReadWrite"],
     redirectUri: process.env.MICROSOFT_REDIRECT_URI,
+    state,
   };
 
   return pca.getAuthCodeUrl(authCodeUrlParameters);
@@ -742,3 +962,5 @@ export const fetchExternalEvents = async (userId, timeMin, timeMax) => {
 
   return events;
 };
+
+export default calendarService;

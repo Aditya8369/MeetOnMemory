@@ -1,5 +1,21 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
+vi.mock("mongoose", async (importOriginal) => {
+  const actual = await importOriginal();
+  return {
+    ...actual,
+    default: {
+      ...actual.default,
+      startSession: vi.fn().mockResolvedValue({
+        startTransaction: vi.fn(),
+        commitTransaction: vi.fn(),
+        abortTransaction: vi.fn(),
+        endSession: vi.fn(),
+      }),
+    },
+  };
+});
+
 // Mock all external dependencies before importing the service
 vi.mock("../models/invitationModel.js", () => ({
   default: {
@@ -241,7 +257,8 @@ describe("InvitationService", () => {
   describe("acceptInvitation", () => {
     it("should throw NotFoundError if token is invalid", async () => {
       Invitation.findOne.mockReturnValue({
-        populate: vi.fn().mockResolvedValue(null),
+        populate: vi.fn().mockReturnThis(),
+        session: vi.fn().mockResolvedValue(null),
       });
 
       await expect(
@@ -251,7 +268,8 @@ describe("InvitationService", () => {
 
     it("should throw ValidationError if invitation is not pending", async () => {
       Invitation.findOne.mockReturnValue({
-        populate: vi.fn().mockResolvedValue({
+        populate: vi.fn().mockReturnThis(),
+        session: vi.fn().mockResolvedValue({
           status: "accepted",
           token: "tok1",
         }),
@@ -269,7 +287,8 @@ describe("InvitationService", () => {
         save: vi.fn(),
       };
       Invitation.findOne.mockReturnValue({
-        populate: vi.fn().mockResolvedValue(mockInvitation),
+        populate: vi.fn().mockReturnThis(),
+        session: vi.fn().mockResolvedValue(mockInvitation),
       });
 
       await expect(
@@ -282,7 +301,8 @@ describe("InvitationService", () => {
 
     it("should throw ForbiddenError if email doesn't match", async () => {
       Invitation.findOne.mockReturnValue({
-        populate: vi.fn().mockResolvedValue({
+        populate: vi.fn().mockReturnThis(),
+        session: vi.fn().mockResolvedValue({
           status: "pending",
           expiresAt: new Date(Date.now() + 86400000),
           email: "someone@example.com",
@@ -290,8 +310,10 @@ describe("InvitationService", () => {
         }),
       });
 
-      userModel.findById.mockResolvedValue({
-        email: "other@example.com",
+      userModel.findById.mockReturnValue({
+        session: vi.fn().mockResolvedValue({
+          email: "other@example.com",
+        }),
       });
 
       await expect(
@@ -309,19 +331,29 @@ describe("InvitationService", () => {
         save: vi.fn(),
       };
       Invitation.findOne.mockReturnValue({
-        populate: vi.fn().mockResolvedValue(mockInvitation),
+        populate: vi.fn().mockReturnThis(),
+        session: vi.fn().mockResolvedValue(mockInvitation),
       });
 
-      userModel.findById.mockResolvedValue({
-        email: "invitee@example.com",
+      userModel.findById.mockReturnValue({
+        session: vi.fn().mockResolvedValue({
+          email: "invitee@example.com",
+        }),
       });
 
-      Membership.findOne.mockResolvedValue(null);
-      Membership.create.mockResolvedValue({
-        user: "user1",
-        organization: "org1",
-        role: "member",
+      Membership.findOne.mockReturnValue({
+        session: vi.fn().mockResolvedValue(null),
       });
+
+      // Note: Model.create([...]) returns an array of documents
+      Membership.create.mockResolvedValue([
+        {
+          user: "user1",
+          organization: "org1",
+          role: "member",
+        },
+      ]);
+
       userModel.findByIdAndUpdate.mockResolvedValue(true);
 
       const result = await InvitationService.acceptInvitation(
@@ -342,6 +374,7 @@ describe("InvitationService", () => {
       const mockInvitation = {
         status: "pending",
         email: "invitee@example.com",
+        expiresAt: new Date(Date.now() + 100000000),
         save: vi.fn(),
       };
       Invitation.findOne.mockResolvedValue(mockInvitation);
@@ -432,6 +465,7 @@ describe("InvitationService", () => {
         status: "pending",
         expiresAt: new Date(Date.now() + 86400000),
         organization: { name: "Org" },
+        save: vi.fn(),
       };
       Invitation.findOne.mockReturnValue({
         populate: vi.fn().mockReturnValue({
@@ -443,6 +477,43 @@ describe("InvitationService", () => {
 
       expect(result.success).toBe(true);
       expect(result.invitation).toEqual(mockInvitation);
+    });
+
+    it("should throw ValidationError for an expired invitation token", async () => {
+      const mockInvitation = {
+        token: "expired-tok",
+        status: "pending",
+        expiresAt: new Date(Date.now() - 1000),
+        save: vi.fn().mockResolvedValue(undefined),
+      };
+      Invitation.findOne.mockReturnValue({
+        populate: vi.fn().mockReturnValue({
+          populate: vi.fn().mockResolvedValue(mockInvitation),
+        }),
+      });
+
+      await expect(
+        InvitationService.getInvitationByToken("expired-tok"),
+      ).rejects.toThrow("Invitation has expired.");
+
+      expect(mockInvitation.status).toBe("expired");
+      expect(mockInvitation.save).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  describe("isInvitationExpired", () => {
+    it("returns false for a future expiry", async () => {
+      const { isInvitationExpired } =
+        await import("../services/InvitationService.js");
+      expect(isInvitationExpired(new Date(Date.now() + 60_000))).toBe(false);
+    });
+
+    it("returns true for a past expiry and at the exact boundary", async () => {
+      const { isInvitationExpired } =
+        await import("../services/InvitationService.js");
+      expect(isInvitationExpired(new Date(Date.now() - 1000))).toBe(true);
+      expect(isInvitationExpired(new Date())).toBe(true);
+      expect(isInvitationExpired(null)).toBe(true);
     });
   });
 });

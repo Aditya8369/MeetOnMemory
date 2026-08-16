@@ -1,5 +1,4 @@
 import mongoose from "mongoose";
-import { URL } from "url";
 import { z } from "zod";
 import Webhook from "../models/Webhook.js";
 import WebhookDelivery from "../models/WebhookDelivery.js";
@@ -13,61 +12,7 @@ import {
   NotFoundError,
 } from "../utils/errors.js";
 import { sendSuccess } from "../utils/responseHandler.js";
-
-import dns from "dns/promises";
-import ipaddr from "ipaddr.js";
-
-const isSafeWebhookUrl = async (urlStr) => {
-  try {
-    const parsed = new URL(urlStr);
-    const hostname = parsed.hostname.toLowerCase();
-
-    // Block obvious localhosts immediately
-    if (hostname === "localhost" || hostname === "localhost.localdomain") {
-      return false;
-    }
-
-    // Resolve the hostname to an IP address
-    let resolvedIp;
-    try {
-      // dns.lookup checks /etc/hosts and DNS, returning the IP
-      const { address } = await dns.lookup(hostname);
-      resolvedIp = address;
-    } catch (_err) {
-      // If we can't resolve it, it's not a valid safe public URL
-      return false;
-    }
-
-    // Parse the resolved IP using ipaddr.js
-    let addr;
-    try {
-      addr = ipaddr.parse(resolvedIp);
-    } catch (_err) {
-      return false;
-    }
-
-    // Check if the address is in a private, loopback, link-local, or otherwise restricted range
-    const range = addr.range();
-
-    // ipaddr.js classifies public addresses as 'unicast'
-    // Private ranges are classified as 'private', 'loopback', 'linkLocal', etc.
-    if (range !== "unicast") {
-      return false;
-    }
-
-    // Explicitly block known IPv4 mapped IPv6 loopbacks just in case
-    if (addr.kind() === "ipv6" && addr.isIPv4MappedAddress()) {
-      const v4addr = addr.toIPv4Address();
-      if (v4addr.range() !== "unicast") {
-        return false;
-      }
-    }
-
-    return true;
-  } catch (_err) {
-    return false;
-  }
-};
+import { isSafeWebhookUrl } from "../utils/webhookUrlSafety.js";
 
 // Helper to verify user permissions (must be Owner or Admin of the target Organization)
 const hasAdminPermission = async (userId, organizationId) => {
@@ -106,8 +51,8 @@ const createWebhookSchema = z.object({
     .string({ required_error: "Target URL is required." })
     .trim()
     .min(1, "Target URL cannot be empty.")
-    .refine((url) => url.startsWith("http://") || url.startsWith("https://"), {
-      message: "Target URL must start with http:// or https://.",
+    .refine((url) => url.startsWith("https://"), {
+      message: "Target URL must start with https://.",
     })
     .refine((url) => isSafeWebhookUrl(url), {
       message:
@@ -131,10 +76,10 @@ const updateWebhookSchema = z.object({
     .string()
     .trim()
     .min(1, "Target URL cannot be empty.")
-    .refine((url) => url.startsWith("http://") || url.startsWith("https://"), {
-      message: "Target URL must start with http:// or https://.",
+    .refine((url) => url.startsWith("https://"), {
+      message: "Target URL must start with https://.",
     })
-    .refine((url) => isSafeWebhookUrl(url), {
+    .refine(async (url) => await isSafeWebhookUrl(url), {
       message:
         "Target URL must be a public, safe address. Local/private addresses are not permitted.",
     })
@@ -193,17 +138,16 @@ export const createWebhook = async (req, res, next) => {
 
     const webhook = await Webhook.create(webhookData);
 
+    const webhookResponse = webhook.toObject();
+    // SECURITY FIX: Ensure secret is never returned in creation response
+    delete webhookResponse.secret;
+    // Add metadata flag for UI consistency
+    webhookResponse.hasSecret = !!webhook.secret;
+
     return sendSuccess(
       res,
       {
-        webhook: {
-          _id: webhook._id,
-          organizationId: webhook.organizationId,
-          targetUrl: webhook.targetUrl,
-          events: webhook.events,
-          secret: webhook.secret,
-          isActive: webhook.isActive,
-        },
+        webhook: webhookResponse,
       },
       "Webhook registered successfully.",
       201,
@@ -239,7 +183,20 @@ export const getWebhooks = async (req, res, next) => {
       createdAt: -1,
     });
 
-    return sendSuccess(res, { webhooks });
+    // SECURITY FIX: Sanitize the response to prevent secret exposure
+    const sanitizedWebhooks = webhooks.map((webhook) => {
+      const webhookObj = webhook.toObject();
+
+      // Remove the secret field entirely from the list response
+      delete webhookObj.secret;
+
+      // Add a metadata flag to indicate a secret is configured without exposing it
+      webhookObj.hasSecret = webhook.secret ? true : false;
+
+      return webhookObj;
+    });
+
+    return sendSuccess(res, { webhooks: sanitizedWebhooks });
   } catch (error) {
     next(error);
   }
@@ -296,7 +253,17 @@ export const updateWebhook = async (req, res, next) => {
 
     await webhook.save();
 
-    return sendSuccess(res, { webhook }, "Webhook updated successfully.");
+    const webhookResponse = webhook.toObject();
+    // SECURITY FIX: Ensure secret is never returned in update response
+    delete webhookResponse.secret;
+    // Add metadata flag for UI consistency
+    webhookResponse.hasSecret = !!webhook.secret;
+
+    return sendSuccess(
+      res,
+      { webhook: webhookResponse },
+      "Webhook updated successfully.",
+    );
   } catch (error) {
     next(error);
   }

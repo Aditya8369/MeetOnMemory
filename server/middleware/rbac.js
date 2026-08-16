@@ -6,13 +6,51 @@ import {
   isValidRole,
 } from "../utils/rbacPermissions.js";
 
+/**
+ * "May this user see this meeting-scoped document?" — the rule
+ * `requireOrgAccess` has always applied, extracted so it can be reused
+ * (Issue #1158).
+ *
+ * The note-version routes need the same rule but cannot use the middleware:
+ * their path carries a `NoteVersion` id, so the meeting has to be resolved
+ * first. Exporting the predicate keeps that from becoming a second, subtly
+ * different definition of who may read a meeting.
+ *
+ * @param {{organization?: any, uploadedBy?: any}} doc
+ * @param {{_id?: any, organization?: any}} user
+ * @returns {boolean}
+ */
+export const canAccessMeetingDoc = (doc, user) => {
+  if (!doc || !user) return false;
+
+  const isOwner =
+    Boolean(doc.uploadedBy) &&
+    Boolean(user._id) &&
+    doc.uploadedBy.toString() === user._id.toString();
+
+  const isInSameOrg = Boolean(
+    doc.organization &&
+    user.organization &&
+    doc.organization.toString() === user.organization.toString(),
+  );
+
+  return isOwner || isInSameOrg;
+};
+
 export const requireRole = (roles) => {
   return (req, res, next) => {
     if (!req.user) {
       return res.status(401).json({ success: false, message: "Unauthorized" });
     }
 
-    const userRole = req.user.role || "guest";
+    if (!req.user.role) {
+      return res.status(403).json({
+        success: false,
+        message: "Forbidden: No role assigned",
+      });
+    }
+
+    const userRole = req.user.role;
     const allowedRoles = Array.isArray(roles) ? roles : [roles];
 
     if (!allowedRoles.includes(userRole)) {
@@ -61,7 +99,14 @@ export const requirePermission = (resource, action) => {
       return res.status(401).json({ success: false, message: "Unauthorized" });
     }
 
-    const userRole = req.user.role || "guest";
+    if (!req.user.role) {
+      return res.status(403).json({
+        success: false,
+        message: "Forbidden: No role assigned",
+      });
+    }
+
+    const userRole = req.user.role;
 
     if (!hasPermission(userRole, resource, action)) {
       return res.status(403).json({
@@ -80,7 +125,14 @@ export const requireAnyPermission = (resource, actions) => {
       return res.status(401).json({ success: false, message: "Unauthorized" });
     }
 
-    const userRole = req.user.role || "guest";
+    if (!req.user.role) {
+      return res.status(403).json({
+        success: false,
+        message: "Forbidden: No role assigned",
+      });
+    }
+
+    const userRole = req.user.role;
 
     const hasAny = actions.some((action) =>
       hasPermission(userRole, resource, action),
@@ -246,13 +298,7 @@ export const requireOrgAccess = (Model) => {
           .json({ success: false, message: "Resource not found" });
       }
 
-      const isOwner = doc.uploadedBy?.toString() === req.user._id.toString();
-      const isInSameOrg =
-        doc.organization &&
-        req.user.organization &&
-        doc.organization.toString() === req.user.organization.toString();
-
-      if (!isOwner && !isInSameOrg) {
+      if (!canAccessMeetingDoc(doc, req.user)) {
         return res.status(403).json({
           success: false,
           message: "Forbidden: You don't have access to this resource",
@@ -298,6 +344,62 @@ export const requireMinimumRole = (minimumRole) => {
       });
     }
 
+    next();
+  };
+};
+
+/**
+ * Ensures a client-supplied organization path/query param matches the
+ * authenticated user's membership organization (Issue #1380).
+ *
+ * Cross-tenant IDOR pattern this closes: authorize the user, then still query
+ * with an untrusted `:organizationId` from the URL. After this middleware runs,
+ * handlers MUST scope queries with `req.authorizedOrganizationId` (the
+ * server-resolved membership org), never the raw path parameter.
+ *
+ * @param {string} [paramName="organizationId"]
+ */
+export const requireOrganizationParamMatch = (paramName = "organizationId") => {
+  return (req, res, next) => {
+    if (!req.user) {
+      return res.status(401).json({ success: false, message: "Unauthorized" });
+    }
+
+    if (!req.user.organization) {
+      return res.status(403).json({
+        success: false,
+        message: "Forbidden: Organization membership required",
+      });
+    }
+
+    const requestedId = req.params?.[paramName] ?? req.query?.[paramName];
+    if (!requestedId) {
+      return res.status(400).json({
+        success: false,
+        message: "Organization ID required",
+      });
+    }
+
+    if (!mongoose.Types.ObjectId.isValid(requestedId)) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid organization ID",
+      });
+    }
+
+    // Support populated organization refs and raw ObjectIds.
+    const userOrgId = (
+      req.user.organization._id || req.user.organization
+    ).toString();
+
+    if (userOrgId !== String(requestedId)) {
+      return res.status(403).json({
+        success: false,
+        message: "Forbidden: You don't have access to this resource",
+      });
+    }
+
+    req.authorizedOrganizationId = userOrgId;
     next();
   };
 };

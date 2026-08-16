@@ -2,9 +2,8 @@ export const AUTOMATION = Object.freeze({
   id: "meetonmemory",
   metadataStart: "<!-- mom:metadata:start -->",
   metadataEnd: "<!-- mom:metadata:end -->",
+  prOpenedMarker: "<!-- automation:pr-opened -->",
   markerPrefix: "mom",
-  reminder12Marker: "mom:reminder-12h",
-  reminder18Marker: "mom:reminder-18h",
   expiredMarker: "mom:claim-expired",
   claimWelcomeMarker: "mom:claim-welcome",
   assignmentWelcomeMarker: "mom:manual-assignment-welcome",
@@ -14,6 +13,10 @@ export const AUTOMATION = Object.freeze({
   guidanceMarker: "mom:claim-guidance",
   overrideMarker: "mom:maintainer-override",
   ciValidationMarker: "mom:ci-validation",
+  prAutoClosedMarker: "mom:pr-auto-closed",
+  prChangesRequestedReminderMarker: "mom:pr-changes-requested-reminder",
+  prFailedChecksReminderMarker: "mom:pr-failed-checks-reminder",
+  authorPriorityExpiredMarker: "mom:author-priority-expired",
 });
 
 export const COMMANDS = Object.freeze({
@@ -22,15 +25,23 @@ export const COMMANDS = Object.freeze({
 });
 
 export const LIMITS = Object.freeze({
-  maxActiveAssignedIssues: 4,
+  maxActiveAssignedIssues: 5,
   guidanceCooldownHours: 12,
 });
 
 export const TIMERS = Object.freeze({
-  reminder12Hours: 12,
-  reminder18Hours: 18,
+  // Reminders every 6 hours until the 24-hour claim window expires.
+  reminderHours: Object.freeze([6, 12, 18]),
   expirationHours: 24,
+  // Contributor-authored issues: exclusive claim window for the author.
+  authorPriorityHours: 24,
+  // Close open PRs strictly after this many hours (uses PR created_at).
+  prAutoCloseHours: 48,
 });
+
+export function reminderMarker(hours) {
+  return `mom:reminder-${hours}h`;
+}
 
 export const IGNORE_BOTS = Object.freeze([
   "github-actions[bot]",
@@ -63,6 +74,14 @@ export const PR_EVENTS = Object.freeze({
 
 export const EXPECTED_REPOSITORY =
   process.env.AUTOMATION_REPOSITORY || process.env.GITHUB_REPOSITORY || "";
+
+export const ALLOWED_BRANCH_PREFIXES = Object.freeze([
+  "feature",
+  "fix",
+  "docs",
+  "chore",
+  "refactor",
+]);
 
 export const REQUIRED_CHECK_NAMES = Object.freeze([
   "Code Quality",

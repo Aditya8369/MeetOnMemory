@@ -1,16 +1,32 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { FileText, ExternalLink } from "lucide-react";
+import { FileText, ExternalLink, Lock, Shield } from "lucide-react";
+import { toast } from "react-toastify";
+import GlossaryHighlighter from "./GlossaryHighlighter";
+import { useMeetingTranscriptText } from "../../hooks/useMeetingTranscriptText.js";
 
 const MeetingTranscript = ({ meeting }) => {
   const [isExpanded, setIsExpanded] = useState(false);
+  const [encrypting, setEncrypting] = useState(false);
   const navigate = useNavigate();
+  const {
+    plaintext,
+    isEncrypted,
+    error,
+    loading,
+    e2eeEnabled,
+    encryptAndStore,
+  } = useMeetingTranscriptText(meeting);
 
   if (!meeting) return null;
 
-  const transcript = meeting.transcript || "";
+  const transcript = plaintext || "";
+  const hasLegacyPlaintext = Boolean(meeting.transcript);
+  const hasEncrypted = Boolean(
+    meeting.isTranscriptEncrypted || meeting.encryptedTranscript,
+  );
 
-  if (!transcript) {
+  if (!transcript && !hasEncrypted && !loading) {
     return (
       <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-6">
         <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
@@ -34,7 +50,33 @@ const MeetingTranscript = ({ meeting }) => {
     }
   };
 
+  const handleEncrypt = async () => {
+    try {
+      setEncrypting(true);
+      await encryptAndStore(transcript || meeting.transcript);
+      toast.success(
+        "Transcript encrypted end-to-end. Plaintext cleared on server.",
+      );
+      // Soft refresh signal — parent pages typically refetch meeting details
+      window.dispatchEvent(
+        new CustomEvent("meetonmemory:transcript-encrypted", {
+          detail: { meetingId: meeting._id },
+        }),
+      );
+    } catch (err) {
+      toast.error(err.message || "Failed to encrypt transcript");
+    } finally {
+      setEncrypting(false);
+    }
+  };
+
   const shouldShowExpandButton = transcript.length > 1000;
+
+  const truncateAtWord = (text, maxLength) => {
+    if (text.length <= maxLength) return text;
+    const lastSpace = text.lastIndexOf(" ", maxLength);
+    return text.substring(0, lastSpace > 0 ? lastSpace : maxLength) + "...";
+  };
 
   return (
     <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-6">
@@ -42,8 +84,26 @@ const MeetingTranscript = ({ meeting }) => {
         <h2 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
           <FileText size={20} />
           Full Transcript
+          {isEncrypted && (
+            <span className="inline-flex items-center gap-1 text-xs font-medium text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded">
+              <Lock size={12} />
+              E2EE
+            </span>
+          )}
         </h2>
         <div className="flex items-center gap-2">
+          {e2eeEnabled && hasLegacyPlaintext && !hasEncrypted && (
+            <button
+              type="button"
+              onClick={handleEncrypt}
+              disabled={encrypting}
+              className="flex items-center gap-1 text-sm text-emerald-700 hover:text-emerald-900 px-3 py-1 rounded-md hover:bg-emerald-50 transition-colors disabled:opacity-50"
+              title="Encrypt transcript client-side and store ciphertext only"
+            >
+              <Shield size={14} />
+              {encrypting ? "Encrypting…" : "Encrypt (E2EE)"}
+            </button>
+          )}
           <button
             onClick={() => navigate(`/transcript/${meeting._id}`)}
             className="flex items-center gap-1 text-sm text-indigo-600 hover:text-indigo-800 px-3 py-1 rounded-md hover:bg-indigo-50 transition-colors"
@@ -51,42 +111,63 @@ const MeetingTranscript = ({ meeting }) => {
             <ExternalLink size={14} />
             View Full Transcript
           </button>
-          <button
-            onClick={handleCopy}
-            className="flex items-center gap-1 text-sm text-gray-600 hover:text-gray-900 px-3 py-1 rounded-md hover:bg-gray-100 transition-colors"
-          >
-            Copy
-          </button>
+          {transcript && (
+            <button
+              onClick={handleCopy}
+              className="flex items-center gap-1 text-sm text-gray-600 hover:text-gray-900 px-3 py-1 rounded-md hover:bg-gray-100 transition-colors"
+            >
+              Copy
+            </button>
+          )}
         </div>
       </div>
 
-      <div className="bg-gray-50 rounded-lg p-4 max-h-96 overflow-y-auto">
-        <p className="text-gray-700 text-sm whitespace-pre-wrap leading-relaxed">
-          {shouldShowExpandButton && !isExpanded ? (
-            <>
-              {transcript.substring(0, 1000)}...
-              <button
-                onClick={() => setIsExpanded(true)}
-                className="ml-2 text-blue-600 hover:text-blue-800 font-medium"
-              >
-                Read more
-              </button>
-            </>
-          ) : (
-            <>
-              {transcript}
-              {shouldShowExpandButton && isExpanded && (
+      {loading && (
+        <p className="text-sm text-gray-500 mb-3">Decrypting transcript…</p>
+      )}
+      {error && (
+        <div className="mb-3 text-sm text-amber-800 bg-amber-50 border border-amber-200 rounded-md p-3">
+          {error}
+        </div>
+      )}
+
+      {transcript ? (
+        <div className="bg-gray-50 rounded-lg p-4 max-h-96 overflow-y-auto">
+          <div className="text-gray-700 text-sm whitespace-pre-wrap leading-relaxed">
+            {shouldShowExpandButton && !isExpanded ? (
+              <>
+                <GlossaryHighlighter text={truncateAtWord(transcript, 1000)} />
                 <button
-                  onClick={() => setIsExpanded(false)}
+                  onClick={() => setIsExpanded(true)}
                   className="ml-2 text-blue-600 hover:text-blue-800 font-medium"
                 >
-                  Show less
+                  Read more
                 </button>
-              )}
-            </>
-          )}
-        </p>
-      </div>
+              </>
+            ) : (
+              <>
+                <GlossaryHighlighter text={transcript} />
+                {shouldShowExpandButton && isExpanded && (
+                  <button
+                    onClick={() => setIsExpanded(false)}
+                    className="ml-2 text-blue-600 hover:text-blue-800 font-medium"
+                  >
+                    Show less
+                  </button>
+                )}
+              </>
+            )}
+          </div>
+        </div>
+      ) : (
+        !loading &&
+        hasEncrypted && (
+          <div className="text-gray-500 text-sm py-6 text-center bg-gray-50 rounded-lg">
+            Encrypted transcript is stored on the server. Provide the meeting
+            key in this browser to decrypt.
+          </div>
+        )
+      )}
     </div>
   );
 };

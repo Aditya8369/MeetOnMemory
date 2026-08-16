@@ -1,4 +1,5 @@
 import mongoose from "mongoose";
+import { encryptToken, decryptToken } from "../utils/crypto.js";
 
 const organizationSchema = new mongoose.Schema(
   {
@@ -57,6 +58,14 @@ const organizationSchema = new mongoose.Schema(
     logo: {
       type: String,
       default: "",
+      // Logo image URL (external or future upload CDN URL)
+      maxlength: [2048, "Logo URL cannot exceed 2048 characters"],
+    },
+    // Cover/banner image URL (external or future upload CDN URL)
+    bannerUrl: {
+      type: String,
+      default: "",
+      maxlength: [2048, "Banner URL cannot exceed 2048 characters"],
     },
     visibility: {
       type: String,
@@ -73,12 +82,30 @@ const organizationSchema = new mongoose.Schema(
       ref: "user",
       required: true,
     },
-    // Deprecated: Use Membership model instead
-    // Kept for backward compatibility during migration
     members: [
       {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: "user",
+        userId: {
+          type: mongoose.Schema.Types.ObjectId,
+          ref: "user",
+        },
+        role: {
+          type: String,
+          enum: ["owner", "admin", "member", "viewer"],
+          default: "member",
+        },
+        invitedBy: {
+          type: mongoose.Schema.Types.ObjectId,
+          ref: "user",
+        },
+        joinedAt: {
+          type: Date,
+          default: Date.now,
+        },
+        status: {
+          type: String,
+          enum: ["active", "invited", "suspended"],
+          default: "active",
+        },
       },
     ],
     metadata: {
@@ -111,8 +138,24 @@ const organizationSchema = new mongoose.Schema(
       },
     },
   },
-  { timestamps: true },
+  {
+    timestamps: true,
+    toJSON: { virtuals: true },
+    toObject: { virtuals: true },
+  },
 );
+
+organizationSchema
+  .virtual("slackBotToken")
+  .get(function () {
+    return decryptToken(this.slackIntegration?.botToken);
+  })
+  .set(function (value) {
+    if (!this.slackIntegration) {
+      this.slackIntegration = {};
+    }
+    this.slackIntegration.botToken = encryptToken(value);
+  });
 
 // Indexes for performance
 

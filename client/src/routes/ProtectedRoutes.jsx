@@ -14,14 +14,21 @@ import OrganizationSettings from "../pages/OrganizationSettings.jsx";
 import Dashboard from "../pages/Dashboard.jsx";
 
 // Feature Pages
+import CompareMeetings from "../pages/MeetingComparison";
 import CreateMeeting from "../pages/CreateMeeting.jsx";
+import MeetingTemplates from "../pages/MeetingTemplates.jsx";
+import TemplateLibrary from "../pages/TemplateLibrary.jsx";
 import UploadMeeting from "../pages/UploadMeeting.jsx";
 import Policies from "../pages/Policies.jsx";
+import AiSummaryTemplates from "../pages/AiSummaryTemplates.jsx";
 import Summaries from "../pages/Summaries.jsx";
 import Reports from "../pages/Reports.jsx";
+import ReportBuilder from "../pages/ReportBuilder.jsx";
 import AiSearch from "../pages/AiSearch.jsx";
 import AiAssistant from "../pages/AiAssistant.jsx";
 import MeetingDetails from "../pages/MeetingDetails.jsx";
+import MeetingRecycleBin from "../pages/MeetingRecycleBin.jsx";
+import MeetingRoom from "../pages/MeetingRoom.jsx";
 import TranscriptViewer from "../pages/TranscriptViewer.jsx";
 import TeamMembers from "../pages/TeamMembers.jsx";
 import Profile from "../pages/Profile.jsx";
@@ -30,14 +37,28 @@ import Notifications from "../pages/Notifications.jsx";
 import Tasks from "../pages/Tasks.jsx";
 import KnowledgeTimeline from "../pages/KnowledgeTimeline.jsx";
 import MemoryConsolidation from "../pages/MemoryConsolidation.jsx";
+import MemoryLifecycle from "../pages/MemoryLifecycle.jsx";
+import KnowledgeArchive from "../pages/KnowledgeArchive.jsx";
 import GraphSnapshots from "../pages/GraphSnapshots.jsx";
+import KnowledgeGraph from "../pages/KnowledgeGraph.jsx";
+import DecisionGraph from "../pages/DecisionGraph.jsx";
 import PolicyCompliance from "../pages/PolicyCompliance.jsx";
 import Settings from "../pages/Settings.jsx";
 import MembershipRequests from "../pages/MembershipRequests.jsx";
+import MembersManagement from "../pages/Admin/MembersManagement.jsx";
+import AuditLogViewer from "../pages/Admin/AuditLogViewer.jsx";
 import AdminPanel from "../pages/AdminPanel.jsx";
 import Bookmarks from "../pages/Bookmarks.jsx";
 import ActivityFeed from "../pages/ActivityFeed.jsx";
 import TagBrowser from "../pages/TagBrowser.jsx";
+import AttendanceAnalytics from "../pages/AttendanceAnalytics.jsx";
+import MeetingCostAnalytics from "../pages/MeetingCostAnalytics.jsx";
+import RecapScheduleDashboard from "../pages/RecapScheduleDashboard.jsx";
+import MeetingHealthDashboard from "../pages/MeetingHealthDashboard.jsx";
+import AutomationRules from "../pages/AutomationRules.jsx";
+import TopicExplorer from "../pages/TopicExplorer.jsx";
+import ConflictResolution from "../pages/ConflictResolution.jsx";
+import SpeakingTimeTrends from "../pages/SpeakingTimeTrends.jsx";
 
 const ProtectedRoutes = (
   <React.Fragment>
@@ -50,10 +71,26 @@ const ProtectedRoutes = (
       }
     />
     <Route
-      path="/knowledge/:decisionId"
+      path="/meetings/recycle-bin"
       element={
-        <ProtectedRoute>
-          <KnowledgeTimeline />
+        <ProtectedRoute resource="meetings" action="view">
+          <MeetingRecycleBin />
+        </ProtectedRoute>
+      }
+    />
+    <Route
+      path="/meetings/compare"
+      element={
+        <ProtectedRoute resource="meetings" action="view">
+          <CompareMeetings />
+        </ProtectedRoute>
+      }
+    />
+    <Route
+      path="/knowledge/conflicts"
+      element={
+        <ProtectedRoute resource="knowledge" action="view">
+          <ConflictResolution />
         </ProtectedRoute>
       }
     />
@@ -66,6 +103,22 @@ const ProtectedRoutes = (
       }
     />
     <Route
+      path="/knowledge/lifecycle"
+      element={
+        <ProtectedRoute resource="knowledge" action="view">
+          <MemoryLifecycle />
+        </ProtectedRoute>
+      }
+    />
+    <Route
+      path="/knowledge/archive"
+      element={
+        <ProtectedRoute resource="knowledge" action="view">
+          <KnowledgeArchive />
+        </ProtectedRoute>
+      }
+    />
+    <Route
       path="/knowledge/graph-history"
       element={
         <ProtectedRoute resource="knowledge" action="view">
@@ -74,10 +127,58 @@ const ProtectedRoutes = (
       }
     />
     <Route
+      path="/knowledge/graph"
+      element={
+        <ProtectedRoute resource="knowledge" action="view">
+          <KnowledgeGraph />
+        </ProtectedRoute>
+      }
+    />
+    <Route
+      path="/knowledge/:decisionId"
+      element={
+        <ProtectedRoute>
+          <KnowledgeTimeline />
+        </ProtectedRoute>
+      }
+    />
+    <Route
+      path="/decisions/graph"
+      element={
+        <ProtectedRoute resource="knowledge" action="view">
+          <DecisionGraph />
+        </ProtectedRoute>
+      }
+    />
+    <Route
+      path="/admin/members"
+      element={
+        <ProtectedRoute resource="team_members" action="view">
+          <MembersManagement />
+        </ProtectedRoute>
+      }
+    />
+    <Route
+      path="/admin/audit-logs"
+      element={
+        <ProtectedRoute resource="audit_logs" action="view">
+          <AuditLogViewer />
+        </ProtectedRoute>
+      }
+    />
+    <Route
       path="/organizations"
       element={
         <ProtectedRoute>
           <OrganizationHub />
+        </ProtectedRoute>
+      }
+    />
+    <Route
+      path="/automation-rules"
+      element={
+        <ProtectedRoute resource="automation_rules" action="view">
+          <AutomationRules />
         </ProtectedRoute>
       }
     />
@@ -137,6 +238,14 @@ const ProtectedRoutes = (
         </ProtectedRoute>
       }
     />
+    <Route
+      path="/topics"
+      element={
+        <ProtectedRoute resource="reports" action="view">
+          <TopicExplorer />
+        </ProtectedRoute>
+      }
+    />
 
     {/* Feature Routes */}
     <Route
@@ -144,6 +253,22 @@ const ProtectedRoutes = (
       element={
         <ProtectedRoute resource="meetings" action="create">
           <CreateMeeting />
+        </ProtectedRoute>
+      }
+    />
+    <Route
+      path="/meeting-templates"
+      element={
+        <ProtectedRoute resource="meetings" action="view">
+          <MeetingTemplates />
+        </ProtectedRoute>
+      }
+    />
+    <Route
+      path="/template-library"
+      element={
+        <ProtectedRoute resource="meetings" action="view">
+          <TemplateLibrary />
         </ProtectedRoute>
       }
     />
@@ -180,6 +305,14 @@ const ProtectedRoutes = (
       }
     />
     <Route
+      path="/reports/builder/:templateId?"
+      element={
+        <ProtectedRoute resource="reports" action="view">
+          <ReportBuilder />
+        </ProtectedRoute>
+      }
+    />
+    <Route
       path="/ai-search"
       element={
         <ProtectedRoute resource="ai_search" action="search">
@@ -208,6 +341,14 @@ const ProtectedRoutes = (
       element={
         <ProtectedRoute resource="meetings" action="view">
           <MeetingDetails />
+        </ProtectedRoute>
+      }
+    />
+    <Route
+      path="/meeting-room/:roomId"
+      element={
+        <ProtectedRoute resource="meetings" action="view">
+          <MeetingRoom />
         </ProtectedRoute>
       }
     />
@@ -262,7 +403,7 @@ const ProtectedRoutes = (
     <Route
       path="/settings"
       element={
-        <ProtectedRoute resource="settings" action="view">
+        <ProtectedRoute>
           <Settings />
         </ProtectedRoute>
       }
@@ -299,6 +440,48 @@ const ProtectedRoutes = (
         </ProtectedRoute>
       }
     />
+    <Route
+      path="/attendance-analytics"
+      element={
+        <ProtectedRoute resource="reports" action="view">
+          <AttendanceAnalytics />
+        </ProtectedRoute>
+      }
+    />
+    <Route
+      path="/meeting-cost-analytics"
+      element={
+        <ProtectedRoute resource="reports" action="view">
+          <MeetingCostAnalytics />
+        </ProtectedRoute>
+      }
+    />
+    <Route
+      path="/recap-schedule"
+      element={
+        <ProtectedRoute resource="settings" action="view">
+          <RecapScheduleDashboard />
+        </ProtectedRoute>
+      }
+    />
+    <Route
+      path="/meeting-health"
+      element={
+        <ProtectedRoute resource="reports" action="view">
+          <MeetingHealthDashboard />
+        </ProtectedRoute>
+      }
+    />
+    <Route
+      path="/speaking-time-trends"
+      element={
+        <ProtectedRoute resource="reports" action="view">
+          <SpeakingTimeTrends />
+        </ProtectedRoute>
+      }
+    />
+    <Route path="/meeting-templates" element={<MeetingTemplates />} />
+    <Route path="/ai-summary-templates" element={<AiSummaryTemplates />} />
     <Route path="/access-denied" element={<AccessDenied />} />
 
     <Route

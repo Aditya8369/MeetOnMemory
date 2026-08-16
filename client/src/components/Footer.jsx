@@ -2,6 +2,8 @@ import React, { useCallback } from "react";
 import { useTranslation } from "react-i18next";
 import { Link, useLocation } from "react-router-dom";
 import { Github, ArrowUp } from "lucide-react";
+import ThemeToggle from "./ThemeToggle.jsx";
+import BrandLogo from "./branding/BrandLogo.jsx";
 
 const Footer = () => {
   const { t } = useTranslation();
@@ -22,40 +24,21 @@ const Footer = () => {
 
   if (!isLandingPage) {
     return (
-      <footer className="bg-white dark:bg-gray-900 border-t border-gray-200 dark:border-gray-800 py-6 mt-auto">
+      <footer
+        role="contentinfo"
+        className="bg-white dark:bg-gray-900 border-t border-gray-200 dark:border-gray-800 py-6 mt-auto"
+      >
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex flex-col md:flex-row items-center justify-between gap-4">
             {/* Left: Brand logo & Copyright */}
             <div className="flex flex-wrap items-center justify-center md:justify-start gap-3 md:gap-4">
               <Link to="/" className="flex items-center gap-2 group">
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  viewBox="0 0 100 100"
+                <BrandLogo
+                  variant="mark"
+                  alt=""
+                  aria-hidden="true"
                   className="w-6 h-6 transition-transform duration-300 group-hover:scale-105"
-                >
-                  <defs>
-                    <linearGradient
-                      id="compactInfinityGrad"
-                      x1="0%"
-                      y1="0%"
-                      x2="100%"
-                      y2="100%"
-                    >
-                      <stop offset="0%" stopColor="#2563eb" />
-                      <stop offset="100%" stopColor="#7c3aed" />
-                    </linearGradient>
-                  </defs>
-                  <path
-                    d="M25,50 C25,35 38,30 50,50 C62,70 75,65 75,50 C75,35 62,30 50,50 C38,70 25,65 25,50 Z"
-                    fill="none"
-                    stroke="url(#compactInfinityGrad)"
-                    strokeWidth="11"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  />
-                  <circle cx="25" cy="50" r="6.5" fill="#2563eb" />
-                  <circle cx="75" cy="50" r="6.5" fill="#7c3aed" />
-                </svg>
+                />
                 <span className="font-bold text-sm text-gray-900 dark:text-gray-100 tracking-tight">
                   MeetOn
                   <span className="text-blue-600 dark:text-blue-400">
@@ -113,6 +96,12 @@ const Footer = () => {
               >
                 {t("footer.careers", "Careers")}
               </Link>
+              <Link
+                to="/docs"
+                className="hover:text-blue-600 dark:hover:text-blue-400 transition-colors duration-200 font-semibold text-blue-600 dark:text-blue-400"
+              >
+                Developer Docs
+              </Link>
               <span className="text-gray-300 dark:text-gray-700">|</span>
               <Link
                 to="/contact"
@@ -151,42 +140,22 @@ const Footer = () => {
   }
 
   return (
-    <footer className="bg-white dark:bg-gray-900 border-t border-gray-200 dark:border-gray-800 pt-16 pb-8 mt-auto">
+    <footer
+      role="contentinfo"
+      className="bg-white dark:bg-gray-900 border-t border-gray-200 dark:border-gray-800 pt-16 pb-8 mt-auto"
+    >
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-10">
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-10 mb-14">
           {/* Column 1: Project Info */}
           <div className="flex flex-col gap-4 lg:col-span-1">
             <div className="flex items-center gap-2.5">
               <div className="flex items-center justify-center">
-                {/* Clean Native Option A Infinity Symbol tuned for Footer Sizing */}
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  viewBox="0 0 100 100"
+                <BrandLogo
+                  variant="mark"
+                  alt=""
+                  aria-hidden="true"
                   className="w-10 h-10 transition-transform duration-300"
-                >
-                  <defs>
-                    <linearGradient
-                      id="footerInfinityGrad"
-                      x1="0%"
-                      y1="0%"
-                      x2="100%"
-                      y2="100%"
-                    >
-                      <stop offset="0%" stopColor="#2563eb" />
-                      <stop offset="100%" stopColor="#7c3aed" />
-                    </linearGradient>
-                  </defs>
-                  <path
-                    d="M25,50 C25,35 38,30 50,50 C62,70 75,65 75,50 C75,35 62,30 50,50 C38,70 25,65 25,50 Z"
-                    fill="none"
-                    stroke="url(#footerInfinityGrad)"
-                    strokeWidth="11"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  />
-                  <circle cx="25" cy="50" r="6.5" fill="#2563eb" />
-                  <circle cx="75" cy="50" r="6.5" fill="#7c3aed" />
-                </svg>
+                />
               </div>
               <span className="font-bold text-xl text-gray-900 dark:text-gray-100 tracking-tight">
                 MeetOn
@@ -308,6 +277,14 @@ const Footer = () => {
                   className="text-sm text-gray-500 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors duration-200 inline-block font-medium"
                 >
                   {t("footer.careers", "Careers")}
+                </Link>
+              </li>
+              <li>
+                <Link
+                  to="/docs"
+                  className="text-sm text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 transition-colors duration-200 inline-block font-semibold"
+                >
+                  Developer Docs
                 </Link>
               </li>
               <li>
@@ -457,15 +434,18 @@ const Footer = () => {
             {t("footer.madeWith")} ❤️ {t("footer.by")}{" "}
             {t("footer.meetOnMemoryTeam")}.
           </p>
-          {/* Back to top */}
-          <button
-            onClick={scrollToTop}
-            aria-label="Scroll back to top"
-            className="flex items-center gap-1.5 text-sm text-gray-400 dark:text-gray-500 hover:text-blue-600 dark:hover:text-blue-400 transition-colors duration-200 group focus-visible:ring-2 focus-visible:ring-blue-500 rounded-md px-1"
-          >
-            <ArrowUp className="w-4 h-4 group-hover:-translate-y-0.5 transition-transform duration-200" />
-            {t("footer.backToTop")}
-          </button>
+          <div className="flex items-center gap-3">
+            <ThemeToggle showLabel={false} />
+            {/* Back to top */}
+            <button
+              onClick={scrollToTop}
+              aria-label="Scroll back to top"
+              className="flex items-center gap-1.5 text-sm text-gray-400 dark:text-gray-500 hover:text-blue-600 dark:hover:text-blue-400 transition-colors duration-200 group focus-visible:ring-2 focus-visible:ring-blue-500 rounded-md px-1"
+            >
+              <ArrowUp className="w-4 h-4 group-hover:-translate-y-0.5 transition-transform duration-200" />
+              {t("footer.backToTop")}
+            </button>
+          </div>
         </div>
       </div>
     </footer>

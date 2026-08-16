@@ -1,21 +1,110 @@
-import React, { useEffect, useState } from "react";
-import { useParams } from "react-router-dom";
+import React, {
+  useCallback,
+  useEffect,
+  useState,
+  useRef,
+  useContext,
+  useMemo,
+} from "react";
+import { useParams, useNavigate } from "react-router-dom";
+import { io } from "socket.io-client";
+import { useAuth } from "@clerk/clerk-react";
+import Peer from "simple-peer";
 import { toast } from "react-toastify";
-import { Loader2, CheckCircle2 } from "lucide-react";
-import ErrorState from "../components/ErrorState.jsx";
+import {
+  Loader2,
+  CheckCircle2,
+  Clock,
+  Users,
+  Copy,
+  PanelRightClose,
+  NotebookPen,
+  Captions,
+  FileText,
+  Lightbulb,
+} from "lucide-react";
 import CollaborativeEditor from "../components/meetings/CollaborativeEditor.jsx";
+import ParkingLotPanel from "../components/meetings/ParkingLotPanel.jsx";
 import PeerVideo from "../components/meetings/PeerVideo.jsx";
 import MeetingHeader from "../components/meetings/MeetingHeader.jsx";
 import MeetingControlBar from "../components/meetings/MeetingControlBar.jsx";
 import TranscriptPanel from "../components/meetings/TranscriptPanel.jsx";
 import LiveCaptions from "../components/meetings/LiveCaptions.jsx";
+import DeviceSetupModal from "../components/meetings/DeviceSetupModal.jsx";
 import useWebRTC from "../hooks/useWebRTC";
+import useDevicePermission from "../hooks/useDevicePermission";
 import useLiveTranscription from "../hooks/useLiveTranscription";
+import useReactions from "../hooks/useReactions.js";
+import ReactionBar from "../components/meetings/ReactionBar.jsx";
+import ReactionOverlay from "../components/meetings/ReactionOverlay.jsx";
+import {
+  getMeetingVideoGridClass,
+  MEETING_VIDEO_TILE_CLASS,
+} from "../utils/meetingVideoGrid.js";
+import {
+  getTrackEnabledState,
+  resolveMeetingMediaStream,
+} from "../utils/mediaStream.js";
+import AppContent from "../context/AppContent.js";
+import {
+  createClerkSocketOptions,
+  getClerkBearerToken,
+} from "../services/apiClient.js";
+
+/** Build join/signaling identity from authenticated AppContext user (Issue #1211). */
+const buildLocalUserInfo = (userData) => ({
+  id: userData?._id || userData?.id || undefined,
+  name: userData?.name || "Participant",
+  email: userData?.email || "",
+  profilePic: userData?.profilePic || "",
+});
 
 const MeetingRoom = () => {
   const { roomId } = useParams();
+  const navigate = useNavigate();
+  const { userData } = useContext(AppContent);
+  const { isSignedIn, isLoaded, userId } = useAuth();
+  const [socket, setSocket] = useState(null);
+  const localUserInfo = useMemo(() => buildLocalUserInfo(userData), [userData]);
+  const localUserInfoRef = useRef(localUserInfo);
+  localUserInfoRef.current = localUserInfo;
+
+  const screenTrackRef = useRef();
+  const peersRef = useRef([]);
+  const backendUrl = import.meta.env.VITE_BACKEND_URL;
+
+  const formatTime = (seconds) => {
+    const hrs = Math.floor(seconds / 3600);
+    const mins = Math.floor((seconds % 3600) / 60);
+    const secs = seconds % 60;
+    return `${hrs > 0 ? hrs + ":" : ""}${mins.toString().padStart(2, "0")}:${secs.toString().padStart(2, "0")}`;
+  };
+
+  const [joined, setJoined] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [meetingEnded, setMeetingEnded] = useState(false);
+  // eslint-disable-next-line no-unused-vars
+  const [mediaError, setMediaError] = useState(null);
+
+  const [micOn, setMicOn] = useState(true);
+  const [cameraOn, setCameraOn] = useState(true);
+  const [isScreenSharing, setIsScreenSharing] = useState(false);
+
+  const [peers, setPeers] = useState([]);
+
+  // Shared Timer State
+  const [timerState, setTimerState] = useState({
+    isRunning: false,
+    elapsed: 0,
+    remaining: 0,
+    currentAgendaItem: null,
+  });
+  const timerStateRef = useRef(timerState);
+
+  // eslint-disable-next-line no-unused-vars
   const [duration, setDuration] = useState(0);
   const [showNotes, setShowNotes] = useState(false);
+  const [showParkingLot, setShowParkingLot] = useState(false);
 
   // Transcription state
   const [showCaptions] = useState(true);
@@ -24,26 +113,12 @@ const MeetingRoom = () => {
   const [transcriptSegments, setTranscriptSegments] = useState([]);
   const [transcriptionEnabled, setTranscriptionEnabled] = useState(false);
 
+  // Device permission setup
+  const [deviceSetupDone, setDeviceSetupDone] = useState(false);
+  const permission = useDevicePermission();
+
   // WebRTC
-  const {
-    joined,
-    loading,
-    meetingEnded,
-    mediaError,
-    setMediaError,
-    micOn,
-    cameraOn,
-    isScreenSharing,
-    peers,
-    socketRef,
-    userVideoRef,
-    streamRef,
-    joinMeeting,
-    leaveMeeting,
-    toggleMic,
-    toggleCamera,
-    toggleScreenShare,
-  } = useWebRTC(roomId, {
+  const { socketRef, userVideoRef, streamRef } = useWebRTC(roomId, {
     showCaptions,
     setCaptions,
     setTranscriptSegments,
@@ -57,73 +132,509 @@ const MeetingRoom = () => {
     streamRef,
   );
 
+  // Reactions
+  const { reactions, sendReaction, onCooldown } = useReactions(roomId, socket);
+
+  // Local timer tick for smooth UI updates
   useEffect(() => {
-    let timer;
-    if (joined && !meetingEnded) {
-      timer = setInterval(() => {
-        setDuration((prev) => prev + 1);
+    let interval;
+    if (timerState.isRunning && !meetingEnded) {
+      interval = setInterval(() => {
+        setTimerState((prev) => {
+          const next = {
+            ...prev,
+            elapsed: prev.elapsed + 1,
+            remaining: Math.max(0, prev.remaining - 1),
+          };
+          timerStateRef.current = next;
+          return next;
+        });
       }, 1000);
     }
-    return () => clearInterval(timer);
-  }, [joined, meetingEnded]);
+    return () => clearInterval(interval);
+  }, [timerState.isRunning, meetingEnded]);
+
+  const setupSocketListeners = (activeSocket) => {
+    const userInfo = localUserInfoRef.current;
+    activeSocket.emit("join-meeting", { roomId, userInfo });
+
+    activeSocket.on("reconnect_attempt", async () => {
+      const token = await getClerkBearerToken();
+      if (activeSocket.auth) {
+        activeSocket.auth.token = token;
+      } else {
+        activeSocket.auth = { token };
+      }
+    });
+
+    activeSocket.on("all-users", (users) => {
+      const peersArr = [];
+      users.forEach((user) => {
+        const peer = createPeer(
+          user.socketId,
+          activeSocket.id,
+          streamRef.current,
+        );
+        peersRef.current.push({
+          peerID: user.socketId,
+          peer,
+          userInfo: user,
+        });
+        peersArr.push({
+          peerID: user.socketId,
+          peer,
+          userInfo: user,
+        });
+      });
+      setPeers(peersArr);
+    });
+
+    activeSocket.on("user-joined", (user) => {
+      toast.info(`👋 Participant joined`);
+      const peer = addPeer(user.socketId, activeSocket.id, streamRef.current);
+      peersRef.current.push({
+        peerID: user.socketId,
+        peer,
+        userInfo: user,
+      });
+
+      setPeers([...peersRef.current]);
+    });
+
+    // Timer synchronization event
+    activeSocket.on("timer-sync", (serverState) => {
+      setTimerState((prev) => ({ ...prev, ...serverState }));
+      timerStateRef.current = { ...timerStateRef.current, ...serverState };
+    });
+
+    activeSocket.on("user-joined-signal", (payload) => {
+      const item = peersRef.current.find((p) => p.peerID === payload.callerID);
+      if (item) {
+        item.peer.signal(payload.signal);
+      }
+    });
+
+    activeSocket.on("receiving-returned-signal", (payload) => {
+      const item = peersRef.current.find((p) => p.peerID === payload.id);
+      if (item) {
+        item.peer.signal(payload.signal);
+      }
+    });
+
+    activeSocket.on("user-left", (id) => {
+      toast.error(`🚪 Participant left`);
+      const peerObj = peersRef.current.find((p) => p.peerID === id);
+      if (peerObj) {
+        peerObj.peer.destroy();
+      }
+      peersRef.current = peersRef.current.filter((p) => p.peerID !== id);
+      setPeers([...peersRef.current]);
+    });
+
+    // Transcription events
+    activeSocket.on("transcript-partial", (data) => {
+      if (showCaptions) {
+        setCaptions((prev) => [
+          ...prev.slice(-4),
+          { text: data.text, isFinal: false, timestamp: data.timestamp },
+        ]);
+      }
+    });
+
+    activeSocket.on("transcript-final", (data) => {
+      const { segment } = data;
+      setCaptions((prev) => {
+        // Check for exact duplicate in captions
+        const exists = prev.some(
+          (c) => c.text === segment.text && c.timestamp === data.timestamp,
+        );
+        if (exists) return prev;
+        return [
+          ...prev.slice(-4),
+          {
+            text: segment.text,
+            speaker: segment.speaker,
+            isFinal: true,
+            timestamp: data.timestamp,
+          },
+        ];
+      });
+      setTranscriptSegments((prev) => {
+        const exists = prev.some(
+          (s) =>
+            s.startTime === segment.startTime &&
+            s.text === segment.text &&
+            s.speaker === segment.speaker,
+        );
+        if (exists) return prev;
+        return [...prev, segment];
+      });
+    });
+
+    activeSocket.on("transcription-started", () => {
+      setTranscriptionEnabled(true);
+      toast.success("🎙️ Live transcription started");
+    });
+
+    activeSocket.on("transcription-stopped", () => {
+      setTranscriptionEnabled(false);
+      toast.info("🎙️ Live transcription stopped");
+    });
+
+    activeSocket.on("transcription-error", (data) => {
+      toast.error(`Transcription error: ${data.message}`);
+      setTranscriptionEnabled(false);
+    });
+  };
+
+  // Connect & Rebind socket dynamically when Clerk session or token changes
+  useEffect(() => {
+    if (!joined || !isSignedIn || !isLoaded) return;
+
+    let active = true;
+    let newSocket = null;
+
+    const connectAndBind = async () => {
+      try {
+        setLoading(true);
+        // Clear previous connection
+        if (socketRef.current) {
+          socketRef.current.disconnect();
+          socketRef.current = null;
+          setSocket(null);
+        }
+
+        const opts = await createClerkSocketOptions({
+          transports: ["websocket"],
+        });
+        if (!active) return;
+
+        newSocket = io(backendUrl, opts);
+        socketRef.current = newSocket;
+        setSocket(newSocket);
+
+        setupSocketListeners(newSocket);
+        setLoading(false);
+      } catch (err) {
+        console.error("Socket rebinding error:", err);
+        setLoading(false);
+      }
+    };
+
+    connectAndBind();
+
+    return () => {
+      active = false;
+      if (newSocket) {
+        newSocket.disconnect();
+      }
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [userId, isSignedIn, isLoaded, joined, backendUrl]);
+
+  const joinMeeting = async (providedStream = null, joinOptions = {}) => {
+    try {
+      setLoading(true);
+
+      const { mode = null } = joinOptions;
+      const stream = await resolveMeetingMediaStream({
+        providedStream,
+        mode,
+        videoDeviceId: permission.selectedCamera,
+        audioDeviceId: permission.selectedMicrophone,
+      });
+
+      streamRef.current = stream;
+      const trackState = getTrackEnabledState(stream);
+      setMicOn(trackState.micOn);
+      setCameraOn(trackState.cameraOn);
+      setJoined(true);
+
+      setTimeout(() => {
+        if (userVideoRef.current) {
+          userVideoRef.current.srcObject = stream;
+        }
+      }, 100);
+
+      // Loading state will be turned off in the react socket useEffect upon successful connect
+    } catch (err) {
+      console.error("Camera/Mic access denied:", err);
+      let errMsg =
+        "Camera or microphone access denied. Please enable them and retry.";
+      if (err.name === "NotFoundError" || err.name === "DevicesNotFoundError") {
+        errMsg = "Required media devices (camera or microphone) not found.";
+      } else if (
+        err.name === "NotAllowedError" ||
+        err.name === "PermissionDeniedError"
+      ) {
+        errMsg =
+          "Permission denied. Please allow camera and microphone access in your browser settings.";
+      }
+      setMediaError(errMsg);
+      toast.error(errMsg);
+      setLoading(false);
+      setDeviceSetupDone(false);
+    }
+  };
+
+  const createPeer = (userToSignal, callerID, stream) => {
+    const peer = new Peer({
+      initiator: true,
+      trickle: false,
+      stream,
+    });
+
+    peer.on("signal", (signal) => {
+      socketRef.current.emit("sending-signal", {
+        userToSignal,
+        callerID,
+        signal,
+        // Server ignores this and uses authenticated socket.user (#1211).
+        userInfo: localUserInfoRef.current,
+      });
+    });
+
+    return peer;
+  };
+
+  const addPeer = (incomingSignal, callerID, stream) => {
+    const peer = new Peer({
+      initiator: false,
+      trickle: false,
+      stream,
+    });
+
+    peer.on("signal", (signal) => {
+      socketRef.current.emit("returning-signal", { signal, callerID });
+    });
+
+    return peer;
+  };
+
+  const leaveMeeting = useCallback(() => {
+    setMeetingEnded(true);
+
+    streamRef.current?.getTracks().forEach((track) => track.stop());
+    screenTrackRef.current?.getTracks().forEach((track) => track.stop());
+
+    socketRef.current?.disconnect();
+
+    setJoined(false);
+    setSocket(null);
+
+    setTimeout(() => {
+      setMeetingEnded(false);
+      navigate("/dashboard");
+    }, 4000);
+  }, [navigate, socketRef, streamRef]);
+
+  // Cleanly handle logout during an active meeting
+  useEffect(() => {
+    if (joined && isLoaded && !isSignedIn) {
+      leaveMeeting();
+    }
+  }, [isSignedIn, isLoaded, joined, leaveMeeting]);
+
+  // Toggle Media Handlers
+  const toggleMic = () => {
+    if (streamRef.current) {
+      const audioTrack = streamRef.current.getAudioTracks()[0];
+      if (audioTrack) {
+        audioTrack.enabled = !micOn;
+        setMicOn(!micOn);
+      }
+    }
+  };
+
+  const toggleCamera = () => {
+    if (streamRef.current) {
+      const videoTrack = streamRef.current.getVideoTracks()[0];
+      if (videoTrack) {
+        videoTrack.enabled = !cameraOn;
+        setCameraOn(!cameraOn);
+      }
+    }
+  };
+
+  const toggleScreenShare = async () => {
+    if (!isScreenSharing) {
+      try {
+        const screenStream = await navigator.mediaDevices.getDisplayMedia({
+          video: { cursor: true },
+        });
+        const screenTrack = screenStream.getVideoTracks()[0];
+
+        peersRef.current.forEach(({ peer }) => {
+          const videoTrack = streamRef.current.getVideoTracks()[0];
+          peer.replaceTrack(videoTrack, screenTrack, streamRef.current);
+        });
+
+        screenTrack.onended = () => {
+          stopScreenShare();
+        };
+
+        userVideoRef.current.srcObject = screenStream;
+        screenTrackRef.current = screenStream;
+        setIsScreenSharing(true);
+      } catch (err) {
+        console.error("Screen share failed", err);
+      }
+    } else {
+      stopScreenShare();
+    }
+  };
+
+  const stopScreenShare = () => {
+    const videoTrack = streamRef.current.getVideoTracks()[0];
+    peersRef.current.forEach(({ peer }) => {
+      const currentTrack = screenTrackRef.current?.getTracks()[0];
+      if (currentTrack) {
+        peer.replaceTrack(currentTrack, videoTrack, streamRef.current);
+      }
+    });
+
+    screenTrackRef.current?.getTracks().forEach((t) => t.stop());
+    userVideoRef.current.srcObject = streamRef.current;
+    setIsScreenSharing(false);
+  };
 
   const copyLink = () => {
     navigator.clipboard.writeText(window.location.href);
     toast.success("Meeting link copied!");
   };
 
+  const handleJoinWithStream = (stream) => {
+    // Hand off ownership so Device Setup unmount cleanup does not stop tracks.
+    permission.releaseStream();
+    setDeviceSetupDone(true);
+    joinMeeting(stream);
+  };
+
+  const handleJoinWithout = (mode = "observer") => {
+    permission.releaseStream();
+    setDeviceSetupDone(true);
+    joinMeeting(null, { mode });
+  };
+
   return (
     <div className="min-h-screen flex flex-col bg-gray-900 relative overflow-hidden font-sans">
-      {/* ---------- INTRO SCREEN ---------- */}
-      {!joined && !meetingEnded && (
-        <div className="flex-1 flex flex-col items-center justify-center relative z-10 px-6 md:px-8 text-center bg-gradient-to-br from-indigo-50 via-white to-purple-100 dark:from-slate-950 dark:via-slate-900 dark:to-purple-950/20">
-          <div className="absolute top-0 left-0 w-72 h-72 bg-indigo-200 dark:bg-indigo-900/10 opacity-20 blur-3xl rounded-full animate-pulse"></div>
-          <div className="absolute bottom-0 right-0 w-80 h-80 bg-purple-200 dark:bg-purple-900/10 opacity-30 blur-3xl rounded-full animate-pulse"></div>
+      {/* ---------- DEVICE SETUP / INTRO SCREEN ---------- */}
+      {!joined && !meetingEnded && !deviceSetupDone && (
+        <DeviceSetupModal
+          permission={permission}
+          onJoin={handleJoinWithStream}
+          onContinueWithout={handleJoinWithout}
+        />
+      )}
 
-          <h1 className="text-4xl md:text-5xl font-extrabold text-gray-800 dark:text-white mb-3 flex items-center justify-center gap-3">
-            🎥 MeetOnMemory{" "}
-            <span className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-600 to-purple-600">
-              Live Room
-            </span>
-          </h1>
-
-          <p className="text-gray-600 dark:text-gray-400 mb-8 max-w-2xl mx-auto leading-relaxed text-base md:text-lg">
-            Join room <strong>{roomId}</strong> with real-time transcription and
-            automatic AI-generated MoMs.
-          </p>
-
-          {mediaError ? (
-            <div className="w-full max-w-lg mx-auto">
-              <ErrorState
-                title="Device Access Error"
-                message={mediaError}
-                onRetry={() => {
-                  setMediaError(null);
-                  joinMeeting();
-                }}
-              />
-            </div>
-          ) : loading ? (
-            <button
-              disabled
-              className="px-8 py-3 bg-indigo-600 text-white rounded-full font-semibold shadow-md flex items-center justify-center gap-2 mx-auto cursor-not-allowed"
-            >
-              <Loader2 className="animate-spin" size={20} /> Connecting...
-            </button>
-          ) : (
-            <button
-              onClick={joinMeeting}
-              className="px-8 py-3 bg-indigo-600 text-white rounded-full font-semibold shadow-md hover:bg-indigo-700 hover:shadow-xl active:scale-95 transition-all duration-300 cursor-pointer"
-            >
-              🚀 Join Meeting
-            </button>
-          )}
+      {!joined && !meetingEnded && deviceSetupDone && loading && (
+        <div className="flex-1 flex flex-col items-center justify-center bg-gray-900">
+          <Loader2 className="animate-spin text-indigo-500" size={40} />
+          <p className="text-gray-400 mt-4 text-lg">Connecting to meeting...</p>
         </div>
       )}
 
       {/* ---------- ACTIVE MEETING SCREEN ---------- */}
       {joined && !meetingEnded && (
         <div className="flex-1 flex flex-col min-h-0 bg-gray-900 relative">
+          {/* Header */}
+          <div className="h-16 bg-gray-900 border-b border-gray-800 flex items-center justify-between px-6 z-20 shrink-0">
+            <div className="flex items-center gap-4">
+              <h2 className="text-lg font-bold text-white truncate max-w-xs md:max-w-md">
+                Room: {roomId}
+              </h2>
+              <div className="flex items-center gap-2 text-gray-300 bg-gray-800 px-3 py-1 rounded-full text-sm font-mono">
+                <Clock size={14} />
+                <span>{formatTime(timerState.elapsed)}</span>
+              </div>
+              <div className="flex items-center gap-2 text-gray-300 bg-gray-800 px-3 py-1 rounded-full text-sm">
+                <Users size={16} />
+                <span>{peers.length + 1}</span>
+              </div>
+            </div>
+
+            <button
+              onClick={copyLink}
+              className="text-gray-300 hover:text-white flex items-center gap-1.5 text-sm font-semibold bg-gray-800 hover:bg-gray-700 px-4 py-2 rounded-xl transition-all cursor-pointer"
+            >
+              <Copy size={16} />
+              <span className="hidden sm:inline">Copy Link</span>
+            </button>
+
+            {/* Notes Toggle */}
+            <button
+              onClick={() => setShowNotes((v) => !v)}
+              className={`flex items-center gap-1.5 text-sm font-semibold px-4 py-2 rounded-xl transition-all cursor-pointer ${
+                showNotes
+                  ? "bg-indigo-600 text-white hover:bg-indigo-700"
+                  : "bg-gray-800 text-gray-300 hover:text-white hover:bg-gray-700"
+              }`}
+              title={showNotes ? "Hide notes" : "Open collaborative notes"}
+            >
+              {showNotes ? (
+                <PanelRightClose size={16} />
+              ) : (
+                <NotebookPen size={16} />
+              )}
+              <span className="hidden sm:inline">
+                {showNotes ? "Hide Notes" : "Notes"}
+              </span>
+            </button>
+
+            {/* Parking Lot Toggle */}
+            <button
+              onClick={() => setShowParkingLot((v) => !v)}
+              className={`flex items-center gap-1.5 text-sm font-semibold px-4 py-2 rounded-xl transition-all cursor-pointer ${
+                showParkingLot
+                  ? "bg-indigo-600 text-white hover:bg-indigo-700"
+                  : "bg-gray-800 text-gray-300 hover:text-white hover:bg-gray-700"
+              }`}
+              title={showParkingLot ? "Hide parking lot" : "Open parking lot"}
+            >
+              <Lightbulb size={16} />
+              <span className="hidden sm:inline">
+                {showParkingLot ? "Hide Ideas" : "Parking Lot"}
+              </span>
+            </button>
+
+            {/* Transcription Toggle */}
+            <button
+              onClick={toggleTranscription}
+              className={`flex items-center gap-1.5 text-sm font-semibold px-4 py-2 rounded-xl transition-all cursor-pointer ${
+                transcriptionEnabled
+                  ? "bg-green-600 text-white hover:bg-green-700"
+                  : "bg-gray-800 text-gray-300 hover:text-white hover:bg-gray-700"
+              }`}
+              title={
+                transcriptionEnabled
+                  ? "Stop transcription"
+                  : "Start live transcription"
+              }
+            >
+              <Captions size={16} />
+              <span className="hidden sm:inline">
+                {transcriptionEnabled ? "Stop" : "Captions"}
+              </span>
+            </button>
+
+            {/* Transcript Toggle */}
+            <button
+              onClick={() => setShowTranscript((v) => !v)}
+              className={`flex items-center gap-1.5 text-sm font-semibold px-4 py-2 rounded-xl transition-all cursor-pointer ${
+                showTranscript
+                  ? "bg-indigo-600 text-white hover:bg-indigo-700"
+                  : "bg-gray-800 text-gray-300 hover:text-white hover:bg-gray-700"
+              }`}
+              title={showTranscript ? "Hide transcript" : "Show transcript"}
+            >
+              <FileText size={16} />
+              <span className="hidden sm:inline">
+                {showTranscript ? "Hide" : "Transcript"}
+              </span>
+            </button>
+          </div>
+          <ReactionOverlay reactions={reactions} />
+
           <MeetingHeader
             roomId={roomId}
             duration={duration}
@@ -139,15 +650,19 @@ const MeetingRoom = () => {
 
           {/* Main content area: video grid + notes panel */}
           <div className="flex-1 flex min-h-0 overflow-hidden">
-            {/* Video Grid */}
+            {/* Video Grid — responsive by participant count + viewport (#907) */}
             <div
-              className={`flex-1 p-6 overflow-y-auto bg-gray-900 flex items-center justify-center transition-all duration-300 ${
-                showNotes ? "hidden md:flex" : "flex"
+              className={`flex-1 min-h-0 min-w-0 overflow-y-auto overflow-x-hidden bg-gray-900 transition-all duration-300 ${
+                showNotes ? "hidden md:block" : "block"
               }`}
             >
-              <div className="w-full h-full max-w-5xl flex flex-col md:flex-row gap-6 items-center justify-center min-h-[300px]">
+              <div
+                className={`grid gap-2 sm:gap-3 md:gap-4 p-2 sm:p-4 md:p-6 content-center justify-items-stretch min-h-full ${getMeetingVideoGridClass(
+                  peers.length + 1,
+                )}`}
+              >
                 {/* Local Stream */}
-                <div className="relative bg-black rounded-2xl overflow-hidden shadow-lg aspect-video flex-1 min-w-[280px] max-w-[600px] border border-gray-800">
+                <div className={MEETING_VIDEO_TILE_CLASS}>
                   <video
                     ref={userVideoRef}
                     autoPlay
@@ -157,16 +672,29 @@ const MeetingRoom = () => {
                   />
                   {!cameraOn && (
                     <div className="absolute inset-0 flex items-center justify-center bg-gray-800">
-                      <div className="w-20 h-20 bg-indigo-600 rounded-full flex items-center justify-center text-3xl font-bold text-white shadow-xl">
-                        You
-                      </div>
+                      {localUserInfo.profilePic ? (
+                        <img
+                          src={localUserInfo.profilePic}
+                          alt=""
+                          className="w-16 h-16 sm:w-20 sm:h-20 rounded-full object-cover shadow-xl"
+                        />
+                      ) : (
+                        <div className="w-16 h-16 sm:w-20 sm:h-20 bg-indigo-600 rounded-full flex items-center justify-center text-2xl sm:text-3xl font-bold text-white shadow-xl">
+                          {(localUserInfo.name || "P").charAt(0).toUpperCase()}
+                        </div>
+                      )}
                     </div>
                   )}
-                  <div className="absolute bottom-4 left-4 bg-black/60 px-3 py-1.5 rounded-lg backdrop-blur-sm text-white text-sm flex items-center gap-2">
+                  <div className="absolute bottom-2 left-2 sm:bottom-4 sm:left-4 bg-black/60 px-2 py-1 sm:px-3 sm:py-1.5 rounded-lg backdrop-blur-sm text-white text-xs sm:text-sm flex items-center gap-2 max-w-[calc(100%-1rem)]">
                     <span
-                      className={`w-2 h-2 rounded-full ${micOn ? "bg-green-500" : "bg-red-500"}`}
+                      className={`w-2 h-2 rounded-full shrink-0 ${micOn ? "bg-green-500" : "bg-red-500"}`}
                     />
-                    <span>You</span>
+                    <span className="truncate">{localUserInfo.name}</span>
+                    {isScreenSharing && (
+                      <span className="text-[10px] sm:text-xs text-indigo-300 shrink-0">
+                        Sharing
+                      </span>
+                    )}
                   </div>
                 </div>
 
@@ -188,6 +716,19 @@ const MeetingRoom = () => {
               </div>
             )}
 
+            {/* Parking Lot Panel */}
+            {showParkingLot && (
+              <div className="w-full md:w-[320px] lg:w-[360px] shrink-0 bg-gray-950 border-l border-gray-800 overflow-hidden flex flex-col">
+                <ParkingLotPanel
+                  organizationId={
+                    userData?.currentOrganization?._id ||
+                    userData?.organizations?.[0]
+                  }
+                  meetingId={roomId}
+                />
+              </div>
+            )}
+
             {/* Transcript Panel */}
             <TranscriptPanel
               showTranscript={showTranscript}
@@ -197,6 +738,8 @@ const MeetingRoom = () => {
           </div>
 
           <LiveCaptions showCaptions={showCaptions} captions={captions} />
+
+          <ReactionBar sendReaction={sendReaction} onCooldown={onCooldown} />
 
           <MeetingControlBar
             micOn={micOn}

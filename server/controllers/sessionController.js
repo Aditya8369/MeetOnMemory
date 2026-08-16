@@ -13,6 +13,13 @@ export const generateSession = async (req, res) => {
       return sendError(res, 400, "Session title is required.");
     }
 
+    // Process uploaded files if any
+    const videoFile =
+      req.files && req.files["video"] ? req.files["video"][0] : null;
+    const videoUrl = videoFile
+      ? `/uploads/sessions/${videoFile.filename}`
+      : null;
+
     const { summary, keywords } = await generateSessionCardAI(
       eventName ? eventName.trim() : "",
       sessionTitle.trim(),
@@ -31,7 +38,7 @@ export const generateSession = async (req, res) => {
           speakerTitle: speakerTitle ? speakerTitle.trim() : "",
           summary,
           keywords,
-          videoUrl: null,
+          videoUrl,
         },
       },
       "Session card generated successfully.",
