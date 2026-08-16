@@ -2,13 +2,16 @@ import i18n from "i18next";
 import { initReactI18next } from "react-i18next";
 import en from "./locales/en.json";
 import hi from "./locales/hi.json";
-import { DEFAULT_LANGUAGE } from "./constants/languages.js";
+import { LANGUAGES, DEFAULT_LANGUAGE } from "./constants/languages.js";
 
 // Same pattern as getInitialTheme() in ThemeContext.jsx: read a saved
 // preference synchronously so there's no flash of the wrong language.
+// Falls back to the default if localStorage holds a code we don't
+// actually have translation resources for.
 const getInitialLanguage = () => {
   const saved = localStorage.getItem("language");
-  return saved || DEFAULT_LANGUAGE;
+  const isSupported = LANGUAGES.some((lang) => lang.code === saved);
+  return isSupported ? saved : DEFAULT_LANGUAGE;
 };
 
 i18n.use(initReactI18next).init({
