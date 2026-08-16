@@ -22,6 +22,7 @@ import PrepChecklist from "../components/meetings/PrepChecklist";
 import SpeakingTimeBreakdown from "../components/meetings/SpeakingTimeBreakdown";
 import CarryForwardConfig from "../components/meetings/CarryForwardConfig";
 import DuplicateDetectionPanel from "../components/meeting-details/DuplicateDetectionPanel";
+import MeetingTimeline from "../components/meeting-details/MeetingTimeline";
 import { useUser } from "@clerk/clerk-react";
 
 const MeetingDetails = () => {
@@ -179,6 +180,10 @@ const MeetingDetails = () => {
         />
         <MeetingSummary meeting={meeting} />
         <MeetingCollaborativeNotes meeting={meeting} />
+
+        <div className="mt-6 mb-6">
+          <MeetingTimeline meetingId={meeting._id} meeting={meeting} />
+        </div>
 
         <div className="bg-white rounded-lg shadow-sm border border-gray-200 mt-6 mb-6 overflow-hidden h-[500px]">
           <KeyMomentsPanel meetingId={meeting._id} />
