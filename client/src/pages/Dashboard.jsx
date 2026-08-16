@@ -9,10 +9,11 @@ import {
   BarChart3,
   Brain,
   Search,
-  ArrowRight,
   Sparkles,
   Shield,
   Users,
+  Trophy,
+  ArrowRight,
 } from "lucide-react";
 import Navbar from "../components/Navbar.jsx";
 import TopContributorsWidget from "../components/organization/TopContributorsWidget";
@@ -38,6 +39,7 @@ const ROUTE_MAP = {
   reports: "/reports",
   "attendance-analytics": "/attendance-analytics",
   "meeting-cost-analytics": "/meeting-cost-analytics",
+  leaderboard: "/leaderboard",
 };
 
 /* ─── Dashboard ───────────────────────────────────────────────────────────── */
@@ -142,8 +144,19 @@ const Dashboard = () => {
       iconColor: "text-blue-600",
       tag: "Cost",
       tagColor: "bg-blue-50 text-blue-700 border-blue-100",
-      accentRing: "group-hover:ring-blue-100",
       adminOnly: true,
+    },
+    {
+      id: "leaderboard",
+      icon: Trophy,
+      title: "Meeting Hygiene Leaderboard",
+      description:
+        "View top contributors with the best meeting hygiene scores and badges.",
+      iconBg: "bg-yellow-50",
+      iconColor: "text-yellow-600",
+      tag: "Gamification",
+      tagColor: "bg-yellow-50 text-yellow-700 border-yellow-100",
+      accentRing: "group-hover:ring-yellow-100",
     },
   ];
 

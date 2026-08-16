@@ -79,6 +79,8 @@ import agendaVoteRoutes from "./agendaVoteRoutes.js";
 import meetingDuplicateRoutes from "./meetingDuplicateRoutes.js";
 
 import notionIntegrationRoutes from "./notionIntegrationRoutes.js";
+import gamificationRoutes from "./gamificationRoutes.js";
+
 const router = express.Router();
 
 // ==========================================
@@ -190,5 +192,6 @@ router.use("/api/github", githubIntegrationRoutes);
 
 import { handleWebhook } from "../controllers/githubWebhookController.js";
 router.post("/api/webhooks/github", handleWebhook);
+router.use("/api/gamification", gamificationRoutes);
 
 export default router;

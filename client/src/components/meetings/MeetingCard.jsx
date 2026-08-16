@@ -60,7 +60,7 @@ const MeetingCard = ({
         const response = await favoriteApi.getFavoriteStatus(meeting._id);
 
         if (!cancelled && response.data?.favorited !== undefined) {
-         setIsFavorite(response.data.favorited);
+          setIsFavorite(response.data.favorited);
         }
       } catch (error) {
         console.error("Failed to load favorite status:", error);
@@ -70,7 +70,7 @@ const MeetingCard = ({
     loadFavoriteStatus();
 
     return () => {
-    cancelled = true;
+      cancelled = true;
     };
   }, [meeting._id]);
 
@@ -185,19 +185,21 @@ const MeetingCard = ({
             type="button"
             onClick={handleFavoriteToggle}
             disabled={isFavoriteLoading}
-            aria-label={isFavorite ? "Remove from favorites" : "Add to favorites"}
+            aria-label={
+              isFavorite ? "Remove from favorites" : "Add to favorites"
+            }
             aria-pressed={isFavorite}
             data-testid="favorite-button"
             className="p-1.5 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors disabled:opacity-50"
           >
-          <Star
-            size={18}
-            className={
-              isFavorite
-              ? "fill-yellow-400 text-yellow-400"
-              : "text-gray-400 dark:text-gray-500"
-            }
-          />
+            <Star
+              size={18}
+              className={
+                isFavorite
+                  ? "fill-yellow-400 text-yellow-400"
+                  : "text-gray-400 dark:text-gray-500"
+              }
+            />
           </button>
 
           <div className="relative" ref={menuRef}>

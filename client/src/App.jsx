@@ -11,6 +11,7 @@ import NotFound from "./pages/NotFound.jsx";
 
 import ScrollNavigator from "./components/ScrollNavigator";
 import FloatingAssistant from "./components/FloatingAssistant.jsx";
+import BadgeNotification from "./components/gamification/BadgeNotification.jsx";
 
 // --- Components ---
 import Footer from "./components/Footer.jsx";
@@ -62,6 +63,9 @@ const App = () => {
 
         {/* Global AI Assistant floating workspace */}
         {isLoggedin && <FloatingAssistant />}
+
+        {/* Gamification Badge Notifications */}
+        {isLoggedin && <BadgeNotification />}
 
         {/* Global Footer */}
         {shouldShowFooter && <Footer />}

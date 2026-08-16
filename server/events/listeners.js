@@ -271,6 +271,17 @@ export const initListeners = (io) => {
     }
   });
 
+  on(
+    "gamification.badgesUnlocked",
+    async ({ userId, _organizationId, unlockedBadges }) => {
+      if (userId && unlockedBadges && unlockedBadges.length > 0) {
+        io.to(String(userId)).emit("badge_unlocked", {
+          badges: unlockedBadges,
+        });
+      }
+    },
+  );
+
   console.log("✅ Event listeners initialized");
   return true;
 };
