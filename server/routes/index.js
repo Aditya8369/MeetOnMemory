@@ -37,6 +37,7 @@ import attendanceAnalyticsRoutes from "./attendanceAnalyticsRoutes.js";
 import meetingFeedbackRoutes from "./meetingFeedbackRoutes.js";
 import meetingCostRoutes from "./meetingCostRoutes.js";
 import followUpThreadRoutes from "./followUpThreadRoutes.js";
+import followUpRoutes from "./followUpRoutes.js";
 import recapScheduleRoutes from "./recapScheduleRoutes.js";
 import meetingClipRoutes from "./meetingClipRoutes.js";
 import speakerMappingRoutes from "./speakerMappingRoutes.js";
@@ -135,6 +136,9 @@ router.use("/api/attendance-analytics", attendanceAnalyticsRoutes);
 router.use("/api/feedback", meetingFeedbackRoutes);
 router.use("/api/meeting-cost", meetingCostRoutes);
 router.use("/api/follow-up-threads", followUpThreadRoutes);
+// Follow-Up Workflow REST API (tasks/reminders/analytics) — Issue #1529.
+// Distinct from /api/follow-up-threads (discussion threads). Frontend uses /api/followup/*.
+router.use("/api/followup", followUpRoutes);
 // Recap schedule + delivery history (GET /history/deliveries) — Issue #1401
 router.use("/api/recap-schedule", recapScheduleRoutes);
 router.use("/api/clips", meetingClipRoutes);
