@@ -1,4 +1,3 @@
-import mongoose from "mongoose";
 import ParkingLotItem from "../models/parkingLotItemModel.js";
 
 /**

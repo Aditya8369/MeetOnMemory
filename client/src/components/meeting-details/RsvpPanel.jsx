@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from "recharts";
 import { toast } from "react-toastify";
 import meetingRsvpApi from "../../services/meetingRsvpApi";
@@ -28,7 +28,7 @@ const RsvpPanel = ({ meetingId, isOrganizer, participants }) => {
   const [declineReason, setDeclineReason] = useState("");
   const [showDeclineInput, setShowDeclineInput] = useState(false);
 
-  const fetchSummary = async () => {
+  const fetchSummary = useCallback(async () => {
     try {
       setLoading(true);
       const { data } = await meetingRsvpApi.getMeetingSummary(meetingId);
@@ -40,11 +40,11 @@ const RsvpPanel = ({ meetingId, isOrganizer, participants }) => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [meetingId]);
 
   useEffect(() => {
     fetchSummary();
-  }, [meetingId]);
+  }, [meetingId, fetchSummary]);
 
   const handleSendRsvps = async () => {
     if (!participants || participants.length === 0) {

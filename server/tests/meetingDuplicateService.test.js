@@ -1,9 +1,7 @@
 import mongoose from "mongoose";
 import * as meetingDuplicateService from "../services/meetingDuplicateService.js";
 import Meeting from "../models/meetingModel.js";
-import DismissedDuplicate from "../models/dismissedDuplicateModel.js";
 import { MongoMemoryReplSet } from "mongodb-memory-server";
-import { jest } from "@jest/globals";
 
 let mongoServer;
 

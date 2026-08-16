@@ -214,7 +214,7 @@ const gatherMeetingMetrics = async (meeting) => {
     if (feedback && feedback.ratings) {
       metrics.avgSatisfaction = feedback.ratings.overall || 0;
     }
-  } catch (err) {
+  } catch (_err) {
     // Feedback model might not exist
   }
 
@@ -231,7 +231,7 @@ const gatherMeetingMetrics = async (meeting) => {
         analytics.metrics?.averageInterventionLength || 0;
       metrics.speakerCount = analytics.metrics?.speakerCount || 0;
     }
-  } catch (err) {
+  } catch (_err) {
     // Analytics might not exist
   }
 
@@ -537,8 +537,8 @@ const awardBadges = async (scores, meeting, _meetingId) => {
           earnedAt: new Date(),
         });
       }
-    } catch (err) {
-      console.warn(`Error checking badge ${badgeName}:`, err.message);
+    } catch (_err) {
+      console.warn(`Error checking badge ${badgeName}:`, _err.message);
     }
   }
 

@@ -6,12 +6,10 @@ export const getLeaderboard = async (req, res) => {
   try {
     const orgId = req.user.organizationId;
     if (!orgId) {
-      return res
-        .status(400)
-        .json({
-          success: false,
-          error: "User is not part of an organization.",
-        });
+      return res.status(400).json({
+        success: false,
+        error: "User is not part of an organization.",
+      });
     }
 
     const redis = getRedisClient();
@@ -55,12 +53,10 @@ export const getUserScore = async (req, res) => {
       organization: orgId,
     }).populate("unlockedBadges.badge");
 
-    res
-      .status(200)
-      .json({
-        success: true,
-        data: score || { totalPoints: 0, unlockedBadges: [], history: [] },
-      });
+    res.status(200).json({
+      success: true,
+      data: score || { totalPoints: 0, unlockedBadges: [], history: [] },
+    });
   } catch (error) {
     console.error("Error fetching user score:", error);
     res.status(500).json({ success: false, error: "Server Error" });

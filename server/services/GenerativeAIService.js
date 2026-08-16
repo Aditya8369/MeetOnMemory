@@ -617,7 +617,7 @@ export const generateMoMDetailed = async (
       mom,
       generation: { ...mom.generation, durationMs: Date.now() - startedAt },
     };
-  } catch (hfErr) {
+  } catch (_hfErr) {
     throw new Error("Both Gemini and Local fallback summarization failed");
   }
 };

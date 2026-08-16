@@ -45,7 +45,7 @@ export const handleCallback = async (req, res) => {
     let decodedState;
     try {
       decodedState = JSON.parse(Buffer.from(state, "base64").toString("utf-8"));
-    } catch (e) {
+    } catch (_e) {
       return res.status(400).json({ message: "Invalid state parameter" });
     }
 
