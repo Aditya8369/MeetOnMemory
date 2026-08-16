@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import api from "../../services/api";
+import apiClient from "../../services/apiClient";
 
 /**
  * @desc Detailed modal showing speaking time distribution, participation balance,
@@ -12,8 +12,13 @@ const MeetingAnalyticsDetail = ({ meetingId, onClose }) => {
   useEffect(() => {
     const fetchDetail = async () => {
       try {
-        const { data } = await api.get(`/analytics/meeting/${meetingId}`);
-        setAnalytics(data.data);
+        // Canonical meeting analytics (singular alias also supported for compat)
+        const { data } = await apiClient.get(
+          `/api/analytics/meetings/${meetingId}`,
+        );
+        // Active controller returns the analytics document directly; orphan
+        // wrapped it as { success, data }. Support both shapes.
+        setAnalytics(data?.data || data);
       } catch (error) {
         console.error("Failed to fetch detail:", error);
       } finally {
