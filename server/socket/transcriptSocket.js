@@ -28,7 +28,7 @@ export default (io) => {
         }
 
         const isOwner =
-          meeting.uploadedBy?.toString() === socket.userId.toString();
+          meeting.uploadedBy?.toString() === socket.userId?.toString();
         const isInSameOrg =
           meeting.organization &&
           socket.userOrganization &&
@@ -73,13 +73,33 @@ export default (io) => {
 
     // Broadcast partial transcript segment (real-time)
     socket.on("transcript-segment", ({ meetingId, segment }) => {
+      if (!meetingId) {
+        socket.emit("transcript-error", { message: "Meeting ID required" });
+        return;
+      }
       const roomId = `meeting:${meetingId}:transcript`;
+      if (!socket.rooms || !socket.rooms.has(roomId)) {
+        socket.emit("transcript-error", {
+          message: "Forbidden: You have not joined this transcript room",
+        });
+        return;
+      }
       socket.to(roomId).emit("transcript-segment", segment);
     });
 
     // Broadcast final transcript
     socket.on("transcript-final", ({ meetingId, transcript }) => {
+      if (!meetingId) {
+        socket.emit("transcript-error", { message: "Meeting ID required" });
+        return;
+      }
       const roomId = `meeting:${meetingId}:transcript`;
+      if (!socket.rooms || !socket.rooms.has(roomId)) {
+        socket.emit("transcript-error", {
+          message: "Forbidden: You have not joined this transcript room",
+        });
+        return;
+      }
       io.to(roomId).emit("transcript-final", transcript);
     });
 
