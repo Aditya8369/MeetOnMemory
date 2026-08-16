@@ -192,7 +192,7 @@ export const deleteActionItem = async (req, res) => {
 
 // Helper to get meeting IDs for an org (simplified)
 async function getOrgMeetingIds(orgId) {
-  const Meeting = (await import("../models/Meeting.js")).default;
+  const Meeting = (await import("../models/meetingModel.js")).default;
   const meetings = await Meeting.find({ organizationId: orgId }).select("_id");
   return meetings.map((m) => m._id);
 }

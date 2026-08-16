@@ -76,6 +76,89 @@ describe("Collaborative Notes REST API Integration Tests", () => {
         .set(authHeader(otherOrgToken));
 
       expect(res.statusCode).toBe(403);
+      expect(res.body.success).toBe(false);
+      expect(res.body.error).toBeDefined();
+    });
+
+    it("should reject cross-organization snapshot creation before mutating data", async () => {
+      const otherUser = await User.create({
+        name: "Cross Org Snapshot User",
+        email: "cross_snapshot@test.com",
+        password: "password123",
+        role: "member",
+        organization: new mongoose.Types.ObjectId(),
+      });
+      otherUser.clerkUserId = `user_cross_snap_${otherUser._id}`;
+      await otherUser.save();
+
+      const otherToken = createClerkTestToken({
+        clerkUserId: otherUser.clerkUserId,
+        email: otherUser.email,
+      });
+
+      const beforeCount = await NoteVersion.countDocuments({
+        meetingId: meeting._id,
+        field: "collaborativeNotes",
+      });
+
+      const res = await request(app)
+        .post(`/api/notes/${meeting._id}/snapshot`)
+        .set(authHeader(otherToken))
+        .send({ title: "Unauthorized snapshot" });
+
+      expect(res.statusCode).toBe(403);
+
+      const afterCount = await NoteVersion.countDocuments({
+        meetingId: meeting._id,
+        field: "collaborativeNotes",
+      });
+      expect(afterCount).toBe(beforeCount);
+    });
+
+    it("should allow a same-organization member who is not a listed participant", async () => {
+      const colleague = await User.create({
+        name: "Same Org Colleague",
+        email: "colleague_notes@test.com",
+        password: "password123",
+        role: "member",
+        organization: organizationId,
+      });
+      colleague.clerkUserId = `user_colleague_${colleague._id}`;
+      await colleague.save();
+
+      const colleagueToken = createClerkTestToken({
+        clerkUserId: colleague.clerkUserId,
+        email: colleague.email,
+      });
+
+      const res = await request(app)
+        .get(`/api/notes/${meeting._id}`)
+        .set(authHeader(colleagueToken));
+
+      expect(res.statusCode).toBe(200);
+      expect(res.body.success).toBe(true);
+      expect(res.body.data.plainText).toBe(
+        "Initial collaborative notes content",
+      );
+    });
+
+    it("should return 400 for an invalid meeting ID", async () => {
+      const res = await request(app)
+        .get("/api/notes/not-a-valid-object-id")
+        .set(authHeader(token));
+
+      expect(res.statusCode).toBe(400);
+      expect(res.body.success).toBe(false);
+    });
+
+    it("should return 404 for a missing meeting", async () => {
+      const missingId = new mongoose.Types.ObjectId();
+      const res = await request(app)
+        .get(`/api/notes/${missingId}`)
+        .set(authHeader(token));
+
+      expect(res.statusCode).toBe(404);
+      expect(res.body.success).toBe(false);
     });
 
     it("should return the state vector and plainText of the collaborative note", async () => {
@@ -114,6 +197,14 @@ describe("Collaborative Notes REST API Integration Tests", () => {
       expect(storedVersion.content).toBe("Initial collaborative notes content");
       expect(storedVersion.changedBy.toString()).toBe(user._id.toString());
     });
+
+    it("should reject unauthenticated snapshot creation with 401", async () => {
+      const res = await request(app)
+        .post(`/api/notes/${meeting._id}/snapshot`)
+        .send({ title: "No auth" });
+
+      expect(res.statusCode).toBe(401);
+    });
   });
 
   describe("GET /api/notes/:meetingId/history", () => {
@@ -134,6 +225,35 @@ describe("Collaborative Notes REST API Integration Tests", () => {
       expect(res.body.data[0].version).toBe(1);
       expect(res.body.data[0].title).toBe("User Edit");
       expect(res.body.data[0].createdBy.name).toBe("Notes Test User");
+    });
+
+    it("should reject history for inaccessible meetings before returning data", async () => {
+      await request(app)
+        .post(`/api/notes/${meeting._id}/snapshot`)
+        .set(authHeader(token))
+        .send({ title: "Secret snapshot" });
+
+      const outsider = await User.create({
+        name: "Outsider",
+        email: "outsider_notes@test.com",
+        password: "password123",
+        role: "member",
+        organization: new mongoose.Types.ObjectId(),
+      });
+      outsider.clerkUserId = `user_outsider_${outsider._id}`;
+      await outsider.save();
+
+      const outsiderToken = createClerkTestToken({
+        clerkUserId: outsider.clerkUserId,
+        email: outsider.email,
+      });
+
+      const res = await request(app)
+        .get(`/api/notes/${meeting._id}/history`)
+        .set(authHeader(outsiderToken));
+
+      expect(res.statusCode).toBe(403);
+      expect(res.body.data).toBeUndefined();
     });
   });
 
@@ -162,6 +282,35 @@ describe("Collaborative Notes REST API Integration Tests", () => {
         .set(authHeader(token));
 
       expect(res.statusCode).toBe(404);
+    });
+
+    it("should not return snapshot content to cross-organization users", async () => {
+      await request(app)
+        .post(`/api/notes/${meeting._id}/snapshot`)
+        .set(authHeader(token))
+        .send({ title: "Protected" });
+
+      const outsider = await User.create({
+        name: "Snapshot Thief",
+        email: "thief_notes@test.com",
+        password: "password123",
+        role: "member",
+        organization: new mongoose.Types.ObjectId(),
+      });
+      outsider.clerkUserId = `user_thief_${outsider._id}`;
+      await outsider.save();
+
+      const outsiderToken = createClerkTestToken({
+        clerkUserId: outsider.clerkUserId,
+        email: outsider.email,
+      });
+
+      const res = await request(app)
+        .get(`/api/notes/${meeting._id}/snapshot/1`)
+        .set(authHeader(outsiderToken));
+
+      expect(res.statusCode).toBe(403);
+      expect(res.body.data).toBeUndefined();
     });
   });
 });

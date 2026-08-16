@@ -4,13 +4,14 @@ import {
   mergeMeetings,
   dismissDuplicate,
 } from "../controllers/meetingDuplicateController.js";
-import protect from "../middleware/userAuth.js";
+import userAuth from "../middleware/userAuth.js";
 import { requireOrgMembership } from "../middleware/rbac.js";
 
 const router = express.Router({ mergeParams: true });
 
 // Require auth and organization membership for all duplicate operations
-router.use(protect);
+// (project-standard Clerk/RBAC stack — replaces obsolete authMiddleware/rbacMiddleware)
+router.use(userAuth);
 router.use(requireOrgMembership);
 
 // Base route is /api/meetings/:id/duplicates (handled in index.js)

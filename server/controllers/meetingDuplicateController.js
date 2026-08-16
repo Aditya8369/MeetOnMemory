@@ -47,7 +47,7 @@ export const dismissDuplicate = async (req, res) => {
     const userId = req.user._id;
 
     await duplicateService.dismissDuplicate(primaryId, secondaryId, userId);
-    return sendSuccess(res, null, "Duplicate suggestion dismissed");
+    return sendSuccess(res, {}, "Duplicate suggestion dismissed");
   } catch (error) {
     console.error("Error dismissing duplicate:", error);
     return sendError(res, 500, error.message);
