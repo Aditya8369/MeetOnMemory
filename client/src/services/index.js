@@ -28,3 +28,4 @@ export * from "./parkingLotApi";
 export { default as sentimentTimelineApi } from "./sentimentTimelineApi";
 export { default as carryForwardApi } from "./carryForwardApi";
 export { default as bulkMeetingApi } from "./bulkMeetingApi";
+export { favoriteApi } from "./favoriteApi";
