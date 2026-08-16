@@ -1,4 +1,5 @@
 import React from "react";
+import GitHubSyncBadge from "./GitHubSyncBadge.jsx";
 
 /**
  * @desc Individual card component for an action item in the Kanban board.
@@ -89,7 +90,14 @@ const ActionItemCard = ({ item, onStatusChange }) => {
         )}
       </div>
 
+      {/* GitHub Sync Badge */}
+      <GitHubSyncBadge
+        issueId={item.externalGitHubIssueId}
+        issueUrl={item.externalGitHubIssueUrl}
+      />
+
       {/* Quick Actions */}
+
       <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity pt-2 border-t border-gray-100 dark:border-gray-700">
         {item.status !== "completed" && (
           <button

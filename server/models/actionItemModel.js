@@ -115,6 +115,17 @@ const actionItemSchema = new mongoose.Schema(
       type: Date,
       default: null,
     },
+
+    // --- GitHub Integration ---
+    externalGitHubIssueId: {
+      type: Number,
+      default: null,
+    },
+    externalGitHubIssueUrl: {
+      type: String,
+      default: null,
+    },
+
     resolvedInMeetingId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Meeting",
