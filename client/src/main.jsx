@@ -7,6 +7,7 @@ import App from "./App.jsx";
 import { BrowserRouter } from "react-router-dom";
 import { AppContextProvider } from "./context/AppContext.jsx";
 import { ThemeProvider } from "./context/ThemeContext.jsx";
+import { PreferencesProvider } from "./context/PreferencesContext.jsx";
 
 // Prevent FOUC by applying theme class before render
 const savedTheme = localStorage.getItem("theme");
@@ -21,9 +22,11 @@ if (initialTheme === "dark") {
 createRoot(document.getElementById("root")).render(
   <BrowserRouter>
     <ThemeProvider>
-      <AppContextProvider>
-        <App />
-      </AppContextProvider>
+      <PreferencesProvider>
+        <AppContextProvider>
+          <App />
+        </AppContextProvider>
+      </PreferencesProvider>
     </ThemeProvider>
   </BrowserRouter>,
 );

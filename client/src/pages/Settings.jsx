@@ -25,7 +25,10 @@ import {
 } from "lucide-react";
 import CalendarIntegrations from "../components/CalendarIntegrations.jsx";
 import useTheme from "../context/useTheme.jsx";
+import usePreferences from "../context/usePreferences.jsx";
 import WebhooksManager from "../components/WebhooksManager.jsx";
+import { LANGUAGES } from "../constants/languages.js";
+import { DATE_FORMATS } from "../utils/dateFormat.js";
 
 const Settings = () => {
   const { userData, logoutUser } = useContext(AppContent);
@@ -77,12 +80,12 @@ const Settings = () => {
     setAppearancePrefs((prev) => ({ ...prev, theme }));
   }, [theme]);
 
-  // Preferences state (UI only - placeholders)
-  const [generalPrefs, setGeneralPrefs] = useState({
-    language: "en",
-    timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
-    dateFormat: "MM/DD/YYYY",
-  });
+  // Language + date format now come from the shared PreferencesContext,
+  // the same one the Navbar LanguageSwitcher reads from - so both stay
+  // in sync and the choice actually persists (localStorage) and applies
+  // (i18n.changeLanguage) instead of being a disconnected UI mock.
+  const { language, setLanguage, dateFormat, setDateFormat } = usePreferences();
+  const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
 
   if (!userData) {
     return (
@@ -803,20 +806,15 @@ const Settings = () => {
                   </p>
                 </div>
                 <select
-                  value={generalPrefs.language}
-                  onChange={(e) =>
-                    setGeneralPrefs((prev) => ({
-                      ...prev,
-                      language: e.target.value,
-                    }))
-                  }
+                  value={language}
+                  onChange={(e) => setLanguage(e.target.value)}
                   className="px-3 py-1.5 text-xs font-semibold bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-slate-200 border border-slate-200 dark:border-slate-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer"
                 >
-                  <option value="en">English</option>
-                  <option value="es">Spanish</option>
-                  <option value="fr">French</option>
-                  <option value="de">German</option>
-                  <option value="zh">Chinese</option>
+                  {LANGUAGES.map((lang) => (
+                    <option key={lang.code} value={lang.code}>
+                      {lang.name}
+                    </option>
+                  ))}
                 </select>
               </div>
 
@@ -832,7 +830,7 @@ const Settings = () => {
                 <div className="flex items-center gap-2">
                   <Clock className="w-4 h-4 text-slate-400" />
                   <span className="text-xs font-semibold text-slate-600 dark:text-slate-400">
-                    {generalPrefs.timeZone}
+                    {timeZone}
                   </span>
                 </div>
               </div>
@@ -847,18 +845,15 @@ const Settings = () => {
                   </p>
                 </div>
                 <select
-                  value={generalPrefs.dateFormat}
-                  onChange={(e) =>
-                    setGeneralPrefs((prev) => ({
-                      ...prev,
-                      dateFormat: e.target.value,
-                    }))
-                  }
+                  value={dateFormat}
+                  onChange={(e) => setDateFormat(e.target.value)}
                   className="px-3 py-1.5 text-xs font-semibold bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-slate-200 border border-slate-200 dark:border-slate-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer"
                 >
-                  <option value="MM/DD/YYYY">MM/DD/YYYY</option>
-                  <option value="DD/MM/YYYY">DD/MM/YYYY</option>
-                  <option value="YYYY-MM-DD">YYYY-MM-DD</option>
+                  {DATE_FORMATS.map((fmt) => (
+                    <option key={fmt} value={fmt}>
+                      {fmt}
+                    </option>
+                  ))}
                 </select>
               </div>
             </div>

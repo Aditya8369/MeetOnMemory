@@ -10,6 +10,8 @@ import { useTranslation } from "react-i18next";
 import AppContent from "../context/AppContent";
 import { useRBAC } from "../hooks/useRBAC.js";
 import useTheme from "../context/useTheme.jsx";
+import usePreferences from "../context/usePreferences.jsx";
+import { formatDateWithPreference } from "../utils/dateFormat.js";
 import { toast } from "react-toastify";
 import { notificationApi, authApi, organizationApi } from "../services";
 import { io } from "socket.io-client";
@@ -54,6 +56,7 @@ const Navbar = () => {
     useContext(AppContent);
   const { hasPermission } = useRBAC();
   const { theme, toggleTheme, mounted } = useTheme();
+  const { dateFormat } = usePreferences();
 
   const [menuOpen, setMenuOpen] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -125,7 +128,7 @@ const Navbar = () => {
     if (seconds < 3600) return `${Math.floor(seconds / 60)}m ago`;
     if (seconds < 86400) return `${Math.floor(seconds / 3600)}h ago`;
     if (seconds < 604800) return `${Math.floor(seconds / 86400)}d ago`;
-    return date.toLocaleDateString();
+    return formatDateWithPreference(date, dateFormat);
   };
 
   useEffect(() => {
