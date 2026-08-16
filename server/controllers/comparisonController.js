@@ -1,5 +1,17 @@
 import Meeting from "../models/meetingModel.js";
 import ComparisonService from "../services/ComparisonService.js";
+import { canAccessMeetingDoc } from "../middleware/rbac.js";
+import { resolveAccessibleMeeting } from "../utils/resolveAccessibleMeeting.js";
+
+/**
+ * Reject the whole comparison when any meeting fails authorization (#1403).
+ * Never continue into ComparisonService / AI with a partial authorized set.
+ */
+const rejectIfUnauthorized = (res, access) => {
+  if (!access.error) return false;
+  res.status(access.error.status).json({ message: access.error.message });
+  return true;
+};
 
 // @desc    Compare two meetings (summary, decisions, action items)
 // @route   POST /api/comparison/compare
@@ -20,36 +32,18 @@ export const compareMeetings = async (req, res) => {
       });
     }
 
-    // Fetch both meetings
-    const meetingA =
-      await Meeting.findById(meetingIdA).populate("organization");
-    const meetingB =
-      await Meeting.findById(meetingIdB).populate("organization");
+    // Ignore any client-supplied organization fields — membership comes from req.user.
+    // Authorize EVERY meeting independently before comparison / AI work (#1403).
+    const accessA = await resolveAccessibleMeeting(meetingIdA, req.user);
+    if (rejectIfUnauthorized(res, accessA)) return;
 
-    if (!meetingA || !meetingB) {
-      return res
-        .status(404)
-        .json({ message: "One or both meetings not found" });
-    }
+    const accessB = await resolveAccessibleMeeting(meetingIdB, req.user);
+    if (rejectIfUnauthorized(res, accessB)) return;
 
-    // Check RBAC/Ownership
-    const userId = req.user._id.toString();
-    const canAccessA =
-      meetingA.uploadedBy.toString() === userId ||
-      (meetingA.organization &&
-        req.user.organizations?.includes(meetingA.organization._id.toString()));
-    const canAccessB =
-      meetingB.uploadedBy.toString() === userId ||
-      (meetingB.organization &&
-        req.user.organizations?.includes(meetingB.organization._id.toString()));
+    const meetingA = accessA.meeting;
+    const meetingB = accessB.meeting;
 
-    if (!canAccessA || !canAccessB) {
-      return res
-        .status(403)
-        .json({ message: "Not authorized to access these meetings" });
-    }
-
-    // Compute Diffs
+    // Compute Diffs — only authorized documents reach ComparisonService
     const actionItemsA = meetingA.structuredMoM?.action_items || [];
     const actionItemsB = meetingB.structuredMoM?.action_items || [];
     const actionItemsDiff = ComparisonService.computeItemDiff(
@@ -102,22 +96,13 @@ export const getComparableMeetings = async (req, res) => {
   try {
     const { meetingId } = req.params;
 
-    const baseMeeting = await Meeting.findById(meetingId);
-    if (!baseMeeting) {
-      return res.status(404).json({ message: "Meeting not found" });
-    }
+    const access = await resolveAccessibleMeeting(meetingId, req.user);
+    if (rejectIfUnauthorized(res, access)) return;
 
-    // Check access
-    const userId = req.user._id.toString();
-    const canAccess =
-      baseMeeting.uploadedBy.toString() === userId ||
-      (baseMeeting.organization &&
-        req.user.organizations?.includes(baseMeeting.organization.toString()));
-    if (!canAccess) {
-      return res.status(403).json({ message: "Not authorized" });
-    }
+    const baseMeeting = access.meeting;
 
-    // Find comparable meetings (same organization or user, and ideally same series or tags)
+    // Candidate pool is scoped to the authorized meeting's org (or owner-only).
+    // Never accept a client organization override.
     const query = {
       _id: { $ne: baseMeeting._id },
     };
@@ -128,14 +113,26 @@ export const getComparableMeetings = async (req, res) => {
       query.uploadedBy = req.user._id;
     }
 
-    // We can prioritize same series if available, otherwise just fetch recent meetings
-    // For now, let's just fetch the 10 most recent meetings the user has access to in this context
     const comparableMeetings = await Meeting.find(query)
       .sort({ date: -1 })
       .limit(10)
-      .select("title date summary series tags");
+      .select("title date summary series tags organization uploadedBy");
 
-    res.json(comparableMeetings);
+    // Defense in depth: only return meetings the caller can independently access.
+    const authorized = comparableMeetings.filter((m) =>
+      canAccessMeetingDoc(m, req.user),
+    );
+
+    res.json(
+      authorized.map((m) => ({
+        _id: m._id,
+        title: m.title,
+        date: m.date,
+        summary: m.summary,
+        series: m.series,
+        tags: m.tags,
+      })),
+    );
   } catch (error) {
     console.error("Error in getComparableMeetings:", error);
     res
