@@ -941,12 +941,337 @@ export const searchEntities = async (orgId, query, type = null) => {
   }
 };
 
+/**
+ * Targeted entity lookup with 1-hop neighborhood without building the full org graph (Issue #1678)
+ * @param {String} organizationId - Organization ID
+ * @param {String} type - Entity type ("meeting", "decision", "action", "action-item", "person", "topic")
+ * @param {String} id - Entity ID
+ * @returns {Object|null} { entity, relationships, relatedEntities } or null if not found/unauthorized
+ */
+export const getEntityNeighborhood = async (organizationId, type, id) => {
+  const nodes = [];
+  const edges = [];
+  const nodeMap = new Map();
+
+  const addNode = (node) => {
+    if (!nodeMap.has(node.id)) {
+      nodeMap.set(node.id, node);
+      nodes.push(node);
+    }
+  };
+
+  const addEdge = (edge) => {
+    edges.push(edge);
+  };
+
+  let targetNode = null;
+
+  if (type === "meeting") {
+    const meeting = await Meeting.findOne({
+      _id: id,
+      organization: organizationId,
+    })
+      .populate("uploadedBy", "name email")
+      .populate("participants", "name email");
+
+    if (!meeting) return null;
+
+    targetNode = {
+      id: `meeting-${meeting._id}`,
+      type: "meeting",
+      label: meeting.title,
+      properties: {
+        id: meeting._id.toString(),
+        title: meeting.title,
+        date: meeting.date,
+        meetingType: meeting.meetingType,
+        status: meeting.status,
+        duration: meeting.duration,
+        participantCount: meeting.participants?.length || 0,
+      },
+      position: { x: 0, y: 0 },
+    };
+    addNode(targetNode);
+
+    // Fetch decisions for this meeting
+    const decisions = await Decision.find({ sourceMeetingId: meeting._id });
+    decisions.forEach((decision) => {
+      const decisionNode = {
+        id: `decision-${decision._id}`,
+        type: "decision",
+        label: decision.text.substring(0, 50),
+        properties: {
+          id: decision._id.toString(),
+          text: decision.text,
+          status: decision.status,
+          owner: decision.owner,
+          createdAt: decision.createdAt,
+          importanceScore: decision.importanceScore || 0,
+        },
+        position: { x: 0, y: 0 },
+      };
+      addNode(decisionNode);
+      addEdge({
+        source: targetNode.id,
+        target: decisionNode.id,
+        type: "produced",
+        properties: { relationship: "meeting_produced_decision" },
+        weight: 1,
+      });
+    });
+
+    // Fetch action items for this meeting
+    const actionItems = await ActionItem.find({ sourceMeetingId: meeting._id });
+    actionItems.forEach((item) => {
+      const itemNode = {
+        id: `action-${item._id}`,
+        type: "action-item",
+        label: item.text.substring(0, 50),
+        properties: {
+          id: item._id.toString(),
+          text: item.text,
+          owner: item.owner,
+          status: item.status,
+          dueDate: item.dueDate,
+          lifecycleState: item.lifecycleState,
+        },
+        position: { x: 0, y: 0 },
+      };
+      addNode(itemNode);
+      addEdge({
+        source: targetNode.id,
+        target: itemNode.id,
+        type: "assigned",
+        properties: { relationship: "meeting_assigned_action" },
+        weight: 1,
+      });
+    });
+
+    // Add uploader
+    if (meeting.uploadedBy) {
+      const uploaderNode = {
+        id: `person-${meeting.uploadedBy._id}`,
+        type: "person",
+        label: meeting.uploadedBy.name,
+        properties: {
+          id: meeting.uploadedBy._id.toString(),
+          name: meeting.uploadedBy.name,
+          email: meeting.uploadedBy.email,
+        },
+        position: { x: 0, y: 0 },
+      };
+      addNode(uploaderNode);
+      addEdge({
+        source: uploaderNode.id,
+        target: targetNode.id,
+        type: "created",
+        properties: { relationship: "person_created_meeting" },
+        weight: 2,
+      });
+    }
+
+    // Add participants
+    if (meeting.participants) {
+      meeting.participants.forEach((p) => {
+        const pNode = {
+          id: `person-${p._id}`,
+          type: "person",
+          label: p.name,
+          properties: {
+            id: p._id.toString(),
+            name: p.name,
+            email: p.email,
+          },
+          position: { x: 0, y: 0 },
+        };
+        addNode(pNode);
+        addEdge({
+          source: pNode.id,
+          target: targetNode.id,
+          type: "attended",
+          properties: { relationship: "person_attended_meeting" },
+          weight: 1,
+        });
+      });
+    }
+  } else if (type === "decision") {
+    const decision = await Decision.findById(id);
+    if (!decision) return null;
+
+    // Verify organization ownership
+    const sourceMeeting = await Meeting.findOne({
+      _id: decision.sourceMeetingId,
+      organization: organizationId,
+    });
+    if (
+      !sourceMeeting &&
+      decision.organization?.toString() !== organizationId.toString()
+    ) {
+      return null;
+    }
+
+    targetNode = {
+      id: `decision-${decision._id}`,
+      type: "decision",
+      label: decision.text.substring(0, 50),
+      properties: {
+        id: decision._id.toString(),
+        text: decision.text,
+        status: decision.status,
+        owner: decision.owner,
+        createdAt: decision.createdAt,
+        importanceScore: decision.importanceScore || 0,
+      },
+      position: { x: 0, y: 0 },
+    };
+    addNode(targetNode);
+
+    if (sourceMeeting) {
+      const meetingNode = {
+        id: `meeting-${sourceMeeting._id}`,
+        type: "meeting",
+        label: sourceMeeting.title,
+        properties: {
+          id: sourceMeeting._id.toString(),
+          title: sourceMeeting.title,
+          date: sourceMeeting.date,
+        },
+        position: { x: 0, y: 0 },
+      };
+      addNode(meetingNode);
+      addEdge({
+        source: meetingNode.id,
+        target: targetNode.id,
+        type: "produced",
+        properties: { relationship: "meeting_produced_decision" },
+        weight: 1,
+      });
+    }
+
+    if (decision.relatesTo && decision.relatesTo.length > 0) {
+      const relatedIds = decision.relatesTo
+        .map((r) => r.target)
+        .filter(Boolean);
+      const relatedDecisions = await Decision.find({
+        _id: { $in: relatedIds },
+      });
+      relatedDecisions.forEach((rel) => {
+        const relNode = {
+          id: `decision-${rel._id}`,
+          type: "decision",
+          label: rel.text.substring(0, 50),
+          properties: {
+            id: rel._id.toString(),
+            text: rel.text,
+            status: rel.status,
+          },
+          position: { x: 0, y: 0 },
+        };
+        addNode(relNode);
+        addEdge({
+          source: targetNode.id,
+          target: relNode.id,
+          type: "relates-to",
+          properties: { relationship: "decision_relates_to" },
+          weight: 1,
+        });
+      });
+    }
+  } else if (type === "action" || type === "action-item") {
+    const item = await ActionItem.findById(id);
+    if (!item) return null;
+
+    const sourceMeeting = await Meeting.findOne({
+      _id: item.sourceMeetingId,
+      organization: organizationId,
+    });
+    if (
+      !sourceMeeting &&
+      item.organization?.toString() !== organizationId.toString()
+    ) {
+      return null;
+    }
+
+    targetNode = {
+      id: `action-${item._id}`,
+      type: "action-item",
+      label: item.text.substring(0, 50),
+      properties: {
+        id: item._id.toString(),
+        text: item.text,
+        owner: item.owner,
+        status: item.status,
+        dueDate: item.dueDate,
+        lifecycleState: item.lifecycleState,
+      },
+      position: { x: 0, y: 0 },
+    };
+    addNode(targetNode);
+
+    if (sourceMeeting) {
+      const meetingNode = {
+        id: `meeting-${sourceMeeting._id}`,
+        type: "meeting",
+        label: sourceMeeting.title,
+        properties: {
+          id: sourceMeeting._id.toString(),
+          title: sourceMeeting.title,
+          date: sourceMeeting.date,
+        },
+        position: { x: 0, y: 0 },
+      };
+      addNode(meetingNode);
+      addEdge({
+        source: meetingNode.id,
+        target: targetNode.id,
+        type: "assigned",
+        properties: { relationship: "meeting_assigned_action" },
+        weight: 1,
+      });
+    }
+  } else {
+    // For other types (e.g. topic or person), fallback to building or querying only relevant subnodes
+    const graph = await buildOrganizationGraph(organizationId);
+    const entityId = `${type}-${id}`;
+    const found = graph.nodes.find((n) => n.id === entityId);
+    if (!found) return null;
+    const rels = graph.edges.filter(
+      (e) => e.source === entityId || e.target === entityId,
+    );
+    const relIds = rels.map((e) =>
+      e.source === entityId ? e.target : e.source,
+    );
+    const relEntities = graph.nodes.filter((n) => relIds.includes(n.id));
+    return {
+      entity: found,
+      relationships: rels,
+      relatedEntities: relEntities,
+    };
+  }
+
+  const entityId = targetNode.id;
+  const relationships = edges.filter(
+    (e) => e.source === entityId || e.target === entityId,
+  );
+  const relatedIds = relationships.map((e) =>
+    e.source === entityId ? e.target : e.source,
+  );
+  const relatedEntities = nodes.filter((n) => relatedIds.includes(n.id));
+
+  return {
+    entity: targetNode,
+    relationships,
+    relatedEntities,
+  };
+};
+
 export default {
   processStructuredMoM,
   getDecisionLineage,
   detectResolutions,
   buildOrganizationGraph,
   buildMeetingGraph,
+  getEntityNeighborhood,
   findPath,
   getGraphAnalytics,
   searchEntities,
