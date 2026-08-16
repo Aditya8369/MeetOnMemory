@@ -39,6 +39,7 @@ describe("Route Consolidation and Registration", () => {
       "/api/policies",
       "/api/analytics",
       "/api/gemini",
+      "/api/notes",
       "/api/invitation",
       "/api/membership-request",
       "/api/shared-links",
@@ -48,7 +49,8 @@ describe("Route Consolidation and Registration", () => {
       "/api/activities",
       "/api/tags",
       "/api/polls",
-      "/api/meeting-series",
+      // /api/meeting-series is intentionally mounted twice (series + carry-forward),
+      // same pattern as /api/meetings + agenda votes — exclude from exact-once checks.
       "/api/comparison",
       "/api/dashboard",
       "/api/digest-preferences",
@@ -79,7 +81,7 @@ describe("Route Consolidation and Registration", () => {
 
     for (const prefix of standaloneRoutePrefixes) {
       const matchCount = countMatchingLayers(routes, prefix);
-      expect(matchCount).toBe(1);
+      expect({ prefix, matchCount }).toEqual({ prefix, matchCount: 1 });
     }
   });
 
@@ -101,6 +103,7 @@ describe("Route Consolidation and Registration", () => {
       "/api/policies",
       "/api/analytics",
       "/api/gemini",
+      "/api/notes",
       "/api/user",
       "/api/users",
       "/api/notification",
