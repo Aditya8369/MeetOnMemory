@@ -162,17 +162,20 @@ const Navbar = () => {
   const [unreadCount, setUnreadCount] = useState(0);
   const [notifications, setNotifications] = useState([]);
 
-  const formatTimeAgo = (dateString) => {
-    const date = new Date(dateString);
-    const now = new Date();
-    const seconds = Math.floor((now - date) / 1000);
+  const formatTimeAgo = useCallback(
+    (dateString) => {
+      const date = new Date(dateString);
+      const now = new Date();
+      const seconds = Math.floor((now - date) / 1000);
 
-    if (seconds < 60) return "Just now";
-    if (seconds < 3600) return `${Math.floor(seconds / 60)}m ago`;
-    if (seconds < 86400) return `${Math.floor(seconds / 3600)}h ago`;
-    if (seconds < 604800) return `${Math.floor(seconds / 86400)}d ago`;
-    return formatDateWithPreference(date, dateFormat);
-  };
+      if (seconds < 60) return "Just now";
+      if (seconds < 3600) return `${Math.floor(seconds / 60)}m ago`;
+      if (seconds < 86400) return `${Math.floor(seconds / 3600)}h ago`;
+      if (seconds < 604800) return `${Math.floor(seconds / 86400)}d ago`;
+      return formatDateWithPreference(date, dateFormat);
+    },
+    [dateFormat],
+  );
 
   useEffect(() => {
     if (userData && backendUrl) {
@@ -209,7 +212,7 @@ const Navbar = () => {
       fetchUnreadCount();
       fetchRecentNotifications();
     }
-  }, [userData, backendUrl]);
+  }, [userData, backendUrl, formatTimeAgo]);
 
   // Real-time notifications via Socket.IO
   useEffect(() => {
