@@ -1,6 +1,8 @@
 import ActionItem from "../models/ActionItem.js";
 import ActionItemExtractor from "../services/actionItemExtractor.js";
 import { syncActionItemToGitHub } from "../services/githubSyncService.js";
+import { syncActionItemToJira } from "../services/jiraSyncService.js";
+import { syncActionItemToLinear } from "../services/linearSyncService.js";
 import eventBus from "../services/eventBus.js";
 
 /**
@@ -52,7 +54,7 @@ export const extractFromMeeting = async (req, res) => {
 
     const savedItems = await ActionItem.insertMany(itemsToInsert);
 
-    // Sync with GitHub
+    // Sync with Issue Trackers
     try {
       if (process.env.NODE_ENV !== "test") {
         // Fire and forget in production to avoid blocking response
@@ -60,15 +62,27 @@ export const extractFromMeeting = async (req, res) => {
           syncActionItemToGitHub(item).catch((err) =>
             console.error("GitHub Sync Error:", err),
           );
+          syncActionItemToJira(item).catch((err) =>
+            console.error("Jira Sync Error:", err),
+          );
+          syncActionItemToLinear(item).catch((err) =>
+            console.error("Linear Sync Error:", err),
+          );
         });
       } else {
         // Await in test to prevent Jest teardown errors
         await Promise.allSettled(
-          savedItems.map((item) => syncActionItemToGitHub(item)),
+          savedItems.map((item) =>
+            Promise.all([
+              syncActionItemToGitHub(item),
+              syncActionItemToJira(item),
+              syncActionItemToLinear(item),
+            ]),
+          ),
         );
       }
     } catch (err) {
-      console.error("Failed to sync to GitHub:", err);
+      console.error("Failed to sync to issue trackers:", err);
     }
 
     res

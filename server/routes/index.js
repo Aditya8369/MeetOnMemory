@@ -192,6 +192,12 @@ router.use("/api/github", githubIntegrationRoutes);
 
 import { handleWebhook } from "../controllers/githubWebhookController.js";
 router.post("/api/webhooks/github", handleWebhook);
+
+import issueTrackerRoutes from "./issueTrackerRoutes.js";
+import issueTrackerWebhookRoutes from "./issueTrackerWebhookRoutes.js";
+router.use("/api/issue-tracker", issueTrackerRoutes);
+router.use("/api/webhooks", issueTrackerWebhookRoutes);
+
 router.use("/api/gamification", gamificationRoutes);
 
 export default router;

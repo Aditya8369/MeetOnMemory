@@ -33,6 +33,7 @@ import OrganizationBanner from "../components/organization/OrganizationBanner.js
 import { validateImageUrl } from "../utils/imageUrl.js";
 import NotionConnectPanel from "../components/integrations/NotionConnectPanel.jsx";
 import GitHubConnectPanel from "../components/integrations/GitHubConnectPanel.jsx";
+import IssueTrackerConfig from "../components/integrations/IssueTrackerConfig.jsx";
 
 const OrganizationSettings = () => {
   const navigate = useNavigate();
@@ -1008,6 +1009,18 @@ const OrganizationSettings = () => {
             <div className="space-y-4">
               <NotionConnectPanel canEdit={canEdit} />
               <GitHubConnectPanel organizationId={metadata._id} />
+              <IssueTrackerConfig
+                provider="jira"
+                title="Jira Integration"
+                description="Automatically sync Action Items to Jira issues."
+                icon={<Blocks className="w-6 h-6 text-blue-600" />}
+              />
+              <IssueTrackerConfig
+                provider="linear"
+                title="Linear Integration"
+                description="Automatically sync Action Items to Linear issues."
+                icon={<Blocks className="w-6 h-6 text-indigo-600" />}
+              />
             </div>
           </div>
 

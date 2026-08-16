@@ -1,5 +1,7 @@
 import React from "react";
 import GitHubSyncBadge from "./GitHubSyncBadge.jsx";
+import JiraSyncBadge from "./JiraSyncBadge.jsx";
+import LinearSyncBadge from "./LinearSyncBadge.jsx";
 
 /**
  * @desc Individual card component for an action item in the Kanban board.
@@ -90,11 +92,23 @@ const ActionItemCard = ({ item, onStatusChange }) => {
         )}
       </div>
 
-      {/* GitHub Sync Badge */}
-      <GitHubSyncBadge
-        issueId={item.externalGitHubIssueId}
-        issueUrl={item.externalGitHubIssueUrl}
-      />
+      <div className="flex flex-wrap gap-2">
+        {/* GitHub Sync Badge */}
+        <GitHubSyncBadge
+          issueId={item.externalGitHubIssueId}
+          issueUrl={item.externalGitHubIssueUrl}
+        />
+        {/* Jira Sync Badge */}
+        <JiraSyncBadge
+          issueId={item.externalJiraIssueId}
+          issueUrl={item.externalJiraIssueUrl}
+        />
+        {/* Linear Sync Badge */}
+        <LinearSyncBadge
+          issueId={item.externalLinearIssueId}
+          issueUrl={item.externalLinearIssueUrl}
+        />
+      </div>
 
       {/* Quick Actions */}
 
