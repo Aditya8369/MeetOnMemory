@@ -1,6 +1,27 @@
 import CrdtService from "../services/crdtService.js";
 import NoteVersion from "../models/noteVersionModel.js";
-import Meeting from "../models/meetingModel.js";
+import { resolveAccessibleMeeting } from "../utils/resolveAccessibleMeeting.js";
+
+/**
+ * Authorize meeting access before any collaborative-notes CRDT / snapshot work.
+ * Uses the shared resolver (owner or same organization) — never trust meetingId alone.
+ *
+ * @param {string} meetingId
+ * @param {object} user - Authenticated MongoDB user (`req.user`)
+ * @param {import("express").Response} res
+ * @returns {Promise<object|null>} Meeting document, or null after sending an error response
+ */
+async function requireNotesMeetingAccess(meetingId, user, res) {
+  const access = await resolveAccessibleMeeting(meetingId, user);
+  if (access.error) {
+    res.status(access.error.status).json({
+      success: false,
+      error: access.error.message,
+    });
+    return null;
+  }
+  return access.meeting;
+}
 
 /**
  * @desc    Get note state vector and metadata
@@ -9,41 +30,12 @@ import Meeting from "../models/meetingModel.js";
 export const getNoteState = async (req, res) => {
   try {
     const { meetingId } = req.params;
-    const userId = req.user.id || req.user._id;
 
-    // Verify user has access to this meeting
-    const meeting = await Meeting.findById(meetingId);
-    if (!meeting) {
-      return res
-        .status(404)
-        .json({ success: false, error: "Meeting not found" });
-    }
+    const meeting = await requireNotesMeetingAccess(meetingId, req.user, res);
+    if (!meeting) return;
 
-    // Organization authorization: fail closed if meeting belongs to an org
-    if (meeting.organization) {
-      if (
-        !req.user.organization ||
-        meeting.organization.toString() !== req.user.organization.toString()
-      ) {
-        return res.status(403).json({
-          success: false,
-          error: "Access denied: organization mismatch",
-        });
-      }
-    }
-
-    // Check if user is participant or organizer
-    const hasAccess =
-      meeting.uploadedBy.toString() === userId.toString() ||
-      meeting.participants.some(
-        (p) => p.user && p.user.toString() === userId.toString(),
-      );
-
-    if (!hasAccess && req.user.role !== "admin") {
-      return res.status(403).json({ success: false, error: "Access denied" });
-    }
-
-    const stateVector = await CrdtService.getStateVector(meetingId);
+    const authorizedMeetingId = meeting._id;
+    const stateVector = await CrdtService.getStateVector(authorizedMeetingId);
 
     res.status(200).json({
       success: true,
@@ -67,40 +59,14 @@ export const getNoteState = async (req, res) => {
 export const getNoteHistory = async (req, res) => {
   try {
     const { meetingId } = req.params;
-    const userId = req.user.id || req.user._id;
 
-    // Access check
-    const meeting = await Meeting.findById(meetingId);
-    if (!meeting) {
-      return res
-        .status(404)
-        .json({ success: false, error: "Meeting not found" });
-    }
+    const meeting = await requireNotesMeetingAccess(meetingId, req.user, res);
+    if (!meeting) return;
 
-    if (meeting.organization) {
-      if (
-        !req.user.organization ||
-        meeting.organization.toString() !== req.user.organization.toString()
-      ) {
-        return res.status(403).json({
-          success: false,
-          error: "Access denied: organization mismatch",
-        });
-      }
-    }
-
-    const hasAccess =
-      meeting.uploadedBy.toString() === userId.toString() ||
-      meeting.participants.some(
-        (p) => p.user && p.user.toString() === userId.toString(),
-      );
-
-    if (!hasAccess && req.user.role !== "admin") {
-      return res.status(403).json({ success: false, error: "Access denied" });
-    }
+    const authorizedMeetingId = meeting._id;
 
     const snapshots = await NoteVersion.find({
-      meetingId,
+      meetingId: authorizedMeetingId,
       field: "collaborativeNotes",
     })
       .sort({ version: -1 })
@@ -139,38 +105,13 @@ export const createSnapshot = async (req, res) => {
     const { title } = req.body;
     const userId = req.user.id || req.user._id;
 
-    // Access check
-    const meeting = await Meeting.findById(meetingId);
-    if (!meeting) {
-      return res
-        .status(404)
-        .json({ success: false, error: "Meeting not found" });
-    }
+    const meeting = await requireNotesMeetingAccess(meetingId, req.user, res);
+    if (!meeting) return;
 
-    if (meeting.organization) {
-      if (
-        !req.user.organization ||
-        meeting.organization.toString() !== req.user.organization.toString()
-      ) {
-        return res.status(403).json({
-          success: false,
-          error: "Access denied: organization mismatch",
-        });
-      }
-    }
-
-    const hasAccess =
-      meeting.uploadedBy.toString() === userId.toString() ||
-      meeting.participants.some(
-        (p) => p.user && p.user.toString() === userId.toString(),
-      );
-
-    if (!hasAccess && req.user.role !== "admin") {
-      return res.status(403).json({ success: false, error: "Access denied" });
-    }
+    const authorizedMeetingId = meeting._id;
 
     const snapshot = await CrdtService.createSnapshot(
-      meetingId,
+      authorizedMeetingId,
       userId,
       title || "Manual Snapshot",
     );
@@ -194,40 +135,14 @@ export const createSnapshot = async (req, res) => {
 export const getSnapshotByVersion = async (req, res) => {
   try {
     const { meetingId, version } = req.params;
-    const userId = req.user.id || req.user._id;
 
-    // Access check
-    const meeting = await Meeting.findById(meetingId);
-    if (!meeting) {
-      return res
-        .status(404)
-        .json({ success: false, error: "Meeting not found" });
-    }
+    const meeting = await requireNotesMeetingAccess(meetingId, req.user, res);
+    if (!meeting) return;
 
-    if (meeting.organization) {
-      if (
-        !req.user.organization ||
-        meeting.organization.toString() !== req.user.organization.toString()
-      ) {
-        return res.status(403).json({
-          success: false,
-          error: "Access denied: organization mismatch",
-        });
-      }
-    }
-
-    const hasAccess =
-      meeting.uploadedBy.toString() === userId.toString() ||
-      meeting.participants.some(
-        (p) => p.user && p.user.toString() === userId.toString(),
-      );
-
-    if (!hasAccess && req.user.role !== "admin") {
-      return res.status(403).json({ success: false, error: "Access denied" });
-    }
+    const authorizedMeetingId = meeting._id;
 
     const snapshot = await NoteVersion.findOne({
-      meetingId,
+      meetingId: authorizedMeetingId,
       field: "collaborativeNotes",
       version,
     }).populate("changedBy", "name");

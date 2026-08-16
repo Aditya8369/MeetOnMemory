@@ -13,7 +13,7 @@ const VersionHistory = ({ meetingId, onSaveSnapshot }) => {
   const fetchHistory = useCallback(async () => {
     try {
       setIsLoading(true);
-      const { data } = await apiClient.get(`/notes/${meetingId}/history`);
+      const { data } = await apiClient.get(`/api/notes/${meetingId}/history`);
       setHistory(data.data || []);
     } catch (error) {
       console.error("Failed to fetch history:", error);
