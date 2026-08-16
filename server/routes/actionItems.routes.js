@@ -1,6 +1,6 @@
 import express from "express";
 import * as actionItemsController from "../controllers/actionItems.controller.js";
-import { protect } from "../middleware/authMiddleware.js";
+import protect from "../middleware/userAuth.js";
 import {
   verifyMeetingAccess,
   verifyActionItemAccess,

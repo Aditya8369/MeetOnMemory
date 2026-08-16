@@ -32,6 +32,7 @@ import OrganizationLogo from "../components/organization/OrganizationLogo.jsx";
 import OrganizationBanner from "../components/organization/OrganizationBanner.jsx";
 import { validateImageUrl } from "../utils/imageUrl.js";
 import NotionConnectPanel from "../components/integrations/NotionConnectPanel.jsx";
+import GitHubConnectPanel from "../components/integrations/GitHubConnectPanel.jsx";
 
 const OrganizationSettings = () => {
   const navigate = useNavigate();
@@ -1004,10 +1005,14 @@ const OrganizationSettings = () => {
               </div>
             </div>
 
-            <NotionConnectPanel canEdit={canEdit} />
+            <div className="space-y-4">
+              <NotionConnectPanel canEdit={canEdit} />
+              <GitHubConnectPanel organizationId={metadata._id} />
+            </div>
           </div>
 
           {/* Form Submit Bar (for Admin/Owner) */}
+
           {canEdit && (
             <div className="flex items-center justify-end gap-3 pt-4">
               <button

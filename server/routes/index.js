@@ -182,4 +182,11 @@ router.use("/api/testimonials", testimonialRoutes);
 router.use("/api/admin/testimonials", adminTestimonialRouter);
 router.use("/api/alerts/keywords", keywordAlertRoutes);
 router.use("/api/integrations/notion", notionIntegrationRoutes);
+
+import githubIntegrationRoutes from "./githubIntegrationRoutes.js";
+router.use("/api/github", githubIntegrationRoutes);
+
+import { handleWebhook } from "../controllers/githubWebhookController.js";
+router.post("/api/webhooks/github", handleWebhook);
+
 export default router;

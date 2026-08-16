@@ -6,7 +6,7 @@ import {
   updatePreferences,
   sendTestDigest,
 } from "../controllers/digestPreferenceController.js";
-import { protect } from "../middleware/authMiddleware.js";
+import protect from "../middleware/userAuth.js";
 import { validateDigestPreferences } from "../middleware/validationMiddleware.js";
 
 const router = express.Router();

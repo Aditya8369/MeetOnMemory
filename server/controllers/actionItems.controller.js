@@ -1,5 +1,6 @@
 import ActionItem from "../models/ActionItem.js";
 import ActionItemExtractor from "../services/actionItemExtractor.js";
+import { syncActionItemToGitHub } from "../services/githubSyncService.js";
 
 /**
  * @desc Trigger AI extraction from meeting transcript (Idempotent)
@@ -49,6 +50,26 @@ export const extractFromMeeting = async (req, res) => {
     });
 
     const savedItems = await ActionItem.insertMany(itemsToInsert);
+
+    // Sync with GitHub
+    try {
+      if (process.env.NODE_ENV !== "test") {
+        // Fire and forget in production to avoid blocking response
+        savedItems.forEach((item) => {
+          syncActionItemToGitHub(item).catch((err) =>
+            console.error("GitHub Sync Error:", err),
+          );
+        });
+      } else {
+        // Await in test to prevent Jest teardown errors
+        await Promise.allSettled(
+          savedItems.map((item) => syncActionItemToGitHub(item)),
+        );
+      }
+    } catch (err) {
+      console.error("Failed to sync to GitHub:", err);
+    }
+
     res
       .status(201)
       .json({ success: true, count: savedItems.length, data: savedItems });

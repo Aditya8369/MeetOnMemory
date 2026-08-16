@@ -2,7 +2,7 @@ import express from "express";
 import ExportTemplate from "../models/ExportTemplate.js";
 import DataExtractor from "../services/dataExtractor.js";
 import DocumentGenerator from "../services/documentGenerator.js";
-import { protect } from "../middleware/authMiddleware.js";
+import protect from "../middleware/userAuth.js";
 import Meeting from "../models/Meeting.js";
 
 const router = express.Router();

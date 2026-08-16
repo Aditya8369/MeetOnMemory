@@ -1,6 +1,6 @@
 import Meeting from "../models/meetingModel.js";
 import ExportService from "./ExportService.js";
-import archiver from "archiver";
+import * as archiver from "archiver";
 import {
   ValidationError,
   ForbiddenError,
