@@ -1,4 +1,4 @@
-import Meeting from "../models/Meeting.js";
+import Meeting from "../models/meetingModel.js";
 
 /**
  * @desc Middleware to verify the authenticated user has access to the specified meeting.
@@ -29,7 +29,7 @@ export const verifyMeetingAccess = async (req, res, next) => {
 
     req.meeting = meeting;
     next();
-  } catch (err) {
+  } catch (_err) {
     res
       .status(500)
       .json({ success: false, error: "Server error during authorization" });
@@ -60,7 +60,7 @@ export const verifyActionItemAccess = async (req, res, next) => {
 
     req.actionItem = item;
     next();
-  } catch (err) {
+  } catch (_err) {
     res
       .status(500)
       .json({ success: false, error: "Server error during authorization" });

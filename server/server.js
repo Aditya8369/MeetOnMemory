@@ -104,7 +104,7 @@ if (io) {
 
 // SERVER START (Skipped during Jest test execution)
 if (process.env.NODE_ENV !== "test") {
-  server.listen(PORT, () => {
+  server.listen(PORT, "0.0.0.0", () => {
     console.log(`🚀 MeetOnMemory Server running on port ${PORT}`);
 
     setTimeout(() => {

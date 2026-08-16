@@ -1,4 +1,4 @@
-FROM node:18-alpine
+FROM node:20-alpine
 
 WORKDIR /app
 
@@ -9,7 +9,7 @@ RUN npm install
 # Copy the rest of the application code
 COPY . .
 
-# Expose port (adjust if your server runs on a different port)
-EXPOSE 5000
+# Expose port (Render/Docker inject PORT; default local is 4000)
+EXPOSE 4000
 
-CMD ["npm", "run", "server"]
+CMD ["npm", "start"]

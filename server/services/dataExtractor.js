@@ -1,4 +1,4 @@
-import Meeting from "../models/Meeting.js";
+import Meeting from "../models/meetingModel.js";
 import ActionItem from "../models/ActionItem.js";
 
 /**
