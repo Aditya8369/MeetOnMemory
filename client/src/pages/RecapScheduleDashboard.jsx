@@ -37,6 +37,10 @@ const RecapScheduleDashboard = () => {
   const [retryMessage, setRetryMessage] = useState({ type: "", text: "" });
 
   useEffect(() => {
+    if (!organizationId) {
+      setIsLoading(false);
+      return;
+    }
     const fetchData = async () => {
       setIsLoading(true);
       try {
@@ -67,7 +71,7 @@ const RecapScheduleDashboard = () => {
         setIsLoading(false);
       }
     };
-    if (organizationId) fetchData();
+    fetchData();
   }, [organizationId]);
 
   const handleChange = (e) => {
@@ -160,6 +164,25 @@ const RecapScheduleDashboard = () => {
         {isLoading ? (
           <div className="flex justify-center items-center py-20">
             <RefreshCw className="h-8 w-8 text-blue-600 animate-spin" />
+          </div>
+        ) : !organizationId ? (
+          <div className="flex flex-col items-center justify-center py-20 bg-white dark:bg-gray-800 shadow rounded-xl border border-slate-200 dark:border-gray-700">
+            <div className="bg-blue-50 dark:bg-blue-900/20 p-4 rounded-full mb-4">
+              <Clock className="w-12 h-12 text-blue-600 dark:text-blue-400" />
+            </div>
+            <h2 className="text-xl font-bold text-slate-900 dark:text-white mb-2">
+              No Organization Found
+            </h2>
+            <p className="text-slate-600 dark:text-gray-400 text-center max-w-md mb-6">
+              You need to be part of an organization to manage recap delivery
+              schedules.
+            </p>
+            <a
+              href="/organizations"
+              className="inline-flex items-center gap-2 px-6 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-colors"
+            >
+              Join or Create an Organization
+            </a>
           </div>
         ) : (
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
