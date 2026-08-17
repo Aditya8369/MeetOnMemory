@@ -22,6 +22,7 @@
 // action items for a workspace, not the whole database).
 // ==============================================
 
+import mongoose from "mongoose";
 import Decision from "../models/decisionModel.js";
 import ActionItem from "../models/actionItemModel.js";
 
@@ -49,7 +50,15 @@ export function nodeKey(type, id) {
  * @returns {Promise<{adjacency: Map<string, Array<{key:string, weight:number}>>, nodes: Map<string, object>}>}
  */
 export async function buildGraph(organization) {
-  const orgFilter = { organization: organization || null };
+  if (!organization) {
+    throw new Error("Organization context is required for hybrid search");
+  }
+
+  const orgFilter = {
+    organization: mongoose.isValidObjectId(organization)
+      ? new mongoose.Types.ObjectId(organization)
+      : organization,
+  };
 
   const [decisions, actionItems] = await Promise.all([
     Decision.find(orgFilter).select(
