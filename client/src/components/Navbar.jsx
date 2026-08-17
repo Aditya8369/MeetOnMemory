@@ -200,8 +200,8 @@ const Navbar = () => {
                 id: n._id || n.id,
                 title: n.title,
                 description: n.description,
-                createdAt: n.createdAt,
                 actionUrl: n.actionUrl || n.data?.url || n.url,
+                time: formatTimeAgo(n.createdAt),
                 unread: !n.isRead,
               })),
             );
@@ -246,8 +246,8 @@ const Navbar = () => {
             id: newNotif._id || newNotif.id,
             title: newNotif.title,
             description: newNotif.description,
-            createdAt: newNotif.createdAt || new Date().toISOString(),
             actionUrl: newNotif.actionUrl || newNotif.data?.url || newNotif.url,
+            time: "Just now",
             unread: true,
           };
           // Keep only top 5 recent notifications
