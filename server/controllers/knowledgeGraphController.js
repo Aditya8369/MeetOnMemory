@@ -1,6 +1,7 @@
 import {
   buildOrganizationGraph,
   buildMeetingGraph,
+  getEntityNeighborhood,
   findPath,
   getGraphAnalytics,
   searchEntities,
@@ -145,32 +146,14 @@ export const getEntity = async (req, res) => {
       return res.status(400).json({ message: "Invalid entity identifier" });
     }
 
-    const graph = await buildOrganizationGraph(orgId);
-    const { nodes, edges } = graph;
+    // Targeted entity lookup without rebuilding the full organization graph (#1678)
+    const result = await getEntityNeighborhood(orgId, type, id);
 
-    const entityId = `${type}-${id}`;
-    const entity = nodes.find((n) => n.id === entityId);
-
-    if (!entity) {
+    if (!result || !result.entity) {
       return res.status(404).json({ message: "Entity not found" });
     }
 
-    // Find all relationships
-    const relationships = edges.filter(
-      (e) => e.source === entityId || e.target === entityId,
-    );
-
-    // Get related entities
-    const relatedIds = relationships.map((e) =>
-      e.source === entityId ? e.target : e.source,
-    );
-    const relatedEntities = nodes.filter((n) => relatedIds.includes(n.id));
-
-    res.status(200).json({
-      entity,
-      relationships,
-      relatedEntities,
-    });
+    res.status(200).json(result);
   } catch (error) {
     console.error("Error fetching entity:", error);
     res.status(500).json({ message: "Server Error", error: error.message });
