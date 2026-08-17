@@ -188,7 +188,20 @@
     "meetOnMemoryTeam": "the MeetOnMemory Team",
     "starRepo": "Star the repo if you like",
     "status": "System Status",
-    "security": "Security"
+    "security": "Security",
+    "cookies": "Cookies",
+    "home": "Home",
+    "developerDocs": "Developer Docs",
+    "contactSupport": "Contact Support",
+    "githubRepo": "GitHub Repository",
+    "reportIssues": "Report Issues",
+    "contributing": "Contributing",
+    "codeOfConduct": "Code of Conduct",
+    "builtWith": "Built with",
+    "helpCenter": "Help Center",
+    "careers": "Careers",
+    "contact": "Contact",
+    "github": "GitHub"
   },
   "dashboard": {
     "welcomeBack": "Welcome back,",

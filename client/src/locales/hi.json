@@ -188,7 +188,20 @@
     "meetOnMemoryTeam": "MeetOnMemory टीम",
     "starRepo": "पसंद आए तो रिपॉजिटरी को स्टार करें",
     "status": "सिस्टम स्थिति",
-    "security": "सुरक्षा"
+    "security": "सुरक्षा",
+    "cookies": "कुकीज़",
+    "home": "होम",
+    "developerDocs": "डेवलपर दस्तावेज़",
+    "contactSupport": "सहायता से संपर्क करें",
+    "githubRepo": "GitHub रिपॉजिटरी",
+    "reportIssues": "समस्याओं की रिपोर्ट करें",
+    "contributing": "योगदान",
+    "codeOfConduct": "आचार संहिता",
+    "builtWith": "इसके साथ निर्मित",
+    "helpCenter": "सहायता केंद्र",
+    "careers": "करियर",
+    "contact": "संपर्क",
+    "github": "GitHub"
   },
   "dashboard": {
     "welcomeBack": "वापसी पर स्वागत है,",

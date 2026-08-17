@@ -72,7 +72,7 @@ const Footer = () => {
                 {t("footer.security", "Security")}
               </Link>
               <Link to="/cookie-policy" className={footerLinkClass}>
-                Cookies
+                {t("footer.cookies", "Cookies")}
               </Link>
               <Link to="/help-center" className={footerLinkClass}>
                 {t("footer.helpCenter", "Help Center")}
@@ -84,7 +84,7 @@ const Footer = () => {
                 to="/docs"
                 className={`${footerLinkClass} font-semibold text-blue-600 dark:text-blue-400`}
               >
-                Developer Docs
+                {t("footer.developerDocs", "Developer Docs")}
               </Link>
               <span className="text-gray-300 dark:text-gray-700">|</span>
               <Link to="/contact" className={footerLinkClass}>
@@ -100,7 +100,7 @@ const Footer = () => {
                 className={`${footerLinkClass} flex items-center gap-1`}
               >
                 <Github className="h-3.5 w-3.5" aria-hidden="true" />
-                GitHub
+                {t("footer.github", "GitHub")}
               </a>
             </div>
           </div>
@@ -193,7 +193,7 @@ const Footer = () => {
             <ul className="flex flex-col gap-2.5">
               <li>
                 <Link to="/" className={footerLinkClass}>
-                  Home
+                  {t("footer.home", t("navbar.home", "Home"))}
                 </Link>
               </li>
               <li>
@@ -258,7 +258,7 @@ const Footer = () => {
               </li>
               <li>
                 <Link to="/contact" className={footerLinkClass}>
-                  Contact Support
+                  {t("footer.contactSupport", "Contact Support")}
                 </Link>
               </li>
               <li>
@@ -271,7 +271,7 @@ const Footer = () => {
                   to="/docs"
                   className={`${footerLinkClass} font-semibold text-blue-600 dark:text-blue-400`}
                 >
-                  Developer Docs
+                  {t("footer.developerDocs", "Developer Docs")}
                 </Link>
               </li>
               <li>
@@ -282,7 +282,7 @@ const Footer = () => {
                   aria-label="MeetOnMemory GitHub repository (opens in new tab)"
                   className={footerLinkClass}
                 >
-                  GitHub Repository
+                  {t("footer.githubRepo", "GitHub Repository")}
                 </a>
               </li>
               <li>
@@ -293,7 +293,7 @@ const Footer = () => {
                   aria-label="Report issues on GitHub (opens in new tab)"
                   className={footerLinkClass}
                 >
-                  Report Issues
+                  {t("footer.reportIssues", "Report Issues")}
                 </a>
               </li>
               <li>
@@ -304,7 +304,7 @@ const Footer = () => {
                   aria-label="Contributing guide (opens in new tab)"
                   className={footerLinkClass}
                 >
-                  Contributing
+                  {t("footer.contributing", "Contributing")}
                 </a>
               </li>
               <li>
@@ -315,7 +315,7 @@ const Footer = () => {
                   aria-label="Code of Conduct (opens in new tab)"
                   className={footerLinkClass}
                 >
-                  Code of Conduct
+                  {t("footer.codeOfConduct", "Code of Conduct")}
                 </a>
               </li>
             </ul>
@@ -371,7 +371,7 @@ const Footer = () => {
             </ul>
 
             <p className="mb-3 text-[11px] font-semibold uppercase tracking-wider text-gray-400 dark:text-gray-500">
-              Built with
+              {t("footer.builtWith", "Built with")}
             </p>
             <ul className="flex flex-col gap-2">
               {[
@@ -418,7 +418,7 @@ const Footer = () => {
               </Link>
               <span aria-hidden="true">•</span>
               <Link to="/cookie-policy" className={footerLinkClass}>
-                Cookies
+                {t("footer.cookies", "Cookies")}
               </Link>
               <span aria-hidden="true">•</span>
               <Link to="/help-center" className={footerLinkClass}>
