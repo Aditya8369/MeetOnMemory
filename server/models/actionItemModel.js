@@ -71,16 +71,44 @@ const lifecycleTransitionSchema = new mongoose.Schema(
 const actionItemSchema = new mongoose.Schema(
   {
     text: { type: String, required: true, trim: true },
+    description: { type: String, default: "", maxlength: 2000 },
     owner: { type: String, default: "Unassigned" },
+    assignee: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+      default: null,
+    },
+    assignedBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+      default: null,
+    },
     status: {
       type: String,
-      enum: ["open", "in-progress", "resolved", "superseded"],
+      enum: [
+        "open",
+        "in-progress",
+        "resolved",
+        "superseded",
+        "pending",
+        "in_progress",
+        "completed",
+        "overdue",
+        "cancelled",
+      ],
       default: "open",
+      index: true,
+    },
+    priority: {
+      type: String,
+      enum: ["low", "medium", "high", "urgent"],
+      default: "medium",
     },
     sourceMeetingId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Meeting",
       required: true,
+      index: true,
     },
     organization: {
       type: mongoose.Schema.Types.ObjectId,
@@ -90,6 +118,15 @@ const actionItemSchema = new mongoose.Schema(
     dueDate: {
       type: Date,
       default: null,
+      index: true,
+    },
+    completedAt: {
+      type: Date,
+      default: null,
+    },
+    sourceContext: {
+      type: String,
+      default: "",
     },
     remindersEnabled: {
       type: Boolean,
@@ -100,6 +137,19 @@ const actionItemSchema = new mongoose.Schema(
       overdue: { type: Boolean, default: false },
       upcomingSentAt: { type: Date, default: null },
       overdueSentAt: { type: Date, default: null },
+    },
+    remindersSent: [
+      {
+        type: {
+          type: String,
+          enum: ["7_day", "3_day", "1_day", "due_today", "overdue"],
+        },
+        sentAt: { type: Date, default: Date.now },
+      },
+    ],
+    aiConfidence: {
+      type: Number,
+      default: 1.0,
     },
     embedding: {
       type: [Number],
@@ -128,7 +178,7 @@ const actionItemSchema = new mongoose.Schema(
 
     // --- Jira Integration ---
     externalJiraIssueId: {
-      type: String, // Jira uses string keys like "PROJ-123"
+      type: String,
       default: null,
     },
     externalJiraIssueUrl: {
@@ -138,7 +188,7 @@ const actionItemSchema = new mongoose.Schema(
 
     // --- Linear Integration ---
     externalLinearIssueId: {
-      type: String, // Linear uses UUIDs or string keys
+      type: String,
       default: null,
     },
     externalLinearIssueUrl: {
@@ -155,7 +205,7 @@ const actionItemSchema = new mongoose.Schema(
     // --- Dynamic memory importance scoring (Issue #269) ---
     accessCount: { type: Number, default: 0 },
     lastAccessedAt: { type: Date, default: null },
-    feedbackScore: { type: Number, default: 0 }, // sum of ratings (1-5 each)
+    feedbackScore: { type: Number, default: 0 },
     feedbackCount: { type: Number, default: 0 },
     importanceScore: {
       type: Number,
@@ -172,18 +222,11 @@ const actionItemSchema = new mongoose.Schema(
       userFeedback: { type: Number, default: 0 },
     },
     importanceUpdatedAt: { type: Date, default: null },
+
     // --- Memory Consolidation fields ---
-    // Alternate phrasings that were detected as duplicates/paraphrases of
-    // this canonical memory and folded into it.
     aliases: { type: [String], default: [] },
-    // Full history of duplicate records merged into this canonical memory.
     mergedFrom: { type: [mergeHistorySchema], default: [] },
-    // Conflicting field values encountered during consolidation and how
-    // they were resolved.
     mergeConflicts: { type: [mergeConflictSchema], default: [] },
-    // If this record was itself merged away into another canonical memory,
-    // this points to that canonical record. Non-canonical records are kept
-    // (not deleted) so relationships/history remain traceable.
     supersededByMemory: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "ActionItem",
@@ -200,17 +243,49 @@ const actionItemSchema = new mongoose.Schema(
     },
     lifecycleUpdatedAt: { type: Date, default: null },
     archivedAt: { type: Date, default: null },
-    // When set, the sweep may permanently delete this memory once past
-    // this timestamp (only ever reached from the "archived" state).
     expiresAt: { type: Date, default: null },
     lifecycleHistory: { type: [lifecycleTransitionSchema], default: [] },
   },
-  { timestamps: true },
+  {
+    timestamps: true,
+    toJSON: { virtuals: true },
+    toObject: { virtuals: true },
+  },
 );
+
+// Virtual aliases for compatibility across all ActionItem services and controllers
+actionItemSchema
+  .virtual("title")
+  .get(function () {
+    return this.text;
+  })
+  .set(function (val) {
+    this.text = val;
+  });
+
+actionItemSchema
+  .virtual("meetingId")
+  .get(function () {
+    return this.sourceMeetingId;
+  })
+  .set(function (val) {
+    this.sourceMeetingId = val;
+  });
+
+actionItemSchema
+  .virtual("deadline")
+  .get(function () {
+    return this.dueDate;
+  })
+  .set(function (val) {
+    this.dueDate = val;
+  });
 
 actionItemSchema.index({ organization: 1, status: 1, createdAt: -1 });
 actionItemSchema.index({ organization: 1, dueDate: 1 });
 actionItemSchema.index({ organization: 1, owner: 1 });
+actionItemSchema.index({ assignee: 1, status: 1 });
+actionItemSchema.index({ deadline: 1, status: 1 });
 
 const ActionItem =
   mongoose.models.ActionItem || mongoose.model("ActionItem", actionItemSchema);
