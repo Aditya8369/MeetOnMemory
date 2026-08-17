@@ -45,6 +45,10 @@ import {
 import { startRecapBatchJob, stopRecapBatchJob } from "./jobs/recapBatchJob.js";
 import gamificationEngine from "./services/gamificationEngine.js";
 import { startLeaderboardJob } from "./jobs/leaderboardAggregationJob.js";
+import {
+  initAutoBriefingJob,
+  stopAutoBriefingJob,
+} from "./jobs/autoBriefingJob.js";
 import { createClient } from "redis"; // eslint-disable-line no-unused-vars
 import {
   initDataExportWorker, // eslint-disable-line no-unused-vars
@@ -140,6 +144,9 @@ if (process.env.NODE_ENV !== "test") {
 
   // Start leaderboard aggregation job
   startLeaderboardJob();
+
+  // Start auto pre-meeting briefing job
+  initAutoBriefingJob();
 }
 
 // (AI, Data Export, and Webhook workers are initialized inside server.listen callback)
@@ -151,6 +158,7 @@ const gracefulShutdown = createGracefulShutdown({
   stopBackgroundJobs: () => {
     stopActionItemReminderJob();
     stopRecapBatchJob();
+    stopAutoBriefingJob();
   },
   closeQueues: shutdownQueues,
   closeDatabase: () => mongoose.connection.close(),

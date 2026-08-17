@@ -206,4 +206,7 @@ router.use("/api/webhooks", issueTrackerWebhookRoutes);
 
 router.use("/api/gamification", gamificationRoutes);
 
+import preMeetingBriefingRoutes from "./preMeetingBriefingRoutes.js";
+router.use("/api/briefings", preMeetingBriefingRoutes);
+
 export default router;

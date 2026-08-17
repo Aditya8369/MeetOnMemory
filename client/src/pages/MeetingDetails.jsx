@@ -25,6 +25,8 @@ import DuplicateDetectionPanel from "../components/meeting-details/DuplicateDete
 import MeetingTimeline from "../components/meeting-details/MeetingTimeline";
 import RecapStoryViewer from "../components/summaries/RecapStoryViewer";
 import { useUser } from "@clerk/clerk-react";
+import BriefingBanner from "../components/meeting-details/BriefingBanner";
+import { getBriefing } from "../services/briefingApi";
 
 const MeetingDetails = () => {
   const { id } = useParams();
@@ -37,6 +39,7 @@ const MeetingDetails = () => {
   const [isPresentModeOpen, setIsPresentModeOpen] = useState(false);
   const [isAnalyticsExpanded, setIsAnalyticsExpanded] = useState(false);
   const [isStoryViewerOpen, setIsStoryViewerOpen] = useState(false);
+  const [briefingStatus, setBriefingStatus] = useState("none");
 
   useEffect(() => {
     const fetchMeetingDetails = async () => {
@@ -48,6 +51,18 @@ const MeetingDetails = () => {
           setMeeting(data.meeting);
         } else {
           setError(data.message || "Failed to fetch meeting details");
+        }
+
+        // Fetch briefing status
+        try {
+          const bData = await getBriefing(id);
+          if (bData && bData.status) {
+            setBriefingStatus(bData.status);
+          }
+        } catch (bErr) {
+          // It's ok if it doesn't exist
+          console.warn("Could not fetch briefing", bErr);
+          setBriefingStatus("none");
         }
       } catch (err) {
         console.error("Error fetching meeting details:", err);
@@ -200,6 +215,15 @@ const MeetingDetails = () => {
             Play Recap Story
           </button>
         </div>
+
+        {meeting.date && new Date(meeting.date) > new Date() && (
+          <BriefingBanner
+            meetingId={meeting._id}
+            briefingStatus={briefingStatus}
+            onRegenerate={() => setBriefingStatus("pending")}
+          />
+        )}
+
         <DuplicateDetectionPanel meetingId={meeting._id} />
         <MeetingFollowUpBanner meeting={meeting} />
         <MeetingHeader
