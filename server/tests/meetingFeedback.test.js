@@ -88,7 +88,10 @@ describe("Meeting Feedback Controller", () => {
 
       expect(res.status).toHaveBeenCalledWith(403);
       expect(res.json).toHaveBeenCalledWith(
-        expect.objectContaining({ success: false }),
+        expect.objectContaining({
+          success: false,
+          message: "Not authorized to access feedback for this meeting",
+        }),
       );
     });
 
@@ -190,7 +193,10 @@ describe("Meeting Feedback Controller", () => {
 
       expect(res.status).toHaveBeenCalledWith(403);
       expect(res.json).toHaveBeenCalledWith(
-        expect.objectContaining({ success: false }),
+        expect.objectContaining({
+          success: false,
+          message: "Not authorized to access feedback for this meeting",
+        }),
       );
       // Must not query/leak feedback for an unauthorized user.
       expect(findSpy).not.toHaveBeenCalled();
@@ -348,12 +354,43 @@ describe("Meeting Feedback Controller", () => {
       jest.spyOn(Meeting, "findById").mockResolvedValue({
         _id: meetingId,
         organization: req.user.organization,
+        uploadedBy: new mongoose.Types.ObjectId().toString(),
+        participants: [{ user: req.user._id }],
       });
 
       await deleteFeedback(req, res);
 
       expect(mockDeleteOne).toHaveBeenCalled();
       expect(res.status).toHaveBeenCalledWith(200);
+    });
+
+    it("should fail to delete if user is not the feedback owner", async () => {
+      const feedbackId = new mongoose.Types.ObjectId().toString();
+      const meetingId = new mongoose.Types.ObjectId().toString();
+      req.params.id = feedbackId;
+
+      jest.spyOn(MeetingFeedback, "findById").mockResolvedValue({
+        _id: feedbackId,
+        meetingId,
+        userId: new mongoose.Types.ObjectId().toString(),
+      });
+
+      jest.spyOn(Meeting, "findById").mockResolvedValue({
+        _id: meetingId,
+        uploadedBy: new mongoose.Types.ObjectId().toString(),
+        organization: req.user.organization,
+        participants: [{ user: req.user._id }],
+      });
+
+      await deleteFeedback(req, res);
+
+      expect(res.status).toHaveBeenCalledWith(403);
+      expect(res.json).toHaveBeenCalledWith(
+        expect.objectContaining({
+          success: false,
+          message: "Not authorized to modify this feedback",
+        }),
+      );
     });
 
     it("should fail to delete if the associated meeting belongs to a different organization", async () => {
@@ -370,6 +407,7 @@ describe("Meeting Feedback Controller", () => {
       jest.spyOn(Meeting, "findById").mockResolvedValue({
         _id: meetingId,
         organization: new mongoose.Types.ObjectId().toString(),
+        participants: [{ user: req.user._id }],
       });
 
       await deleteFeedback(req, res);
@@ -379,6 +417,30 @@ describe("Meeting Feedback Controller", () => {
         expect.objectContaining({
           success: false,
           message: "Forbidden: Meeting belongs to another organization",
+        }),
+      );
+    });
+
+    it("should fail to delete if the associated meeting no longer exists", async () => {
+      const feedbackId = new mongoose.Types.ObjectId().toString();
+      const meetingId = new mongoose.Types.ObjectId().toString();
+      req.params.id = feedbackId;
+
+      jest.spyOn(MeetingFeedback, "findById").mockResolvedValue({
+        _id: feedbackId,
+        meetingId,
+        userId: req.user._id,
+      });
+
+      jest.spyOn(Meeting, "findById").mockResolvedValue(null);
+
+      await deleteFeedback(req, res);
+
+      expect(res.status).toHaveBeenCalledWith(404);
+      expect(res.json).toHaveBeenCalledWith(
+        expect.objectContaining({
+          success: false,
+          message: "Meeting not found",
         }),
       );
     });
