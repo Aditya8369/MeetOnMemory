@@ -4,6 +4,8 @@ import MeetingCostConfig, {
 import meetingCostService from "../services/meetingCostService.js";
 import { Parser } from "json2csv";
 import { neutralizeRow } from "../utils/csvSafety.js";
+import { getOrganizationIdFromReq } from "../middleware/cacheMiddleware.js";
+import { stripClientTenantFields } from "../utils/resolveSearchTenant.js";
 
 /**
  * Fields a client may set on the cost config (Issue #1161).
@@ -135,8 +137,15 @@ export const getMemberAnalytics = async (req, res) => {
 
 export const exportCostReport = async (req, res) => {
   try {
-    const orgId = req.user.organization;
-    const { startDate, endDate } = req.query;
+    const orgId = getOrganizationIdFromReq(req);
+    if (!orgId) {
+      return res.status(403).json({
+        success: false,
+        message: "Organization membership required",
+      });
+    }
+
+    const { startDate, endDate } = stripClientTenantFields(req.query || {});
 
     const data = await meetingCostService.getMemberTimeAnalytics(
       orgId,
@@ -160,6 +169,15 @@ export const exportCostReport = async (req, res) => {
     );
     res.status(200).send(csv);
   } catch (error) {
+    if (
+      error?.message?.includes("valid organization") ||
+      error?.message?.includes("organization is required")
+    ) {
+      return res.status(403).json({
+        success: false,
+        message: "Organization membership required",
+      });
+    }
     console.error("Error exporting cost report:", error);
     res.status(500).json({ success: false, message: "Server Error" });
   }
