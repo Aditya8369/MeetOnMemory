@@ -81,8 +81,19 @@ const MeetingDetails = () => {
     try {
       const { data } = await meetingApi.deleteMeeting(meetingId);
       if (data.success) {
-        toast.success("Meeting deleted successfully");
-        navigate("/summaries");
+        toast.success(
+          <div className="flex items-center justify-between gap-3">
+            <span>Meeting moved to recycle bin</span>
+            <button
+              type="button"
+              onClick={() => navigate("/meetings/recycle-bin")}
+              className="text-xs font-semibold text-blue-600 hover:text-blue-700 underline shrink-0"
+            >
+              View Recycle Bin
+            </button>
+          </div>,
+        );
+        navigate("/meetings");
       } else {
         toast.error(data.message || "Failed to delete meeting");
       }
