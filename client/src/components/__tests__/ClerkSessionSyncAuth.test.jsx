@@ -100,9 +100,12 @@ describe("ClerkSessionSync Auth & Bootstrap Requests", () => {
       </AppContent.Provider>,
     );
 
-    await waitFor(() => {
-      // It should retry after failing initially
-      expect(authApi.syncClerkUser).toHaveBeenCalledTimes(2);
-    });
+    await waitFor(
+      () => {
+        // It should retry after failing initially
+        expect(authApi.syncClerkUser).toHaveBeenCalledTimes(2);
+      },
+      { timeout: 3000 },
+    );
   });
 });

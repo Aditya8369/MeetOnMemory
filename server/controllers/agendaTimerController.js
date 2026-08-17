@@ -1,4 +1,5 @@
 import Meeting from "../models/meetingModel.js";
+import eventBus from "../services/eventBus.js";
 
 /**
  * May this user drive the agenda timer for this meeting?
@@ -179,6 +180,7 @@ export const stopAgendaItem = async (req, res) => {
     // Check if all items are completed/skipped
     if (allItemsFinished(meeting.agendaItems)) {
       meeting.agendaProgress = "completed";
+      eventBus.emit("meeting.ended", { meetingId: meeting._id });
     }
 
     await meeting.save();
@@ -235,6 +237,7 @@ export const skipAgendaItem = async (req, res) => {
 
     if (allItemsFinished(meeting.agendaItems)) {
       meeting.agendaProgress = "completed";
+      eventBus.emit("meeting.ended", { meetingId: meeting._id });
     }
 
     await meeting.save();

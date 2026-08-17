@@ -1,4 +1,51 @@
 import * as agendaVoteService from "../services/agendaVoteService.js";
+import { resolveAccessibleMeeting } from "../utils/resolveAccessibleMeeting.js";
+
+/**
+ * Helper to determine if a user is a host or admin for a meeting.
+ */
+const isHostOrAdmin = (meeting, user) => {
+  if (!meeting || !user) return false;
+
+  const userIdStr = user._id
+    ? user._id.toString()
+    : user.id
+      ? user.id.toString()
+      : null;
+
+  // Check if meeting owner / uploader
+  if (
+    meeting.uploadedBy &&
+    userIdStr &&
+    meeting.uploadedBy.toString() === userIdStr
+  ) {
+    return true;
+  }
+
+  // Check if organization admin or system owner
+  if (user.role === "admin" || user.role === "owner") {
+    return true;
+  }
+
+  // Check if meeting participant with host / co-host / admin / organizer role
+  if (Array.isArray(meeting.participants)) {
+    const participant = meeting.participants.find(
+      (p) =>
+        (p.user && userIdStr && p.user.toString() === userIdStr) ||
+        (p.email &&
+          user.email &&
+          p.email.toLowerCase() === user.email.toLowerCase()),
+    );
+    if (participant && participant.role) {
+      const roleLower = participant.role.toLowerCase();
+      if (["host", "co-host", "admin", "organizer"].includes(roleLower)) {
+        return true;
+      }
+    }
+  }
+
+  return false;
+};
 
 /**
  * Cast or update a vote
@@ -8,19 +55,26 @@ export const castVote = async (req, res) => {
   try {
     const { meetingId, agendaItemId } = req.params;
     const { vote } = req.body;
-    const userId = req.user._id;
+    const userId = req.user._id || req.user.id;
 
-    if (![1, -1].includes(vote)) {
+    if (![1, -1].includes(Number(vote))) {
       return res
         .status(400)
         .json({ error: "Vote must be 1 (upvote) or -1 (downvote)" });
+    }
+
+    const access = await resolveAccessibleMeeting(meetingId, req.user);
+    if (access.error) {
+      return res
+        .status(access.error.status)
+        .json({ error: access.error.message });
     }
 
     const newVote = await agendaVoteService.castVote(
       meetingId,
       agendaItemId,
       userId,
-      vote,
+      Number(vote),
     );
     const updatedTally = await agendaVoteService.getVoteTally(meetingId);
 
@@ -46,7 +100,14 @@ export const castVote = async (req, res) => {
 export const removeVote = async (req, res) => {
   try {
     const { meetingId, agendaItemId } = req.params;
-    const userId = req.user._id;
+    const userId = req.user._id || req.user.id;
+
+    const access = await resolveAccessibleMeeting(meetingId, req.user);
+    if (access.error) {
+      return res
+        .status(access.error.status)
+        .json({ error: access.error.message });
+    }
 
     await agendaVoteService.removeVote(meetingId, agendaItemId, userId);
     const updatedTally = await agendaVoteService.getVoteTally(meetingId);
@@ -73,6 +134,14 @@ export const removeVote = async (req, res) => {
 export const getVoteTally = async (req, res) => {
   try {
     const { meetingId } = req.params;
+
+    const access = await resolveAccessibleMeeting(meetingId, req.user);
+    if (access.error) {
+      return res
+        .status(access.error.status)
+        .json({ error: access.error.message });
+    }
+
     const tally = await agendaVoteService.getVoteTally(meetingId);
     res.status(200).json({ tally });
   } catch (error) {
@@ -88,7 +157,23 @@ export const getVoteTally = async (req, res) => {
 export const autoSortByVotes = async (req, res) => {
   try {
     const { meetingId } = req.params;
-    // Host validation should ideally happen here or in a middleware
+
+    const access = await resolveAccessibleMeeting(meetingId, req.user);
+    if (access.error) {
+      return res
+        .status(access.error.status)
+        .json({ error: access.error.message });
+    }
+
+    const meeting = access.meeting;
+
+    if (!isHostOrAdmin(meeting, req.user)) {
+      return res.status(403).json({
+        error:
+          "Forbidden: Only meeting hosts or admins can auto-sort the agenda",
+      });
+    }
+
     const updatedAgenda = await agendaVoteService.autoSortByVotes(meetingId);
 
     const io = req.app.get("io");

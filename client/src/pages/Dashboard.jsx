@@ -9,10 +9,11 @@ import {
   BarChart3,
   Brain,
   Search,
-  ArrowRight,
   Sparkles,
   Shield,
   Users,
+  Trophy,
+  ArrowRight,
 } from "lucide-react";
 import Navbar from "../components/Navbar.jsx";
 import TopContributorsWidget from "../components/organization/TopContributorsWidget";
@@ -21,6 +22,7 @@ import OrganizationLogo from "../components/organization/OrganizationLogo.jsx";
 import OrganizationBanner from "../components/organization/OrganizationBanner.jsx";
 import PersonalNotesSidebar from "../components/PersonalNotesSidebar.jsx";
 import PendingRsvpBanner from "../components/dashboard/PendingRsvpBanner.jsx";
+import StoryThumbnails from "../components/dashboard/StoryThumbnails.jsx";
 
 /* ─── Role Badge ──────────────────────────────────────────────────────────── */
 const ROLE_STYLES = {
@@ -38,6 +40,7 @@ const ROUTE_MAP = {
   reports: "/reports",
   "attendance-analytics": "/attendance-analytics",
   "meeting-cost-analytics": "/meeting-cost-analytics",
+  leaderboard: "/leaderboard",
 };
 
 /* ─── Dashboard ───────────────────────────────────────────────────────────── */
@@ -142,8 +145,19 @@ const Dashboard = () => {
       iconColor: "text-blue-600",
       tag: "Cost",
       tagColor: "bg-blue-50 text-blue-700 border-blue-100",
-      accentRing: "group-hover:ring-blue-100",
       adminOnly: true,
+    },
+    {
+      id: "leaderboard",
+      icon: Trophy,
+      title: "Meeting Hygiene Leaderboard",
+      description:
+        "View top contributors with the best meeting hygiene scores and badges.",
+      iconBg: "bg-yellow-50",
+      iconColor: "text-yellow-600",
+      tag: "Gamification",
+      tagColor: "bg-yellow-50 text-yellow-700 border-yellow-100",
+      accentRing: "group-hover:ring-yellow-100",
     },
   ];
 
@@ -162,6 +176,7 @@ const Dashboard = () => {
 
       <div className="flex-1 w-full max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 pt-28 pb-12 sm:pb-16">
         <PendingRsvpBanner />
+        <StoryThumbnails />
         {/* ── Hero + AI Search — unified panel ── */}
         <section
           aria-label="Dashboard hero"

@@ -17,9 +17,8 @@ export const toggleFavorite = async (req, res) => {
       return res.status(400).json({ message: "Invalid meetingId" });
     }
 
-    const meeting = await Meeting.findById(meetingId).select(
-      "organization _id",
-    );
+    const meeting =
+      await Meeting.findById(meetingId).select("organization _id");
 
     if (!meeting) {
       return res.status(404).json({ message: "Meeting not found" });

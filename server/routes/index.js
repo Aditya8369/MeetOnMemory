@@ -56,9 +56,12 @@ import automationRuleRoutes from "./automationRuleRoutes.js";
 import meetingHealthRoutes from "./meetingHealthRoutes.js";
 import workspaceRoutes from "./workspaceRoutes.js";
 import recapRoutes from "./recapRoutes.js";
+import recapStoryRoutes from "./recapStoryRoutes.js";
 import meetingQualityRoutes from "./meetingQualityRoutes.js";
+import exportRoutes from "./export.routes.js";
 import keyMomentRoutes from "./keyMomentRoutes.js";
 import meetingGoalRoutes from "./meetingGoalRoutes.js";
+import meetingTimelineRoutes from "./meetingTimelineRoutes.js";
 import actionItemDependencyRoutes from "./actionItemDependencyRoutes.js";
 import bulkMeetingRoutes from "./bulkMeetingRoutes.js";
 import parkingLotRoutes from "./parkingLotRoutes.js";
@@ -79,6 +82,8 @@ import agendaVoteRoutes from "./agendaVoteRoutes.js";
 import meetingDuplicateRoutes from "./meetingDuplicateRoutes.js";
 
 import notionIntegrationRoutes from "./notionIntegrationRoutes.js";
+import gamificationRoutes from "./gamificationRoutes.js";
+
 const router = express.Router();
 
 // ==========================================
@@ -96,6 +101,7 @@ router.use("/api/meetings/timer", agendaTimerRoutes);
 router.use("/api/meetings/:meetingId/checklist", meetingChecklistRoutes);
 router.use("/api/meetings/:id/duplicates", meetingDuplicateRoutes);
 router.use("/api/meetings", meetingRoutes);
+router.use("/api/meetings", meetingTimelineRoutes);
 router.use("/api/bulk/meetings", bulkMeetingRoutes);
 router.use("/api/meetings", agendaVoteRoutes);
 router.use("/api/search", searchRoutes);
@@ -167,11 +173,13 @@ router.use("/api/automation-rules", automationRuleRoutes);
 router.use("/api/meeting-health", meetingHealthRoutes);
 router.use("/api/workspace", workspaceRoutes);
 router.use("/api/recap", recapRoutes);
+router.use("/api/meetings", recapStoryRoutes);
 // /api/quality is the prefix MeetingQuality.jsx calls and the prefix every
 // @route line in meetingQualityController.js documents. The router was mounted
 // at /api/meeting-quality, which nothing referenced, so the page 404'd on every
 // request (Issue #1561).
 router.use("/api/quality", meetingQualityRoutes);
+router.use(["/api/export-templates", "/api/exports"], exportRoutes);
 router.use("/api/saved-filters", savedFilterRoutes);
 router.use("/api/key-moments", keyMomentRoutes);
 router.use("/api/speaking-time", speakingTimeRoutes);
@@ -190,5 +198,15 @@ router.use("/api/github", githubIntegrationRoutes);
 
 import { handleWebhook } from "../controllers/githubWebhookController.js";
 router.post("/api/webhooks/github", handleWebhook);
+
+import issueTrackerRoutes from "./issueTrackerRoutes.js";
+import issueTrackerWebhookRoutes from "./issueTrackerWebhookRoutes.js";
+router.use("/api/issue-tracker", issueTrackerRoutes);
+router.use("/api/webhooks", issueTrackerWebhookRoutes);
+
+router.use("/api/gamification", gamificationRoutes);
+
+import preMeetingBriefingRoutes from "./preMeetingBriefingRoutes.js";
+router.use("/api/briefings", preMeetingBriefingRoutes);
 
 export default router;

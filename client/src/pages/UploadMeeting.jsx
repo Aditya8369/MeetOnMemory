@@ -28,19 +28,14 @@ import MeetingRecorder from "../components/meetings/MeetingRecorder.jsx";
 import TagAutocomplete from "../components/meetings/TagAutocomplete.jsx";
 import { createClerkSocketOptions } from "../services/apiClient.js";
 
+import { hasPermission } from "../utils/rbacPermissions.js";
+
 const UploadMeeting = () => {
   const { userData, backendUrl } = useContext(AppContent);
   const navigate = useNavigate();
 
-  const isAdmin = userData?.role === "admin" || userData?.role === "owner";
-
-  // Redirect members to dashboard
-  useEffect(() => {
-    if (!isAdmin) {
-      toast.error("Only admins can upload or record meetings");
-      navigate("/dashboard");
-    }
-  }, [isAdmin, navigate]);
+  const userRole = userData?.role || "member";
+  const canCreateMeeting = hasPermission(userRole, "meetings", "create");
 
   const {
     file,
@@ -233,6 +228,34 @@ const UploadMeeting = () => {
     a.click();
     URL.revokeObjectURL(url);
   };
+
+  if (userData && !canCreateMeeting) {
+    return (
+      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex flex-col font-sans">
+        <Navbar />
+        <div className="flex-grow pt-28 pb-16 px-4 sm:px-6 lg:px-8 flex items-center justify-center">
+          <div className="max-w-md w-full text-center bg-white dark:bg-gray-800 p-8 rounded-2xl shadow-lg border border-gray-200 dark:border-gray-700">
+            <div className="w-16 h-16 bg-red-50 dark:bg-red-900/30 rounded-2xl flex items-center justify-center mx-auto mb-4 text-red-500">
+              <AlertCircle className="w-8 h-8" />
+            </div>
+            <h2 className="text-xl font-bold text-gray-900 dark:text-gray-100 mb-2">
+              Access Denied
+            </h2>
+            <p className="text-gray-600 dark:text-gray-400 mb-6 text-sm">
+              You do not have permission to upload or record meetings. Please
+              contact your organization administrator if you need access.
+            </p>
+            <button
+              onClick={() => navigate("/dashboard")}
+              className="px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-xl text-sm transition-colors cursor-pointer"
+            >
+              Back to Dashboard
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 via-slate-50 to-blue-50/50 dark:from-gray-900 dark:via-slate-900 dark:to-blue-900/20 flex flex-col font-sans">

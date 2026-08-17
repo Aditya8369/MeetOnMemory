@@ -1,6 +1,5 @@
 import { Octokit } from "@octokit/rest";
 import GithubIntegration from "../models/githubIntegrationModel.js";
-import ActionItem from "../models/actionItemModel.js";
 
 /**
  * Push a new Action Item to GitHub Issues

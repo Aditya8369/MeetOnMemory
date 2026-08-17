@@ -27,6 +27,7 @@ import ReportBuilder from "../pages/ReportBuilder.jsx";
 import AiSearch from "../pages/AiSearch.jsx";
 import AiAssistant from "../pages/AiAssistant.jsx";
 import MeetingDetails from "../pages/MeetingDetails.jsx";
+import MeetingBriefing from "../pages/MeetingBriefing.jsx";
 import MeetingRecycleBin from "../pages/MeetingRecycleBin.jsx";
 import MeetingRoom from "../pages/MeetingRoom.jsx";
 import TranscriptViewer from "../pages/TranscriptViewer.jsx";
@@ -59,6 +60,7 @@ import AutomationRules from "../pages/AutomationRules.jsx";
 import TopicExplorer from "../pages/TopicExplorer.jsx";
 import ConflictResolution from "../pages/ConflictResolution.jsx";
 import SpeakingTimeTrends from "../pages/SpeakingTimeTrends.jsx";
+import Leaderboard from "../pages/Leaderboard.jsx";
 
 const ProtectedRoutes = (
   <React.Fragment>
@@ -345,6 +347,14 @@ const ProtectedRoutes = (
       }
     />
     <Route
+      path="/meetings/:id/briefing"
+      element={
+        <ProtectedRoute resource="meetings" action="view">
+          <MeetingBriefing />
+        </ProtectedRoute>
+      }
+    />
+    <Route
       path="/meeting-room/:roomId"
       element={
         <ProtectedRoute resource="meetings" action="view">
@@ -483,6 +493,14 @@ const ProtectedRoutes = (
     <Route path="/meeting-templates" element={<MeetingTemplates />} />
     <Route path="/ai-summary-templates" element={<AiSummaryTemplates />} />
     <Route path="/access-denied" element={<AccessDenied />} />
+    <Route
+      path="/leaderboard"
+      element={
+        <ProtectedRoute>
+          <Leaderboard />
+        </ProtectedRoute>
+      }
+    />
 
     <Route
       path="/admin-panel"

@@ -14,6 +14,7 @@ import usePreferences from "../context/usePreferences.jsx";
 import { formatDateWithPreference } from "../utils/dateFormat.js";
 import { toast } from "react-toastify";
 import { notificationApi, authApi, organizationApi } from "../services";
+import { validateRedirect } from "../utils/validateRedirect.js";
 import { io } from "socket.io-client";
 import { createClerkSocketOptions } from "../services/apiClient.js";
 import LanguageSwitcher from "./LanguageSwitcher.jsx";
@@ -196,10 +197,11 @@ const Navbar = () => {
           if (data.success) {
             setNotifications(
               data.notifications.map((n) => ({
-                id: n.id,
+                id: n._id || n.id,
                 title: n.title,
                 description: n.description,
                 createdAt: n.createdAt,
+                actionUrl: n.actionUrl || n.data?.url || n.url,
                 unread: !n.isRead,
               })),
             );
@@ -241,10 +243,11 @@ const Navbar = () => {
         setUnreadCount((prev) => prev + 1);
         setNotifications((prev) => {
           const formattedNotif = {
-            id: newNotif.id,
+            id: newNotif._id || newNotif.id,
             title: newNotif.title,
             description: newNotif.description,
             createdAt: newNotif.createdAt || new Date().toISOString(),
+            actionUrl: newNotif.actionUrl || newNotif.data?.url || newNotif.url,
             unread: true,
           };
           // Keep only top 5 recent notifications
@@ -259,6 +262,23 @@ const Navbar = () => {
       socket?.disconnect();
     };
   }, [userData, backendUrl]);
+
+  const handleNotificationClick = async (notif) => {
+    setNotificationsOpen(false);
+    if (notif.unread && notif.id) {
+      try {
+        await notificationApi.markAsRead(notif.id);
+        setNotifications((prev) =>
+          prev.map((n) => (n.id === notif.id ? { ...n, unread: false } : n)),
+        );
+        setUnreadCount((prev) => Math.max(0, prev - 1));
+      } catch (err) {
+        console.error("Failed to mark notification as read:", err);
+      }
+    }
+    const destination = validateRedirect(notif.actionUrl, "/notifications");
+    navigate(destination);
+  };
 
   const menuRef = useRef();
   const mobileMenuRef = useRef();
@@ -765,9 +785,11 @@ const Navbar = () => {
                       <div className="max-h-64 overflow-y-auto divide-y divide-gray-50 dark:divide-gray-700">
                         {notifications.length > 0 ? (
                           notifications.map((notif) => (
-                            <div
+                            <button
                               key={notif.id}
-                              className={`p-3.5 hover:bg-blue-50/20 dark:hover:bg-blue-900/20 transition-colors text-left ${
+                              type="button"
+                              onClick={() => handleNotificationClick(notif)}
+                              className={`w-full p-3.5 hover:bg-blue-50/20 dark:hover:bg-blue-900/20 transition-colors text-left block cursor-pointer ${
                                 notif.unread
                                   ? "bg-blue-50/5 dark:bg-blue-900/10"
                                   : ""
@@ -787,7 +809,7 @@ const Navbar = () => {
                               <p className="text-xs text-gray-500 dark:text-gray-400 leading-relaxed">
                                 {notif.description}
                               </p>
-                            </div>
+                            </button>
                           ))
                         ) : (
                           <div className="py-8 text-center text-gray-400 dark:text-gray-500 text-xs">

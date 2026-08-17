@@ -18,6 +18,8 @@ import {
   Mic,
   MicOff,
   Download,
+  AlertCircle,
+  RefreshCw,
 } from "lucide-react";
 
 /**
@@ -33,6 +35,7 @@ const Summaries = () => {
   const { t } = useTranslation();
   const [summaries, setSummaries] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
@@ -141,6 +144,7 @@ const Summaries = () => {
         const cached = pageCacheRef.current.get(cacheKey);
         setSummaries(cached.meetings);
         setPagination(cached.pagination);
+        setError(null);
         setLoading(false);
         return;
       }
@@ -160,6 +164,7 @@ const Summaries = () => {
         if (requestId !== requestIdRef.current) return;
 
         if (res.data?.success) {
+          setError(null);
           const meetings = res.data.meetings || [];
           const nextPagination = res.data.pagination || {
             total: meetings.length,
@@ -174,11 +179,20 @@ const Summaries = () => {
           setSummaries(meetings);
           setPagination(nextPagination);
         } else {
+          setError(
+            res.data?.message ||
+              t("summaries.loadFailed") ||
+              "Failed to load summaries",
+          );
           toast.error(res.data?.message || t("summaries.loadFailed"));
         }
       } catch (error) {
         if (requestId !== requestIdRef.current) return;
         console.error("Error fetching summaries:", error);
+        setError(
+          t("summaries.loadFailed") ||
+            "Failed to load summaries. Please check your connection and try again.",
+        );
         toast.error(t("summaries.loadFailed"));
       } finally {
         if (requestId === requestIdRef.current) {
@@ -334,6 +348,31 @@ const Summaries = () => {
             <div className="flex justify-center items-center py-10 text-gray-500">
               <Loader2 className="animate-spin w-6 h-6 mr-2" />{" "}
               {t("summaries.loading")}
+            </div>
+          ) : error ? (
+            <div
+              data-testid="summaries-error-state"
+              className="bg-white dark:bg-gray-800 p-10 rounded-2xl shadow-md border border-red-200 dark:border-red-800 max-w-md mx-auto text-center"
+            >
+              <div className="w-12 h-12 bg-red-50 dark:bg-red-900/30 rounded-2xl flex items-center justify-center mx-auto mb-4 text-red-500">
+                <AlertCircle className="w-6 h-6" />
+              </div>
+              <h3 className="text-lg font-bold text-gray-900 dark:text-gray-100 mb-2">
+                Failed to Load Summaries
+              </h3>
+              <p className="text-sm text-gray-600 dark:text-gray-400 mb-6 leading-relaxed">
+                {error}
+              </p>
+              <button
+                data-testid="retry-button"
+                onClick={() =>
+                  fetchSummaries(currentPage, debouncedSearch, { force: true })
+                }
+                className="px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-xl text-sm transition-colors cursor-pointer inline-flex items-center gap-2"
+              >
+                <RefreshCw className="w-4 h-4" />
+                Retry
+              </button>
             </div>
           ) : sortedSummaries.length > 0 ? (
             <>
@@ -508,7 +547,10 @@ const Summaries = () => {
               />
             </>
           ) : (
-            <div className="bg-white dark:bg-gray-800 p-10 rounded-2xl shadow-md border border-gray-100 dark:border-gray-700">
+            <div
+              data-testid="summaries-empty-state"
+              className="bg-white dark:bg-gray-800 p-10 rounded-2xl shadow-md border border-gray-100 dark:border-gray-700"
+            >
               <p className="text-gray-500 dark:text-gray-400">{emptyMessage}</p>
             </div>
           )}

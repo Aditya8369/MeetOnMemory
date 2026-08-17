@@ -29,19 +29,32 @@ const exportTemplateSchema = new mongoose.Schema(
       ref: "User",
       required: true,
     },
+    organization: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Organization",
+      default: null,
+    },
     organizationId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Organization",
-      required: true,
+      default: null,
     },
     teamId: { type: mongoose.Schema.Types.ObjectId, ref: "Team" },
     isPublic: { type: Boolean, default: false },
     usageCount: { type: Number, default: 0 },
   },
-  { timestamps: true },
+  {
+    timestamps: true,
+    toJSON: { virtuals: true },
+    toObject: { virtuals: true },
+  },
 );
+
+exportTemplateSchema.index({ organization: 1, createdBy: 1 });
+exportTemplateSchema.index({ organizationId: 1, createdBy: 1 });
 
 const ExportTemplate =
   mongoose.models.ExportTemplate ||
   mongoose.model("ExportTemplate", exportTemplateSchema);
+
 export default ExportTemplate;
