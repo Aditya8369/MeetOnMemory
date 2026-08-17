@@ -12,6 +12,10 @@ vi.mock("@clerk/clerk-react", () => ({
   useUser: () => ({ user: null }),
   useClerk: () => ({ signOut: vi.fn() }),
 }));
+
+vi.mock("../../components/Navbar.jsx", () => ({
+  default: () => <nav>Navbar</nav>,
+}));
 vi.mock("react-toastify", () => ({
   toast: { success: vi.fn(), error: vi.fn() },
 }));

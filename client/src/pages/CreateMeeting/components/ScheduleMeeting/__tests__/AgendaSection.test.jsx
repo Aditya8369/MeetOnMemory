@@ -1,6 +1,7 @@
 import { fireEvent, render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import AgendaSection from "../AgendaSection";
+import AppContent from "../../../../../context/AppContent";
 
 const items = [
   { id: "a", text: "Review action items", position: 0 },
@@ -11,15 +12,17 @@ const items = [
 const renderAgenda = (overrides = {}) => {
   const reorderAgendaItem = vi.fn();
   render(
-    <AgendaSection
-      agendaItems={items}
-      newAgenda=""
-      setNewAgenda={vi.fn()}
-      addAgendaItem={vi.fn()}
-      removeAgendaItem={vi.fn()}
-      reorderAgendaItem={reorderAgendaItem}
-      {...overrides}
-    />,
+    <AppContent.Provider value={{ userData: {} }}>
+      <AgendaSection
+        agendaItems={items}
+        newAgenda=""
+        setNewAgenda={vi.fn()}
+        addAgendaItem={vi.fn()}
+        removeAgendaItem={vi.fn()}
+        reorderAgendaItem={reorderAgendaItem}
+        {...overrides}
+      />
+    </AppContent.Provider>,
   );
   return { reorderAgendaItem };
 };

@@ -22,6 +22,7 @@ import OrganizationLogo from "../components/organization/OrganizationLogo.jsx";
 import OrganizationBanner from "../components/organization/OrganizationBanner.jsx";
 import PersonalNotesSidebar from "../components/PersonalNotesSidebar.jsx";
 import PendingRsvpBanner from "../components/dashboard/PendingRsvpBanner.jsx";
+import StoryThumbnails from "../components/dashboard/StoryThumbnails.jsx";
 
 /* ─── Role Badge ──────────────────────────────────────────────────────────── */
 const ROLE_STYLES = {
@@ -175,6 +176,7 @@ const Dashboard = () => {
 
       <div className="flex-1 w-full max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 pt-28 pb-12 sm:pb-16">
         <PendingRsvpBanner />
+        <StoryThumbnails />
         {/* ── Hero + AI Search — unified panel ── */}
         <section
           aria-label="Dashboard hero"

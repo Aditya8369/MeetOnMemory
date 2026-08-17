@@ -56,6 +56,7 @@ import automationRuleRoutes from "./automationRuleRoutes.js";
 import meetingHealthRoutes from "./meetingHealthRoutes.js";
 import workspaceRoutes from "./workspaceRoutes.js";
 import recapRoutes from "./recapRoutes.js";
+import recapStoryRoutes from "./recapStoryRoutes.js";
 import meetingQualityRoutes from "./meetingQualityRoutes.js";
 import keyMomentRoutes from "./keyMomentRoutes.js";
 import meetingGoalRoutes from "./meetingGoalRoutes.js";
@@ -171,6 +172,7 @@ router.use("/api/automation-rules", automationRuleRoutes);
 router.use("/api/meeting-health", meetingHealthRoutes);
 router.use("/api/workspace", workspaceRoutes);
 router.use("/api/recap", recapRoutes);
+router.use("/api/meetings", recapStoryRoutes);
 // /api/quality is the prefix MeetingQuality.jsx calls and the prefix every
 // @route line in meetingQualityController.js documents. The router was mounted
 // at /api/meeting-quality, which nothing referenced, so the page 404'd on every
