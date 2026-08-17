@@ -23,6 +23,7 @@ import SpeakingTimeBreakdown from "../components/meetings/SpeakingTimeBreakdown"
 import CarryForwardConfig from "../components/meetings/CarryForwardConfig";
 import DuplicateDetectionPanel from "../components/meeting-details/DuplicateDetectionPanel";
 import MeetingTimeline from "../components/meeting-details/MeetingTimeline";
+import RecapStoryViewer from "../components/summaries/RecapStoryViewer";
 import { useUser } from "@clerk/clerk-react";
 
 const MeetingDetails = () => {
@@ -35,6 +36,7 @@ const MeetingDetails = () => {
   const [shareModalOpen, setShareModalOpen] = useState(false);
   const [isPresentModeOpen, setIsPresentModeOpen] = useState(false);
   const [isAnalyticsExpanded, setIsAnalyticsExpanded] = useState(false);
+  const [isStoryViewerOpen, setIsStoryViewerOpen] = useState(false);
 
   useEffect(() => {
     const fetchMeetingDetails = async () => {
@@ -171,6 +173,33 @@ const MeetingDetails = () => {
   return (
     <div className="min-h-screen bg-gray-50 p-6">
       <div className="max-w-6xl mx-auto">
+        <div className="mb-4 flex justify-end">
+          <button
+            onClick={() => setIsStoryViewerOpen(true)}
+            className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-purple-500 to-pink-500 text-white rounded-lg font-medium shadow-sm hover:opacity-90 transition-opacity"
+          >
+            <svg
+              className="w-5 h-5"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth="2"
+                d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"
+              ></path>
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth="2"
+                d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+              ></path>
+            </svg>
+            Play Recap Story
+          </button>
+        </div>
         <DuplicateDetectionPanel meetingId={meeting._id} />
         <MeetingFollowUpBanner meeting={meeting} />
         <MeetingHeader
@@ -275,6 +304,13 @@ const MeetingDetails = () => {
         <PresentMode
           meeting={meeting}
           onClose={() => setIsPresentModeOpen(false)}
+        />
+      )}
+
+      {isStoryViewerOpen && (
+        <RecapStoryViewer
+          meetingId={meeting._id}
+          onClose={() => setIsStoryViewerOpen(false)}
         />
       )}
     </div>

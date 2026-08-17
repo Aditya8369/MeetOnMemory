@@ -17,11 +17,14 @@ const textEncoder = new TextEncoder();
 const textDecoder = new TextDecoder();
 
 const bufferToBase64 = (buffer) => {
-  const bytes = buffer instanceof ArrayBuffer ? new Uint8Array(buffer) : buffer;
+  const bytes =
+    buffer instanceof ArrayBuffer
+      ? new Uint8Array(buffer)
+      : new Uint8Array(buffer);
   let binary = "";
-  bytes.forEach((b) => {
-    binary += String.fromCharCode(b);
-  });
+  for (let i = 0; i < bytes.length; i++) {
+    binary += String.fromCharCode(bytes[i]);
+  }
   return btoa(binary);
 };
 
