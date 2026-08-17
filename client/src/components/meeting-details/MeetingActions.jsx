@@ -98,7 +98,15 @@ const MeetingActions = ({ meeting, onDelete, onRename }) => {
   };
 
   const handleBack = () => {
-    navigate("/summaries");
+    if (
+      window.history.state &&
+      typeof window.history.state.idx === "number" &&
+      window.history.state.idx > 0
+    ) {
+      navigate(-1);
+    } else {
+      navigate("/meetings");
+    }
   };
 
   // Recording handlers
