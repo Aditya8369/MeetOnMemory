@@ -1,6 +1,94 @@
 // server/controllers/workspaceController.js
 import Meeting from "../models/meetingModel.js";
+import Membership from "../models/membershipModel.js";
 import mongoose from "mongoose";
+
+/**
+ * Authorize access to a meeting workspace.
+ *
+ * Workspace state retrieval and mutation must use the same authorization
+ * rules so that a caller cannot mutate a meeting they cannot access.
+ *
+ * A user must:
+ *  - be the meeting owner or an explicit meeting participant; and
+ *  - when the meeting belongs to an organization, have an active
+ *    organization membership.
+ *
+ * Returns the meeting when authorized, otherwise sends the appropriate
+ * response and returns null.
+ */
+const authorizeWorkspaceMeeting = async (meetingId, user, res) => {
+  if (!mongoose.Types.ObjectId.isValid(meetingId)) {
+    res.status(400).json({
+      success: false,
+      message: "Invalid Meeting ID",
+    });
+    return null;
+  }
+
+  if (!user?._id) {
+    res.status(401).json({
+      success: false,
+      message: "Authentication required",
+    });
+    return null;
+  }
+
+  const meeting = await Meeting.findById(meetingId).select(
+    "warRoom participants uploadedBy title organization",
+  );
+
+  if (!meeting) {
+    res.status(404).json({
+      success: false,
+      message: "Meeting not found",
+    });
+    return null;
+  }
+
+  const userId = user._id.toString();
+  const userEmail = user.email?.toLowerCase();
+
+  const isParticipant = meeting.participants.some((participant) => {
+    const participantUserId = participant.user?.toString();
+    const participantEmail = participant.email?.toLowerCase();
+
+    return (
+      participantUserId === userId ||
+      Boolean(userEmail && participantEmail === userEmail)
+    );
+  });
+
+  const isOwner = meeting.uploadedBy?.toString() === userId;
+
+  if (!isParticipant && !isOwner) {
+    res.status(403).json({
+      success: false,
+      message: "Forbidden: Not a meeting participant",
+    });
+    return null;
+  }
+
+  // Organization-scoped meetings require an active membership in the
+  // meeting's organization as an additional authorization boundary.
+  if (meeting.organization) {
+    const membership = await Membership.findOne({
+      user: user._id,
+      organization: meeting.organization,
+      status: "active",
+    }).select("_id");
+
+    if (!membership) {
+      res.status(403).json({
+        success: false,
+        message: "Forbidden: Not a member of the meeting organization",
+      });
+      return null;
+    }
+  }
+
+  return meeting;
+};
 
 /**
  * @desc Get initial War Room state (Canvas + Action Board)
@@ -9,37 +97,14 @@ import mongoose from "mongoose";
  */
 export const getWorkspaceState = async (req, res) => {
   try {
-    const { meetingId } = req.params;
-
-    if (!mongoose.Types.ObjectId.isValid(meetingId)) {
-      return res
-        .status(400)
-        .json({ success: false, message: "Invalid Meeting ID" });
-    }
-
-    const meeting = await Meeting.findById(meetingId).select(
-      "warRoom participants uploadedBy title",
+    const meeting = await authorizeWorkspaceMeeting(
+      req.params.meetingId,
+      req.user,
+      res,
     );
 
     if (!meeting) {
-      return res
-        .status(404)
-        .json({ success: false, message: "Meeting not found" });
-    }
-
-    // Authorization check
-    const isParticipant = meeting.participants.some(
-      (p) =>
-        p.user?.toString() === req.user._id.toString() ||
-        p.email === req.user.email,
-    );
-    const isOwner = meeting.uploadedBy?.toString() === req.user._id.toString();
-
-    if (!isParticipant && !isOwner) {
-      return res.status(403).json({
-        success: false,
-        message: "Forbidden: Not a meeting participant",
-      });
+      return;
     }
 
     // Default structure if warRoom doesn't exist yet
@@ -76,7 +141,6 @@ export const getWorkspaceState = async (req, res) => {
  */
 export const addActionItem = async (req, res) => {
   try {
-    const { meetingId } = req.params;
     const { title, assignee, priority } = req.body;
 
     if (!title || title.trim().length === 0) {
@@ -85,11 +149,15 @@ export const addActionItem = async (req, res) => {
         .json({ success: false, message: "Action title is required" });
     }
 
-    const meeting = await Meeting.findById(meetingId);
-    if (!meeting)
-      return res
-        .status(404)
-        .json({ success: false, message: "Meeting not found" });
+    const meeting = await authorizeWorkspaceMeeting(
+      req.params.meetingId,
+      req.user,
+      res,
+    );
+
+    if (!meeting) {
+      return;
+    }
 
     if (!meeting.warRoom) meeting.warRoom = { actionColumns: {} };
     if (!meeting.warRoom.actionColumns) meeting.warRoom.actionColumns = {};
