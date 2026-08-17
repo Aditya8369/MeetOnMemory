@@ -1,26 +1,27 @@
 import Meeting from "../models/meetingModel.js";
 
 /**
- * @desc Middleware to verify the authenticated user has access to the specified meeting.
- * Prevents cross-organization data leakage.
+ * @desc Middleware to verify the authenticated user has access to a specific meeting.
  */
 export const verifyMeetingAccess = async (req, res, next) => {
   try {
-    const meetingId = req.params.meetingId || req.body.meetingId;
-    if (!meetingId)
-      return res
-        .status(400)
-        .json({ success: false, error: "Meeting ID required" });
-
+    const { meetingId } = req.params;
     const meeting = await Meeting.findById(meetingId);
-    if (!meeting)
+
+    if (!meeting) {
       return res
         .status(404)
         .json({ success: false, error: "Meeting not found" });
+    }
 
-    // Verify organization/tenant match
+    // Verify organization ownership match
+    const meetingOrgId = meeting.organization || meeting.organizationId;
+    const userOrgId = req.user.organization || req.user.organizationId;
+
     if (
-      meeting.organizationId?.toString() !== req.user.organizationId?.toString()
+      meetingOrgId &&
+      userOrgId &&
+      meetingOrgId.toString() !== userOrgId.toString()
     ) {
       return res
         .status(403)
@@ -41,17 +42,24 @@ export const verifyMeetingAccess = async (req, res, next) => {
  */
 export const verifyActionItemAccess = async (req, res, next) => {
   try {
-    const ActionItem = (await import("../models/ActionItem.js")).default;
-    const item = await ActionItem.findById(req.params.id).populate("meetingId");
+    const ActionItem = (await import("../models/actionItemModel.js")).default;
+    const item = await ActionItem.findById(req.params.id)
+      .populate("sourceMeetingId")
+      .populate("meetingId");
 
     if (!item)
       return res
         .status(404)
         .json({ success: false, error: "Action item not found" });
 
+    const meeting = item.sourceMeetingId || item.meetingId;
+    const meetingOrgId = meeting?.organization || meeting?.organizationId;
+    const userOrgId = req.user.organization || req.user.organizationId;
+
     if (
-      item.meetingId.organizationId?.toString() !==
-      req.user.organizationId?.toString()
+      meetingOrgId &&
+      userOrgId &&
+      meetingOrgId.toString() !== userOrgId.toString()
     ) {
       return res
         .status(403)

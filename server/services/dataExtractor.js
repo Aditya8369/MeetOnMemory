@@ -1,5 +1,5 @@
 import Meeting from "../models/meetingModel.js";
-import ActionItem from "../models/ActionItem.js";
+import ActionItem from "../models/actionItemModel.js";
 
 /**
  * @desc Extracts and structures all relevant meeting data for template rendering.
@@ -20,10 +20,12 @@ class DataExtractor {
       throw new Error("Meeting not found");
     }
 
-    // Fetch associated action items
-    const actionItems = await ActionItem.find({ meetingId })
+    // Fetch associated action items using canonical actionItemModel
+    const actionItems = await ActionItem.find({
+      $or: [{ sourceMeetingId: meetingId }, { meetingId }],
+    })
       .populate("assignee", "name")
-      .sort({ priority: -1, deadline: 1 });
+      .sort({ priority: -1, dueDate: 1 });
 
     // Structure the data for Handlebars
     return {
@@ -47,10 +49,10 @@ class DataExtractor {
         })),
 
         actionItems: actionItems.map((item) => ({
-          title: item.title,
+          title: item.title || item.text,
           description: item.description,
-          assignee: item.assignee?.name || "Unassigned",
-          deadline: item.deadline,
+          assignee: item.assignee?.name || item.owner || "Unassigned",
+          deadline: item.deadline || item.dueDate,
           priority: item.priority,
           status: item.status,
         })),
