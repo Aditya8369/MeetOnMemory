@@ -15,26 +15,29 @@ vi.mock("@clerk/clerk-react", () => ({
 }));
 
 // Mock socket.io-client
-const mockSocketInstances = [];
-const mockIo = vi.fn((url, options) => {
-  const listeners = {};
-  const socket = {
-    id: `socket_${mockSocketInstances.length + 1}`,
-    auth: options?.auth || {},
-    on: vi.fn((event, cb) => {
-      listeners[event] = cb;
-    }),
-    emit: vi.fn(),
-    disconnect: vi.fn(),
-    // Helper to fire events locally in tests
-    fireEvent: (event, data) => {
-      if (listeners[event]) {
-        listeners[event](data);
-      }
-    },
-  };
-  mockSocketInstances.push(socket);
-  return socket;
+const { mockSocketInstances, mockIo } = vi.hoisted(() => {
+  const instances = [];
+  const ioMock = vi.fn((url, options) => {
+    const listeners = {};
+    const socket = {
+      id: `socket_${instances.length + 1}`,
+      auth: options?.auth || {},
+      on: vi.fn((event, cb) => {
+        listeners[event] = cb;
+      }),
+      emit: vi.fn(),
+      disconnect: vi.fn(),
+      // Helper to fire events locally in tests
+      fireEvent: (event, data) => {
+        if (listeners[event]) {
+          listeners[event](data);
+        }
+      },
+    };
+    instances.push(socket);
+    return socket;
+  });
+  return { mockSocketInstances: instances, mockIo: ioMock };
 });
 
 vi.mock("socket.io-client", () => ({

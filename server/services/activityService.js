@@ -58,7 +58,11 @@ export const logActivity = async (
  */
 export const getOrgActivities = async (orgId, filters = {}) => {
   const { page = 1, limit = 20, action, actor } = filters;
-  const skip = (page - 1) * limit;
+
+  // Defensively clamp page and limit for database queries (Issue #1668)
+  const parsedLimit = Math.min(Math.max(1, parseInt(limit, 10) || 20), 100);
+  const parsedPage = Math.max(1, parseInt(page, 10) || 1);
+  const skip = (parsedPage - 1) * parsedLimit;
 
   const query = { organization: orgId };
   if (typeof action === "string") query.action = action;
@@ -68,7 +72,7 @@ export const getOrgActivities = async (orgId, filters = {}) => {
     Activity.find(query)
       .sort({ createdAt: -1 })
       .skip(skip)
-      .limit(parseInt(limit))
+      .limit(parsedLimit)
       .populate("actor", "name avatarUrl email")
       .lean(),
     Activity.countDocuments(query),
@@ -76,8 +80,8 @@ export const getOrgActivities = async (orgId, filters = {}) => {
 
   return {
     activities,
-    totalPages: Math.ceil(total / limit),
-    currentPage: parseInt(page),
+    totalPages: Math.ceil(total / parsedLimit),
+    currentPage: parsedPage,
     totalActivities: total,
   };
 };

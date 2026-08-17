@@ -134,6 +134,10 @@ const meetingSchema = new mongoose.Schema(
       type: String, // Human-readable MoM text
       default: "",
     },
+    recapStory: {
+      type: mongoose.Schema.Types.Mixed, // Cached JSON for the recap story slides
+      default: null,
+    },
     structuredMoM: {
       type: mongoose.Schema.Types.Mixed, // Structured JSON (title, decisions[], action_items[], attendees[])
       default: null,

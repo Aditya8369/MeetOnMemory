@@ -27,6 +27,7 @@ import ReportBuilder from "../pages/ReportBuilder.jsx";
 import AiSearch from "../pages/AiSearch.jsx";
 import AiAssistant from "../pages/AiAssistant.jsx";
 import MeetingDetails from "../pages/MeetingDetails.jsx";
+import MeetingBriefing from "../pages/MeetingBriefing.jsx";
 import MeetingRecycleBin from "../pages/MeetingRecycleBin.jsx";
 import MeetingRoom from "../pages/MeetingRoom.jsx";
 import TranscriptViewer from "../pages/TranscriptViewer.jsx";
@@ -342,6 +343,14 @@ const ProtectedRoutes = (
       element={
         <ProtectedRoute resource="meetings" action="view">
           <MeetingDetails />
+        </ProtectedRoute>
+      }
+    />
+    <Route
+      path="/meetings/:id/briefing"
+      element={
+        <ProtectedRoute resource="meetings" action="view">
+          <MeetingBriefing />
         </ProtectedRoute>
       }
     />

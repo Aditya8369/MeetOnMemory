@@ -4,7 +4,8 @@ import {
   getPendingRsvpsForUser,
   getMeetingRsvpSummary,
 } from "../services/meetingRsvpService.js";
-import Meeting from "../models/meetingModel.js";
+import { resolveAccessibleMeeting } from "../utils/resolveAccessibleMeeting.js";
+import MeetingRsvp from "../models/meetingRsvpModel.js";
 
 /**
  * Send RSVP requests to participants
@@ -13,7 +14,7 @@ export const sendRsvpRequests = async (req, res) => {
   try {
     const { meetingId } = req.params;
     const { userIds } = req.body;
-    const userId = req.user.id;
+    const userId = req.user.id || req.user._id;
 
     if (!Array.isArray(userIds) || userIds.length === 0) {
       return res.status(400).json({
@@ -22,15 +23,22 @@ export const sendRsvpRequests = async (req, res) => {
       });
     }
 
-    const meeting = await Meeting.findById(meetingId);
-    if (!meeting) {
-      return res
-        .status(404)
-        .json({ success: false, message: "meeting_not_found" });
+    // Verify meeting access and retrieve meeting document
+    const access = await resolveAccessibleMeeting(meetingId, req.user);
+    if (access.error) {
+      return res.status(access.error.status).json({
+        success: false,
+        message: access.error.message,
+      });
     }
 
-    // Only organizer can send RSVPs (assuming uploadedBy is the organizer)
-    if (meeting.uploadedBy.toString() !== userId) {
+    const meeting = access.meeting;
+
+    // Only organizer or admin can send RSVPs
+    const isOrganizer = meeting.uploadedBy?.toString() === userId.toString();
+    const isAdmin = req.user.role === "admin" || req.user.role === "owner";
+
+    if (!isOrganizer && !isAdmin) {
       return res.status(403).json({
         success: false,
         message: "only_organizer_can_send_rsvps",
@@ -55,7 +63,7 @@ export const sendRsvpRequests = async (req, res) => {
 export const respondToRsvp = async (req, res) => {
   try {
     const { meetingId } = req.params;
-    const userId = req.user.id;
+    const userId = req.user.id || req.user._id;
     const { status, declineReason, availabilityNote } = req.body;
 
     if (!status) {
@@ -65,6 +73,39 @@ export const respondToRsvp = async (req, res) => {
       });
     }
 
+    // 1. Verify meeting access and retrieve meeting document
+    const access = await resolveAccessibleMeeting(meetingId, req.user);
+    if (access.error) {
+      return res.status(access.error.status).json({
+        success: false,
+        message: access.error.message,
+      });
+    }
+
+    const meeting = access.meeting;
+
+    // 2. Verify authorization to RSVP (must be owner, admin, listed participant, or have an existing RSVP)
+    const isOwner = meeting.uploadedBy?.toString() === userId.toString();
+    const isAdmin = req.user.role === "admin" || req.user.role === "owner";
+    const isParticipant = meeting.participants?.some(
+      (p) =>
+        p.user?.toString() === userId.toString() ||
+        (p.email &&
+          req.user.email &&
+          p.email.toLowerCase() === req.user.email.toLowerCase()),
+    );
+
+    const hasExistingRsvp = await MeetingRsvp.findOne({ meetingId, userId });
+
+    if (!isOwner && !isAdmin && !isParticipant && !hasExistingRsvp) {
+      return res.status(403).json({
+        success: false,
+        message:
+          "Forbidden: You are not invited or authorized to RSVP for this meeting",
+      });
+    }
+
+    // 3. Perform upsert
     const updatedRsvp = await updateRsvpStatus(meetingId, userId, {
       status,
       declineReason,
@@ -88,7 +129,7 @@ export const respondToRsvp = async (req, res) => {
  */
 export const getPendingRsvps = async (req, res) => {
   try {
-    const userId = req.user.id;
+    const userId = req.user.id || req.user._id;
     const rsvps = await getPendingRsvpsForUser(userId);
 
     res.status(200).json({
@@ -108,23 +149,15 @@ export const getMeetingSummary = async (req, res) => {
   try {
     const { meetingId } = req.params;
 
-    // 1. Verify meeting exists before fetching RSVP data
-    const meeting = await Meeting.findById(meetingId);
-    if (!meeting) {
-      return res.status(404).json({ success: false, message: "meeting_not_found" });
+    // Verify meeting access before returning summary
+    const access = await resolveAccessibleMeeting(meetingId, req.user);
+    if (access.error) {
+      return res.status(access.error.status).json({
+        success: false,
+        message: access.error.message,
+      });
     }
 
-    // 2. Perform Organization Authorization Check
-    const isAdmin = req.user.role === 'admin' || req.user.role === 'superadmin';
-    const isSameOrganization = req.user.organization && meeting.organization && 
-                               req.user.organization.toString() === meeting.organization.toString();
-
-    if (!isAdmin && !isSameOrganization) {
-      // Fail closed: Return 404 to avoid exposing that a foreign meeting ID is valid
-      return res.status(404).json({ success: false, message: "meeting_not_found" });
-    }
-
-    // 3. Retrieve summary now that access is strictly authorized
     const summary = await getMeetingRsvpSummary(meetingId);
 
     res.status(200).json({

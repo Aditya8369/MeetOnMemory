@@ -7,7 +7,11 @@ import {
   exportCostReport,
 } from "../controllers/meetingCostController.js";
 import userAuth from "../middleware/userAuth.js";
-import { requireAdminOrOwner } from "../middleware/rbac.js";
+import {
+  requireAdminOrOwner,
+  requireOrgMembership,
+  requirePermission,
+} from "../middleware/rbac.js";
 
 const router = express.Router();
 
@@ -22,6 +26,11 @@ router
 // Analytics endpoints
 router.get("/analytics/org", getCostAnalytics);
 router.get("/analytics/members", getMemberAnalytics);
-router.get("/analytics/export", exportCostReport);
+router.get(
+  "/analytics/export",
+  requireOrgMembership,
+  requirePermission("analytics", "export"),
+  exportCostReport,
+);
 
 export default router;

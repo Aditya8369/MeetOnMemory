@@ -1,3 +1,4 @@
+import mongoose from "mongoose";
 import AgendaVote from "../models/agendaVoteModel.js";
 import Meeting from "../models/meetingModel.js";
 import { normalizeAgendaItems } from "../utils/agendaOrdering.js";
@@ -47,8 +48,13 @@ export const removeVote = async (meetingId, agendaItemId, userId) => {
  * Returns an object mapping agendaItemId to net vote count.
  */
 export const getVoteTally = async (meetingId) => {
+  const meetingObjectId =
+    typeof meetingId === "string" && mongoose.Types.ObjectId.isValid(meetingId)
+      ? new mongoose.Types.ObjectId(meetingId)
+      : meetingId;
+
   const tallies = await AgendaVote.aggregate([
-    { $match: { meetingId: meetingId } },
+    { $match: { meetingId: meetingObjectId } },
     {
       $group: {
         _id: "$agendaItemId",
@@ -73,8 +79,8 @@ export const autoSortByVotes = async (meetingId) => {
     throw new Error("Meeting not found");
   }
 
-  // Only allow sorting before the meeting starts
-  if (meeting.status !== "uploaded") {
+  // Only allow sorting before the meeting starts processing
+  if (meeting.status && meeting.status !== "uploaded") {
     throw new Error(
       "Agenda cannot be auto-sorted after meeting has started processing",
     );

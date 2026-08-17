@@ -1,4 +1,5 @@
 import * as activityService from "../services/activityService.js";
+import { parsePagination } from "../utils/pagination.js";
 
 /**
  * Get activities for the user's current organization
@@ -12,11 +13,17 @@ export const getActivities = async (req, res) => {
       return res.status(400).json({ error: "No organization selected." });
     }
 
-    const { page, limit, action, actor } = req.query;
+    const { action, actor } = req.query;
+
+    // Use shared pagination helper to enforce hard limit upper bound (Issue #1668)
+    const { page, limit } = parsePagination(req.query, {
+      defaultLimit: 20,
+      maxLimit: 100,
+    });
 
     const result = await activityService.getOrgActivities(orgId, {
-      page: parseInt(page, 10) || 1,
-      limit: parseInt(limit, 10) || 20,
+      page,
+      limit,
       action,
       actor,
     });

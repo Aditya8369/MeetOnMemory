@@ -1,7 +1,10 @@
 import { z } from "zod";
 import mongoose from "mongoose";
 import MeetingFeedback from "../models/meetingFeedbackModel.js";
-import Meeting from "../models/meetingModel.js";
+import {
+  resolveMeetingFeedbackAccess,
+  resolveOwnedFeedbackForMutation,
+} from "../utils/meetingFeedbackAccess.js";
 
 const feedbackSchema = z.object({
   meetingId: z.string().min(1, "Meeting ID is required"),
@@ -12,6 +15,9 @@ const feedbackSchema = z.object({
   tags: z.array(z.string()).optional(),
 });
 
+const sendAccessError = (res, error) =>
+  res.status(error.status).json({ success: false, message: error.message });
+
 // @desc    Submit or update feedback for a meeting
 // @route   POST /api/feedback
 // @access  Private
@@ -20,46 +26,16 @@ export const submitFeedback = async (req, res, next) => {
     const validatedData = feedbackSchema.parse(req.body);
     const userId = req.user._id;
 
-    if (!mongoose.isValidObjectId(validatedData.meetingId)) {
-      return res
-        .status(400)
-        .json({ success: false, message: "Invalid meeting ID" });
-    }
-
-    // Verify meeting exists and user is a participant or organizer
-    const meeting = await Meeting.findById(validatedData.meetingId);
-    if (!meeting) {
-      return res
-        .status(404)
-        .json({ success: false, message: "Meeting not found" });
-    }
-
-    // Organization Isolation Check
-    if (
-      meeting.organization &&
-      (!req.user.organization ||
-        meeting.organization.toString() !== req.user.organization.toString())
-    ) {
-      return res.status(403).json({
-        success: false,
-        message: "Forbidden: Meeting belongs to another organization",
-      });
-    }
-
-    // Check if user is participant or the owner
-    const isOwner = meeting.uploadedBy.toString() === userId.toString();
-    const isParticipant = meeting.participants?.some(
-      (p) => p.user?.toString() === userId.toString(),
+    const access = await resolveMeetingFeedbackAccess(
+      validatedData.meetingId,
+      req.user,
     );
-
-    if (!isOwner && !isParticipant) {
-      return res.status(403).json({
-        success: false,
-        message: "Not authorized to submit feedback for this meeting",
-      });
+    if (access.error) {
+      return sendAccessError(res, access.error);
     }
 
-    // Upsert feedback
+    const { meeting } = access;
+
     const feedbackData = {
       ...validatedData,
       userId,
@@ -95,46 +71,10 @@ export const submitFeedback = async (req, res, next) => {
 export const getFeedbackForMeeting = async (req, res) => {
   try {
     const { meetingId } = req.params;
-    const userId = req.user._id;
 
-    if (!mongoose.isValidObjectId(meetingId)) {
-      return res
-        .status(400)
-        .json({ success: false, message: "Invalid meeting ID" });
-    }
-
-    // Authorize: only the meeting owner or a participant may read its feedback,
-    // matching submitFeedback in this file. Without this, any authenticated user
-    // could read another org's feedback and submitter PII (IDOR).
-    const meeting = await Meeting.findById(meetingId);
-    if (!meeting) {
-      return res
-        .status(404)
-        .json({ success: false, message: "Meeting not found" });
-    }
-
-    // Organization Isolation Check
-    if (
-      meeting.organization &&
-      (!req.user.organization ||
-        meeting.organization.toString() !== req.user.organization.toString())
-    ) {
-      return res.status(403).json({
-        success: false,
-        message: "Forbidden: Meeting belongs to another organization",
-      });
-    }
-
-    const isOwner = meeting.uploadedBy.toString() === userId.toString();
-    const isParticipant = meeting.participants?.some(
-      (p) => p.user?.toString() === userId.toString(),
-    );
-
-    if (!isOwner && !isParticipant) {
-      return res.status(403).json({
-        success: false,
-        message: "Not authorized to view feedback for this meeting",
-      });
+    const access = await resolveMeetingFeedbackAccess(meetingId, req.user);
+    if (access.error) {
+      return sendAccessError(res, access.error);
     }
 
     const feedback = await MeetingFeedback.find({ meetingId }).populate(
@@ -159,42 +99,9 @@ export const getUserFeedbackForMeeting = async (req, res) => {
     const { meetingId } = req.params;
     const userId = req.user._id;
 
-    if (!mongoose.isValidObjectId(meetingId)) {
-      return res
-        .status(400)
-        .json({ success: false, message: "Invalid meeting ID" });
-    }
-
-    const meeting = await Meeting.findById(meetingId);
-    if (!meeting) {
-      return res
-        .status(404)
-        .json({ success: false, message: "Meeting not found" });
-    }
-
-    // Organization Isolation Check
-    if (
-      meeting.organization &&
-      (!req.user.organization ||
-        meeting.organization.toString() !== req.user.organization.toString())
-    ) {
-      return res.status(403).json({
-        success: false,
-        message: "Forbidden: Meeting belongs to another organization",
-      });
-    }
-
-    // User Access Check
-    const isOwner = meeting.uploadedBy.toString() === userId.toString();
-    const isParticipant = meeting.participants?.some(
-      (p) => p.user?.toString() === userId.toString(),
-    );
-
-    if (!isOwner && !isParticipant) {
-      return res.status(403).json({
-        success: false,
-        message: "Not authorized to view feedback for this meeting",
-      });
+    const access = await resolveMeetingFeedbackAccess(meetingId, req.user);
+    if (access.error) {
+      return sendAccessError(res, access.error);
     }
 
     const feedback = await MeetingFeedback.findOne({ meetingId, userId });
@@ -221,7 +128,6 @@ export const getAggregateFeedback = async (req, res) => {
         .json({ success: false, message: "Invalid organization ID" });
     }
 
-    // Ensure the user belongs to the org
     if (req.user.organization?.toString() !== orgId) {
       return res.status(403).json({
         success: false,
@@ -276,43 +182,12 @@ export const deleteFeedback = async (req, res) => {
   try {
     const { id } = req.params;
 
-    if (!mongoose.isValidObjectId(id)) {
-      return res
-        .status(400)
-        .json({ success: false, message: "Invalid feedback ID" });
+    const access = await resolveOwnedFeedbackForMutation(id, req.user);
+    if (access.error) {
+      return sendAccessError(res, access.error);
     }
 
-    const feedback = await MeetingFeedback.findById(id);
-
-    if (!feedback) {
-      return res
-        .status(404)
-        .json({ success: false, message: "Feedback not found" });
-    }
-
-    // Check meeting organization isolation if meeting exists
-    const meeting = await Meeting.findById(feedback.meetingId);
-    if (meeting) {
-      if (
-        meeting.organization &&
-        (!req.user.organization ||
-          meeting.organization.toString() !== req.user.organization.toString())
-      ) {
-        return res.status(403).json({
-          success: false,
-          message: "Forbidden: Meeting belongs to another organization",
-        });
-      }
-    }
-
-    if (feedback.userId.toString() !== req.user._id.toString()) {
-      return res.status(403).json({
-        success: false,
-        message: "Not authorized to delete this feedback",
-      });
-    }
-
-    await feedback.deleteOne();
+    await access.feedback.deleteOne();
 
     res
       .status(200)
