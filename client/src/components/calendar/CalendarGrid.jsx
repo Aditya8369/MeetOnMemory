@@ -16,7 +16,10 @@ const CalendarGrid = ({
   setSelectedMeeting,
 }) => {
   return (
-    <div className="flex-1 bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-2xl shadow-xs overflow-hidden">
+    <div
+      data-testid="calendar-grid-container"
+      className="flex-1 bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-2xl shadow-xs overflow-x-auto max-w-full"
+    >
       {/* MONTH VIEW */}
       {view === "month" && (
         <div className="flex flex-col h-full min-w-[700px]">
