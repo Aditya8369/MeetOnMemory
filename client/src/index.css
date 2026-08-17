@@ -124,6 +124,53 @@ html {
 }
 
 /* ============================================================
+   FEATURE CARDS — subtle professional motion
+   ============================================================ */
+@keyframes feature-shine {
+  0% {
+    transform: translateX(-120%) skewX(-12deg);
+  }
+  100% {
+    transform: translateX(220%) skewX(-12deg);
+  }
+}
+
+.feature-card-shine::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  background: linear-gradient(
+    105deg,
+    transparent 40%,
+    rgb(255 255 255 / 0.12) 50%,
+    transparent 60%
+  );
+  transform: translateX(-120%) skewX(-12deg);
+  pointer-events: none;
+}
+
+.feature-card-shine:hover::after {
+  animation: feature-shine 0.85s ease-out;
+}
+
+@keyframes feature-glow-pulse {
+  0%,
+  100% {
+    opacity: 0.35;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.55;
+    transform: scale(1.08);
+  }
+}
+
+.feature-glow-orb {
+  animation: feature-glow-pulse 5s ease-in-out infinite;
+}
+
+/* ============================================================
    FADE-IN-UP ENTRANCE ANIMATION
    ============================================================ */
 @keyframes fadeInUp {
