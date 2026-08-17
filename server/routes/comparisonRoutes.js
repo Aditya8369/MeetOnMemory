@@ -1,5 +1,6 @@
 import express from "express";
 import userAuth from "../middleware/userAuth.js";
+import { requirePermission } from "../middleware/rbac.js";
 import {
   compareMeetings,
   getComparableMeetings,
@@ -7,7 +8,18 @@ import {
 
 const router = express.Router();
 
-router.post("/compare", userAuth, compareMeetings);
-router.get("/comparable/:meetingId", userAuth, getComparableMeetings);
+// Issue #1403: Clerk auth + meetings:view, then per-meeting authorization in controllers.
+router.post(
+  "/compare",
+  userAuth,
+  requirePermission("meetings", "view"),
+  compareMeetings,
+);
+router.get(
+  "/comparable/:meetingId",
+  userAuth,
+  requirePermission("meetings", "view"),
+  getComparableMeetings,
+);
 
 export default router;

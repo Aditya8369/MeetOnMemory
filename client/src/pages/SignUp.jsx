@@ -2,6 +2,7 @@ import React, { useContext, useEffect, useMemo, useState, useRef } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { useSignUp, useAuth, useClerk } from "@clerk/clerk-react";
 import AppContent from "../context/AppContent";
+import { validateRedirect } from "../utils/validateRedirect";
 import AuthPageShell from "../components/AuthPageShell";
 import { toast } from "react-toastify";
 import {
@@ -19,13 +20,15 @@ const clerkPubKey = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY;
 const resolveReturnUrl = (location, userData) => {
   const from = location.state?.from;
   const redirect = location.state?.redirect;
-  return (
+  const rawUrl =
     (from?.pathname ? `${from.pathname}${from.search || ""}` : null) ||
-    redirect ||
-    (userData?.hasCompletedOnboarding === false
+    redirect;
+  const defaultRedirect =
+    userData?.hasCompletedOnboarding === false
       ? "/organizations"
-      : "/dashboard")
-  );
+      : "/dashboard";
+
+  return validateRedirect(rawUrl, defaultRedirect);
 };
 
 const BootstrapPending = ({ title }) => (

@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import api from "../../services/api";
+import apiClient from "../../services/apiClient";
 import MeetingAnalyticsDetail from "./MeetingAnalyticsDetail";
 
 /**
@@ -16,15 +16,13 @@ const AnalyticsDashboard = ({ teamId }) => {
     const fetchData = async () => {
       setIsLoading(true);
       try {
-        // Fetch team summary
-        const { data: summaryData } = await api.get(
-          `/analytics/team/${teamId}/summary`,
+        const { data: summaryData } = await apiClient.get(
+          `/api/analytics/team/${teamId}/summary`,
         );
         setSummary(summaryData.data);
 
-        // Fetch recent meetings with analytics using the new dedicated endpoint
-        const { data: meetingsData } = await api.get(
-          `/analytics/team/${teamId}/recent?limit=10`,
+        const { data: meetingsData } = await apiClient.get(
+          `/api/analytics/team/${teamId}/recent?limit=10`,
         );
         setRecentMeetings(meetingsData.data.meetings || []);
       } catch (error) {

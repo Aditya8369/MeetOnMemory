@@ -1,9 +1,11 @@
-import mongoose from "mongoose";
 import { z } from "zod";
 import PersonalNote from "../models/personalNoteModel.js";
 import Meeting from "../models/meetingModel.js";
 import { hasPermission } from "../utils/rbacPermissions.js";
-import { canAccessMeetingDoc } from "../middleware/rbac.js";
+import { resolveAccessibleMeeting } from "../utils/resolveAccessibleMeeting.js";
+
+// Re-export for existing personal-note tests and callers (Issue #1389).
+export { resolveAccessibleMeeting };
 
 /**
  * Maximum character limits for note fields
@@ -58,50 +60,6 @@ const annotationSchema = z.object({
     .regex(/^#[0-9A-Fa-f]{6}$/, "Color must be a valid hex color")
     .default("#ffeb3b"),
 });
-
-/**
- * Resolve and validate meeting access for a user.
- * Uses the shared `canAccessMeetingDoc` predicate (same rule as requireOrgAccess)
- * so personal-note reads/writes stay aligned with meeting-scoped authorization
- * (Issue #1389).
- *
- * @param {string} meetingId - Meeting ID to check
- * @param {Object} user - User object from request
- * @returns {Promise<Object>} Access result with meeting or error
- */
-export const resolveAccessibleMeeting = async (meetingId, user) => {
-  // Validate meeting ID format
-  if (!mongoose.isValidObjectId(meetingId)) {
-    return {
-      error: {
-        status: 400,
-        message: "Invalid meeting ID format",
-      },
-    };
-  }
-
-  // Fetch meeting from database — never trust the client id alone
-  const meeting = await Meeting.findById(meetingId);
-  if (!meeting) {
-    return {
-      error: {
-        status: 404,
-        message: "Meeting not found",
-      },
-    };
-  }
-
-  if (!canAccessMeetingDoc(meeting, user)) {
-    return {
-      error: {
-        status: 403,
-        message: "Forbidden: You don't have access to this meeting",
-      },
-    };
-  }
-
-  return { meeting };
-};
 
 /**
  * Helper to fetch all meeting IDs that a user is authorized to access.

@@ -1,46 +1,49 @@
-const CrdtService = require("../services/crdtService");
-const CollaborativeNote = require("../models/CollaborativeNote");
-const NoteSnapshot = require("../models/NoteSnapshot");
-const Meeting = require("../models/Meeting");
+import CrdtService from "../services/crdtService.js";
+import NoteVersion from "../models/noteVersionModel.js";
+import { resolveAccessibleMeeting } from "../utils/resolveAccessibleMeeting.js";
+
+/**
+ * Authorize meeting access before any collaborative-notes CRDT / snapshot work.
+ * Uses the shared resolver (owner or same organization) — never trust meetingId alone.
+ *
+ * @param {string} meetingId
+ * @param {object} user - Authenticated MongoDB user (`req.user`)
+ * @param {import("express").Response} res
+ * @returns {Promise<object|null>} Meeting document, or null after sending an error response
+ */
+async function requireNotesMeetingAccess(meetingId, user, res) {
+  const access = await resolveAccessibleMeeting(meetingId, user);
+  if (access.error) {
+    res.status(access.error.status).json({
+      success: false,
+      error: access.error.message,
+    });
+    return null;
+  }
+  return access.meeting;
+}
 
 /**
  * @desc    Get note state vector and metadata
  * @route   GET /api/notes/:meetingId
  */
-exports.getNoteState = async (req, res) => {
+export const getNoteState = async (req, res) => {
   try {
     const { meetingId } = req.params;
-    const userId = req.user.id;
 
-    // Verify user has access to this meeting
-    const meeting = await Meeting.findById(meetingId);
-    if (!meeting) {
-      return res
-        .status(404)
-        .json({ success: false, error: "Meeting not found" });
-    }
+    const meeting = await requireNotesMeetingAccess(meetingId, req.user, res);
+    if (!meeting) return;
 
-    // Check if user is participant or organizer (simplified logic)
-    const hasAccess =
-      meeting.organizer.toString() === userId ||
-      meeting.participants.some((p) => p.toString() === userId);
-
-    if (!hasAccess && req.user.role !== "admin") {
-      return res.status(403).json({ success: false, error: "Access denied" });
-    }
-
-    const stateVector = await CrdtService.getStateVector(meetingId);
-    const note = await CollaborativeNote.findOne({ meetingId }).select(
-      "plainTextContent version lastModifiedAt",
-    );
+    const authorizedMeetingId = meeting._id;
+    const stateVector = await CrdtService.getStateVector(authorizedMeetingId);
 
     res.status(200).json({
       success: true,
       data: {
         stateVector: Array.from(stateVector),
-        plainText: note?.plainTextContent || "",
-        version: note?.version || 1,
-        lastModifiedAt: note?.lastModifiedAt,
+        plainText: meeting.collaborativeNotes || "",
+        version: 1,
+        lastModifiedAt: meeting.updatedAt,
       },
     });
   } catch (error) {
@@ -53,18 +56,38 @@ exports.getNoteState = async (req, res) => {
  * @desc    Get version history list
  * @route   GET /api/notes/:meetingId/history
  */
-exports.getNoteHistory = async (req, res) => {
+export const getNoteHistory = async (req, res) => {
   try {
     const { meetingId } = req.params;
 
-    const snapshots = await NoteSnapshot.find({ meetingId })
+    const meeting = await requireNotesMeetingAccess(meetingId, req.user, res);
+    if (!meeting) return;
+
+    const authorizedMeetingId = meeting._id;
+
+    const snapshots = await NoteVersion.find({
+      meetingId: authorizedMeetingId,
+      field: "collaborativeNotes",
+    })
       .sort({ version: -1 })
-      .populate("createdBy", "name avatar")
-      .select("version title createdBy createdAt");
+      .populate("changedBy", "name")
+      .select("version changeSource changedBy createdAt");
+
+    const formattedSnapshots = snapshots.map((s) => ({
+      version: s.version,
+      title:
+        s.changeSource === "user_edit"
+          ? "User Edit"
+          : s.changeSource === "ai_processing"
+            ? "AI Processing"
+            : "System Snapshot",
+      createdBy: s.changedBy,
+      createdAt: s.createdAt,
+    }));
 
     res.status(200).json({
       success: true,
-      data: snapshots,
+      data: formattedSnapshots,
     });
   } catch (error) {
     console.error("Error fetching note history:", error);
@@ -76,14 +99,19 @@ exports.getNoteHistory = async (req, res) => {
  * @desc    Create a manual snapshot
  * @route   POST /api/notes/:meetingId/snapshot
  */
-exports.createSnapshot = async (req, res) => {
+export const createSnapshot = async (req, res) => {
   try {
     const { meetingId } = req.params;
     const { title } = req.body;
-    const userId = req.user.id;
+    const userId = req.user.id || req.user._id;
+
+    const meeting = await requireNotesMeetingAccess(meetingId, req.user, res);
+    if (!meeting) return;
+
+    const authorizedMeetingId = meeting._id;
 
     const snapshot = await CrdtService.createSnapshot(
-      meetingId,
+      authorizedMeetingId,
       userId,
       title || "Manual Snapshot",
     );
@@ -104,14 +132,20 @@ exports.createSnapshot = async (req, res) => {
  * @desc    Get specific snapshot content
  * @route   GET /api/notes/:meetingId/snapshot/:version
  */
-exports.getSnapshotByVersion = async (req, res) => {
+export const getSnapshotByVersion = async (req, res) => {
   try {
     const { meetingId, version } = req.params;
 
-    const snapshot = await NoteSnapshot.findOne({
-      meetingId,
+    const meeting = await requireNotesMeetingAccess(meetingId, req.user, res);
+    if (!meeting) return;
+
+    const authorizedMeetingId = meeting._id;
+
+    const snapshot = await NoteVersion.findOne({
+      meetingId: authorizedMeetingId,
+      field: "collaborativeNotes",
       version,
-    }).populate("createdBy", "name");
+    }).populate("changedBy", "name");
 
     if (!snapshot) {
       return res
@@ -121,7 +155,12 @@ exports.getSnapshotByVersion = async (req, res) => {
 
     res.status(200).json({
       success: true,
-      data: snapshot,
+      data: {
+        version: snapshot.version,
+        content: snapshot.content,
+        createdBy: snapshot.changedBy,
+        createdAt: snapshot.createdAt,
+      },
     });
   } catch (error) {
     console.error("Error fetching snapshot:", error);

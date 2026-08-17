@@ -1,13 +1,13 @@
 import express from "express";
 import * as actionItemsController from "../controllers/actionItems.controller.js";
-import { protect } from "../middleware/authMiddleware.js";
+import userAuth from "../middleware/userAuth.js";
 import {
   verifyMeetingAccess,
   verifyActionItemAccess,
 } from "../middleware/meetingAuth.js";
 
 const router = express.Router();
-router.use(protect);
+router.use(userAuth);
 
 router.post(
   "/meetings/:meetingId/extract-actions",

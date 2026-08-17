@@ -1,5 +1,9 @@
-import ActionItem from "../models/ActionItem.js";
+import ActionItem from "../models/actionItemModel.js";
 import ActionItemExtractor from "../services/actionItemExtractor.js";
+import { syncActionItemToGitHub } from "../services/githubSyncService.js";
+import { syncActionItemToJira } from "../services/jiraSyncService.js";
+import { syncActionItemToLinear } from "../services/linearSyncService.js";
+import eventBus from "../services/eventBus.js";
 
 /**
  * @desc Trigger AI extraction from meeting transcript (Idempotent)
@@ -11,7 +15,7 @@ export const extractFromMeeting = async (req, res) => {
 
     // Idempotency check: Prevent duplicate extractions
     const existingCount = await ActionItem.countDocuments({
-      meetingId,
+      $or: [{ sourceMeetingId: meetingId }, { meetingId }],
       aiConfidence: { $exists: true },
     });
     if (existingCount > 0) {
@@ -41,7 +45,8 @@ export const extractFromMeeting = async (req, res) => {
 
       return {
         ...item,
-        meetingId,
+        text: item.text || item.title || "",
+        sourceMeetingId: meetingId,
         assignedBy: userId,
         status,
         completedAt: null,
@@ -49,6 +54,38 @@ export const extractFromMeeting = async (req, res) => {
     });
 
     const savedItems = await ActionItem.insertMany(itemsToInsert);
+
+    // Sync with Issue Trackers
+    try {
+      if (process.env.NODE_ENV !== "test") {
+        // Fire and forget in production to avoid blocking response
+        savedItems.forEach((item) => {
+          syncActionItemToGitHub(item).catch((err) =>
+            console.error("GitHub Sync Error:", err),
+          );
+          syncActionItemToJira(item).catch((err) =>
+            console.error("Jira Sync Error:", err),
+          );
+          syncActionItemToLinear(item).catch((err) =>
+            console.error("Linear Sync Error:", err),
+          );
+        });
+      } else {
+        // Await in test to prevent Jest teardown errors
+        await Promise.allSettled(
+          savedItems.map((item) =>
+            Promise.all([
+              syncActionItemToGitHub(item),
+              syncActionItemToJira(item),
+              syncActionItemToLinear(item),
+            ]),
+          ),
+        );
+      }
+    } catch (err) {
+      console.error("Failed to sync to issue trackers:", err);
+    }
+
     res
       .status(201)
       .json({ success: true, count: savedItems.length, data: savedItems });
@@ -70,18 +107,18 @@ export const getActionItems = async (req, res) => {
 
     const filter = {
       $or: [{ assignee: userId }, { assignedBy: userId }],
-      meetingId: { $in: await getOrgMeetingIds(orgId) }, // Scope to org
+      sourceMeetingId: { $in: await getOrgMeetingIds(orgId) }, // Scope to org
     };
 
     if (status) filter.status = status;
     if (priority) filter.priority = priority;
-    if (meetingId) filter.meetingId = meetingId;
+    if (meetingId) filter.sourceMeetingId = meetingId;
 
     const items = await ActionItem.find(filter)
-      .sort({ deadline: 1, priority: -1 })
+      .sort({ dueDate: 1, priority: -1 })
       .populate("assignee", "name avatar")
       .populate("assignedBy", "name")
-      .populate("meetingId", "title date");
+      .populate("sourceMeetingId", "title date");
 
     res.status(200).json({ success: true, count: items.length, data: items });
   } catch (_error) {
@@ -95,7 +132,9 @@ export const getActionItems = async (req, res) => {
 export const getMeetingActionItems = async (req, res) => {
   try {
     const { meetingId } = req.params;
-    const items = await ActionItem.find({ meetingId })
+    const items = await ActionItem.find({
+      $or: [{ sourceMeetingId: meetingId }, { meetingId }],
+    })
       .sort({ createdAt: 1 })
       .populate("assignee", "name avatar")
       .populate("assignedBy", "name");
@@ -119,8 +158,10 @@ export const updateActionItem = async (req, res) => {
       "status",
       "assignee",
       "deadline",
+      "dueDate",
       "priority",
       "title",
+      "text",
       "description",
     ];
     const updates = {};
@@ -128,19 +169,30 @@ export const updateActionItem = async (req, res) => {
       if (req.body[field] !== undefined) updates[field] = req.body[field];
     });
 
+    if (updates.title && !updates.text) {
+      updates.text = updates.title;
+    }
+    if (updates.deadline && !updates.dueDate) {
+      updates.dueDate = updates.deadline;
+    }
+
     // Explicit state transitions
     if (updates.status) {
-      if (updates.status === "completed" && item.status !== "completed") {
+      if (
+        ["completed", "resolved"].includes(updates.status) &&
+        !["completed", "resolved"].includes(item.status)
+      ) {
         updates.completedAt = new Date();
-      } else if (updates.status !== "completed") {
+      } else if (!["completed", "resolved"].includes(updates.status)) {
         updates.completedAt = null;
       }
 
       // Auto-mark overdue if deadline passed and not completed/cancelled
+      const targetDate = updates.dueDate || updates.deadline || item.dueDate;
       if (
-        updates.deadline &&
-        new Date(updates.deadline) < new Date() &&
-        !["completed", "cancelled"].includes(updates.status)
+        targetDate &&
+        new Date(targetDate) < new Date() &&
+        !["completed", "resolved", "cancelled"].includes(updates.status)
       ) {
         updates.status = "overdue";
       }
@@ -150,6 +202,14 @@ export const updateActionItem = async (req, res) => {
       new: true,
       runValidators: true,
     }).populate("assignee", "name avatar");
+
+    if (["completed", "resolved"].includes(updates.status)) {
+      eventBus.emit("actionItem.completed", {
+        userId: updatedItem.assignee?._id || req.user.id,
+        organizationId: req.user.organizationId,
+        actionItemId: updatedItem._id,
+      });
+    }
 
     res.status(200).json({ success: true, data: updatedItem });
   } catch (error) {
@@ -169,9 +229,11 @@ export const deleteActionItem = async (req, res) => {
   }
 };
 
-// Helper to get meeting IDs for an org (simplified)
+// Helper to get meeting IDs for an org
 async function getOrgMeetingIds(orgId) {
-  const Meeting = (await import("../models/Meeting.js")).default;
-  const meetings = await Meeting.find({ organizationId: orgId }).select("_id");
+  const Meeting = (await import("../models/meetingModel.js")).default;
+  const meetings = await Meeting.find({
+    $or: [{ organization: orgId }, { organizationId: orgId }],
+  }).select("_id");
   return meetings.map((m) => m._id);
 }

@@ -723,7 +723,7 @@ export const handleMeetingClipOperation = async (req, res) => {
       success: true,
       message: "Clip operation authorized and processed successfully",
     });
-  } catch (error) {
+  } catch (_error) {
     res
       .status(500)
       .json({ success: false, message: "Server error handling clip" });
@@ -741,7 +741,7 @@ export const getMeetingClip = async (req, res) => {
     }
 
     res.json({ success: true, message: "Clip retrieved successfully" });
-  } catch (error) {
+  } catch (_error) {
     res
       .status(500)
       .json({ success: false, message: "Server error fetching clip" });

@@ -1,11 +1,7 @@
 import React, { useState, useRef, useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import { ChevronDown } from "lucide-react";
-
-const LANGUAGES = [
-  { code: "en", label: "EN", flag: "🌐" },
-  { code: "hi", label: "हिंदी", flag: "🇮🇳" },
-];
+import { LANGUAGES } from "../constants/languages.js";
 
 const LanguageSwitcher = () => {
   const { i18n, t } = useTranslation();

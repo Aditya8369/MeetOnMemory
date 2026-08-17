@@ -8,7 +8,7 @@ import {
   rateTemplate,
 } from "../../services/templateLibraryApi";
 
-vi.mock("../components/Navbar.jsx", () => ({
+vi.mock("../../components/Navbar.jsx", () => ({
   default: () => <nav>Navbar</nav>,
 }));
 

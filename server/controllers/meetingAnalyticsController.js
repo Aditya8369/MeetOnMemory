@@ -1,5 +1,6 @@
 import MeetingAnalytics from "../models/MeetingAnalytics.js";
 import Meeting from "../models/meetingModel.js";
+import Policy from "../models/policyModel.js";
 import {
   analyzeMeeting,
   getOrganizationAnalytics,
@@ -260,6 +261,158 @@ export const getTrends = async (req, res) => {
 };
 
 /**
+ * Authorize a team analytics scope. Always ties results to the caller's
+ * organization — never trust teamId alone. When teamId equals the user's org
+ * id (common "team = org" usage), return all org analytics; otherwise further
+ * filter by MeetingAnalytics.teamId within that org.
+ */
+const buildTeamAnalyticsMatch = (teamId, user) => {
+  if (!user?.organization) {
+    return {
+      error: {
+        status: 403,
+        message: "Forbidden: Organization membership required",
+      },
+    };
+  }
+
+  if (!mongoose.isValidObjectId(teamId)) {
+    return { error: { status: 400, message: "Invalid team ID" } };
+  }
+
+  const match = { organization: user.organization };
+  if (teamId !== user.organization.toString()) {
+    match.teamId = new mongoose.Types.ObjectId(teamId);
+  }
+
+  return { match };
+};
+
+/**
+ * @desc Aggregated team/org analytics summary (migrated from orphaned analytics.routes.js)
+ * @route GET /api/analytics/team/:teamId/summary
+ * @access Private
+ */
+export const getTeamAnalyticsSummary = async (req, res) => {
+  try {
+    const { teamId } = req.params;
+    const scoped = buildTeamAnalyticsMatch(teamId, req.user);
+    if (scoped.error) {
+      return res
+        .status(scoped.error.status)
+        .json({ success: false, error: scoped.error.message });
+    }
+
+    const summary = await MeetingAnalytics.aggregate([
+      { $match: scoped.match },
+      {
+        $group: {
+          _id: null,
+          totalMeetings: { $sum: 1 },
+          avgEngagement: { $avg: "$engagementScore" },
+          avgEfficiency: { $avg: "$efficiencyScore" },
+          avgDuration: { $avg: "$duration" },
+          avgBalance: { $avg: "$participationBalanceScore" },
+        },
+      },
+    ]);
+
+    res.status(200).json({ success: true, data: summary[0] || {} });
+  } catch (error) {
+    console.error("Error fetching team analytics summary:", error);
+    res.status(500).json({ success: false, error: "Server error" });
+  }
+};
+
+/**
+ * @desc Recent meetings with joined analytics (migrated from orphaned analytics.routes.js)
+ * @route GET /api/analytics/team/:teamId/recent
+ * @access Private
+ */
+export const getTeamRecentMeetings = async (req, res) => {
+  try {
+    const { teamId } = req.params;
+    const limit = Math.min(parseInt(req.query.limit, 10) || 10, 50);
+
+    const scoped = buildTeamAnalyticsMatch(teamId, req.user);
+    if (scoped.error) {
+      return res
+        .status(scoped.error.status)
+        .json({ success: false, error: scoped.error.message });
+    }
+
+    // Meetings are org-scoped (meetingModel has no teamId). When a non-org
+    // teamId filter is requested, only return meetings that have analytics
+    // tagged with that teamId.
+    const meetingMatch = { organization: req.user.organization };
+    const analyticsCollection = MeetingAnalytics.collection.collectionName;
+
+    let meetings;
+    if (scoped.match.teamId) {
+      meetings = await Meeting.aggregate([
+        { $match: meetingMatch },
+        { $sort: { date: -1 } },
+        {
+          $lookup: {
+            from: analyticsCollection,
+            localField: "_id",
+            foreignField: "meeting",
+            as: "analyticsDocs",
+          },
+        },
+        {
+          $addFields: {
+            analytics: {
+              $first: {
+                $filter: {
+                  input: "$analyticsDocs",
+                  as: "a",
+                  cond: { $eq: ["$$a.teamId", scoped.match.teamId] },
+                },
+              },
+            },
+          },
+        },
+        { $match: { analytics: { $ne: null } } },
+        { $limit: limit },
+        { $project: { analyticsDocs: 0 } },
+      ]);
+    } else {
+      meetings = await Meeting.aggregate([
+        { $match: meetingMatch },
+        { $sort: { date: -1 } },
+        { $limit: limit },
+        {
+          $lookup: {
+            from: analyticsCollection,
+            localField: "_id",
+            foreignField: "meeting",
+            as: "analyticsDocs",
+          },
+        },
+        {
+          $addFields: {
+            analytics: { $first: "$analyticsDocs" },
+          },
+        },
+        { $project: { analyticsDocs: 0 } },
+      ]);
+    }
+
+    res.status(200).json({
+      success: true,
+      data: {
+        meetings,
+        pagination: { limit, total: meetings.length },
+      },
+    });
+  } catch (error) {
+    console.error("Error fetching team recent meetings:", error);
+    res.status(500).json({ success: false, error: "Server error" });
+  }
+};
+
+/**
  * Helper function to format duration in seconds to human-readable format
  */
 const formatDuration = (seconds) => {
@@ -273,5 +426,93 @@ const formatDuration = (seconds) => {
     const hours = Math.floor(seconds / 3600);
     const minutes = Math.floor((seconds % 3600) / 60);
     return `${hours}h ${minutes}m`;
+  }
+};
+
+export const subtractMonthsClamped = (date, months) => {
+  const result = new Date(date);
+  const dayOfMonth = result.getDate();
+
+  result.setDate(1);
+  result.setMonth(result.getMonth() - months);
+
+  const lastDayOfTargetMonth = new Date(
+    result.getFullYear(),
+    result.getMonth() + 1,
+    0,
+  ).getDate();
+  result.setDate(Math.min(dayOfMonth, lastDayOfTargetMonth));
+
+  return result;
+};
+
+/**
+ * @desc Get aggregated analytics summary (meetings, policies, trends)
+ * @route GET /api/analytics/
+ * @access Private
+ */
+export const getAnalytics = async (req, res) => {
+  try {
+    const userId = req.user?.id || req.user?._id;
+    if (!userId) {
+      return res.status(401).json({ success: false, message: "Unauthorized" });
+    }
+
+    const queryOptions = [{ uploadedBy: userId }];
+    if (req.user?.organization) {
+      queryOptions.push({ organization: req.user.organization });
+    }
+    const matchQuery = { $or: queryOptions };
+
+    const totalMeetings = await Meeting.countDocuments(matchQuery);
+    const totalPolicies = await Policy.countDocuments(matchQuery);
+    const completedMeetings = await Meeting.countDocuments({
+      ...matchQuery,
+      status: "completed",
+    });
+    const updatedPolicies = await Policy.countDocuments({
+      ...matchQuery,
+      version: { $ne: "1.0" },
+    });
+
+    // Monthly trend (last 6 months)
+    const lastSixMonths = subtractMonthsClamped(new Date(), 5);
+    const monthlyMeetings = await Meeting.aggregate([
+      { $match: { createdAt: { $gte: lastSixMonths }, ...matchQuery } },
+      {
+        $group: {
+          _id: { $month: "$createdAt" },
+          count: { $sum: 1 },
+        },
+      },
+      { $sort: { _id: 1 } },
+    ]);
+
+    const monthlyPolicies = await Policy.aggregate([
+      { $match: { createdAt: { $gte: lastSixMonths }, ...matchQuery } },
+      {
+        $group: {
+          _id: { $month: "$createdAt" },
+          count: { $sum: 1 },
+        },
+      },
+      { $sort: { _id: 1 } },
+    ]);
+
+    res.status(200).json({
+      success: true,
+      summary: {
+        totalMeetings,
+        completedMeetings,
+        totalPolicies,
+        updatedPolicies,
+      },
+      trends: { monthlyMeetings, monthlyPolicies },
+    });
+  } catch (error) {
+    console.error("❌ Analytics Error:", error);
+    res
+      .status(500)
+      .json({ success: false, message: "Failed to load analytics" });
   }
 };

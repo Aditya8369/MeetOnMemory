@@ -2,6 +2,7 @@ import React, { useState, useEffect, useContext } from "react";
 import { format } from "date-fns";
 import AppContent from "../context/AppContent";
 import Navbar from "../components/Navbar.jsx";
+import ConfirmModal from "../components/ConfirmModal.jsx";
 import { recapScheduleApi } from "../services/recapScheduleApi";
 import {
   Clock,
@@ -30,10 +31,16 @@ const RecapScheduleDashboard = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [retryingDeliveryId, setRetryingDeliveryId] = useState(null);
+  const [retryTarget, setRetryTarget] = useState(null);
+  const [retryLoading, setRetryLoading] = useState(false);
   const [saveMessage, setSaveMessage] = useState({ type: "", text: "" });
   const [retryMessage, setRetryMessage] = useState({ type: "", text: "" });
 
   useEffect(() => {
+    if (!organizationId) {
+      setIsLoading(false);
+      return;
+    }
     const fetchData = async () => {
       setIsLoading(true);
       try {
@@ -64,7 +71,7 @@ const RecapScheduleDashboard = () => {
         setIsLoading(false);
       }
     };
-    if (organizationId) fetchData();
+    fetchData();
   }, [organizationId]);
 
   const handleChange = (e) => {
@@ -112,11 +119,15 @@ const RecapScheduleDashboard = () => {
     }
   };
 
-  const handleRetry = async (deliveryId) => {
+  const handleRetryConfirm = async () => {
+    if (!retryTarget) return;
+    const deliveryId = retryTarget._id;
     setRetryingDeliveryId(deliveryId);
+    setRetryLoading(true);
     setRetryMessage({ type: "", text: "" });
     try {
       await recapScheduleApi.retryDelivery(deliveryId);
+      setRetryTarget(null);
       setRetryMessage({
         type: "success",
         text: "Retry enqueued successfully.",
@@ -133,6 +144,7 @@ const RecapScheduleDashboard = () => {
       });
     } finally {
       setRetryingDeliveryId(null);
+      setRetryLoading(false);
     }
   };
 
@@ -152,6 +164,25 @@ const RecapScheduleDashboard = () => {
         {isLoading ? (
           <div className="flex justify-center items-center py-20">
             <RefreshCw className="h-8 w-8 text-blue-600 animate-spin" />
+          </div>
+        ) : !organizationId ? (
+          <div className="flex flex-col items-center justify-center py-20 bg-white dark:bg-gray-800 shadow rounded-xl border border-slate-200 dark:border-gray-700">
+            <div className="bg-blue-50 dark:bg-blue-900/20 p-4 rounded-full mb-4">
+              <Clock className="w-12 h-12 text-blue-600 dark:text-blue-400" />
+            </div>
+            <h2 className="text-xl font-bold text-slate-900 dark:text-white mb-2">
+              No Organization Found
+            </h2>
+            <p className="text-slate-600 dark:text-gray-400 text-center max-w-md mb-6">
+              You need to be part of an organization to manage recap delivery
+              schedules.
+            </p>
+            <a
+              href="/organizations"
+              className="inline-flex items-center gap-2 px-6 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-colors"
+            >
+              Join or Create an Organization
+            </a>
           </div>
         ) : (
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
@@ -339,7 +370,14 @@ const RecapScheduleDashboard = () => {
                             <td className="px-6 py-4 text-right">
                               <button
                                 type="button"
-                                onClick={() => handleRetry(delivery._id)}
+                                onClick={() =>
+                                  setRetryTarget({
+                                    _id: delivery._id,
+                                    meetingTitle:
+                                      delivery.meetingId?.title ||
+                                      "Unknown Meeting",
+                                  })
+                                }
                                 disabled={retryingDeliveryId === delivery._id}
                                 aria-label={`Retry delivery for ${delivery.meetingId?.title || "Unknown Meeting"}`}
                                 className="text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 font-medium cursor-pointer disabled:opacity-60 disabled:cursor-wait"
@@ -377,6 +415,18 @@ const RecapScheduleDashboard = () => {
           </div>
         )}
       </div>
+
+      {/* Confirmation Modal prior to retrying recap delivery (#1612) */}
+      <ConfirmModal
+        isOpen={Boolean(retryTarget)}
+        onClose={() => setRetryTarget(null)}
+        onConfirm={handleRetryConfirm}
+        title="Retry Recap Delivery"
+        message={`Are you sure you want to retry the recap delivery for "${retryTarget?.meetingTitle || "this meeting"}"?`}
+        confirmText="Retry Delivery"
+        variant="primary"
+        isLoading={retryLoading}
+      />
     </div>
   );
 };

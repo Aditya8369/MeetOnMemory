@@ -44,6 +44,9 @@ const loadCalendarService = () => import("./calendarService.js");
 const loadQueueService = () => import("./queueService.js");
 const loadTranscriptionService = () => import("./TranscriptionService.js");
 const loadKeywordAlertService = () => import("./keywordAlertService.js");
+const loadNotionSync = () => import("./notionSyncService.js");
+const loadNotionIntegration = () =>
+  import("../models/notionIntegrationModel.js");
 
 const scheduleIndexMeeting = (meeting) => {
   loadEmbeddingUtils()
@@ -73,6 +76,26 @@ const scheduleKeywordScan = (meeting, transcript) => {
       console.error("⚠️ Keyword scan error (continuing):", err.message),
     );
 };
+
+const scheduleNotionSync = (meeting) => {
+  if (!meeting || !meeting.organization) return;
+  (async () => {
+    try {
+      const NotionIntegration = (await loadNotionIntegration()).default;
+      const integration = await NotionIntegration.findOne({
+        organization: meeting.organization,
+      });
+      if (integration && integration.targetDatabaseId) {
+        const { createMeetingPage } = await loadNotionSync();
+        await createMeetingPage(meeting, integration);
+        console.log(`✅ Synced meeting ${meeting._id} to Notion`);
+      }
+    } catch (err) {
+      console.error("⚠️ Notion sync error (continuing):", err.message);
+    }
+  })();
+};
+
 export const isValidObjectId = (id) =>
   typeof id === "string" && mongoose.Types.ObjectId.isValid(id);
 
@@ -508,6 +531,7 @@ export const generateMeetingMoM = async (
   }
 
   _runKnowledgeGraph(meetingToUpdate, mom);
+  scheduleNotionSync(meetingToUpdate);
 
   return {
     queued: false,

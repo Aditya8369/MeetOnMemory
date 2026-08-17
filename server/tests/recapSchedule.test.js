@@ -119,7 +119,7 @@ describe("Recap Schedule API", () => {
       const mockDeliveries = [
         {
           _id: "del-1",
-          meetingId: { title: "Sync", organization: ORG_ID },
+          meetingId: { title: "Sync", organization: ORG_ID.toString() },
         },
       ];
       const mockPopulate = jest.fn().mockReturnThis();
@@ -162,7 +162,7 @@ describe("Recap Schedule API", () => {
               { _id: "gone", meetingId: null },
               {
                 _id: "kept",
-                meetingId: { title: "Ok", organization: ORG_ID },
+                meetingId: { title: "Ok", organization: ORG_ID.toString() },
               },
             ]),
           }),
@@ -175,22 +175,28 @@ describe("Recap Schedule API", () => {
 
       expect(res.status).toBe(200);
       expect(res.body).toEqual([
-        { _id: "kept", meetingId: { title: "Ok", organization: ORG_ID } },
+        {
+          _id: "kept",
+          meetingId: { title: "Ok", organization: ORG_ID.toString() },
+        },
       ]);
     });
   });
 
   describe("POST /api/recap-schedule/retry/:deliveryId", () => {
     it("should enqueue retry job and return 200", async () => {
+      const validObjectId = new mongoose.Types.ObjectId().toString();
       RecapDelivery.findOne.mockReturnValue({
         populate: jest.fn().mockResolvedValue({
-          _id: "del-1",
+          _id: validObjectId,
           meetingId: { _id: "meet-1", organization: ORG_ID },
           userId: USER_ID,
         }),
       });
 
-      const res = await request(app).post("/api/recap-schedule/retry/del-1");
+      const res = await request(app).post(
+        `/api/recap-schedule/retry/${validObjectId}`,
+      );
 
       expect(res.status).toBe(200);
       expect(res.body.message).toBe("Delivery retry enqueued successfully");
@@ -201,8 +207,9 @@ describe("Recap Schedule API", () => {
         populate: jest.fn().mockResolvedValue(null),
       });
 
+      const notFoundObjectId = new mongoose.Types.ObjectId().toString();
       const res = await request(app).post(
-        "/api/recap-schedule/retry/invalid-del",
+        `/api/recap-schedule/retry/${notFoundObjectId}`,
       );
 
       expect(res.status).toBe(404);

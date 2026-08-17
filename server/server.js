@@ -43,6 +43,12 @@ import {
   stopActionItemReminderJob,
 } from "./jobs/actionItemReminderJob.js";
 import { startRecapBatchJob, stopRecapBatchJob } from "./jobs/recapBatchJob.js";
+import gamificationEngine from "./services/gamificationEngine.js";
+import { startLeaderboardJob } from "./jobs/leaderboardAggregationJob.js";
+import {
+  initAutoBriefingJob,
+  stopAutoBriefingJob,
+} from "./jobs/autoBriefingJob.js";
 import { createClient } from "redis"; // eslint-disable-line no-unused-vars
 import {
   initDataExportWorker, // eslint-disable-line no-unused-vars
@@ -102,9 +108,12 @@ if (io) {
   );
 }
 
+// Initialize gamification hooks
+gamificationEngine.init();
+
 // SERVER START (Skipped during Jest test execution)
 if (process.env.NODE_ENV !== "test") {
-  server.listen(PORT, () => {
+  server.listen(PORT, "0.0.0.0", () => {
     console.log(`🚀 MeetOnMemory Server running on port ${PORT}`);
 
     setTimeout(() => {
@@ -132,6 +141,12 @@ if (process.env.NODE_ENV !== "test") {
 
   // Start recap batch email jobs (Issue #1398)
   startRecapBatchJob();
+
+  // Start leaderboard aggregation job
+  startLeaderboardJob();
+
+  // Start auto pre-meeting briefing job
+  initAutoBriefingJob();
 }
 
 // (AI, Data Export, and Webhook workers are initialized inside server.listen callback)
@@ -143,6 +158,7 @@ const gracefulShutdown = createGracefulShutdown({
   stopBackgroundJobs: () => {
     stopActionItemReminderJob();
     stopRecapBatchJob();
+    stopAutoBriefingJob();
   },
   closeQueues: shutdownQueues,
   closeDatabase: () => mongoose.connection.close(),

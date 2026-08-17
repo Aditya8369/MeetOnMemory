@@ -1,5 +1,5 @@
 import cron from "node-cron";
-import ActionItem from "../models/ActionItem.js";
+import ActionItem from "../models/actionItemModel.js";
 import emailService from "./emailService.js";
 import notificationService from "./notificationService.js";
 
@@ -35,8 +35,8 @@ class ReminderScheduler {
     try {
       // 1. Overdue
       const overdueItems = await ActionItem.find({
-        deadline: { $lt: today },
-        status: { $in: ["pending", "in_progress"] },
+        $or: [{ dueDate: { $lt: today } }, { deadline: { $lt: today } }],
+        status: { $in: ["pending", "in_progress", "open", "in-progress"] },
         "remindersSent.type": { $ne: "overdue" },
       })
         .populate("assignee", "name email")
@@ -45,8 +45,11 @@ class ReminderScheduler {
 
       // 2. Due Today
       const dueTodayItems = await ActionItem.find({
-        deadline: { $gte: today, $lt: dates.tomorrow },
-        status: { $in: ["pending", "in_progress"] },
+        $or: [
+          { dueDate: { $gte: today, $lt: dates.tomorrow } },
+          { deadline: { $gte: today, $lt: dates.tomorrow } },
+        ],
+        status: { $in: ["pending", "in_progress", "open", "in-progress"] },
         "remindersSent.type": { $ne: "due_today" },
       })
         .populate("assignee", "name email")
@@ -56,8 +59,11 @@ class ReminderScheduler {
 
       // 3. Due in 3 Days (High/Urgent only)
       const threeDayItems = await ActionItem.find({
-        deadline: { $gte: dates.tomorrow, $lt: dates.threeDays },
-        status: { $in: ["pending", "in_progress"] },
+        $or: [
+          { dueDate: { $gte: dates.tomorrow, $lt: dates.threeDays } },
+          { deadline: { $gte: dates.tomorrow, $lt: dates.threeDays } },
+        ],
+        status: { $in: ["pending", "in_progress", "open", "in-progress"] },
         priority: { $in: ["high", "urgent"] },
         "remindersSent.type": { $ne: "3_day" },
       })
@@ -67,8 +73,11 @@ class ReminderScheduler {
 
       // 4. Due in 7 Days (Urgent only)
       const sevenDayItems = await ActionItem.find({
-        deadline: { $gte: dates.threeDays, $lt: dates.sevenDays },
-        status: { $in: ["pending", "in_progress"] },
+        $or: [
+          { dueDate: { $gte: dates.threeDays, $lt: dates.sevenDays } },
+          { deadline: { $gte: dates.threeDays, $lt: dates.sevenDays } },
+        ],
+        status: { $in: ["pending", "in_progress", "open", "in-progress"] },
         priority: "urgent",
         "remindersSent.type": { $ne: "7_day" },
       })
@@ -82,11 +91,12 @@ class ReminderScheduler {
 
   async sendReminder(item, type) {
     if (!item.assignee?.email) return;
+    const taskTitle = item.title || item.text;
     const subjectMap = {
-      overdue: `🚨 OVERDUE: "${item.title}"`,
-      due_today: `⏰ Due Today: "${item.title}"`,
-      "3_day": `📅 Upcoming: "${item.title}" due in 3 days`,
-      "7_day": `📅 Upcoming: "${item.title}" due next week`,
+      overdue: `🚨 OVERDUE: "${taskTitle}"`,
+      due_today: `⏰ Due Today: "${taskTitle}"`,
+      "3_day": `📅 Upcoming: "${taskTitle}" due in 3 days`,
+      "7_day": `📅 Upcoming: "${taskTitle}" due next week`,
     };
 
     await notificationService.create({
@@ -98,7 +108,7 @@ class ReminderScheduler {
       to: item.assignee.email,
       subject: subjectMap[type],
       template: "actionItemReminder",
-      data: { userName: item.assignee.name, taskTitle: item.title, type },
+      data: { userName: item.assignee.name, taskTitle, type },
     });
 
     await ActionItem.updateOne(

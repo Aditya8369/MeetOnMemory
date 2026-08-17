@@ -10,6 +10,7 @@ import aiRoutes from "./aiRoutes.js";
 import policyRoutes from "./policyRoutes.js";
 import analyticsRoutes from "./analyticsRoutes.js";
 import geminiRoutes from "./geminiRoutes.js";
+import notesRoutes from "./notes.routes.js";
 import userRoutes from "./userRoutes.js";
 import notificationRoutes from "./notificationRoutes.js";
 import knowledgeRoutes from "./knowledgeRoutes.js";
@@ -36,6 +37,8 @@ import attendanceAnalyticsRoutes from "./attendanceAnalyticsRoutes.js";
 import meetingFeedbackRoutes from "./meetingFeedbackRoutes.js";
 import meetingCostRoutes from "./meetingCostRoutes.js";
 import followUpThreadRoutes from "./followUpThreadRoutes.js";
+import followUpRoutes from "./followUpRoutes.js";
+import schedulerRoutes from "./scheduler.routes.js";
 import recapScheduleRoutes from "./recapScheduleRoutes.js";
 import meetingClipRoutes from "./meetingClipRoutes.js";
 import speakerMappingRoutes from "./speakerMappingRoutes.js";
@@ -53,13 +56,18 @@ import automationRuleRoutes from "./automationRuleRoutes.js";
 import meetingHealthRoutes from "./meetingHealthRoutes.js";
 import workspaceRoutes from "./workspaceRoutes.js";
 import recapRoutes from "./recapRoutes.js";
+import recapStoryRoutes from "./recapStoryRoutes.js";
 import meetingQualityRoutes from "./meetingQualityRoutes.js";
+import exportRoutes from "./export.routes.js";
 import keyMomentRoutes from "./keyMomentRoutes.js";
 import meetingGoalRoutes from "./meetingGoalRoutes.js";
+import meetingTimelineRoutes from "./meetingTimelineRoutes.js";
 import actionItemDependencyRoutes from "./actionItemDependencyRoutes.js";
+import bulkMeetingRoutes from "./bulkMeetingRoutes.js";
 import parkingLotRoutes from "./parkingLotRoutes.js";
 import sentimentTimelineRoutes from "./sentimentTimelineRoutes.js";
 import meetingRsvpRoutes from "./meetingRsvpRoutes.js";
+import favoriteRoutes from "./favoriteRoutes.js";
 import testimonialRoutes, {
   adminTestimonialRouter,
 } from "./testimonialRoutes.js";
@@ -70,6 +78,11 @@ import savedFilterRoutes from "./savedFilterRoutes.js";
 import meetingChecklistRoutes from "./meetingChecklistRoutes.js";
 import speakingTimeRoutes from "./speakingTimeRoutes.js";
 import keywordAlertRoutes from "./keywordAlertRoutes.js";
+import agendaVoteRoutes from "./agendaVoteRoutes.js";
+import meetingDuplicateRoutes from "./meetingDuplicateRoutes.js";
+
+import notionIntegrationRoutes from "./notionIntegrationRoutes.js";
+import gamificationRoutes from "./gamificationRoutes.js";
 
 const router = express.Router();
 
@@ -86,12 +99,18 @@ router.use(
 router.use(["/api/invitation", "/api/invitations"], invitationRoutes);
 router.use("/api/meetings/timer", agendaTimerRoutes);
 router.use("/api/meetings/:meetingId/checklist", meetingChecklistRoutes);
+router.use("/api/meetings/:id/duplicates", meetingDuplicateRoutes);
 router.use("/api/meetings", meetingRoutes);
+router.use("/api/meetings", meetingTimelineRoutes);
+router.use("/api/bulk/meetings", bulkMeetingRoutes);
+router.use("/api/meetings", agendaVoteRoutes);
 router.use("/api/search", searchRoutes);
 router.use("/api/ai", aiRoutes);
 router.use("/api/policies", policyRoutes);
 router.use("/api/analytics", analyticsRoutes);
 router.use("/api/gemini", geminiRoutes);
+router.use("/api/notes", notesRoutes);
+router.use("/api/favorites", favoriteRoutes);
 router.use(["/api/user", "/api/users"], userRoutes);
 router.use(["/api/notification", "/api/notifications"], notificationRoutes);
 router.use("/api/knowledge", knowledgeRoutes);
@@ -126,6 +145,11 @@ router.use("/api/attendance-analytics", attendanceAnalyticsRoutes);
 router.use("/api/feedback", meetingFeedbackRoutes);
 router.use("/api/meeting-cost", meetingCostRoutes);
 router.use("/api/follow-up-threads", followUpThreadRoutes);
+// Follow-Up Workflow REST API (tasks/reminders/analytics) — Issue #1529.
+// Distinct from /api/follow-up-threads (discussion threads). Frontend uses /api/followup/*.
+router.use("/api/followup", followUpRoutes);
+// Smart Scheduler — propose / retrieve / confirm (Issue #1530)
+router.use("/api/scheduler", schedulerRoutes);
 // Recap schedule + delivery history (GET /history/deliveries) — Issue #1401
 router.use("/api/recap-schedule", recapScheduleRoutes);
 router.use("/api/clips", meetingClipRoutes);
@@ -149,11 +173,13 @@ router.use("/api/automation-rules", automationRuleRoutes);
 router.use("/api/meeting-health", meetingHealthRoutes);
 router.use("/api/workspace", workspaceRoutes);
 router.use("/api/recap", recapRoutes);
+router.use("/api/meetings", recapStoryRoutes);
 // /api/quality is the prefix MeetingQuality.jsx calls and the prefix every
 // @route line in meetingQualityController.js documents. The router was mounted
 // at /api/meeting-quality, which nothing referenced, so the page 404'd on every
 // request (Issue #1561).
 router.use("/api/quality", meetingQualityRoutes);
+router.use(["/api/export-templates", "/api/exports"], exportRoutes);
 router.use("/api/saved-filters", savedFilterRoutes);
 router.use("/api/key-moments", keyMomentRoutes);
 router.use("/api/speaking-time", speakingTimeRoutes);
@@ -165,5 +191,22 @@ router.use("/api/rsvps", meetingRsvpRoutes);
 router.use("/api/testimonials", testimonialRoutes);
 router.use("/api/admin/testimonials", adminTestimonialRouter);
 router.use("/api/alerts/keywords", keywordAlertRoutes);
+router.use("/api/integrations/notion", notionIntegrationRoutes);
+
+import githubIntegrationRoutes from "./githubIntegrationRoutes.js";
+router.use("/api/github", githubIntegrationRoutes);
+
+import { handleWebhook } from "../controllers/githubWebhookController.js";
+router.post("/api/webhooks/github", handleWebhook);
+
+import issueTrackerRoutes from "./issueTrackerRoutes.js";
+import issueTrackerWebhookRoutes from "./issueTrackerWebhookRoutes.js";
+router.use("/api/issue-tracker", issueTrackerRoutes);
+router.use("/api/webhooks", issueTrackerWebhookRoutes);
+
+router.use("/api/gamification", gamificationRoutes);
+
+import preMeetingBriefingRoutes from "./preMeetingBriefingRoutes.js";
+router.use("/api/briefings", preMeetingBriefingRoutes);
 
 export default router;
