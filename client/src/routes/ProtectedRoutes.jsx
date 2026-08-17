@@ -61,6 +61,7 @@ import TopicExplorer from "../pages/TopicExplorer.jsx";
 import ConflictResolution from "../pages/ConflictResolution.jsx";
 import SpeakingTimeTrends from "../pages/SpeakingTimeTrends.jsx";
 import Leaderboard from "../pages/Leaderboard.jsx";
+import ParticipantEngagement from "../pages/ParticipantEngagement.jsx";
 
 const ProtectedRoutes = (
   <React.Fragment>
@@ -498,6 +499,14 @@ const ProtectedRoutes = (
       element={
         <ProtectedRoute>
           <Leaderboard />
+        </ProtectedRoute>
+      }
+    />
+    <Route
+      path="/engagement"
+      element={
+        <ProtectedRoute resource="reports" action="view">
+          <ParticipantEngagement />
         </ProtectedRoute>
       }
     />
