@@ -8,6 +8,7 @@ import transcriptSocket from "../socket/transcriptSocket.js";
 import reactionSocket from "../socket/reactionSocket.js";
 import translationSocket from "../socket/translationSocket.js";
 import keyMomentSocket from "../socket/keyMomentSocket.js";
+import agendaBuilderSocket from "../socket/agendaBuilderSocket.js";
 import { initWorkspaceSocket } from "../socket/workspaceSocket.js";
 import authenticateSocket from "../middleware/socketAuth.js";
 
@@ -86,6 +87,7 @@ export function configureSocket(server, app) {
   reactionSocket(io);
   translationSocket(io);
   keyMomentSocket(io);
+  agendaBuilderSocket(io);
   // Collaborative War Room namespace (/workspace) — registered exactly once here (#1399)
   initWorkspaceSocket(io);
 

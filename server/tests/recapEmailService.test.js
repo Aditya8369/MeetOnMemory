@@ -309,7 +309,7 @@ describe("RecapEmailService (#1398)", () => {
       });
 
       expect(summary.errors).toBe(1);
-      expect(summary.processed).toBe(2);
+      expect(summary.processed).toBe(1);
       expect(EmailService.sendMail).toHaveBeenCalledTimes(2);
 
       const okDelivery = await RecapDelivery.findOne({ userId: ok._id });

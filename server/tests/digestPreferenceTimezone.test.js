@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { jest } from "@jest/globals";
 import {
   getPreferences,
   updatePreferences,
@@ -21,16 +21,16 @@ describe("DigestPreference Controller - Timezone Context (#1686)", () => {
       },
     };
     res = {
-      status: vi.fn().mockReturnThis(),
-      json: vi.fn(),
+      status: jest.fn().mockReturnThis(),
+      json: jest.fn(),
     };
 
-    vi.clearAllMocks();
+    jest.clearAllMocks();
   });
 
   describe("getPreferences", () => {
     it("returns default timezone 'UTC' when no preference document exists", async () => {
-      vi.spyOn(DigestPreference, "findOne").mockResolvedValue(null);
+      jest.spyOn(DigestPreference, "findOne").mockResolvedValue(null);
 
       await getPreferences(req, res);
 
@@ -46,7 +46,7 @@ describe("DigestPreference Controller - Timezone Context (#1686)", () => {
     });
 
     it("returns saved timezone when preference document exists", async () => {
-      vi.spyOn(DigestPreference, "findOne").mockResolvedValue({
+      jest.spyOn(DigestPreference, "findOne").mockResolvedValue({
         user: userId,
         frequency: "weekly",
         deliveryDay: "Monday",
@@ -88,9 +88,9 @@ describe("DigestPreference Controller - Timezone Context (#1686)", () => {
         includeSections: ["decisions"],
       };
 
-      vi.spyOn(DigestPreference, "findOneAndUpdate").mockResolvedValue(
-        mockUpdated,
-      );
+      jest
+        .spyOn(DigestPreference, "findOneAndUpdate")
+        .mockResolvedValue(mockUpdated);
 
       await updatePreferences(req, res);
 

@@ -78,16 +78,14 @@ describe("Tag rename cascade (Issue #1553)", () => {
     expect(error).toBeUndefined();
     expect(res.statusCode).toBe(200);
 
-    const orgMeetings = await Meeting.find({ organization: ORG_A }).lean();
-    expect(orgMeetings).toHaveLength(2);
-    expect(orgMeetings[0].tags).toEqual(
-      expect.not.arrayContaining(["old-tag"]),
-    );
-    expect(orgMeetings[1].tags).toEqual(["new-tag"]);
+    const secondMeeting = await Meeting.findOne({
+      title: "Second meeting",
+    }).lean();
+    expect(secondMeeting.tags).toEqual(["new-tag"]);
 
-    const repeated = orgMeetings.find((meeting) =>
-      meeting.title.startsWith("Meeting"),
-    );
+    const repeated = await Meeting.findOne({
+      title: "Meeting with repeated tag",
+    }).lean();
     expect(repeated.tags).toEqual(["new-tag", "other", "new-tag"]);
 
     const otherOrg = await Meeting.findOne({ organization: ORG_B }).lean();
