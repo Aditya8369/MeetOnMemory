@@ -15,6 +15,7 @@ import slackRoutes from "../routes/slackRoutes.js";
 import { slackWebhookParser } from "../middleware/slackWebhookParser.js";
 import publicSharedRoutes from "../routes/publicSharedRoutes.js";
 import { createStatusRoutes } from "../routes/statusRoutes.js";
+import { createCareerRoutes } from "../routes/careerRoutes.js";
 
 export function configureExpress(app) {
   app.set("trust proxy", 1);
@@ -42,6 +43,7 @@ export function configureExpress(app) {
   // or CSRF middleware.
   configureHealthEndpoints(app);
   app.use("/api/status", createStatusRoutes());
+  app.use("/api/careers", createCareerRoutes());
 
   // External/public routes use their own authentication mechanisms.
   app.use("/api/webhooks", webhookRoutes);
