@@ -48,6 +48,13 @@ const buildLocalUserInfo = (userData) => ({
   profilePic: userData?.profilePic || "",
 });
 
+/** Side panel ids for exclusive panel visibility (Issue #1648). */
+const MEETING_ROOM_PANELS = {
+  NOTES: "notes",
+  PARKING_LOT: "parkingLot",
+  TRANSCRIPT: "transcript",
+};
+
 const MeetingRoom = () => {
   const { roomId } = useParams();
   const navigate = useNavigate();
@@ -83,12 +90,22 @@ const MeetingRoom = () => {
   });
   const timerStateRef = useRef(timerState);
 
-  const [showNotes, setShowNotes] = useState(false);
-  const [showParkingLot, setShowParkingLot] = useState(false);
+  const [activePanel, setActivePanel] = useState(null);
+
+  const togglePanel = useCallback((panel) => {
+    setActivePanel((current) => (current === panel ? null : panel));
+  }, []);
+
+  const closePanel = useCallback(() => {
+    setActivePanel(null);
+  }, []);
+
+  const showNotes = activePanel === MEETING_ROOM_PANELS.NOTES;
+  const showParkingLot = activePanel === MEETING_ROOM_PANELS.PARKING_LOT;
+  const showTranscript = activePanel === MEETING_ROOM_PANELS.TRANSCRIPT;
 
   // Transcription state
   const [showCaptions] = useState(true);
-  const [showTranscript, setShowTranscript] = useState(false);
   const [captions, setCaptions] = useState([]);
   const [transcriptSegments, setTranscriptSegments] = useState([]);
   const [transcriptionEnabled, setTranscriptionEnabled] = useState(false);
@@ -522,14 +539,10 @@ const MeetingRoom = () => {
             duration={timerState.elapsed}
             peers={peers}
             copyLink={copyLink}
-            showNotes={showNotes}
-            setShowNotes={setShowNotes}
-            showParkingLot={showParkingLot}
-            setShowParkingLot={setShowParkingLot}
+            activePanel={activePanel}
+            onTogglePanel={togglePanel}
             transcriptionEnabled={transcriptionEnabled}
             toggleTranscription={toggleTranscription}
-            showTranscript={showTranscript}
-            setShowTranscript={setShowTranscript}
           />
           <ReactionOverlay reactions={reactions} />
 
@@ -538,7 +551,7 @@ const MeetingRoom = () => {
             {/* Video Grid — responsive by participant count + viewport (#907) */}
             <div
               className={`flex-1 min-h-0 min-w-0 overflow-y-auto overflow-x-hidden bg-gray-900 transition-all duration-300 ${
-                showNotes ? "hidden md:block" : "block"
+                activePanel ? "hidden md:block" : "block"
               }`}
             >
               <div
@@ -596,14 +609,20 @@ const MeetingRoom = () => {
 
             {/* Collaborative Notes Panel */}
             {showNotes && (
-              <div className="w-full md:w-[420px] lg:w-[480px] shrink-0 p-4 bg-gray-950 border-l border-gray-800 overflow-hidden flex flex-col">
+              <div
+                data-testid="meeting-room-notes-panel"
+                className="w-full md:w-[420px] lg:w-[480px] shrink-0 p-4 bg-gray-950 border-l border-gray-800 overflow-hidden flex flex-col transition-all duration-300"
+              >
                 <CollaborativeEditor meetingId={roomId} />
               </div>
             )}
 
             {/* Parking Lot Panel */}
             {showParkingLot && (
-              <div className="w-full md:w-[320px] lg:w-[360px] shrink-0 bg-gray-950 border-l border-gray-800 overflow-hidden flex flex-col">
+              <div
+                data-testid="meeting-room-parking-lot-panel"
+                className="w-full md:w-[320px] lg:w-[360px] shrink-0 bg-gray-950 border-l border-gray-800 overflow-hidden flex flex-col transition-all duration-300"
+              >
                 <ParkingLotPanel
                   organizationId={
                     userData?.currentOrganization?._id ||
@@ -617,7 +636,7 @@ const MeetingRoom = () => {
             {/* Transcript Panel */}
             <TranscriptPanel
               showTranscript={showTranscript}
-              setShowTranscript={setShowTranscript}
+              onClose={closePanel}
               transcriptSegments={transcriptSegments}
             />
           </div>

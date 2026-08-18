@@ -96,7 +96,10 @@ vi.mock("../../components/meetings/ParkingLotPanel.jsx", () => ({
 }));
 
 vi.mock("../../components/meetings/TranscriptPanel.jsx", () => ({
-  default: () => <div data-testid="transcript">Transcript</div>,
+  default: ({ showTranscript }) =>
+    showTranscript ? (
+      <div data-testid="meeting-room-transcript-panel">Transcript Panel</div>
+    ) : null,
 }));
 
 vi.mock("../../components/meetings/LiveCaptions.jsx", () => ({
