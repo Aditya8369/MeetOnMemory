@@ -62,6 +62,7 @@ import ConflictResolution from "../pages/ConflictResolution.jsx";
 import SpeakingTimeTrends from "../pages/SpeakingTimeTrends.jsx";
 import Leaderboard from "../pages/Leaderboard.jsx";
 import ParticipantEngagement from "../pages/ParticipantEngagement.jsx";
+import MyDelegations from "../pages/MyDelegations.jsx";
 import MeetingPatterns from "../pages/MeetingPatterns.jsx";
 
 const ProtectedRoutes = (
@@ -247,6 +248,14 @@ const ProtectedRoutes = (
       element={
         <ProtectedRoute resource="reports" action="view">
           <TopicExplorer />
+        </ProtectedRoute>
+      }
+    />
+    <Route
+      path="/delegations"
+      element={
+        <ProtectedRoute>
+          <MyDelegations />
         </ProtectedRoute>
       }
     />

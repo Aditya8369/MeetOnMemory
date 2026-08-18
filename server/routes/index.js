@@ -81,6 +81,7 @@ import keywordAlertRoutes from "./keywordAlertRoutes.js";
 import agendaVoteRoutes from "./agendaVoteRoutes.js";
 import agendaBuilderRoutes from "./agendaBuilderRoutes.js";
 import meetingDuplicateRoutes from "./meetingDuplicateRoutes.js";
+import meetingDelegationRoutes from "./meetingDelegationRoutes.js";
 
 import notionIntegrationRoutes from "./notionIntegrationRoutes.js";
 import gamificationRoutes from "./gamificationRoutes.js";
@@ -101,6 +102,7 @@ router.use(["/api/invitation", "/api/invitations"], invitationRoutes);
 router.use("/api/meetings/timer", agendaTimerRoutes);
 router.use("/api/meetings/:meetingId/checklist", meetingChecklistRoutes);
 router.use("/api/meetings/:id/duplicates", meetingDuplicateRoutes);
+router.use("/api/delegations", meetingDelegationRoutes);
 router.use("/api/meetings", meetingRoutes);
 router.use("/api/meetings", meetingTimelineRoutes);
 router.use("/api/bulk/meetings", bulkMeetingRoutes);
