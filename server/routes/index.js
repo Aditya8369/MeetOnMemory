@@ -214,4 +214,7 @@ router.use("/api/escalations", escalationRoutes);
 import participantEngagementRoutes from "./participantEngagementRoutes.js";
 router.use("/api/engagement", participantEngagementRoutes);
 
+import meetingPatternRoutes from "./meetingPatternRoutes.js";
+router.use("/api/patterns", meetingPatternRoutes);
+
 export default router;
