@@ -77,6 +77,18 @@ const MeetingDetails = () => {
     fetchMeetingDetails();
   }, [id]);
 
+  const handleBack = () => {
+    if (
+      window.history.state &&
+      typeof window.history.state.idx === "number" &&
+      window.history.state.idx > 0
+    ) {
+      navigate(-1);
+    } else {
+      navigate("/meetings");
+    }
+  };
+
   const handleDelete = async (meetingId) => {
     try {
       const { data } = await meetingApi.deleteMeeting(meetingId);
@@ -93,6 +105,7 @@ const MeetingDetails = () => {
             </button>
           </div>,
         );
+        toast.success("Meeting deleted successfully");
         navigate("/meetings");
       } else {
         toast.error(data.message || "Failed to delete meeting");
@@ -159,7 +172,7 @@ const MeetingDetails = () => {
               </h2>
               <p className="text-gray-600 dark:text-gray-400 mb-6">{error}</p>
               <button
-                onClick={() => navigate("/summaries")}
+                onClick={handleBack}
                 className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors"
               >
                 Back to Meetings
@@ -184,7 +197,7 @@ const MeetingDetails = () => {
                 The meeting you're looking for doesn't exist.
               </p>
               <button
-                onClick={() => navigate("/summaries")}
+                onClick={handleBack}
                 className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors"
               >
                 Back to Meetings
