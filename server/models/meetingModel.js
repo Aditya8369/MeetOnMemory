@@ -35,6 +35,21 @@ const meetingSchema = new mongoose.Schema(
       type: String, // Meeting time (e.g., "14:30")
       default: "",
     },
+
+    // Meeting reminder notification settings (Issue #1766)
+    reminderEnabled: {
+      type: Boolean,
+      default: false,
+    },
+    reminderMinutesBefore: {
+      type: Number,
+      enum: [10, 30, 60],
+      default: 30,
+    },
+    reminderSentAt: {
+      type: Date,
+      default: null,
+    },
     duration: {
       type: Number, // Duration in minutes
       default: null,
