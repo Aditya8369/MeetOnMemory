@@ -1,5 +1,8 @@
 import mongoose from "mongoose";
 
+const MAX_KEYWORDS = 50;
+const MAX_KEYWORD_LENGTH = 50;
+
 const keywordAlertSchema = new mongoose.Schema(
   {
     user: {
@@ -15,7 +18,22 @@ const keywordAlertSchema = new mongoose.Schema(
       index: true,
     },
     keywords: {
-      type: [String],
+      type: [
+        {
+          type: String,
+          maxlength: [
+            MAX_KEYWORD_LENGTH,
+            `Keyword cannot exceed ${MAX_KEYWORD_LENGTH} characters`,
+          ],
+          trim: true,
+        },
+      ],
+      validate: [
+        {
+          validator: (arr) => arr.length <= MAX_KEYWORDS,
+          message: `Watchlist cannot exceed ${MAX_KEYWORDS} keywords`,
+        },
+      ],
       default: [],
     },
     notifyViaEmail: {

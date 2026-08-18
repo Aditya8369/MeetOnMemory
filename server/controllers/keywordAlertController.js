@@ -1,6 +1,9 @@
 import KeywordAlert from "../models/keywordAlertModel.js";
 import { NotFoundError } from "../utils/errors.js";
 
+const MAX_KEYWORDS = 50;
+const MAX_KEYWORD_LENGTH = 50;
+
 // @desc    Get keyword alert settings
 // @route   GET /api/alerts/keywords
 // @access  Private
@@ -46,6 +49,37 @@ export const updateWatchlist = async (req, res, next) => {
 
     if (!organizationId) {
       return res.status(403).json({ message: "Organization is required" });
+    }
+
+    if (keywords !== undefined) {
+      if (!Array.isArray(keywords)) {
+        return res.status(400).json({
+          success: false,
+          message: "Keywords must be an array of strings",
+        });
+      }
+
+      if (keywords.length > MAX_KEYWORDS) {
+        return res.status(400).json({
+          success: false,
+          message: `Watchlist cannot exceed ${MAX_KEYWORDS} keywords`,
+        });
+      }
+
+      for (const keyword of keywords) {
+        if (typeof keyword !== "string") {
+          return res.status(400).json({
+            success: false,
+            message: "All keywords must be strings",
+          });
+        }
+        if (keyword.length > MAX_KEYWORD_LENGTH) {
+          return res.status(400).json({
+            success: false,
+            message: `Keyword cannot exceed ${MAX_KEYWORD_LENGTH} characters`,
+          });
+        }
+      }
     }
 
     const alert = await KeywordAlert.findOneAndUpdate(

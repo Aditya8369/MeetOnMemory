@@ -36,8 +36,18 @@ export const scanTranscriptForKeywords = async (meeting, transcript) => {
       const userIdStr = alert.user._id.toString();
       const matched = [];
 
+      // Bounded keyword scanning to defend against oversized records
+      const sanitizedKeywords = [
+        ...new Set(
+          (alert.keywords || [])
+            .map((k) => k?.trim())
+            .filter((k) => k && k.length > 0)
+            .map((k) => (k.length > 50 ? k.slice(0, 50) : k)),
+        ),
+      ].slice(0, 50);
+
       // 2. Scan the transcript
-      for (const keyword of alert.keywords) {
+      for (const keyword of sanitizedKeywords) {
         // Case-insensitive boundary match (might be simpler depending on requirements)
         // using a basic regex with boundaries.
         const escaped = escapeRegex(keyword);
