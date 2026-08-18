@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useRef, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState, useId } from "react";
 import { useTranslation } from "react-i18next";
 import Navbar from "../components/Navbar.jsx";
 import Pagination from "../components/meetings/Pagination.jsx";
@@ -21,6 +21,145 @@ import {
   AlertCircle,
   RefreshCw,
 } from "lucide-react";
+
+const FOCUSABLE_SELECTOR =
+  'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
+
+const SummaryViewModal = ({ summary, onClose }) => {
+  const { t } = useTranslation();
+  const titleId = useId();
+  const dialogRef = useRef(null);
+  const closeButtonRef = useRef(null);
+  const previouslyFocusedRef = useRef(null);
+
+  useEffect(() => {
+    if (!summary) return;
+
+    previouslyFocusedRef.current = document.activeElement;
+    const animationFrame = window.requestAnimationFrame(() => {
+      closeButtonRef.current?.focus();
+    });
+
+    const handleKeyDown = (e) => {
+      if (e.key === "Escape") {
+        e.preventDefault();
+        onClose();
+        return;
+      }
+
+      if (e.key !== "Tab" || !dialogRef.current) return;
+
+      const focusables = [
+        ...dialogRef.current.querySelectorAll(FOCUSABLE_SELECTOR),
+      ];
+      if (!focusables.length) return;
+
+      const firstElement = focusables[0];
+      const lastElement = focusables[focusables.length - 1];
+
+      if (e.shiftKey && document.activeElement === firstElement) {
+        e.preventDefault();
+        lastElement.focus();
+      } else if (!e.shiftKey && document.activeElement === lastElement) {
+        e.preventDefault();
+        firstElement.focus();
+      }
+    };
+
+    document.addEventListener("keydown", handleKeyDown);
+    return () => {
+      window.cancelAnimationFrame(animationFrame);
+      document.removeEventListener("keydown", handleKeyDown);
+      previouslyFocusedRef.current?.focus?.();
+    };
+  }, [summary, onClose]);
+
+  if (!summary) return null;
+
+  return (
+    <div
+      className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4"
+      role="presentation"
+      onClick={onClose}
+    >
+      <div
+        ref={dialogRef}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby={titleId}
+        className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl max-w-3xl w-full max-h-[90vh] overflow-hidden flex flex-col"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="flex items-center justify-between p-6 border-b border-gray-200 dark:border-gray-700">
+          <h2
+            id={titleId}
+            className="text-2xl font-bold text-gray-900 dark:text-gray-100 flex items-center gap-3"
+          >
+            <FileText className="w-6 h-6 text-indigo-600" />
+            {summary.title || t("aiSearch.untitledMeeting")}
+          </h2>
+          <button
+            ref={closeButtonRef}
+            type="button"
+            onClick={onClose}
+            aria-label="Close modal"
+            className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-full transition"
+          >
+            <X size={24} className="text-gray-600 dark:text-gray-400" />
+          </button>
+        </div>
+        <div className="p-6 overflow-y-auto flex-grow">
+          <p className="text-sm text-gray-500 mb-4">
+            <strong>{t("aiSearch.date")}:</strong>{" "}
+            {summary.createdAt
+              ? new Date(summary.createdAt).toLocaleString()
+              : t("aiSearch.unknown")}
+          </p>
+          <div className="prose max-w-none">
+            <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-3">
+              {t("aiSearch.summary")}:
+            </h3>
+            <p className="text-gray-700 dark:text-gray-300 whitespace-pre-wrap">
+              {summary.summary || summary.transcript || t("aiSearch.noSummary")}
+            </p>
+          </div>
+        </div>
+        <div className="flex gap-3 p-6 border-t border-gray-200 dark:border-gray-700">
+          <button
+            type="button"
+            onClick={() => {
+              navigator.clipboard.writeText(
+                summary.summary || summary.transcript || "",
+              );
+              toast.success(t("aiSearch.copiedToClipboard"));
+            }}
+            className="px-4 py-2 rounded-md border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 flex items-center gap-2"
+          >
+            <Copy size={16} /> {t("summaries.copy")}
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              const blob = new Blob(
+                [summary.summary || summary.transcript || ""],
+                { type: "text/plain;charset=utf-8" },
+              );
+              const url = URL.createObjectURL(blob);
+              const a = document.createElement("a");
+              a.href = url;
+              a.download = `${summary.title || "meeting"}_summary.txt`;
+              a.click();
+              URL.revokeObjectURL(url);
+            }}
+            className="px-4 py-2 rounded-md bg-indigo-600 text-white hover:bg-indigo-700 flex items-center gap-2 ml-auto"
+          >
+            {t("summaries.download", "Download")}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
 
 /**
  * Summaries.jsx
@@ -79,17 +218,6 @@ const Summaries = () => {
     }, SEARCH_DEBOUNCE_MS);
     return () => clearTimeout(timer);
   }, [search]);
-
-  // Handle Escape key to close modal
-  useEffect(() => {
-    const handleKeyDown = (e) => {
-      if (e.key === "Escape") {
-        setViewModal(null);
-      }
-    };
-    window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
-  }, []);
 
   // Setup browser-based voice recognition
   useEffect(() => {
@@ -558,78 +686,10 @@ const Summaries = () => {
       </div>
 
       {/* View Modal */}
-      {viewModal && (
-        <div
-          className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4"
-          onClick={() => setViewModal(null)}
-        >
-          <div
-            className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl max-w-3xl w-full max-h-[90vh] overflow-hidden flex flex-col"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="flex items-center justify-between p-6 border-b border-gray-200 dark:border-gray-700">
-              <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100 flex items-center gap-3">
-                <FileText className="w-6 h-6 text-indigo-600" />
-                {viewModal.title || t("aiSearch.untitledMeeting")}
-              </h2>
-              <button
-                onClick={() => setViewModal(null)}
-                className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-full transition"
-              >
-                <X size={24} className="text-gray-600 dark:text-gray-400" />
-              </button>
-            </div>
-            <div className="p-6 overflow-y-auto flex-grow">
-              <p className="text-sm text-gray-500 mb-4">
-                <strong>{t("aiSearch.date")}:</strong>{" "}
-                {viewModal.createdAt
-                  ? new Date(viewModal.createdAt).toLocaleString()
-                  : t("aiSearch.unknown")}
-              </p>
-              <div className="prose max-w-none">
-                <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-3">
-                  {t("aiSearch.summary")}:
-                </h3>
-                <p className="text-gray-700 dark:text-gray-300 whitespace-pre-wrap">
-                  {viewModal.summary ||
-                    viewModal.transcript ||
-                    t("aiSearch.noSummary")}
-                </p>
-              </div>
-            </div>
-            <div className="flex gap-3 p-6 border-t border-gray-200 dark:border-gray-700">
-              <button
-                onClick={() => {
-                  navigator.clipboard.writeText(
-                    viewModal.summary || viewModal.transcript || "",
-                  );
-                  toast.success(t("aiSearch.copiedToClipboard"));
-                }}
-                className="px-4 py-2 rounded-md border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 flex items-center gap-2"
-              >
-                <Copy size={16} /> {t("summaries.copy")}
-              </button>
-              <button
-                onClick={() => {
-                  const blob = new Blob(
-                    [viewModal.summary || viewModal.transcript || ""],
-                    { type: "text/plain;charset=utf-8" },
-                  );
-                  const url = URL.createObjectURL(blob);
-                  const a = document.createElement("a");
-                  a.href = url;
-                  a.download = `${viewModal.title || "meeting"}_summary.txt`;
-                  a.click();
-                  URL.revokeObjectURL(url);
-                }}
-                className="px-4 py-2 rounded-md bg-indigo-600 text-white hover:bg-indigo-700 flex items-center gap-2 ml-auto"
-              >
-                {t("summaries.download", "Download")}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      <SummaryViewModal
+        summary={viewModal}
+        onClose={() => setViewModal(null)}
+      />
 
       {/* Close menu when clicking outside */}
       {openMenuId && (
