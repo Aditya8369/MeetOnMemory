@@ -14,7 +14,7 @@ import {
   Check,
   X,
 } from "lucide-react";
-import axios from "../../services/api";
+import axios from "../services/apiClient";
 
 const ICONS = {
   overtime_trend: <Clock className="w-5 h-5" />,
