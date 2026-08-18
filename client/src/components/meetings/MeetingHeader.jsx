@@ -7,6 +7,7 @@ import {
   NotebookPen,
   Captions,
   FileText,
+  Lightbulb,
 } from "lucide-react";
 
 export default function MeetingHeader({
@@ -16,6 +17,8 @@ export default function MeetingHeader({
   copyLink,
   showNotes,
   setShowNotes,
+  showParkingLot,
+  setShowParkingLot,
   transcriptionEnabled,
   toggleTranscription,
   showTranscript,
@@ -29,7 +32,11 @@ export default function MeetingHeader({
   };
 
   return (
-    <div className="h-16 bg-gray-900 border-b border-gray-800 flex items-center justify-between px-6 z-20 shrink-0">
+    <header
+      role="banner"
+      aria-label="Meeting room header"
+      className="h-16 bg-gray-900 border-b border-gray-800 flex items-center justify-between px-6 z-20 shrink-0"
+    >
       <div className="flex items-center gap-4">
         <h2 className="text-lg font-bold text-white truncate max-w-xs md:max-w-md">
           Room: {roomId}
@@ -68,6 +75,24 @@ export default function MeetingHeader({
         </span>
       </button>
 
+      {typeof setShowParkingLot === "function" && (
+        <button
+          type="button"
+          onClick={() => setShowParkingLot((v) => !v)}
+          className={`flex items-center gap-1.5 text-sm font-semibold px-4 py-2 rounded-xl transition-all cursor-pointer ${
+            showParkingLot
+              ? "bg-indigo-600 text-white hover:bg-indigo-700"
+              : "bg-gray-800 text-gray-300 hover:text-white hover:bg-gray-700"
+          }`}
+          title={showParkingLot ? "Hide parking lot" : "Open parking lot"}
+        >
+          <Lightbulb size={16} />
+          <span className="hidden sm:inline">
+            {showParkingLot ? "Hide Ideas" : "Parking Lot"}
+          </span>
+        </button>
+      )}
+
       {/* Transcription Toggle */}
       <button
         onClick={toggleTranscription}
@@ -103,6 +128,6 @@ export default function MeetingHeader({
           {showTranscript ? "Hide" : "Transcript"}
         </span>
       </button>
-    </div>
+    </header>
   );
 }
