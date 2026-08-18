@@ -14,6 +14,7 @@ import webhookRoutes from "../routes/webhookRoutes.js";
 import slackRoutes from "../routes/slackRoutes.js";
 import { slackWebhookParser } from "../middleware/slackWebhookParser.js";
 import publicSharedRoutes from "../routes/publicSharedRoutes.js";
+import { createStatusRoutes } from "../routes/statusRoutes.js";
 
 export function configureExpress(app) {
   app.set("trust proxy", 1);
@@ -40,6 +41,7 @@ export function configureExpress(app) {
   // Dependency-aware health probes must not be blocked by the global limiter
   // or CSRF middleware.
   configureHealthEndpoints(app);
+  app.use("/api/status", createStatusRoutes());
 
   // External/public routes use their own authentication mechanisms.
   app.use("/api/webhooks", webhookRoutes);
