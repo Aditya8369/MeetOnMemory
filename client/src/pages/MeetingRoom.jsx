@@ -101,8 +101,6 @@ const MeetingRoom = () => {
   });
   const timerStateRef = useRef(timerState);
 
-  // eslint-disable-next-line no-unused-vars
-  const [duration, setDuration] = useState(0);
   const [showNotes, setShowNotes] = useState(false);
   const [showParkingLot, setShowParkingLot] = useState(false);
 
@@ -637,7 +635,7 @@ const MeetingRoom = () => {
 
           <MeetingHeader
             roomId={roomId}
-            duration={duration}
+            duration={timerState.elapsed}
             peers={peers}
             copyLink={copyLink}
             showNotes={showNotes}
