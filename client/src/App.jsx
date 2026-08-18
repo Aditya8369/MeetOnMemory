@@ -22,7 +22,7 @@ const App = () => {
   const location = useLocation();
   const { isLoggedin } = useContext(AppContent);
 
-  const hideFooterRoutes = ["/login", "/signup"];
+  const hideFooterRoutes = ["/login", "/signup", "/meeting-room"];
   const shouldShowFooter = !hideFooterRoutes.some(
     (route) =>
       location.pathname === route || location.pathname.startsWith(`${route}/`),

@@ -83,6 +83,9 @@ vi.mock("../pages/SignUp.jsx", () => ({
 vi.mock("../pages/Dashboard.jsx", () => ({
   default: () => <div data-testid="dashboard-page" />,
 }));
+vi.mock("../pages/MeetingRoom.jsx", () => ({
+  default: () => <div data-testid="meeting-room-page" />,
+}));
 
 describe("App Routing", () => {
   it("renders Home on the root path (PublicRoute)", () => {
@@ -137,6 +140,20 @@ describe("App Routing", () => {
     );
     expect(screen.getByTestId("protected-route")).toBeInTheDocument();
     expect(screen.getByTestId("dashboard-page")).toBeInTheDocument();
+    expect(screen.getByTestId("footer")).toBeInTheDocument();
+  });
+
+  it("hides Footer on the live MeetingRoom route (#1647)", () => {
+    render(
+      <MemoryRouter initialEntries={["/meeting-room/room-123"]}>
+        <AppContent.Provider value={{ isLoggedin: true }}>
+          <App />
+        </AppContent.Provider>
+      </MemoryRouter>,
+    );
+
+    expect(screen.getByTestId("meeting-room-page")).toBeInTheDocument();
+    expect(screen.queryByTestId("footer")).not.toBeInTheDocument();
   });
 
   it("renders NotFound page as fallback on unknown paths", () => {
