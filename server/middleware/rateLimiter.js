@@ -289,3 +289,24 @@ export const createTestimonialSubmitLimiter = (overrides = {}) =>
   });
 
 export const testimonialSubmitLimiter = createTestimonialSubmitLimiter();
+
+/**
+ * Public careers application submissions (Issue #1790).
+ * Limits abuse by client IP while allowing legitimate retries.
+ */
+export const createCareersApplicationLimiter = (overrides = {}) =>
+  rateLimit({
+    ...baseOptions,
+    windowMs: 60 * 60 * 1000, // 1 hour
+    max: 5,
+    keyGenerator: (req) => `ip:${getClientIp(req)}`,
+    message: {
+      success: false,
+      message:
+        "Too many career applications from this address. Please try again later.",
+    },
+    store: createStore("rl:careers_application:"),
+    ...overrides,
+  });
+
+export const careersApplicationLimiter = createCareersApplicationLimiter();

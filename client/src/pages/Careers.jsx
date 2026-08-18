@@ -1,7 +1,8 @@
-import React, { useState, useMemo, useEffect } from "react";
+import React, { useState, useMemo, useEffect, useRef } from "react";
 import { Link } from "react-router-dom";
 import { toast } from "react-toastify";
 import Navbar from "../components/Navbar.jsx";
+import { submitCareerApplication } from "../services/careersApi.js";
 import {
   Briefcase,
   MapPin,
@@ -272,10 +273,26 @@ const Careers = () => {
     name: "",
     email: "",
     portfolio: "",
-    resume: "",
     coverLetter: "",
   });
+  const [resumeFile, setResumeFile] = useState(null);
+  const [submitError, setSubmitError] = useState("");
+  const resumeInputRef = useRef(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const resetApplicationForm = () => {
+    setFormData({
+      name: "",
+      email: "",
+      portfolio: "",
+      coverLetter: "",
+    });
+    setResumeFile(null);
+    setSubmitError("");
+    if (resumeInputRef.current) {
+      resumeInputRef.current.value = "";
+    }
+  };
 
   // Accessibility Enhancement: Close modal on Escape key press
   useEffect(() => {
@@ -285,13 +302,7 @@ const Careers = () => {
       if (e.key === "Escape") {
         setIsModalOpen(false);
         setActiveJobForModal(null);
-        setFormData({
-          name: "",
-          email: "",
-          portfolio: "",
-          resume: "",
-          coverLetter: "",
-        });
+        resetApplicationForm();
       }
     };
 
@@ -349,36 +360,78 @@ const Careers = () => {
   const closeModal = () => {
     setIsModalOpen(false);
     setActiveJobForModal(null);
-    setFormData({
-      name: "",
-      email: "",
-      portfolio: "",
-      resume: "",
-      coverLetter: "",
-    });
+    resetApplicationForm();
   };
 
   // Handle Form Change
   const handleChange = (e) => {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
+    if (submitError) setSubmitError("");
   };
 
-  // Submit application
-  const handleSubmit = (e) => {
+  const handleResumeChange = (e) => {
+    const file = e.target.files?.[0] || null;
+    setResumeFile(file);
+    if (submitError) setSubmitError("");
+  };
+
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!formData.name || !formData.email || !formData.resume) {
+    if (isSubmitting) return;
+
+    if (!formData.name.trim() || !formData.email.trim() || !resumeFile) {
       toast.error("Please fill in all required fields (Name, Email, Resume).");
       return;
     }
+
+    if (!activeJobForModal?.id) {
+      toast.error("Please select a valid job opening.");
+      return;
+    }
+
+    const allowedExtensions = [".pdf", ".docx"];
+    const resumeExt = resumeFile.name
+      .slice(resumeFile.name.lastIndexOf("."))
+      .toLowerCase();
+    if (!allowedExtensions.includes(resumeExt)) {
+      const message = "Resume must be a PDF or DOCX file.";
+      setSubmitError(message);
+      toast.error(message);
+      return;
+    }
+
     setIsSubmitting(true);
-    setTimeout(() => {
-      setIsSubmitting(false);
+    setSubmitError("");
+
+    try {
+      const response = await submitCareerApplication({
+        name: formData.name,
+        email: formData.email,
+        jobId: activeJobForModal.id,
+        portfolio: formData.portfolio,
+        coverLetter: formData.coverLetter,
+        resumeFile,
+      });
+
+      if (response.status !== 200 && response.status !== 201) {
+        throw new Error("Application submission failed.");
+      }
+
       toast.success(
         "✨ Application submitted successfully! We will contact you soon.",
       );
       closeModal();
-    }, 1200);
+    } catch (error) {
+      const message =
+        error?.response?.data?.message ||
+        error?.message ||
+        "Unable to submit your application. Please try again.";
+      setSubmitError(message);
+      toast.error(message);
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -837,7 +890,7 @@ const Careers = () => {
             </div>
 
             {/* Application Form */}
-            <form onSubmit={handleSubmit} className="space-y-4">
+            <form onSubmit={handleSubmit} noValidate className="space-y-4">
               {/* Full Name */}
               <div>
                 <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1.5">
@@ -885,21 +938,29 @@ const Careers = () => {
                 />
               </div>
 
-              {/* Resume Link */}
+              {/* Resume Upload */}
               <div>
-                <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1.5">
-                  Resume Link (PDF/Drive){" "}
-                  <span className="text-red-500">*</span>
+                <label
+                  htmlFor="careers-resume"
+                  className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1.5"
+                >
+                  Resume (PDF or DOCX) <span className="text-red-500">*</span>
                 </label>
                 <input
-                  type="url"
+                  id="careers-resume"
+                  ref={resumeInputRef}
+                  type="file"
                   name="resume"
                   required
-                  value={formData.resume}
-                  onChange={handleChange}
-                  placeholder="https://drive.google.com/..."
-                  className="w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-950/60 text-slate-900 dark:text-white border border-slate-200 dark:border-slate-800/80 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-sm"
+                  accept=".pdf,.docx,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+                  onChange={handleResumeChange}
+                  className="w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-950/60 text-slate-900 dark:text-white border border-slate-200 dark:border-slate-800/80 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-sm file:mr-3 file:py-1 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-blue-50 file:text-blue-700 dark:file:bg-blue-900/30 dark:file:text-blue-300"
                 />
+                {resumeFile ? (
+                  <p className="mt-1.5 text-xs text-slate-500 dark:text-slate-400">
+                    Selected: {resumeFile.name}
+                  </p>
+                ) : null}
               </div>
 
               {/* Cover Letter */}
@@ -917,12 +978,22 @@ const Careers = () => {
                 />
               </div>
 
+              {submitError ? (
+                <p
+                  role="alert"
+                  className="text-sm text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-950/30 border border-red-100 dark:border-red-900/40 rounded-xl px-4 py-3"
+                >
+                  {submitError}
+                </p>
+              ) : null}
+
               {/* Action Buttons */}
               <div className="pt-2 flex items-center justify-end gap-3">
                 <button
                   type="button"
                   onClick={closeModal}
-                  className="px-4 py-2 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700/80 text-slate-700 dark:text-slate-300 rounded-xl text-sm font-semibold transition-colors cursor-pointer"
+                  disabled={isSubmitting}
+                  className="px-4 py-2 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700/80 text-slate-700 dark:text-slate-300 rounded-xl text-sm font-semibold transition-colors cursor-pointer disabled:opacity-50"
                 >
                   Cancel
                 </button>
