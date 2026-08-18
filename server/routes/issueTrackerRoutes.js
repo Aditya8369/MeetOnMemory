@@ -4,12 +4,12 @@ import {
   updateConfig,
   disconnect,
 } from "../controllers/issueTrackerController.js";
-import { verifyToken } from "../middleware/auth.js";
+import userAuth from "../middleware/userAuth.js";
 
 const router = express.Router();
 
 // Apply auth middleware to all routes
-router.use(verifyToken);
+router.use(userAuth);
 
 router.get("/:provider/config", getConfig);
 router.post("/:provider/config", updateConfig);

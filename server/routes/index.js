@@ -209,6 +209,8 @@ router.use("/api/gamification", gamificationRoutes);
 import preMeetingBriefingRoutes from "./preMeetingBriefingRoutes.js";
 router.use("/api/briefings", preMeetingBriefingRoutes);
 
+import escalationRoutes from "./escalationRoutes.js";
+router.use("/api/escalations", escalationRoutes);
 import participantEngagementRoutes from "./participantEngagementRoutes.js";
 router.use("/api/engagement", participantEngagementRoutes);
 
