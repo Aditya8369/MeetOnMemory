@@ -21,6 +21,10 @@ const digestPreferenceSchema = new mongoose.Schema(
       type: Number, // 0-23
       default: 9, // 9 AM default
     },
+    timezone: {
+      type: String,
+      default: "UTC",
+    },
     includeSections: {
       type: [String],
       default: ["action_items", "decisions", "summaries"],

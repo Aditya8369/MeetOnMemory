@@ -137,6 +137,7 @@ export const getPreferences = async (req, res) => {
           frequency: "weekly",
           includeSections: ["decisions", "action-items"],
           enabled: true,
+          timezone: "UTC",
           filterByTags: [],
         },
       });
@@ -170,6 +171,7 @@ export const updatePreferences = async (req, res) => {
       filterByTags,
       deliveryDay,
       deliveryHour,
+      timezone,
       maxItems,
     } = req.body;
 
@@ -222,6 +224,7 @@ export const updatePreferences = async (req, res) => {
       ...(enabled !== undefined && { enabled }),
       ...(deliveryDay !== undefined && { deliveryDay }),
       ...(deliveryHour !== undefined && { deliveryHour }),
+      ...(timezone !== undefined && { timezone }),
       ...(maxItems !== undefined && { maxItems }),
       ...(filterByTags !== undefined && { filterByTags: validTagIds }),
     };
