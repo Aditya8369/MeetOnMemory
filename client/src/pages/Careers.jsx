@@ -345,6 +345,13 @@ const Careers = () => {
     setExpandedJob(expandedJob === id ? null : id);
   };
 
+  const handleJobHeaderKeyDown = (event, jobId) => {
+    if (event.key === "Enter" || event.key === " ") {
+      event.preventDefault();
+      toggleJob(jobId);
+    }
+  };
+
   // Expand FAQ accordion
   const toggleFaq = (index) => {
     setExpandedFaq(expandedFaq === index ? null : index);
@@ -435,7 +442,7 @@ const Careers = () => {
   };
 
   return (
-    <div className="min-h-screen bg-linear-to-b from-slate-50 via-white to-slate-50 dark:from-slate-950 dark:via-slate-900 dark:to-slate-950 text-slate-800 dark:text-slate-200 transition-colors duration-300 flex flex-col font-sans select-none">
+    <div className="min-h-screen bg-linear-to-b from-slate-50 via-white to-slate-50 dark:from-slate-950 dark:via-slate-900 dark:to-slate-950 text-slate-800 dark:text-slate-200 transition-colors duration-300 flex flex-col font-sans">
       <Navbar />
 
       {/* Hero Section */}
@@ -595,8 +602,16 @@ const Careers = () => {
                   >
                     {/* Header Card */}
                     <div
+                      role="button"
+                      tabIndex={0}
+                      aria-expanded={isOpen}
+                      aria-controls={`job-panel-${job.id}`}
+                      aria-label={`Toggle details for ${job.title}`}
                       onClick={() => toggleJob(job.id)}
-                      className="p-6 flex flex-col md:flex-row md:items-center justify-between gap-4 cursor-pointer hover:bg-slate-50/50 dark:hover:bg-slate-800/10 transition-colors"
+                      onKeyDown={(event) =>
+                        handleJobHeaderKeyDown(event, job.id)
+                      }
+                      className="p-6 flex flex-col md:flex-row md:items-center justify-between gap-4 cursor-pointer hover:bg-slate-50/50 dark:hover:bg-slate-800/10 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-slate-900"
                     >
                       <div className="space-y-1.5">
                         <div className="flex flex-wrap items-center gap-2">
@@ -650,6 +665,8 @@ const Careers = () => {
 
                     {/* Expandable Panel */}
                     <div
+                      id={`job-panel-${job.id}`}
+                      aria-hidden={!isOpen}
                       className={`transition-all duration-300 ease-in-out overflow-hidden ${
                         isOpen
                           ? "max-h-[800px] border-t border-slate-100 dark:border-slate-800/60"
