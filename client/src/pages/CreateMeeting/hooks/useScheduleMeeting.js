@@ -92,12 +92,14 @@ export const useScheduleMeeting = ({
     () => ({
       scheduleData,
       participants,
+      agendaItems,
       selectedTemplateId,
       selectedAiSummaryTemplateId,
     }),
     [
       participants,
       scheduleData,
+      agendaItems,
       selectedTemplateId,
       selectedAiSummaryTemplateId,
     ],

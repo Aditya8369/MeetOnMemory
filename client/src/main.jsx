@@ -1,5 +1,5 @@
 // main.jsx
-import React, { StrictMode } from "react"; // <-- Add 'React,' here
+import React, { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import "./index.css";
 import "./i18n.js";

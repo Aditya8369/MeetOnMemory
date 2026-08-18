@@ -808,7 +808,7 @@ const Navbar = () => {
                                   {notif.title}
                                 </p>
                                 <span className="text-[10px] text-gray-400 dark:text-gray-500 font-medium whitespace-nowrap">
-                                  {notif.time}
+                                  {formatTimeAgo(notif.createdAt)}
                                 </span>
                               </div>
                               <p className="text-xs text-gray-500 dark:text-gray-400 leading-relaxed">

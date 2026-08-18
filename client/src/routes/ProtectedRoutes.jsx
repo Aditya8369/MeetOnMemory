@@ -63,6 +63,7 @@ import SpeakingTimeTrends from "../pages/SpeakingTimeTrends.jsx";
 import Leaderboard from "../pages/Leaderboard.jsx";
 import ParticipantEngagement from "../pages/ParticipantEngagement.jsx";
 import MyDelegations from "../pages/MyDelegations.jsx";
+import MeetingPatterns from "../pages/MeetingPatterns.jsx";
 
 const ProtectedRoutes = (
   <React.Fragment>
@@ -516,6 +517,14 @@ const ProtectedRoutes = (
       element={
         <ProtectedRoute resource="reports" action="view">
           <ParticipantEngagement />
+        </ProtectedRoute>
+      }
+    />
+    <Route
+      path="/patterns"
+      element={
+        <ProtectedRoute resource="reports" action="view">
+          <MeetingPatterns />
         </ProtectedRoute>
       }
     />

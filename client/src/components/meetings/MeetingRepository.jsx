@@ -210,7 +210,11 @@ const MeetingRepository = () => {
 
   // Meeting actions
   const handleDelete = async (meetingId) => {
-    if (!window.confirm("Move this meeting to the recycle bin?")) {
+    if (
+      !window.confirm(
+        "Move this meeting to the Recycle Bin? You can restore it from there later.",
+      )
+    ) {
       return;
     }
 
@@ -219,6 +223,15 @@ const MeetingRepository = () => {
 
       if (response.data?.success) {
         toast.success(
+          <span>
+            Meeting moved to Recycle Bin.{" "}
+            <button
+              onClick={() => navigate("/meetings/recycle-bin")}
+              className="underline font-medium"
+            >
+              View Recycle Bin
+            </button>
+          </span>,
           <div className="flex items-center justify-between gap-3">
             <span>Meeting moved to recycle bin</span>
             <button
