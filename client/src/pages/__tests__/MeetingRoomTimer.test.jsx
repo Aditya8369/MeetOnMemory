@@ -96,12 +96,10 @@ describe("MeetingHeader Timer Formatting (#1658)", () => {
         duration={45} // 45 seconds
         peers={[]}
         copyLink={vi.fn()}
-        showNotes={false}
-        setShowNotes={vi.fn()}
+        activePanel={null}
+        onTogglePanel={vi.fn()}
         transcriptionEnabled={false}
         toggleTranscription={vi.fn()}
-        showTranscript={false}
-        setShowTranscript={vi.fn()}
       />,
     );
     expect(screen.getByText("00:45")).toBeInTheDocument();
@@ -114,12 +112,10 @@ describe("MeetingHeader Timer Formatting (#1658)", () => {
         duration={3665} // 1 hour, 1 minute, 5 seconds
         peers={[]}
         copyLink={vi.fn()}
-        showNotes={false}
-        setShowNotes={vi.fn()}
+        activePanel={null}
+        onTogglePanel={vi.fn()}
         transcriptionEnabled={false}
         toggleTranscription={vi.fn()}
-        showTranscript={false}
-        setShowTranscript={vi.fn()}
       />,
     );
     expect(screen.getByText("1:01:05")).toBeInTheDocument();
