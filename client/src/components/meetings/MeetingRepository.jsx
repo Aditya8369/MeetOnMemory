@@ -232,6 +232,16 @@ const MeetingRepository = () => {
               View Recycle Bin
             </button>
           </span>,
+          <div className="flex items-center justify-between gap-3">
+            <span>Meeting moved to recycle bin</span>
+            <button
+              type="button"
+              onClick={() => navigate("/meetings/recycle-bin")}
+              className="text-xs font-semibold text-blue-600 hover:text-blue-700 underline shrink-0"
+            >
+              View Recycle Bin
+            </button>
+          </div>,
         );
         fetchMeetings();
       } else {

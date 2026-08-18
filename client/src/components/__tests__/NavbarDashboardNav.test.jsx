@@ -24,6 +24,10 @@ vi.mock("@clerk/clerk-react", () => ({
   UserButton: () => <div data-testid="user-button">User Button</div>,
 }));
 
+vi.mock("../../context/usePreferences.jsx", () => ({
+  default: () => ({ dateFormat: "MM/dd/yyyy" }),
+}));
+
 vi.mock("react-i18next", () => ({
   useTranslation: () => ({
     t: (key) => {

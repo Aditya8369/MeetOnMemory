@@ -121,6 +121,9 @@ describe("RecapScheduleDashboard Retry Feedback (#1524)", () => {
         name: /retry delivery for weekly sync/i,
       }),
     );
+    fireEvent.click(
+      await screen.findByRole("button", { name: "Retry Delivery" }),
+    );
     await waitFor(() => {
       expect(recapScheduleApi.retryDelivery).toHaveBeenCalledWith("delivery-1");
       expect(screen.getByRole("alert")).toHaveTextContent(
@@ -151,6 +154,9 @@ describe("RecapScheduleDashboard Retry Feedback (#1524)", () => {
       await screen.findByRole("button", {
         name: /retry delivery for planning review/i,
       }),
+    );
+    fireEvent.click(
+      await screen.findByRole("button", { name: "Retry Delivery" }),
     );
     await waitFor(() =>
       expect(screen.getByRole("alert")).toHaveTextContent(
@@ -189,10 +195,14 @@ describe("RecapScheduleDashboard Retry Feedback (#1524)", () => {
       name: /retry delivery for standup/i,
     });
     fireEvent.click(retryButton);
+    const confirmButton = await screen.findByRole("button", {
+      name: "Retry Delivery",
+    });
+    fireEvent.click(confirmButton);
     await waitFor(() => {
       expect(recapScheduleApi.retryDelivery).toHaveBeenCalledTimes(1);
-      expect(retryButton).toBeDisabled();
-      expect(retryButton).toHaveTextContent("Retrying...");
+      expect(confirmButton).toBeDisabled();
+      expect(confirmButton).toHaveTextContent("Processing...");
     });
     resolveRetry({ data: { queued: true } });
     await waitFor(() => {
