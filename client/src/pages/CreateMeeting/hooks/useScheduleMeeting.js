@@ -26,6 +26,8 @@ export const buildDuplicateScheduleState = (duplicateData = {}) => ({
     location: duplicateData.location || "",
     venue: duplicateData.venue || "",
     syncToCalendar: true,
+    reminderEnabled: duplicateData.reminderEnabled || false,
+    reminderMinutesBefore: duplicateData.reminderMinutesBefore || 30,
   },
   participants: (duplicateData.participants || []).map(
     (participant, index) => ({
@@ -60,6 +62,8 @@ export const useScheduleMeeting = ({
     location: "",
     venue: "",
     syncToCalendar: true,
+    reminderEnabled: false,
+    reminderMinutesBefore: 30,
   });
   const [participants, setParticipants] = useState([]);
   const [newParticipant, setNewParticipant] = useState({ name: "", email: "" });
@@ -249,6 +253,7 @@ export const useScheduleMeeting = ({
   };
 
   const handleScheduleSubmit = async (e) => {
+    const response = await meetingApi.scheduleMeeting(payload);
     e.preventDefault();
     if (!scheduleData.title.trim()) {
       toast.error("Meeting title is required");
@@ -292,6 +297,8 @@ export const useScheduleMeeting = ({
           location: "",
           venue: "",
           syncToCalendar: true,
+          reminderEnabled: false,
+          reminderMinutesBefore: 30,
         });
         setParticipants([]);
         setAgendaItems([]);

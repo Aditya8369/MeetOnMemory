@@ -147,7 +147,66 @@ const ScheduleMeeting = ({ hookProps, loadingDuplicate = false }) => {
           handleAttachmentUpload={handleAttachmentUpload}
           removeAttachment={removeAttachment}
         />
+        {/* Meeting Reminder */}
+        <div className="mb-6 rounded-xl border border-blue-100 bg-blue-50/50 p-4">
+          <div className="flex items-center gap-2 mb-3">
+            <Calendar className="text-blue-600" size={18} />
 
+            <h3 className="text-sm font-semibold text-blue-900">
+              Meeting Reminder
+            </h3>
+          </div>
+
+          <label className="flex items-center gap-3 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={scheduleData.reminderEnabled || false}
+              onChange={(e) =>
+                setScheduleData((prev) => ({
+                  ...prev,
+                  reminderEnabled: e.target.checked,
+                }))
+              }
+              className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+            />
+
+            <span className="text-sm text-gray-700">
+              Send me a notification before this meeting starts
+            </span>
+          </label>
+
+          {scheduleData.reminderEnabled && (
+            <div className="mt-4">
+              <label
+                htmlFor="reminderMinutesBefore"
+                className="block text-sm font-medium text-gray-700 mb-2"
+              >
+                Remind me
+              </label>
+
+              <select
+                id="reminderMinutesBefore"
+                value={scheduleData.reminderMinutesBefore || 30}
+                onChange={(e) =>
+                  setScheduleData((prev) => ({
+                    ...prev,
+                    reminderMinutesBefore: Number(e.target.value),
+                  }))
+                }
+                className="w-full px-4 py-2 bg-white border border-blue-200 rounded-lg focus:ring-2 focus:ring-blue-400 outline-none text-sm text-gray-700"
+              >
+                <option value={10}>10 minutes before</option>
+                <option value={30}>30 minutes before</option>
+                <option value={60}>1 hour before</option>
+              </select>
+
+              <p className="text-xs text-blue-700 mt-2">
+                You will receive an in-app notification and email reminder.
+              </p>
+            </div>
+          )}
+        </div>
+        
         <CalendarNotice />
 
         {/* Submit */}
