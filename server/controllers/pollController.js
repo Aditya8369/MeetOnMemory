@@ -1,20 +1,131 @@
+import mongoose from "mongoose";
 import Poll from "../models/pollModel.js";
 import Meeting from "../models/meetingModel.js";
 import { hasPermission } from "../utils/rbacPermissions.js";
-import mongoose from "mongoose";
 
-// Helper function to strip voter IDs if poll is anonymous
-const stripVotersIfAnonymous = (poll) => {
-  if (poll.isAnonymous) {
-    const pollObj = poll.toObject ? poll.toObject() : poll;
-    pollObj.options = pollObj.options.map((option) => ({
-      ...option,
-      voteCount: option.votes.length,
-      votes: [], // Hide who voted
+/**
+ * Strip voter identities from anonymous polls while preserving hasVoted flag
+ * @param {Object} poll - Poll document
+ * @param {string} currentUserId - Current user's ID
+ * @returns {Object} Poll with voter info stripped if anonymous
+ */
+const stripVotersIfAnonymous = (poll, currentUserId = null) => {
+  const pollObj = poll.toObject ? poll.toObject() : { ...poll };
+
+  if (pollObj.isAnonymous) {
+    // For anonymous polls, replace voter arrays with vote counts
+    pollObj.options = pollObj.options.map((opt) => ({
+      _id: opt._id,
+      text: opt.text,
+      voteCount: opt.votes ? opt.votes.length : 0,
+      // Track if current user has voted without revealing identity
+      hasVoted:
+        currentUserId && opt.votes
+          ? opt.votes.some((v) => {
+              const voteId = typeof v === "string" ? v : v._id?.toString();
+              return voteId === currentUserId.toString();
+            })
+          : false,
+      votes: [],
     }));
-    return pollObj;
   }
-  return poll;
+
+  return pollObj;
+};
+
+/**
+ * Helper to build the aggregation pipeline for casting votes
+ */
+const buildVotePipeline = (voterId, selectedObjectIds) => {
+  return [
+    {
+      $set: {
+        options: {
+          $map: {
+            input: "$options",
+            as: "opt",
+            in: {
+              $cond: [
+                { $in: ["$$opt._id", selectedObjectIds] },
+                {
+                  $mergeObjects: [
+                    "$$opt",
+                    {
+                      votes: {
+                        $setUnion: [
+                          { $ifNull: ["$$opt.votes", []] },
+                          [voterId],
+                        ],
+                      },
+                    },
+                  ],
+                },
+                {
+                  $mergeObjects: [
+                    "$$opt",
+                    {
+                      votes: {
+                        $setDifference: [
+                          { $ifNull: ["$$opt.votes", []] },
+                          [voterId],
+                        ],
+                      },
+                    },
+                  ],
+                },
+              ],
+            },
+          },
+        },
+      },
+    },
+  ];
+};
+
+/**
+ * Helper to check if poll is open for voting
+ */
+const openPollFilter = (id, organization) => ({
+  _id: String(id),
+  organization: organization,
+  isClosed: false,
+  $or: [{ expiresAt: null }, { expiresAt: { $gt: new Date() } }],
+});
+
+/**
+ * Helper to load poll for mutation operations
+ */
+const loadPollForMutation = async (id, user) => {
+  if (!mongoose.isValidObjectId(id)) {
+    return { ok: false, status: 400, message: "Invalid poll ID" };
+  }
+
+  const poll = await Poll.findById(String(id));
+  if (!poll) {
+    return { ok: false, status: 404, message: "Poll not found" };
+  }
+
+  if (
+    !user.organization ||
+    poll.organization.toString() !== user.organization.toString()
+  ) {
+    return {
+      ok: false,
+      status: 403,
+      message: "Forbidden: Not part of organization",
+    };
+  }
+
+  return { ok: true, poll };
+};
+
+/**
+ * Check if user can manage a poll (creator or admin/owner)
+ */
+const canManagePoll = (poll, user) => {
+  const isCreator = poll.createdBy?.toString() === user.id?.toString();
+  const isAdminOrOwner = user.role === "admin" || user.role === "owner";
+  return isCreator || isAdminOrOwner;
 };
 
 // @desc    Create a new poll
@@ -35,8 +146,6 @@ export const createPoll = async (req, res) => {
         .json({ message: "A poll must have at least two options." });
     }
 
-    // RBAC Check (assume organizer/admin or owner)
-    // Actually, maybe any member with view/edit access can create a poll, let's enforce based on meeting access.
     if (!req.user.role || !hasPermission(req.user.role, "meetings", "edit")) {
       return res.status(403).json({
         message: "Forbidden: Insufficient permissions to create poll",
@@ -70,7 +179,7 @@ export const createPoll = async (req, res) => {
     const savedPoll = await poll.save();
     await savedPoll.populate("createdBy", "name email profilePicture");
 
-    const pollResponse = stripVotersIfAnonymous(savedPoll);
+    const pollResponse = stripVotersIfAnonymous(savedPoll, req.user.id);
 
     const io = req.app.get("io");
     if (io) {
@@ -117,7 +226,10 @@ export const getPollsByMeeting = async (req, res) => {
       .populate("options.votes", "name email profilePicture")
       .sort({ createdAt: -1 });
 
-    const formattedPolls = polls.map(stripVotersIfAnonymous);
+    const currentUserId = req.user.id;
+    const formattedPolls = polls.map((poll) =>
+      stripVotersIfAnonymous(poll, currentUserId),
+    );
 
     res.status(200).json(formattedPolls);
   } catch (error) {
@@ -132,32 +244,10 @@ export const getPollsByMeeting = async (req, res) => {
 export const castVote = async (req, res) => {
   try {
     const { id } = req.params;
-    const { optionIds } = req.body; // Array of option IDs
-    const userId = req.user.id;
+    const { optionIds } = req.body;
 
     if (!mongoose.isValidObjectId(id)) {
       return res.status(400).json({ message: "Invalid poll ID" });
-    }
-
-    const poll = await Poll.findById(String(id));
-    if (!poll) {
-      return res.status(404).json({ message: "Poll not found" });
-    }
-
-    if (poll.isClosed) {
-      return res.status(400).json({ message: "Poll is closed" });
-    }
-
-    if (poll.expiresAt && new Date(poll.expiresAt) <= new Date()) {
-      poll.isClosed = true;
-      await poll.save();
-      return res.status(400).json({ message: "Poll has expired" });
-    }
-
-    if (poll.organization.toString() !== req.user.organization.toString()) {
-      return res
-        .status(403)
-        .json({ message: "Forbidden: Not part of organization" });
     }
 
     if (!Array.isArray(optionIds) || optionIds.length === 0) {
@@ -166,43 +256,82 @@ export const castVote = async (req, res) => {
         .json({ message: "Must provide at least one option to vote for" });
     }
 
-    if (poll.pollType === "single" && optionIds.length > 1) {
+    const callerOrg = req.user?.organization;
+    const callerId = req.user?.id ?? req.user?._id;
+    if (!callerOrg || !callerId) {
+      return res
+        .status(403)
+        .json({ message: "Forbidden: Not part of organization" });
+    }
+
+    const poll = await Poll.findById(String(id));
+    if (!poll) {
+      return res.status(404).json({ message: "Poll not found" });
+    }
+
+    if (poll.organization.toString() !== callerOrg.toString()) {
+      return res
+        .status(403)
+        .json({ message: "Forbidden: Not part of organization" });
+    }
+
+    if (poll.isClosed) {
+      return res.status(400).json({ message: "Poll is closed" });
+    }
+
+    if (poll.expiresAt && new Date(poll.expiresAt) <= new Date()) {
+      await Poll.updateOne(
+        { _id: String(id), isClosed: false },
+        { $set: { isClosed: true } },
+      );
+      return res.status(400).json({ message: "Poll has expired" });
+    }
+
+    const requestedIds = [...new Set(optionIds.map((o) => String(o)))];
+
+    if (poll.pollType === "single" && requestedIds.length > 1) {
       return res
         .status(400)
         .json({ message: "This poll only allows a single vote" });
     }
 
-    // Remove user's previous votes for this poll
-    poll.options.forEach((option) => {
-      option.votes = option.votes.filter(
-        (v) => v.toString() !== userId.toString(),
-      );
-    });
+    const pollOptionIds = new Set(poll.options.map((o) => o._id.toString()));
+    const selectedIds = requestedIds.filter((optionId) =>
+      pollOptionIds.has(optionId),
+    );
 
-    // Add new votes
-    let validVotesCast = 0;
-    poll.options.forEach((option) => {
-      if (optionIds.includes(option._id.toString())) {
-        option.votes.push(userId);
-        validVotesCast++;
-      }
-    });
-
-    if (validVotesCast === 0) {
+    if (
+      selectedIds.length !== requestedIds.length ||
+      selectedIds.length === 0
+    ) {
       return res.status(400).json({ message: "Invalid option(s) provided" });
     }
 
-    const savedPoll = await poll.save();
-    await savedPoll.populate("createdBy", "name email profilePicture");
-    if (!poll.isAnonymous) {
-      await savedPoll.populate("options.votes", "name email profilePicture");
+    const voterId = new mongoose.Types.ObjectId(String(callerId));
+    const selectedObjectIds = selectedIds.map(
+      (optionId) => new mongoose.Types.ObjectId(optionId),
+    );
+
+    const updatedPoll = await Poll.findOneAndUpdate(
+      openPollFilter(id, poll.organization),
+      buildVotePipeline(voterId, selectedObjectIds),
+      { new: true },
+    );
+
+    if (!updatedPoll) {
+      return res.status(400).json({ message: "Poll is closed" });
     }
 
-    const pollResponse = stripVotersIfAnonymous(savedPoll);
+    await updatedPoll.populate("createdBy", "name email profilePicture");
+    if (!updatedPoll.isAnonymous) {
+      await updatedPoll.populate("options.votes", "name email profilePicture");
+    }
+
+    const pollResponse = stripVotersIfAnonymous(updatedPoll, callerId);
 
     const io = req.app.get("io");
     if (io) {
-      io.to(poll.meeting.toString()).emit("poll:vote", pollResponse);
+      io.to(updatedPoll.meeting.toString()).emit("poll:vote", pollResponse);
     }
 
     res.status(200).json(pollResponse);
@@ -219,19 +348,13 @@ export const closePoll = async (req, res) => {
   try {
     const { id } = req.params;
 
-    if (!mongoose.isValidObjectId(id)) {
-      return res.status(400).json({ message: "Invalid poll ID" });
+    const loaded = await loadPollForMutation(id, req.user);
+    if (!loaded.ok) {
+      return res.status(loaded.status).json({ message: loaded.message });
     }
+    const { poll } = loaded;
 
-    const poll = await Poll.findById(String(id));
-    if (!poll) {
-      return res.status(404).json({ message: "Poll not found" });
-    }
-
-    const isCreator = poll.createdBy.toString() === req.user.id.toString();
-    const isAdmin = req.user.role === "admin" || req.user.role === "owner";
-
-    if (!isCreator && !isAdmin) {
+    if (!canManagePoll(poll, req.user)) {
       return res
         .status(403)
         .json({ message: "Forbidden: Only creator or admin can close poll" });
@@ -244,7 +367,7 @@ export const closePoll = async (req, res) => {
       await closedPoll.populate("options.votes", "name email profilePicture");
     }
 
-    const pollResponse = stripVotersIfAnonymous(closedPoll);
+    const pollResponse = stripVotersIfAnonymous(closedPoll, req.user.id);
 
     const io = req.app.get("io");
     if (io) {
@@ -265,29 +388,25 @@ export const deletePoll = async (req, res) => {
   try {
     const { id } = req.params;
 
-    if (!mongoose.isValidObjectId(id)) {
-      return res.status(400).json({ message: "Invalid poll ID" });
+    const loaded = await loadPollForMutation(id, req.user);
+    if (!loaded.ok) {
+      return res.status(loaded.status).json({ message: loaded.message });
     }
+    const { poll } = loaded;
 
-    const poll = await Poll.findById(String(id));
-    if (!poll) {
-      return res.status(404).json({ message: "Poll not found" });
-    }
-
-    const isCreator = poll.createdBy.toString() === req.user.id.toString();
-    const isAdmin = req.user.role === "admin" || req.user.role === "owner";
-
-    if (!isCreator && !isAdmin) {
+    if (!canManagePoll(poll, req.user)) {
       return res
         .status(403)
         .json({ message: "Forbidden: Only creator or admin can delete poll" });
     }
 
+    const meetingRoom = poll.meeting.toString();
+
     await Poll.deleteOne({ _id: String(id) });
 
     const io = req.app.get("io");
     if (io) {
-      io.to(poll.meeting.toString()).emit("poll:deleted", { id });
+      io.to(meetingRoom).emit("poll:deleted", { id });
     }
 
     res.status(200).json({ message: "Poll deleted successfully", id });

@@ -83,4 +83,101 @@ describe("knowledgeApi - Archive Browser queries", () => {
       },
     );
   });
+
+  it("should format getDecisions and getActionItems queries with page and limit pagination options (#835)", async () => {
+    apiClient.get.mockResolvedValue({
+      data: {
+        success: true,
+        decisions: [],
+        pagination: { total: 45, page: 2, limit: 10, totalPages: 5 },
+      },
+    });
+
+    await knowledgeApi.getDecisions("createdAt", null, {
+      includeArchived: true,
+      lifecycleState: "archived",
+      page: 2,
+      limit: 10,
+    });
+
+    expect(apiClient.get).toHaveBeenCalledWith(
+      expect.stringContaining("page=2"),
+    );
+    expect(apiClient.get).toHaveBeenCalledWith(
+      expect.stringContaining("limit=10"),
+    );
+  });
+
+  it("should call the unified archive endpoint with type, search, and pagination (#901)", async () => {
+    apiClient.get.mockResolvedValue({
+      data: {
+        success: true,
+        memories: [],
+        pagination: { total: 25, page: 2, limit: 10, totalPages: 3 },
+      },
+    });
+
+    await knowledgeApi.getArchivedMemories({
+      type: "all",
+      search: "budget review",
+      page: 2,
+      limit: 10,
+    });
+
+    expect(apiClient.get).toHaveBeenCalledWith(
+      expect.stringContaining("/api/knowledge/archive?"),
+    );
+    expect(apiClient.get).toHaveBeenCalledWith(
+      expect.stringContaining("type=all"),
+    );
+    expect(apiClient.get).toHaveBeenCalledWith(
+      expect.stringMatching(/search=budget(\+|%20)review/),
+    );
+    expect(apiClient.get).toHaveBeenCalledWith(
+      expect.stringContaining("page=2"),
+    );
+    expect(apiClient.get).toHaveBeenCalledWith(
+      expect.stringContaining("limit=10"),
+    );
+  });
+
+  it("should call the unified lifecycle endpoint with filters and pagination (#1552)", async () => {
+    apiClient.get.mockResolvedValue({
+      data: {
+        success: true,
+        memories: [],
+        pagination: {
+          total: 40,
+          page: 2,
+          limit: 20,
+          totalPages: 2,
+          hasMore: false,
+        },
+      },
+    });
+
+    await knowledgeApi.getLifecycleMemories({
+      type: "decision",
+      lifecycleState: "dormant",
+      search: "roadmap",
+      page: 2,
+      limit: 20,
+    });
+
+    expect(apiClient.get).toHaveBeenCalledWith(
+      expect.stringContaining("/api/knowledge/lifecycle?"),
+    );
+    expect(apiClient.get).toHaveBeenCalledWith(
+      expect.stringContaining("type=decision"),
+    );
+    expect(apiClient.get).toHaveBeenCalledWith(
+      expect.stringContaining("lifecycleState=dormant"),
+    );
+    expect(apiClient.get).toHaveBeenCalledWith(
+      expect.stringContaining("page=2"),
+    );
+    expect(apiClient.get).toHaveBeenCalledWith(
+      expect.stringContaining("limit=20"),
+    );
+  });
 });

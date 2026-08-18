@@ -1,7 +1,13 @@
-import React, { useState, useEffect, useRef, useCallback } from "react";
+import React, {
+  useState,
+  useEffect,
+  useRef,
+  useCallback,
+  useContext,
+} from "react";
 import { io } from "socket.io-client";
 import { getActivities } from "../api/activityApi";
-import { useSelector } from "react-redux";
+import AppContent from "../context/AppContent.js";
 import {
   Calendar,
   FileText,
@@ -10,20 +16,24 @@ import {
 } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { getBackendUrl } from "../config/backendConfig.js";
+import { createClerkSocketOptions } from "../services/apiClient.js";
 
 const backendUrl = getBackendUrl();
 
 export default function ActivityFeed() {
+  const { userData } = useContext(AppContent);
+  const organization = userData?.organization;
+  const organizationId = organization?._id || organization || null;
+
   const [activities, setActivities] = useState([]);
   const [, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(true);
   const [loading, setLoading] = useState(false);
-  const { currentOrganization } = useSelector((state) => state.auth);
   const observer = useRef();
 
   const loadActivities = useCallback(
     async (pageNum, append = false) => {
-      if (!currentOrganization) return;
+      if (!organizationId) return;
       try {
         setLoading(true);
         const data = await getActivities({ page: pageNum, limit: 20 });
@@ -39,44 +49,51 @@ export default function ActivityFeed() {
         setLoading(false);
       }
     },
-    [currentOrganization],
+    [organizationId],
   );
 
   useEffect(() => {
-    if (currentOrganization) {
+    if (organizationId) {
       setPage(1);
       loadActivities(1, false);
     }
-  }, [currentOrganization, loadActivities]);
+  }, [organizationId, loadActivities]);
 
   // Real-time updates via Socket.IO
   useEffect(() => {
-    if (!currentOrganization) return;
+    if (!organizationId) return;
 
-    const socket = io(backendUrl, {
-      withCredentials: true,
-      transports: ["websocket", "polling"],
-    });
+    let socket;
+    let cancelled = false;
 
-    socket.on("connect", () => {
-      // The backend should handle joining the org room, but typically it does this
-      // on authentication or we might need an explicit join.
-      // In MeetOnMemory, rooms are often handled via existing socket connections,
-      // but let's assume `activity:new` is emitted to the org room, and
-      // the user is added to it by the meeting socket or auth.
-      // If we don't have an explicit join here, it's fine for this task as
-      // the prompt says "New activities appear in real-time for connected org members"
-    });
+    (async () => {
+      const opts = await createClerkSocketOptions({
+        transports: ["websocket", "polling"],
+      });
+      if (cancelled) return;
+      socket = io(backendUrl, opts);
 
-    socket.on("activity:new", (newActivity) => {
-      // Prepend to feed
-      setActivities((prev) => [newActivity, ...prev]);
-    });
+      socket.on("connect", () => {
+        // The backend should handle joining the org room, but typically it does this
+        // on authentication or we might need an explicit join.
+        // In MeetOnMemory, rooms are often handled via existing socket connections,
+        // but let's assume `activity:new` is emitted to the org room, and
+        // the user is added to it by the meeting socket or auth.
+        // If we don't have an explicit join here, it's fine for this task as
+        // the prompt says "New activities appear in real-time for connected org members"
+      });
+
+      socket.on("activity:new", (newActivity) => {
+        // Prepend to feed
+        setActivities((prev) => [newActivity, ...prev]);
+      });
+    })();
 
     return () => {
-      socket.disconnect();
+      cancelled = true;
+      socket?.disconnect();
     };
-  }, [currentOrganization]);
+  }, [organizationId]);
 
   const lastActivityElementRef = useCallback(
     (node) => {
@@ -141,7 +158,11 @@ export default function ActivityFeed() {
       </h1>
 
       <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
-        {activities.length === 0 && !loading ? (
+        {!organizationId && !loading ? (
+          <p className="text-gray-500 text-center py-8">
+            Join or select an organization to view activity.
+          </p>
+        ) : activities.length === 0 && !loading ? (
           <p className="text-gray-500 text-center py-8">
             No recent activity found.
           </p>

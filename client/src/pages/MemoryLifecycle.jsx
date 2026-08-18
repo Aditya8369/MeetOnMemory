@@ -1,3 +1,5 @@
+// client/src/pages/MemoryLifecycle.jsx
+
 import React, { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import Navbar from "../components/Navbar.jsx";
@@ -16,6 +18,8 @@ import {
   AlertCircle,
   Calendar,
   X,
+  ChevronLeft,
+  ChevronRight,
 } from "lucide-react";
 
 const LIFECYCLE_STATES = [
@@ -37,7 +41,16 @@ const MemoryLifecycle = () => {
   const [selectedState, setSelectedState] = useState("all");
   const [selectedType, setSelectedType] = useState("all");
   const [searchQuery, setSearchQuery] = useState("");
+
+  // Server-side pagination (#1552)
+  const [page, setPage] = useState(1);
+  const [limit, setLimit] = useState(20);
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalCount, setTotalCount] = useState(0);
+  const [hasMore, setHasMore] = useState(false);
+
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
   const [sweeping, setSweeping] = useState(false);
   const [updatingId, setUpdatingId] = useState(null);
   const [memories, setMemories] = useState([]);
@@ -58,59 +71,71 @@ const MemoryLifecycle = () => {
 
   const loadMemories = useCallback(async () => {
     setLoading(true);
+    setError(null);
     try {
-      let decisionList = [];
-      let actionList = [];
-
-      const opts = {
-        includeArchived: true,
+      const res = await knowledgeApi.getLifecycleMemories({
+        type: selectedType,
+        page,
+        limit,
         ...(selectedState !== "all" ? { lifecycleState: selectedState } : {}),
         ...(searchQuery ? { search: searchQuery } : {}),
-      };
+      });
 
-      if (selectedType === "all" || selectedType === "decision") {
-        const dRes = await knowledgeApi.getDecisions("createdAt", null, opts);
-        if (dRes.data?.success) {
-          decisionList = (dRes.data.decisions || []).map((d) => ({
-            ...d,
-            type: "decision",
-          }));
-        }
-      }
-
-      if (selectedType === "all" || selectedType === "action-item") {
-        const aRes = await knowledgeApi.getActionItems(
-          "all",
-          "createdAt",
-          opts,
+      if (res.data?.success) {
+        setMemories(res.data.memories || []);
+        const pagination = res.data.pagination || {};
+        setTotalCount(pagination.total || 0);
+        setTotalPages(Math.max(1, pagination.totalPages || 1));
+        setHasMore(Boolean(pagination.hasMore));
+      } else {
+        setMemories([]);
+        setTotalCount(0);
+        setTotalPages(1);
+        setHasMore(false);
+        setError(
+          res.data?.message || "Failed to load knowledge lifecycle items.",
         );
-        if (aRes.data?.success) {
-          actionList = (aRes.data.actionItems || []).map((a) => ({
-            ...a,
-            type: "action-item",
-          }));
-        }
+        toast.error(
+          res.data?.message || "Failed to load knowledge lifecycle items.",
+        );
       }
-
-      const combined = [...decisionList, ...actionList].sort(
-        (a, b) => new Date(b.createdAt) - new Date(a.createdAt),
-      );
-
-      setMemories(combined);
     } catch (err) {
       console.error("Failed to load memories:", err);
+      setMemories([]);
+      setTotalCount(0);
+      setTotalPages(1);
+      setHasMore(false);
+      setError("Failed to load knowledge lifecycle items.");
       toast.error("Failed to load knowledge lifecycle items.");
     } finally {
       setLoading(false);
     }
-  }, [selectedState, selectedType, searchQuery]);
+  }, [selectedState, selectedType, searchQuery, page, limit]);
 
+  // Debounced fetch when filters / page / limit change
   useEffect(() => {
     const timer = setTimeout(() => {
       loadMemories();
     }, 300);
     return () => clearTimeout(timer);
   }, [loadMemories]);
+
+  // Reset to first page when filters change
+  useEffect(() => {
+    setPage(1);
+  }, [selectedState, selectedType, searchQuery]);
+
+  // Keyboard accessibility for modals
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (e.key === "Escape") {
+        setTransitionModal((prev) => ({ ...prev, isOpen: false }));
+        setHistoryModal((prev) => ({ ...prev, isOpen: false }));
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, []);
 
   const handleRunSweep = async () => {
     setSweeping(true);
@@ -120,7 +145,11 @@ const MemoryLifecycle = () => {
         toast.success(
           res.data.message || "Lifecycle sweep completed successfully.",
         );
-        await loadMemories();
+        if (page === 1) {
+          await loadMemories();
+        } else {
+          setPage(1);
+        }
       } else {
         toast.error(res.data?.message || "Failed to run lifecycle sweep.");
       }
@@ -217,7 +246,6 @@ const MemoryLifecycle = () => {
   return (
     <div className="min-h-screen bg-linear-to-b from-slate-50 via-white to-slate-50 dark:from-slate-950 dark:via-slate-900 dark:to-slate-950 text-slate-800 dark:text-slate-200 pt-20">
       <Navbar />
-
       <div className="p-6 max-w-6xl mx-auto space-y-6">
         {/* Header */}
         <div className="flex items-start justify-between gap-4 flex-wrap">
@@ -231,7 +259,6 @@ const MemoryLifecycle = () => {
               retention states.
             </p>
           </div>
-
           <div className="flex items-center gap-3">
             <button
               onClick={() => navigate("/knowledge/archive")}
@@ -253,7 +280,7 @@ const MemoryLifecycle = () => {
               Run Lifecycle Sweep
             </button>
             <button
-              onClick={loadMemories}
+              onClick={() => loadMemories()}
               className="inline-flex items-center gap-2 px-4 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-sm font-medium hover:bg-slate-50 dark:hover:bg-slate-800 shadow-sm cursor-pointer"
             >
               <RefreshCw className="w-4 h-4" />
@@ -287,7 +314,7 @@ const MemoryLifecycle = () => {
               <select
                 value={selectedType}
                 onChange={(e) => setSelectedType(e.target.value)}
-                className="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-3 py-2 text-xs font-medium"
+                className="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-3 py-2 text-xs font-medium cursor-pointer"
               >
                 {MEMORY_TYPES.map((t) => (
                   <option key={t.value} value={t.value}>
@@ -295,7 +322,6 @@ const MemoryLifecycle = () => {
                   </option>
                 ))}
               </select>
-
               <div className="relative flex-1">
                 <Search className="w-4 h-4 absolute left-3 top-2.5 text-slate-400" />
                 <input
@@ -319,7 +345,26 @@ const MemoryLifecycle = () => {
             </div>
           )}
 
-          {!loading && memories.length === 0 && (
+          {!loading && error && memories.length === 0 && (
+            <div className="bg-white dark:bg-slate-900 border border-rose-200 dark:border-rose-800 rounded-2xl p-12 text-center">
+              <AlertCircle className="w-10 h-10 text-rose-400 mx-auto mb-3" />
+              <p className="text-base font-semibold text-slate-800 dark:text-slate-200">
+                Unable to load memories
+              </p>
+              <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 max-w-md mx-auto">
+                {error}
+              </p>
+              <button
+                type="button"
+                onClick={loadMemories}
+                className="mt-4 inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-indigo-600 text-white text-xs font-semibold hover:bg-indigo-700 cursor-pointer"
+              >
+                <RefreshCw className="w-3.5 h-3.5" /> Retry
+              </button>
+            </div>
+          )}
+
+          {!loading && !error && memories.length === 0 && (
             <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-12 text-center">
               <History className="w-10 h-10 text-slate-300 dark:text-slate-600 mx-auto mb-3" />
               <p className="text-base font-semibold text-slate-800 dark:text-slate-200">
@@ -334,109 +379,180 @@ const MemoryLifecycle = () => {
           )}
 
           {!loading && memories.length > 0 && (
-            <div className="space-y-3">
-              {memories.map((mem) => {
-                const currentState = mem.lifecycleState || "active";
-                return (
-                  <div
-                    key={mem._id}
-                    className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-5 shadow-xs hover:border-slate-300 dark:hover:border-slate-700 transition-all flex flex-col md:flex-row md:items-center justify-between gap-4"
-                  >
-                    <div className="space-y-2 flex-1">
-                      <div className="flex items-center gap-2.5 flex-wrap">
-                        {getStateBadge(currentState)}
-                        <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-md bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300">
-                          {mem.type === "decision" ? "Decision" : "Action Item"}
-                        </span>
-                        {mem.importanceScore !== undefined && (
-                          <span className="text-[11px] font-medium text-slate-500 dark:text-slate-400">
-                            Score:{" "}
-                            <strong className="text-slate-800 dark:text-slate-200">
-                              {mem.importanceScore}
-                            </strong>
+            <>
+              <div className="space-y-3">
+                {memories.map((mem) => {
+                  const currentState = mem.lifecycleState || "active";
+                  return (
+                    <div
+                      key={`${mem.type}-${mem._id}`}
+                      className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-5 shadow-xs hover:border-slate-300 dark:hover:border-slate-700 transition-all flex flex-col md:flex-row md:items-center justify-between gap-4"
+                    >
+                      <div className="space-y-2 flex-1">
+                        <div className="flex items-center gap-2.5 flex-wrap">
+                          {getStateBadge(currentState)}
+                          <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-md bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300">
+                            {mem.type === "decision"
+                              ? "Decision"
+                              : "Action Item"}
                           </span>
-                        )}
-                      </div>
-
-                      <p className="text-sm font-medium text-slate-900 dark:text-white leading-relaxed">
-                        {mem.text}
-                      </p>
-
-                      <div className="flex items-center gap-4 text-[11px] text-slate-500 dark:text-slate-400 flex-wrap">
-                        {mem.sourceMeetingId?.title && (
-                          <span className="flex items-center gap-1">
-                            <Calendar className="w-3.5 h-3.5" />
-                            Meeting: {mem.sourceMeetingId.title}
-                          </span>
-                        )}
-                        <span>
-                          Created:{" "}
-                          {new Date(mem.createdAt).toLocaleDateString()}
-                        </span>
-                        {mem.lastAccessedAt && (
+                          {mem.importanceScore !== undefined && (
+                            <span className="text-[11px] font-medium text-slate-500 dark:text-slate-400">
+                              Score:{" "}
+                              <strong className="text-slate-800 dark:text-slate-200">
+                                {mem.importanceScore}
+                              </strong>
+                            </span>
+                          )}
+                        </div>
+                        <p className="text-sm font-medium text-slate-900 dark:text-white leading-relaxed">
+                          {mem.text}
+                        </p>
+                        <div className="flex items-center gap-4 text-[11px] text-slate-500 dark:text-slate-400 flex-wrap">
+                          {mem.sourceMeetingId?.title && (
+                            <span className="flex items-center gap-1">
+                              <Calendar className="w-3.5 h-3.5" />
+                              Meeting: {mem.sourceMeetingId.title}
+                            </span>
+                          )}
                           <span>
-                            Last accessed:{" "}
-                            {new Date(mem.lastAccessedAt).toLocaleDateString()}
+                            Created:{" "}
+                            {new Date(mem.createdAt).toLocaleDateString()}
                           </span>
+                          {mem.lastAccessedAt && (
+                            <span>
+                              Last accessed:{" "}
+                              {new Date(
+                                mem.lastAccessedAt,
+                              ).toLocaleDateString()}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Actions */}
+                      <div className="flex items-center gap-2 shrink-0 flex-wrap border-t md:border-t-0 pt-3 md:pt-0 border-slate-100 dark:border-slate-800">
+                        {currentState !== "active" && (
+                          <button
+                            onClick={() => openTransitionModal(mem, "active")}
+                            disabled={updatingId === mem._id}
+                            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-600 text-white text-xs font-semibold hover:bg-emerald-700 disabled:opacity-50 cursor-pointer shadow-xs"
+                          >
+                            <RotateCcw className="w-3.5 h-3.5" /> Restore
+                          </button>
                         )}
+                        {currentState === "active" && (
+                          <button
+                            onClick={() => openTransitionModal(mem, "archived")}
+                            disabled={updatingId === mem._id}
+                            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-indigo-600 text-white text-xs font-semibold hover:bg-indigo-700 disabled:opacity-50 cursor-pointer shadow-xs"
+                          >
+                            <Archive className="w-3.5 h-3.5" /> Archive
+                          </button>
+                        )}
+                        {currentState === "active" && (
+                          <button
+                            onClick={() => openTransitionModal(mem, "dormant")}
+                            disabled={updatingId === mem._id}
+                            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-xs font-semibold hover:bg-slate-50 dark:hover:bg-slate-800 disabled:opacity-50 cursor-pointer"
+                          >
+                            <Clock className="w-3.5 h-3.5" /> Dormant
+                          </button>
+                        )}
+                        <button
+                          onClick={() =>
+                            setHistoryModal({ isOpen: true, memory: mem })
+                          }
+                          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-700 dark:text-slate-300 text-xs font-semibold hover:bg-slate-100 dark:hover:bg-slate-700 cursor-pointer"
+                        >
+                          History
+                        </button>
                       </div>
                     </div>
+                  );
+                })}
+              </div>
 
-                    {/* Actions */}
-                    <div className="flex items-center gap-2 shrink-0 flex-wrap border-t md:border-t-0 pt-3 md:pt-0 border-slate-100 dark:border-slate-800">
-                      {currentState !== "active" && (
-                        <button
-                          onClick={() => openTransitionModal(mem, "active")}
-                          disabled={updatingId === mem._id}
-                          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-600 text-white text-xs font-semibold hover:bg-emerald-700 disabled:opacity-50 cursor-pointer shadow-xs"
-                        >
-                          <RotateCcw className="w-3.5 h-3.5" /> Restore
-                        </button>
-                      )}
+              {/* Server-side pagination controls (#1552) */}
+              <div className="flex flex-wrap items-center justify-between gap-4 pt-6 border-t border-slate-200 dark:border-slate-800 text-xs">
+                <div className="text-slate-500 dark:text-slate-400 font-medium">
+                  Showing page{" "}
+                  <strong className="text-slate-800 dark:text-slate-200">
+                    {page}
+                  </strong>{" "}
+                  of{" "}
+                  <strong className="text-slate-800 dark:text-slate-200">
+                    {totalPages}
+                  </strong>{" "}
+                  ({totalCount} total
+                  {hasMore ? ", more available" : ""})
+                </div>
 
-                      {currentState === "active" && (
-                        <button
-                          onClick={() => openTransitionModal(mem, "archived")}
-                          disabled={updatingId === mem._id}
-                          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-indigo-600 text-white text-xs font-semibold hover:bg-indigo-700 disabled:opacity-50 cursor-pointer shadow-xs"
-                        >
-                          <Archive className="w-3.5 h-3.5" /> Archive
-                        </button>
-                      )}
-
-                      {currentState === "active" && (
-                        <button
-                          onClick={() => openTransitionModal(mem, "dormant")}
-                          disabled={updatingId === mem._id}
-                          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-xs font-semibold hover:bg-slate-50 dark:hover:bg-slate-800 disabled:opacity-50 cursor-pointer"
-                        >
-                          <Clock className="w-3.5 h-3.5" /> Dormant
-                        </button>
-                      )}
-
-                      <button
-                        onClick={() =>
-                          setHistoryModal({ isOpen: true, memory: mem })
-                        }
-                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-700 dark:text-slate-300 text-xs font-semibold hover:bg-slate-100 dark:hover:bg-slate-700 cursor-pointer"
-                      >
-                        History
-                      </button>
-                    </div>
+                <div className="flex items-center gap-3">
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-slate-500 dark:text-slate-400">
+                      Per page:
+                    </span>
+                    <select
+                      value={limit}
+                      onChange={(e) => {
+                        setLimit(Number(e.target.value));
+                        setPage(1);
+                      }}
+                      className="rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-2 py-1 font-medium cursor-pointer"
+                      aria-label="Results per page"
+                    >
+                      <option value={10}>10</option>
+                      <option value={20}>20</option>
+                      <option value={50}>50</option>
+                    </select>
                   </div>
-                );
-              })}
-            </div>
+
+                  <div className="flex items-center gap-1">
+                    <button
+                      type="button"
+                      onClick={() => setPage((prev) => Math.max(prev - 1, 1))}
+                      disabled={page <= 1 || loading}
+                      className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 font-medium hover:bg-slate-50 dark:hover:bg-slate-800 disabled:opacity-40 cursor-pointer"
+                      aria-label="Previous page"
+                    >
+                      <ChevronLeft className="w-3.5 h-3.5" />
+                      Previous
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setPage((prev) => Math.min(prev + 1, totalPages))
+                      }
+                      disabled={page >= totalPages || loading}
+                      className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 font-medium hover:bg-slate-50 dark:hover:bg-slate-800 disabled:opacity-40 cursor-pointer"
+                      aria-label="Next page"
+                    >
+                      Next
+                      <ChevronRight className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </>
           )}
         </div>
       </div>
 
-      {/* Transition Confirmation Modal */}
+      {/* State Transition Confirmation Modal (#1368) */}
       {transitionModal.isOpen && (
-        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
+        <div
+          className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="transition-modal-title"
+        >
           <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 max-w-md w-full shadow-2xl space-y-4">
             <div className="flex items-center justify-between">
-              <h3 className="text-lg font-bold text-slate-900 dark:text-white capitalize">
+              <h3
+                id="transition-modal-title"
+                className="text-lg font-bold text-slate-900 dark:text-white capitalize"
+              >
                 {transitionModal.targetState === "active"
                   ? "Restore Memory"
                   : `Change State to ${transitionModal.targetState}`}
@@ -450,12 +566,11 @@ const MemoryLifecycle = () => {
                     reason: "",
                   })
                 }
-                className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
+                className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 cursor-pointer"
               >
                 <X className="w-5 h-5" />
               </button>
             </div>
-
             <p className="text-xs text-slate-600 dark:text-slate-400">
               Are you sure you want to transition this memory to{" "}
               <strong className="text-indigo-600 dark:text-indigo-400 uppercase">
@@ -463,11 +578,9 @@ const MemoryLifecycle = () => {
               </strong>
               ?
             </p>
-
             <div className="bg-slate-50 dark:bg-slate-800/60 p-3 rounded-xl border border-slate-200 dark:border-slate-700 text-xs text-slate-800 dark:text-slate-200 font-medium">
               "{transitionModal.memory?.text}"
             </div>
-
             <div>
               <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
                 Reason / Note (optional)
@@ -484,7 +597,6 @@ const MemoryLifecycle = () => {
                 className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-xs focus:ring-2 focus:ring-indigo-500 focus:outline-none"
               />
             </div>
-
             <div className="flex items-center justify-end gap-3 pt-2">
               <button
                 onClick={() =>
@@ -501,7 +613,8 @@ const MemoryLifecycle = () => {
               </button>
               <button
                 onClick={confirmTransition}
-                className="px-4 py-2 rounded-xl bg-indigo-600 text-white text-xs font-semibold hover:bg-indigo-700 cursor-pointer shadow-xs"
+                disabled={updatingId === transitionModal.memory?._id}
+                className="px-4 py-2 rounded-xl bg-indigo-600 text-white text-xs font-semibold hover:bg-indigo-700 disabled:opacity-50 cursor-pointer shadow-xs"
               >
                 Confirm State Change
               </button>
@@ -510,27 +623,33 @@ const MemoryLifecycle = () => {
         </div>
       )}
 
-      {/* History Timeline Modal */}
+      {/* History Timeline Modal (#1368) */}
       {historyModal.isOpen && (
-        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
+        <div
+          className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="history-modal-title"
+        >
           <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 max-w-lg w-full shadow-2xl space-y-4">
             <div className="flex items-center justify-between">
-              <h3 className="text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2">
+              <h3
+                id="history-modal-title"
+                className="text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2"
+              >
                 <History className="w-5 h-5 text-indigo-600" />
                 Lifecycle Audit History
               </h3>
               <button
                 onClick={() => setHistoryModal({ isOpen: false, memory: null })}
-                className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
+                className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 cursor-pointer"
               >
                 <X className="w-5 h-5" />
               </button>
             </div>
-
             <p className="text-xs text-slate-600 dark:text-slate-400 line-clamp-2">
               Memory: "{historyModal.memory?.text}"
             </p>
-
             <div className="max-h-60 overflow-y-auto space-y-3 pr-1">
               {(historyModal.memory?.lifecycleHistory || []).length === 0 ? (
                 <p className="text-xs text-slate-400 py-4 text-center">
@@ -562,7 +681,6 @@ const MemoryLifecycle = () => {
                 ))
               )}
             </div>
-
             <div className="flex justify-end pt-2">
               <button
                 onClick={() => setHistoryModal({ isOpen: false, memory: null })}

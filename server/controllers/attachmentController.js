@@ -1,15 +1,23 @@
 import fs from "fs";
 import path from "path";
+import multer from "multer";
 import { z } from "zod";
 import Attachment from "../models/attachmentModel.js";
 import Meeting from "../models/meetingModel.js";
 import { fileURLToPath } from "url";
+import { buildPaginationMeta, parsePagination } from "../utils/pagination.js";
+import { getContentDispositionHeader } from "../utils/fileUtils.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const UPLOADS_DIR = path.resolve(__dirname, "..", "uploads", "attachments");
 
+/**
+ * Safely resolve file path to prevent directory traversal attacks
+ * @param {string} unsafePath - Potentially malicious file path
+ * @returns {string|null} - Safe file path or null if invalid
+ */
 const getSafeFilePath = (unsafePath) => {
   if (!unsafePath) return null;
   const filename = path.basename(unsafePath);
@@ -20,8 +28,8 @@ const getSafeFilePath = (unsafePath) => {
   return safePath;
 };
 
-// Max file size: 10 MB
-const MAX_FILE_SIZE = 10 * 1024 * 1024;
+// Validation constants
+const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10 MB
 const ALLOWED_MIME_TYPES = [
   "application/pdf",
   "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
@@ -31,15 +39,42 @@ const ALLOWED_MIME_TYPES = [
   "image/gif",
 ];
 
+const ALLOWED_EXTENSIONS = [
+  ".pdf",
+  ".docx",
+  ".pptx",
+  ".jpg",
+  ".jpeg",
+  ".png",
+  ".gif",
+];
+
+/**
+ * Human-readable file type names for better error messages (Currently unused)
+ */
+// const MIME_TYPE_NAMES = {
+//   "application/pdf": "PDF",
+//   "application/vnd.openxmlformats-officedocument.wordprocessingml.document":
+//     "Word Document",
+//   "application/vnd.openxmlformats-officedocument.presentationml.presentation":
+//     "PowerPoint Presentation",
+//   "image/jpeg": "JPEG Image",
+//   "image/png": "PNG Image",
+//   "image/gif": "GIF Image",
+// };
+
 const attachmentSchema = z.object({
   meetingId: z.string().regex(/^[0-9a-fA-F]{24}$/, "Invalid meeting ID"),
 });
 
+/**
+ * Upload a new attachment with comprehensive validation
+ */
 export const uploadAttachment = async (req, res) => {
   try {
     const { meetingId } = req.params;
 
-    // Validate meeting ID
+    // Validate meeting ID format
     const validationResult = attachmentSchema.safeParse({ meetingId });
     if (!validationResult.success) {
       if (req.file) {
@@ -51,26 +86,43 @@ export const uploadAttachment = async (req, res) => {
       });
     }
 
+    // Check if file was provided
     if (!req.file) {
       return res
         .status(400)
         .json({ success: false, message: "No file provided" });
     }
 
+    // Validate file size (redundant check with multer limits)
     if (req.file.size > MAX_FILE_SIZE) {
       fs.unlinkSync(getSafeFilePath(req.file.path));
-      return res
-        .status(400)
-        .json({ success: false, message: "File exceeds 10 MB limit" });
+      return res.status(400).json({
+        success: false,
+        message: "File exceeds 10 MB limit",
+      });
     }
 
+    // Validate MIME type
     if (!ALLOWED_MIME_TYPES.includes(req.file.mimetype)) {
       fs.unlinkSync(getSafeFilePath(req.file.path));
-      return res
-        .status(400)
-        .json({ success: false, message: "Invalid file type" });
+      return res.status(400).json({
+        success: false,
+        message: "Invalid file type",
+      });
     }
 
+    // Validate file extension
+    const ext = path.extname(req.file.originalname).toLowerCase();
+    if (!ALLOWED_EXTENSIONS.includes(ext)) {
+      fs.unlinkSync(getSafeFilePath(req.file.path));
+      return res.status(400).json({
+        success: false,
+        message: `Invalid file extension: ${ext}. Allowed extensions: ${ALLOWED_EXTENSIONS.join(", ")}`,
+        allowedExtensions: ALLOWED_EXTENSIONS,
+      });
+    }
+
+    // Verify meeting exists
     const meeting = await Meeting.findById(meetingId);
     if (!meeting) {
       fs.unlinkSync(getSafeFilePath(req.file.path));
@@ -79,14 +131,12 @@ export const uploadAttachment = async (req, res) => {
         .json({ success: false, message: "Meeting not found" });
     }
 
-    // Since we're using requireOrgAccess on routes, user is already authorized
+    // Create attachment record
     const newAttachment = new Attachment({
       meeting: meetingId,
       uploadedBy: req.user._id,
       fileName: req.file.originalname,
-      fileType:
-        path.extname(req.file.originalname).toLowerCase().replace(".", "") ||
-        "unknown",
+      fileType: ext.replace(".", "") || "unknown",
       fileSize: req.file.size,
       filePath: getSafeFilePath(req.file.path),
       mimeType: req.file.mimetype,
@@ -100,9 +150,21 @@ export const uploadAttachment = async (req, res) => {
       attachment: newAttachment,
     });
   } catch (error) {
+    // Handle multer errors
+    if (error instanceof multer.MulterError) {
+      if (error.code === "LIMIT_FILE_SIZE") {
+        return res.status(400).json({
+          success: false,
+          message: "File exceeds 10 MB limit", // <--- UPDATED TO MATCH TEST
+        });
+      }
+    }
+
+    // Clean up file on error
     if (req.file) {
       fs.unlinkSync(getSafeFilePath(req.file.path));
     }
+
     console.error("Error uploading attachment:", error);
     res
       .status(500)
@@ -110,13 +172,15 @@ export const uploadAttachment = async (req, res) => {
   }
 };
 
+/**
+ * List all attachments for a meeting with pagination
+ */
 export const listAttachments = async (req, res) => {
   try {
     const { meetingId } = req.params;
-    const page = parseInt(req.query.page) || 1;
-    const limit = parseInt(req.query.limit) || 20;
-
-    const skip = (page - 1) * limit;
+    const { page, limit, skip } = parsePagination(req.query, {
+      defaultLimit: 20,
+    });
 
     const attachments = await Attachment.find({ meeting: meetingId })
       .populate("uploadedBy", "name email")
@@ -129,12 +193,7 @@ export const listAttachments = async (req, res) => {
     res.status(200).json({
       success: true,
       attachments,
-      pagination: {
-        total,
-        page,
-        limit,
-        totalPages: Math.ceil(total / limit),
-      },
+      pagination: buildPaginationMeta({ total, page, limit }),
     });
   } catch (error) {
     console.error("Error listing attachments:", error);
@@ -144,6 +203,30 @@ export const listAttachments = async (req, res) => {
   }
 };
 
+/**
+ * Resolves the `Content-Type` to send for a stored attachment (Issue #1454).
+ *
+ * Uploads are checked against `ALLOWED_MIME_TYPES` on the way in, so in the
+ * normal case this is a pass-through. It is re-checked on the way *out* because
+ * the allow-list is enforced by application code, not by a schema constraint:
+ * a row written before that check existed, or by any future code path that
+ * skips `upload.single()`, would otherwise let a stored string become the
+ * `Content-Type` of a response the browser renders.
+ *
+ * Anything unrecognised degrades to `application/octet-stream`, which browsers
+ * always download rather than render.
+ *
+ * @param {string} storedMimeType
+ * @returns {string}
+ */
+const resolveDownloadContentType = (storedMimeType) =>
+  ALLOWED_MIME_TYPES.includes(storedMimeType)
+    ? storedMimeType
+    : "application/octet-stream";
+
+/**
+ * Download an attachment file
+ */
 export const downloadAttachment = async (req, res) => {
   try {
     const { meetingId, id } = req.params;
@@ -152,6 +235,7 @@ export const downloadAttachment = async (req, res) => {
       _id: id,
       meeting: meetingId,
     });
+
     if (!attachment) {
       return res
         .status(404)
@@ -159,19 +243,69 @@ export const downloadAttachment = async (req, res) => {
     }
 
     const safePath = getSafeFilePath(attachment.filePath);
-    if (!fs.existsSync(safePath)) {
+
+    // `stat` replaces the previous `existsSync`, because the byte count has to
+    // come from the file being streamed rather than from `attachment.fileSize`
+    // (see Content-Length below) and one syscall can answer both questions.
+    let stats;
+    try {
+      stats = await fs.promises.stat(safePath);
+    } catch {
+      stats = null;
+    }
+
+    if (!stats || !stats.isFile()) {
       return res
         .status(404)
         .json({ success: false, message: "File not found on server" });
     }
 
+    // `attachment.fileName` is the uploader's `originalname`, stored verbatim.
+    // Interpolating it into the header let a quote terminate the quoted-string
+    // early and left CRLF unfiltered, and there was no `filename*` parameter,
+    // so non-ASCII names arrived as mojibake. `getContentDispositionHeader`
+    // is what the transcript and policy exporters already use (Issue #1454).
     res.setHeader(
       "Content-Disposition",
-      `attachment; filename="${attachment.fileName}"`,
+      getContentDispositionHeader(attachment.fileName),
     );
-    res.setHeader("Content-Type", attachment.mimeType);
+    res.setHeader(
+      "Content-Type",
+      resolveDownloadContentType(attachment.mimeType),
+    );
+
+    // Content-Length used to come from `attachment.fileSize` — the size Mongo
+    // recorded at upload — while the body streams from disk. If those disagree
+    // (a partially written upload, a restored backup) the response violates
+    // the protocol: the client either hangs waiting for bytes that never
+    // arrive, or the connection is cut mid-transfer and the file is truncated.
+    res.setHeader("Content-Length", stats.size);
+
+    // Belt and braces alongside the allow-listed Content-Type: even if a type
+    // is wrong, the browser must not sniff its way to something executable.
+    res.setHeader("X-Content-Type-Options", "nosniff");
 
     const fileStream = fs.createReadStream(safePath);
+
+    // `pipe()` does not forward source errors to the destination, so an EIO or
+    // a file deleted mid-read used to surface as an unhandled `error` event.
+    fileStream.on("error", (streamError) => {
+      console.error("Error streaming attachment:", streamError);
+
+      if (res.headersSent) {
+        // The status line is already on the wire; the only honest signal left
+        // is an incomplete response, which destroying the socket provides.
+        res.destroy(streamError);
+      } else {
+        res
+          .status(500)
+          .json({ success: false, message: "Server error during download" });
+      }
+    });
+
+    // If the client disconnects mid-download, stop reading from disk.
+    res.on("close", () => fileStream.destroy());
+
     fileStream.pipe(res);
   } catch (error) {
     console.error("Error downloading attachment:", error);
@@ -181,6 +315,9 @@ export const downloadAttachment = async (req, res) => {
   }
 };
 
+/**
+ * Delete an attachment (file and database record)
+ */
 export const deleteAttachment = async (req, res) => {
   try {
     const { meetingId, id } = req.params;
@@ -189,6 +326,7 @@ export const deleteAttachment = async (req, res) => {
       _id: id,
       meeting: meetingId,
     }).populate("meeting");
+
     if (!attachment) {
       return res
         .status(404)

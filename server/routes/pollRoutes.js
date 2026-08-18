@@ -1,5 +1,6 @@
 import express from "express";
 import userAuth from "../middleware/userAuth.js";
+import { requireOrgMembership } from "../middleware/rbac.js";
 import {
   createPoll,
   getPollsByMeeting,
@@ -11,6 +12,7 @@ import {
 const router = express.Router();
 
 router.use(userAuth); // All poll routes require authentication
+router.use(requireOrgMembership);
 
 router.post("/", createPoll);
 router.get("/meeting/:meetingId", getPollsByMeeting);

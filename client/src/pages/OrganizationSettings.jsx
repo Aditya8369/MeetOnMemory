@@ -23,6 +23,7 @@ import {
   ExternalLink,
   Image as ImageIcon,
   PanelsTopLeft,
+  Blocks,
 } from "lucide-react";
 import Navbar from "../components/Navbar.jsx";
 import AppContent from "../context/AppContent";
@@ -30,6 +31,9 @@ import { organizationApi } from "../services/organizationApi.js";
 import OrganizationLogo from "../components/organization/OrganizationLogo.jsx";
 import OrganizationBanner from "../components/organization/OrganizationBanner.jsx";
 import { validateImageUrl } from "../utils/imageUrl.js";
+import NotionConnectPanel from "../components/integrations/NotionConnectPanel.jsx";
+import GitHubConnectPanel from "../components/integrations/GitHubConnectPanel.jsx";
+import IssueTrackerConfig from "../components/integrations/IssueTrackerConfig.jsx";
 
 const OrganizationSettings = () => {
   const navigate = useNavigate();
@@ -390,7 +394,7 @@ const OrganizationSettings = () => {
     <div className="min-h-screen bg-slate-50 via-white to-slate-50 dark:from-slate-950 dark:via-slate-900 dark:to-slate-950 text-slate-800 dark:text-slate-200 flex flex-col font-sans">
       <Navbar />
 
-      <main className="flex-1 w-full max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 pt-24 pb-20">
+      <div className="flex-1 w-full max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 pt-24 pb-20">
         {/* Breadcrumbs Navigation */}
         <nav className="flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400 mb-6">
           <button
@@ -986,7 +990,42 @@ const OrganizationSettings = () => {
             </div>
           </div>
 
+          {/* SECTION 4: INTEGRATIONS */}
+          <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-2xl p-6 shadow-sm">
+            <div className="flex items-center gap-3 mb-6 pb-4 border-b border-slate-100 dark:border-slate-800">
+              <div className="p-2 bg-orange-50 dark:bg-orange-900/30 rounded-xl text-orange-600 dark:text-orange-400">
+                <Blocks className="w-5 h-5" />
+              </div>
+              <div>
+                <h2 className="text-lg font-bold text-slate-900 dark:text-white">
+                  Integrations
+                </h2>
+                <p className="text-xs text-slate-500 dark:text-slate-400">
+                  Connect third-party tools to extend functionality
+                </p>
+              </div>
+            </div>
+
+            <div className="space-y-4">
+              <NotionConnectPanel canEdit={canEdit} />
+              <GitHubConnectPanel organizationId={metadata._id} />
+              <IssueTrackerConfig
+                provider="jira"
+                title="Jira Integration"
+                description="Automatically sync Action Items to Jira issues."
+                icon={<Blocks className="w-6 h-6 text-blue-600" />}
+              />
+              <IssueTrackerConfig
+                provider="linear"
+                title="Linear Integration"
+                description="Automatically sync Action Items to Linear issues."
+                icon={<Blocks className="w-6 h-6 text-indigo-600" />}
+              />
+            </div>
+          </div>
+
           {/* Form Submit Bar (for Admin/Owner) */}
+
           {canEdit && (
             <div className="flex items-center justify-end gap-3 pt-4">
               <button
@@ -1018,7 +1057,7 @@ const OrganizationSettings = () => {
             </div>
           )}
         </form>
-      </main>
+      </div>
     </div>
   );
 };

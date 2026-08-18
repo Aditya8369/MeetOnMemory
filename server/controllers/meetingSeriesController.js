@@ -1,7 +1,22 @@
 import { z } from "zod";
 import MeetingSeries from "../models/meetingSeriesModel.js";
 import Meeting from "../models/meetingModel.js";
-import { parseISO, addDays, addWeeks, addMonths } from "date-fns";
+import { parseISO } from "date-fns";
+import { parsePagination } from "../utils/pagination.js";
+import { normalizeAgendaItems } from "../utils/agendaOrdering.js";
+import {
+  generateOccurrenceDates,
+  parseMeetingTime,
+  MAX_OCCURRENCES,
+} from "../utils/recurrence.js";
+
+/**
+ * Hard ceiling for the `limit=0` / `limit=all` whole-series response
+ * (Issue #1071). Weekly for ~19 years — comfortably above any real recurrence
+ * schedule, and low enough that a corrupt or malicious series cannot exhaust
+ * the heap.
+ */
+const SERIES_MAX_UNPAGINATED = 1000;
 
 const createSeriesSchema = z.object({
   title: z.string().min(1, "Title is required"),
@@ -16,7 +31,16 @@ const createSeriesSchema = z.object({
     .string()
     .refine((val) => !isNaN(Date.parse(val)), "Invalid date"),
   endDate: z.string().refine((val) => !isNaN(Date.parse(val)), "Invalid date"),
-  time: z.string().min(1, "Time is required"),
+  // Was `z.string().min(1)`, so `"lunchtime"` was accepted and stored
+  // (Issue #1160). Both formats already present in the codebase are allowed:
+  // 24-hour `"14:30"` and 12-hour `"10:00 AM"`.
+  time: z
+    .string()
+    .min(1, "Time is required")
+    .refine(
+      (val) => parseMeetingTime(val) !== null,
+      "Time must be HH:MM (e.g. 14:30) or h:MM AM/PM (e.g. 2:30 PM)",
+    ),
   duration: z.number().optional().default(60),
   location: z.string().optional(),
   venue: z.string().optional(),
@@ -72,13 +96,43 @@ export const createSeries = async (req, res) => {
       });
     }
 
+    // Generate the occurrence dates *before* saving the series, so the values
+    // actually used for `dayOfWeek` / `dayOfMonth` can be written onto the
+    // series document. Previously the request's values were stored and then
+    // ignored, leaving the stored series describing a schedule its own meetings
+    // did not follow (Issue #1160).
+    const {
+      dates,
+      totalPossible,
+      truncated,
+      skippedMonths,
+      dayOfWeek: resolvedDayOfWeek,
+      dayOfMonth: resolvedDayOfMonth,
+    } = generateOccurrenceDates({
+      recurrencePattern,
+      startDate: start,
+      endDate: end,
+      dayOfWeek,
+      dayOfMonth,
+      time,
+      maxOccurrences: MAX_OCCURRENCES,
+    });
+
+    if (dates.length === 0) {
+      return res.status(400).json({
+        success: false,
+        message:
+          "The requested schedule produces no meetings in the given date range.",
+      });
+    }
+
     const series = new MeetingSeries({
       title,
       organization: req.user.organization,
       createdBy: req.user._id,
       recurrencePattern,
-      dayOfWeek,
-      dayOfMonth,
+      dayOfWeek: resolvedDayOfWeek,
+      dayOfMonth: resolvedDayOfMonth,
       startDate: start,
       endDate: end,
       time,
@@ -87,51 +141,47 @@ export const createSeries = async (req, res) => {
 
     await series.save();
 
-    // Generate occurrences
-    let currentDate = start;
-    let occurrence = 1;
-    const meetingsToCreate = [];
-
-    // Limit to max 50 occurrences to prevent infinite loops / memory issues
-    const MAX_OCCURRENCES = 50;
-
-    while (currentDate <= end && occurrence <= MAX_OCCURRENCES) {
-      meetingsToCreate.push({
-        uploadedBy: req.user._id,
-        organization: req.user.organization,
-        title,
-        description,
-        meetingType,
-        date: currentDate,
-        time,
-        duration,
-        location,
-        venue,
-        participants,
-        agendaItems,
-        series: series._id,
-        seriesOccurrence: occurrence,
-      });
-
-      if (recurrencePattern === "daily") {
-        currentDate = addDays(currentDate, 1);
-      } else if (recurrencePattern === "weekly") {
-        currentDate = addWeeks(currentDate, 1);
-      } else if (recurrencePattern === "biweekly") {
-        currentDate = addWeeks(currentDate, 2);
-      } else if (recurrencePattern === "monthly") {
-        currentDate = addMonths(currentDate, 1);
-      }
-
-      occurrence++;
-    }
+    const meetingsToCreate = dates.map((date, index) => ({
+      uploadedBy: req.user._id,
+      organization: req.user.organization,
+      title,
+      description,
+      meetingType,
+      date,
+      time,
+      duration,
+      location,
+      venue,
+      participants,
+      // `insertMany` bypasses the document `pre("validate")` hook that
+      // normally runs `normalizeAgendaItems`, so series-created meetings had
+      // un-normalized `position` values unlike every other meeting. Applying it
+      // here restores the invariant.
+      agendaItems: normalizeAgendaItems(agendaItems),
+      series: series._id,
+      seriesOccurrence: index + 1,
+    }));
 
     const createdMeetings = await Meeting.insertMany(meetingsToCreate);
+
+    if (truncated) {
+      console.warn(
+        `⚠️ Series ${series._id} implied ${totalPossible} occurrences; created ${createdMeetings.length} (cap ${MAX_OCCURRENCES}).`,
+      );
+    }
 
     res.status(201).json({
       success: true,
       series,
       meetingsCreated: createdMeetings.length,
+      // A 201 that quietly drops occurrences is the wrong answer. The caller
+      // now gets enough to say "we scheduled 520 of the 730 you asked for".
+      occurrencesRequested: totalPossible,
+      truncated,
+      maxOccurrences: MAX_OCCURRENCES,
+      // Non-zero only for a monthly series on a day some months lack (the 31st
+      // in February), which is skipped rather than clamped.
+      skippedMonths,
     });
   } catch (error) {
     if (error instanceof z.ZodError) {
@@ -170,22 +220,47 @@ export const getSeriesById = async (req, res) => {
 
 export const getSeriesMeetings = async (req, res) => {
   try {
-    const page = parseInt(req.query.page) || 1;
-    const limit = parseInt(req.query.limit) || 20;
-    const skip = (page - 1) * limit;
+    // `limit=0` / `limit=all` is the deliberate "give me the whole series"
+    // escape hatch added for #915 — a series timeline is not useful a page at a
+    // time. It is kept, but it is no longer *unbounded*: a series with a
+    // runaway occurrence count would otherwise stream every document into
+    // memory. SERIES_MAX_UNPAGINATED is far above any real recurrence schedule
+    // (weekly for ~19 years), so nothing legitimate is truncated.
+    const wantsWholeSeries =
+      req.query.limit === "0" || req.query.limit === "all";
 
-    const meetings = await Meeting.find({
-      series: req.params.id,
-      organization: req.user.organization,
-    })
-      .sort({ seriesOccurrence: 1 })
-      .skip(skip)
-      .limit(limit);
+    const orgId = req.user?.organization || req.user?.organizationId || null;
+    const query = { series: req.params.id };
+    if (orgId) {
+      query.organization = orgId;
+    }
 
-    const total = await Meeting.countDocuments({
-      series: req.params.id,
-      organization: req.user.organization,
-    });
+    const total = await Meeting.countDocuments(query);
+
+    let meetings;
+    let page = 1;
+    let limit = 0;
+
+    if (wantsWholeSeries) {
+      meetings = await Meeting.find(query)
+        .sort({ seriesOccurrence: 1 })
+        .limit(SERIES_MAX_UNPAGINATED);
+
+      if (total > SERIES_MAX_UNPAGINATED) {
+        console.warn(
+          `⚠️ Series ${req.params.id} has ${total} meetings; truncating the unpaginated response at ${SERIES_MAX_UNPAGINATED}.`,
+        );
+      }
+    } else {
+      // `parseInt(req.query.limit)` used to be passed straight to `.limit()`,
+      // so `?limit=10000000` was honoured verbatim, and `?page=0` produced a
+      // negative skip that MongoDB rejected as a 500.
+      ({ page, limit } = parsePagination(req.query, { defaultLimit: 20 }));
+      meetings = await Meeting.find(query)
+        .sort({ seriesOccurrence: 1 })
+        .skip((page - 1) * limit)
+        .limit(limit);
+    }
 
     res.json({
       success: true,
@@ -193,7 +268,7 @@ export const getSeriesMeetings = async (req, res) => {
       pagination: {
         total,
         page,
-        pages: Math.ceil(total / limit),
+        pages: limit > 0 ? Math.ceil(total / limit) : 1,
       },
     });
   } catch (error) {
@@ -219,12 +294,23 @@ export const cancelSeries = async (req, res) => {
         .json({ success: false, message: "Series not found" });
     }
 
-    // Delete future un-started meetings in the series
-    const result = await Meeting.deleteMany({
+    // Delete future un-started meetings in the series.
+    //
+    // Scoped to the caller's organization (Issue #1160). `series._id` is
+    // already confirmed to belong to them by the `findOneAndUpdate` above, so
+    // this is defence in depth rather than a live hole — but every other
+    // destructive query in this controller is org-scoped, and a `deleteMany`
+    // is the last place to rely on an inference from two statements earlier.
+    const deletionFilter = {
       series: series._id,
       date: { $gte: new Date() },
       status: "uploaded", // Only delete if they haven't been started/processed
-    });
+    };
+    if (req.user.organization) {
+      deletionFilter.organization = req.user.organization;
+    }
+
+    const result = await Meeting.deleteMany(deletionFilter);
 
     res.json({
       success: true,

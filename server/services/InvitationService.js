@@ -17,6 +17,15 @@ import {
   ConflictError,
   ValidationError,
 } from "../utils/errors.js";
+import { parseInvitationCsv } from "../utils/invitationCsvParse.js";
+import {
+  startBulkInvitationJob,
+  recordBulkInvitationResult,
+  finishBulkInvitationJob,
+} from "./bulkInvitationProgress.js";
+
+/** Maximum invitation rows accepted in a single CSV upload (Issue #1362). */
+export const MAX_BULK_INVITATIONS = 100;
 
 // ═══════════════════════════════════════════════════════════════
 // Private helpers
@@ -71,6 +80,47 @@ const isValidRole = (role) => allowedRoles.includes(role);
  */
 const generateInvitationToken = () => {
   return crypto.randomBytes(32).toString("hex");
+};
+
+/**
+ * Returns true when an invitation is past its expiry timestamp.
+ * Treats missing or invalid expiry values as expired.
+ * @param {Date|string|number|null|undefined} expiresAt
+ * @returns {boolean}
+ */
+export const isInvitationExpired = (expiresAt) => {
+  if (expiresAt == null) return true;
+  const expiryMs = new Date(expiresAt).getTime();
+  return Number.isNaN(expiryMs) || expiryMs <= Date.now();
+};
+
+/**
+ * Ensures an invitation is pending and not expired.
+ * Marks expired invitations when persistExpired is true.
+ *
+ * @param {import("mongoose").Document} invitation
+ * @param {{ persistExpired?: boolean, session?: import("mongoose").ClientSession }} [options]
+ * @throws {NotFoundError|ValidationError}
+ */
+export const assertInvitationPendingAndActive = async (
+  invitation,
+  { persistExpired = true, session = null } = {},
+) => {
+  if (!invitation) {
+    throw new NotFoundError("Invitation not found.");
+  }
+
+  if (invitation.status !== "pending") {
+    throw new ValidationError("Invitation is not in pending status.");
+  }
+
+  if (isInvitationExpired(invitation.expiresAt)) {
+    if (persistExpired) {
+      invitation.status = "expired";
+      await invitation.save(session ? { session } : undefined);
+    }
+    throw new ValidationError("Invitation has expired.");
+  }
 };
 
 /**
@@ -210,6 +260,124 @@ export const createInvitation = async (
 };
 
 /**
+ * ✅ Bulk-import invitations from CSV (Issue #1362)
+ *
+ * Parses CSV content, enforces the 100-row cap, validates/creates each row via
+ * `createInvitation` (reusing auth, duplicate, and role rules), and tracks
+ * per-row progress for the response (and future async workers).
+ *
+ * @param {string} userId
+ * @param {{ organizationId: string, csvContent: string|Buffer }} payload
+ * @param {{ origin?: string, inviterName?: string }} meta
+ */
+export const bulkImportInvitations = async (
+  userId,
+  { organizationId, csvContent },
+  { origin, inviterName } = {},
+) => {
+  if (!organizationId) {
+    throw new ValidationError("Organization ID is required.");
+  }
+  if (!isValidObjectId(organizationId)) {
+    throw new ValidationError("Invalid organization ID.");
+  }
+  if (csvContent == null || csvContent === "") {
+    throw new ValidationError("CSV file is required.");
+  }
+
+  // Fail fast on org access before parsing large files into invitations.
+  const organization = await Organization.findById(organizationId);
+  if (!organization) {
+    throw new NotFoundError("Organization not found.");
+  }
+  if (!(await isAdminOrOwner(userId, organization))) {
+    throw new ForbiddenError("Not authorized to create invitations.");
+  }
+
+  let parsed;
+  try {
+    parsed = parseInvitationCsv(csvContent);
+  } catch (err) {
+    throw new ValidationError(err.message || "Invalid CSV file.");
+  }
+
+  if (parsed.rows.length === 0) {
+    throw new ValidationError("CSV file contains no invitation rows.");
+  }
+
+  if (parsed.rows.length > MAX_BULK_INVITATIONS) {
+    throw new ValidationError(
+      `CSV exceeds the maximum of ${MAX_BULK_INVITATIONS} invitations per upload.`,
+    );
+  }
+
+  const job = startBulkInvitationJob(parsed.rows.length);
+
+  for (const row of parsed.rows) {
+    const email = row.email || "";
+
+    if (!email) {
+      recordBulkInvitationResult(job.jobId, {
+        row: row.row,
+        email,
+        success: false,
+        error: "Email is required.",
+      });
+      continue;
+    }
+
+    if (!row.role) {
+      recordBulkInvitationResult(job.jobId, {
+        row: row.row,
+        email,
+        success: false,
+        error: "Role is required.",
+      });
+      continue;
+    }
+
+    try {
+      const created = await createInvitation(
+        userId,
+        {
+          organizationId,
+          email: row.email,
+          role: row.role,
+          message: row.message,
+        },
+        { origin, inviterName },
+      );
+
+      recordBulkInvitationResult(job.jobId, {
+        row: row.row,
+        email,
+        success: true,
+        invitationId: String(created.invitation._id),
+      });
+    } catch (err) {
+      recordBulkInvitationResult(job.jobId, {
+        row: row.row,
+        email,
+        success: false,
+        error: err.message || "Failed to create invitation.",
+      });
+    }
+  }
+
+  finishBulkInvitationJob(job.jobId, "completed");
+
+  return {
+    success: true,
+    jobId: job.jobId,
+    totalRows: job.totalRows,
+    successful: job.successful,
+    failed: job.failed,
+    progress: job.progress,
+    results: job.results,
+  };
+};
+
+/**
  * ✅ Get Organization Invitations
  */
 export const getOrganizationInvitations = async (
@@ -283,72 +451,108 @@ export const getUserInvitations = async (userId) => {
 };
 
 /**
- * ✅ Accept Invitation
+ * ✅ Accept Invitation (ATOMIC TRANSACTION)
+ *
+ * Issue #1240: Wrapped in database transaction to prevent inconsistent state.
+ *
+ * Operations performed atomically:
+ * 1. Validate invitation exists and is pending
+ * 2. Check invitation hasn't expired
+ * 3. Verify email matches authenticated user
+ * 4. Check for existing active membership
+ * 5. Update invitation status to "accepted"
+ * 6. Create new membership record
+ * 7. Update user model for backward compatibility
+ *
+ * If any step fails, all changes are rolled back.
  */
 export const acceptInvitation = async (userId, token) => {
-  const invitation = await Invitation.findOne({ token }).populate(
-    "organization",
-  );
+  // Start a MongoDB session for transactions
+  const session = await mongoose.startSession();
+  session.startTransaction();
 
-  if (!invitation) {
-    throw new NotFoundError("Invitation not found.");
+  try {
+    // Step 1: Find invitation and populate organization
+    const invitation = await Invitation.findOne({ token })
+      .populate("organization")
+      .session(session);
+
+    if (!invitation) {
+      throw new NotFoundError("Invitation not found.");
+    }
+
+    // Step 2–3: Validate pending status and expiry (Issue #1358)
+    await assertInvitationPendingAndActive(invitation, { session });
+
+    // Step 4: Verify email matches authenticated user
+    const user = await userModel.findById(userId).session(session);
+
+    if (!user || user.email.toLowerCase() !== invitation.email.toLowerCase()) {
+      throw new ForbiddenError("Invitation is not for this user.");
+    }
+
+    // Step 5: Check for existing active membership (prevent duplicates)
+    const existingMembership = await Membership.findOne({
+      user: userId,
+      organization: invitation.organization._id,
+      status: "active",
+    }).session(session);
+
+    if (existingMembership) {
+      throw new ValidationError("Already a member of this organization.");
+    }
+
+    // Step 6: Update invitation status (within transaction)
+    invitation.status = "accepted";
+    invitation.acceptedBy = userId;
+    invitation.acceptedAt = new Date();
+    await invitation.save({ session });
+
+    // Step 7: Create membership (within transaction)
+    const newMembership = await Membership.create(
+      [
+        {
+          user: userId,
+          organization: invitation.organization._id,
+          role: invitation.role,
+          status: "active",
+        },
+      ],
+      { session },
+    );
+
+    // Step 8: Update user model for backward compatibility (within transaction)
+    await userModel.findByIdAndUpdate(
+      userId,
+      {
+        role: invitation.role,
+        organization: invitation.organization._id,
+        hasCompletedOnboarding: true,
+      },
+      { session },
+    );
+
+    // Commit transaction - all changes are saved atomically
+    await session.commitTransaction();
+    session.endSession();
+
+    return {
+      success: true,
+      message: "Invitation accepted successfully.",
+      invitation,
+      membership: newMembership[0],
+    };
+  } catch (error) {
+    // Rollback transaction on any error - no partial writes
+    await session.abortTransaction();
+    session.endSession();
+
+    console.error(
+      "❌ Invitation acceptance failed, transaction rolled back:",
+      error.message,
+    );
+    throw error;
   }
-
-  if (invitation.status !== "pending") {
-    throw new ValidationError("Invitation is not in pending status.");
-  }
-
-  if (invitation.expiresAt < new Date()) {
-    invitation.status = "expired";
-    await invitation.save();
-    throw new ValidationError("Invitation has expired.");
-  }
-
-  // Verify email matches
-  const user = await userModel.findById(userId);
-
-  if (!user || user.email.toLowerCase() !== invitation.email.toLowerCase()) {
-    throw new ForbiddenError("Invitation is not for this user.");
-  }
-
-  // Check if user already has an active membership
-  const existingMembership = await Membership.findOne({
-    user: userId,
-    organization: invitation.organization._id,
-    status: "active",
-  });
-
-  if (existingMembership) {
-    throw new ValidationError("Already a member of this organization.");
-  }
-
-  // Update invitation status
-  invitation.status = "accepted";
-  invitation.acceptedBy = userId;
-  invitation.acceptedAt = new Date();
-  await invitation.save();
-
-  // Create membership
-  const newMembership = await Membership.create({
-    user: userId,
-    organization: invitation.organization._id,
-    role: invitation.role,
-    status: "active",
-  });
-
-  // Update user model for backward compatibility
-  await userModel.findByIdAndUpdate(userId, {
-    role: invitation.role,
-    organization: invitation.organization._id,
-    hasCompletedOnboarding: true,
-  });
-
-  return {
-    success: true,
-    message: "Invitation accepted successfully.",
-    invitation,
-    membership: newMembership,
-  };
 };
 
 /**
@@ -361,9 +565,7 @@ export const rejectInvitation = async (userId, token) => {
     throw new NotFoundError("Invitation not found.");
   }
 
-  if (invitation.status !== "pending") {
-    throw new ValidationError("Invitation is not in pending status.");
-  }
+  await assertInvitationPendingAndActive(invitation);
 
   // Verify email matches
   const user = await userModel.findById(userId);
@@ -430,15 +632,7 @@ export const getInvitationByToken = async (token) => {
     throw new NotFoundError("Invitation not found.");
   }
 
-  if (invitation.status !== "pending") {
-    throw new ValidationError("Invitation is not in pending status.");
-  }
-
-  if (invitation.expiresAt < new Date()) {
-    invitation.status = "expired";
-    await invitation.save();
-    throw new ValidationError("Invitation has expired.");
-  }
+  await assertInvitationPendingAndActive(invitation);
 
   return { success: true, invitation };
 };

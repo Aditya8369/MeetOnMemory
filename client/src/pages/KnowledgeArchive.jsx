@@ -32,6 +32,12 @@ const KnowledgeArchive = () => {
   const [restoringId, setRestoringId] = useState(null);
   const [archivedMemories, setArchivedMemories] = useState([]);
 
+  // Server-side Pagination State (#835)
+  const [page, setPage] = useState(1);
+  const [limit, setLimit] = useState(10);
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalCount, setTotalCount] = useState(0);
+
   // Restore Modal State
   const [restoreModal, setRestoreModal] = useState({
     isOpen: false,
@@ -48,57 +54,35 @@ const KnowledgeArchive = () => {
   const loadArchivedMemories = useCallback(async () => {
     setLoading(true);
     try {
-      let decisionList = [];
-      let actionList = [];
-
-      const queryOpts = {
-        includeArchived: true,
-        lifecycleState: "archived",
+      const res = await knowledgeApi.getArchivedMemories({
+        type: selectedType,
+        page,
+        limit,
         ...(searchQuery ? { search: searchQuery } : {}),
-      };
+      });
 
-      if (selectedType === "all" || selectedType === "decision") {
-        const dRes = await knowledgeApi.getDecisions(
-          "createdAt",
-          null,
-          queryOpts,
+      if (res.data?.success) {
+        setArchivedMemories(res.data.memories || []);
+        setTotalCount(res.data.pagination?.total || 0);
+        setTotalPages(Math.max(1, res.data.pagination?.totalPages || 1));
+      } else {
+        setArchivedMemories([]);
+        setTotalCount(0);
+        setTotalPages(1);
+        toast.error(
+          res.data?.message || "Failed to fetch archived knowledge items.",
         );
-        if (dRes.data?.success) {
-          decisionList = (dRes.data.decisions || []).map((d) => ({
-            ...d,
-            type: "decision",
-          }));
-        }
       }
-
-      if (selectedType === "all" || selectedType === "action-item") {
-        const aRes = await knowledgeApi.getActionItems(
-          "all",
-          "createdAt",
-          queryOpts,
-        );
-        if (aRes.data?.success) {
-          actionList = (aRes.data.actionItems || []).map((a) => ({
-            ...a,
-            type: "action-item",
-          }));
-        }
-      }
-
-      const combined = [...decisionList, ...actionList].sort(
-        (a, b) =>
-          new Date(b.archivedAt || b.updatedAt) -
-          new Date(a.archivedAt || a.updatedAt),
-      );
-
-      setArchivedMemories(combined);
     } catch (err) {
       console.error("Failed to load archived memories:", err);
       toast.error("Failed to fetch archived knowledge items.");
+      setArchivedMemories([]);
+      setTotalCount(0);
+      setTotalPages(1);
     } finally {
       setLoading(false);
     }
-  }, [selectedType, searchQuery]);
+  }, [selectedType, searchQuery, page, limit]);
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -107,6 +91,16 @@ const KnowledgeArchive = () => {
     return () => clearTimeout(timer);
   }, [loadArchivedMemories]);
 
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (e.key === "Escape") {
+        setRestoreModal((prev) => ({ ...prev, isOpen: false }));
+        setHistoryModal((prev) => ({ ...prev, isOpen: false }));
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, []);
   const openRestoreModal = (memory) => {
     setRestoreModal({
       isOpen: true,
@@ -204,7 +198,10 @@ const KnowledgeArchive = () => {
                 type="text"
                 placeholder="Search archived decisions, action items, or keywords..."
                 value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
+                onChange={(e) => {
+                  setSearchQuery(e.target.value);
+                  setPage(1);
+                }}
                 className="w-full pl-9 pr-4 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-xs focus:ring-2 focus:ring-indigo-500 focus:outline-none"
               />
             </div>
@@ -214,7 +211,10 @@ const KnowledgeArchive = () => {
               <Filter className="w-4 h-4 text-slate-400" />
               <select
                 value={selectedType}
-                onChange={(e) => setSelectedType(e.target.value)}
+                onChange={(e) => {
+                  setSelectedType(e.target.value);
+                  setPage(1);
+                }}
                 className="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-3 py-2 text-xs font-medium cursor-pointer"
               >
                 {TYPE_OPTIONS.map((t) => (
@@ -275,7 +275,7 @@ const KnowledgeArchive = () => {
             <div className="space-y-4">
               {filteredMemories.map((mem) => (
                 <div
-                  key={mem._id}
+                  key={`${mem.type}-${mem._id}`}
                   className="bg-white dark:bg-slate-900 border border-indigo-100 dark:border-slate-800/80 rounded-2xl p-5 shadow-xs hover:border-indigo-300 dark:hover:border-indigo-800 transition-all flex flex-col md:flex-row md:items-center justify-between gap-4"
                 >
                   <div className="space-y-2 flex-1">
@@ -349,6 +349,60 @@ const KnowledgeArchive = () => {
                   </div>
                 </div>
               ))}
+
+              {/* Pagination Controls (#835) */}
+              <div className="flex flex-wrap items-center justify-between gap-4 pt-4 border-t border-slate-200 dark:border-slate-800 text-xs">
+                <div className="text-slate-500 dark:text-slate-400 font-medium">
+                  Showing page{" "}
+                  <strong className="text-slate-800 dark:text-slate-200">
+                    {page}
+                  </strong>{" "}
+                  of{" "}
+                  <strong className="text-slate-800 dark:text-slate-200">
+                    {totalPages}
+                  </strong>{" "}
+                  ({totalCount} total archived items)
+                </div>
+
+                <div className="flex items-center gap-3">
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-slate-500 dark:text-slate-400">
+                      Per page:
+                    </span>
+                    <select
+                      value={limit}
+                      onChange={(e) => {
+                        setLimit(Number(e.target.value));
+                        setPage(1);
+                      }}
+                      className="rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-2 py-1 font-medium cursor-pointer"
+                    >
+                      <option value={10}>10</option>
+                      <option value={20}>20</option>
+                      <option value={50}>50</option>
+                    </select>
+                  </div>
+
+                  <div className="flex items-center gap-1">
+                    <button
+                      onClick={() => setPage((prev) => Math.max(prev - 1, 1))}
+                      disabled={page <= 1 || loading}
+                      className="px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 font-medium hover:bg-slate-50 dark:hover:bg-slate-800 disabled:opacity-40 cursor-pointer"
+                    >
+                      Previous
+                    </button>
+                    <button
+                      onClick={() =>
+                        setPage((prev) => Math.min(prev + 1, totalPages))
+                      }
+                      disabled={page >= totalPages || loading}
+                      className="px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 font-medium hover:bg-slate-50 dark:hover:bg-slate-800 disabled:opacity-40 cursor-pointer"
+                    >
+                      Next
+                    </button>
+                  </div>
+                </div>
+              </div>
             </div>
           )}
         </div>

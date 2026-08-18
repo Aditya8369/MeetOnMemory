@@ -9,6 +9,13 @@ export const knowledgeApi = {
     if (options.search) url += `&search=${encodeURIComponent(options.search)}`;
     if (options.page) url += `&page=${options.page}`;
     if (options.limit) url += `&limit=${options.limit}`;
+    if (options.owner) url += `&owner=${encodeURIComponent(options.owner)}`;
+    if (options.priority)
+      url += `&priority=${encodeURIComponent(options.priority)}`;
+    if (options.organization)
+      url += `&organization=${encodeURIComponent(options.organization)}`;
+    if (options.sortOrder)
+      url += `&sortOrder=${encodeURIComponent(options.sortOrder)}`;
     return apiClient.get(url);
   },
   updateActionItemStatus: (id, status) =>
@@ -24,6 +31,32 @@ export const knowledgeApi = {
     if (options.page) url += `&page=${options.page}`;
     if (options.limit) url += `&limit=${options.limit}`;
     return apiClient.get(url);
+  },
+  /**
+   * Unified archived decisions + action items with correct combined pagination (#901).
+   */
+  getArchivedMemories: (options = {}) => {
+    const params = new URLSearchParams();
+    if (options.type) params.append("type", options.type);
+    if (options.search) params.append("search", options.search);
+    if (options.page) params.append("page", String(options.page));
+    if (options.limit) params.append("limit", String(options.limit));
+    const query = params.toString();
+    return apiClient.get(`/api/knowledge/archive${query ? `?${query}` : ""}`);
+  },
+  /**
+   * Unified Memory Lifecycle list with server-side pagination (#1552).
+   */
+  getLifecycleMemories: (options = {}) => {
+    const params = new URLSearchParams();
+    if (options.type) params.append("type", options.type);
+    if (options.lifecycleState)
+      params.append("lifecycleState", options.lifecycleState);
+    if (options.search) params.append("search", options.search);
+    if (options.page) params.append("page", String(options.page));
+    if (options.limit) params.append("limit", String(options.limit));
+    const query = params.toString();
+    return apiClient.get(`/api/knowledge/lifecycle${query ? `?${query}` : ""}`);
   },
   getDecisionLineage: (decisionId) =>
     apiClient.get(`/api/knowledge/decisions/${decisionId}/lineage`),
@@ -49,10 +82,14 @@ export const knowledgeApi = {
       `/api/knowledge/consolidation/history?model=${model}&limit=${limit}`,
     ),
   // Memory Graph Snapshot & Time-Travel
-  getGraphSnapshots: ({ limit = 50, before } = {}) =>
-    apiClient.get(
-      `/api/knowledge/graph/snapshots?limit=${limit}${before ? `&before=${before}` : ""}`,
-    ),
+  getGraphSnapshots: ({ limit = 20, before, page } = {}) => {
+    const params = new URLSearchParams();
+    if (limit) params.append("limit", limit);
+    if (before) params.append("before", before);
+    if (page) params.append("page", page);
+    return apiClient.get(`/api/knowledge/graph/snapshots?${params.toString()}`);
+  },
+
   getGraphSnapshot: (id) =>
     apiClient.get(`/api/knowledge/graph/snapshots/${id}`),
   exportGraphSnapshot: (id) =>

@@ -1,4 +1,4 @@
-import { Calendar, Video, Presentation } from "lucide-react";
+import { Calendar, Video, Presentation, Sparkles } from "lucide-react";
 
 const MeetingTabs = ({ activeSection, setActiveSection }) => {
   return (
@@ -13,6 +13,17 @@ const MeetingTabs = ({ activeSection, setActiveSection }) => {
         }`}
       >
         <Calendar size={20} /> Schedule Meeting
+      </button>
+      <button
+        type="button"
+        onClick={() => setActiveSection("smart")}
+        className={`px-6 py-3 rounded-lg font-semibold transition flex items-center gap-2 cursor-pointer ${
+          activeSection === "smart"
+            ? "bg-teal-600 text-white shadow-lg"
+            : "bg-white dark:bg-slate-900 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-slate-800 border border-gray-200 dark:border-gray-800"
+        }`}
+      >
+        <Sparkles size={20} /> Smart Scheduler
       </button>
       <button
         type="button"

@@ -4,6 +4,7 @@ import Organization from "../models/organizationModel.js";
 import userModel from "../models/userModel.js";
 import { sendSuccess, sendError } from "../utils/responseHandler.js";
 import * as activityService from "../services/activityService.js";
+import { syncMembershipAndUserRole } from "../services/MembershipService.js";
 
 /**
  * ✅ Get User Memberships
@@ -123,24 +124,32 @@ export const updateMembershipRole = async (req, res) => {
       }
     }
 
-    membership.role = role;
-    await membership.save();
+    // Issue #1361: update Membership.role and User.role atomically when the
+    // membership belongs to the user's primary organization.
+    const { membership: updatedMembership } = await syncMembershipAndUserRole(
+      membership,
+      role,
+    );
 
     const io = req.app.get("io");
     activityService.logActivity(
       io,
-      membership.organization._id || membership.organization,
+      updatedMembership.organization._id || updatedMembership.organization,
       req.user.id,
       "membership.role_updated",
       "User",
-      membership.user,
+      updatedMembership.user,
       "Role updated to " + role,
     );
 
-    sendSuccess(res, { membership }, "Membership role updated successfully.");
+    sendSuccess(
+      res,
+      { membership: updatedMembership },
+      "Membership role updated successfully.",
+    );
   } catch (error) {
     console.error("❌ Error updating membership role:", error);
-    sendError(res, 500, "Server error");
+    sendError(res, error.statusCode || 500, error.message || "Server error");
   }
 };
 

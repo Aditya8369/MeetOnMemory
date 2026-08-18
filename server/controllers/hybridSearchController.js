@@ -6,8 +6,12 @@
 // ================================
 
 import { hybridRetrieve } from "../services/hybridRetrievalService.js";
-import { getRedisClient, setSearchCache } from "../services/redisService.js"; // eslint-disable-line no-unused-vars
+import { setSearchCache } from "../services/redisService.js";
 import { sendSuccess, sendError } from "../utils/responseHandler.js";
+import {
+  assertHybridSearchOrganization,
+  resolveHybridSearchContext,
+} from "../utils/resolveSearchTenant.js";
 
 /**
  * @desc  Hybrid retrieval: semantic vector search fused with knowledge-graph
@@ -38,7 +42,7 @@ export const hybridSearch = async (req, res) => {
       );
     }
 
-    const { query, ...options } = req.body;
+    const { query, organizationId, options } = resolveHybridSearchContext(req);
 
     if (!query || typeof query !== "string" || query.trim().length < 3) {
       return sendError(
@@ -48,15 +52,27 @@ export const hybridSearch = async (req, res) => {
       );
     }
 
-    const organization = req.user?.organization || null;
+    if (!organizationId) {
+      return sendError(
+        res,
+        403,
+        "Forbidden: Organization membership required for hybrid search",
+      );
+    }
 
     console.log(
-      `🔀 Hybrid search for query: "${query}" (org: ${organization})`,
+      `🔀 Hybrid search for query: "${query}" (org: ${organizationId})`,
     );
+
+    try {
+      assertHybridSearchOrganization(organizationId);
+    } catch (error) {
+      return sendError(res, 403, error.message);
+    }
 
     const { results, meta } = await hybridRetrieve(
       query,
-      organization,
+      organizationId,
       options,
     );
 
@@ -81,6 +97,12 @@ export const hybridSearch = async (req, res) => {
 
     if (error.message === "A non-empty query string is required") {
       return sendError(res, 400, error.message);
+    }
+
+    if (
+      error.message === "Organization context is required for hybrid search"
+    ) {
+      return sendError(res, 403, error.message);
     }
 
     sendError(

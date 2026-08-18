@@ -2,22 +2,27 @@ import React, { useContext } from "react";
 import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
 import AppContent from "../context/AppContent";
+import { useRBAC } from "../hooks/useRBAC.js";
 import {
   FileText,
   Upload,
   BarChart3,
   Brain,
   Search,
-  ArrowRight,
   Sparkles,
   Shield,
   Users,
+  Trophy,
+  ArrowRight,
 } from "lucide-react";
 import Navbar from "../components/Navbar.jsx";
 import TopContributorsWidget from "../components/organization/TopContributorsWidget";
 import DashboardMetricsWidget from "../components/dashboard/DashboardMetricsWidget.jsx";
 import OrganizationLogo from "../components/organization/OrganizationLogo.jsx";
 import OrganizationBanner from "../components/organization/OrganizationBanner.jsx";
+import PersonalNotesSidebar from "../components/PersonalNotesSidebar.jsx";
+import PendingRsvpBanner from "../components/dashboard/PendingRsvpBanner.jsx";
+import StoryThumbnails from "../components/dashboard/StoryThumbnails.jsx";
 
 /* ─── Role Badge ──────────────────────────────────────────────────────────── */
 const ROLE_STYLES = {
@@ -34,12 +39,15 @@ const ROUTE_MAP = {
   policies: "/policies",
   reports: "/reports",
   "attendance-analytics": "/attendance-analytics",
+  "meeting-cost-analytics": "/meeting-cost-analytics",
+  leaderboard: "/leaderboard",
 };
 
 /* ─── Dashboard ───────────────────────────────────────────────────────────── */
 const Dashboard = () => {
   const { t } = useTranslation();
   const { userData } = useContext(AppContent);
+  const { hasPermission } = useRBAC();
   const navigate = useNavigate();
 
   const organizationName =
@@ -55,6 +63,7 @@ const Dashboard = () => {
 
   const isAdmin =
     rawRole.toLowerCase() === "admin" || rawRole.toLowerCase() === "owner";
+  const canCreateMeeting = hasPermission("meetings", "create");
 
   const FEATURE_CARDS = [
     {
@@ -67,7 +76,7 @@ const Dashboard = () => {
       tag: t("dashboard.transcription"),
       tagColor: "bg-blue-50 text-blue-700 border-blue-100",
       accentRing: "group-hover:ring-blue-100",
-      adminOnly: true,
+      requiresCreateMeeting: true,
     },
     {
       id: "create-meeting",
@@ -79,7 +88,7 @@ const Dashboard = () => {
       tag: t("dashboard.scheduling"),
       tagColor: "bg-emerald-50 text-emerald-700 border-emerald-100",
       accentRing: "group-hover:ring-emerald-100",
-      adminOnly: true,
+      requiresCreateMeeting: true,
     },
     {
       id: "summaries",
@@ -126,11 +135,37 @@ const Dashboard = () => {
       tagColor: "bg-pink-50 text-pink-700 border-pink-100",
       accentRing: "group-hover:ring-pink-100",
     },
+    {
+      id: "meeting-cost-analytics",
+      icon: BarChart3,
+      title: "Meeting Cost Analytics",
+      description:
+        "Analyze organizational cost and time investment across all meetings.",
+      iconBg: "bg-blue-50",
+      iconColor: "text-blue-600",
+      tag: "Cost",
+      tagColor: "bg-blue-50 text-blue-700 border-blue-100",
+      adminOnly: true,
+    },
+    {
+      id: "leaderboard",
+      icon: Trophy,
+      title: "Meeting Hygiene Leaderboard",
+      description:
+        "View top contributors with the best meeting hygiene scores and badges.",
+      iconBg: "bg-yellow-50",
+      iconColor: "text-yellow-600",
+      tag: "Gamification",
+      tagColor: "bg-yellow-50 text-yellow-700 border-yellow-100",
+      accentRing: "group-hover:ring-yellow-100",
+    },
   ];
 
-  const visibleCards = FEATURE_CARDS.filter(
-    (card) => !card.adminOnly || isAdmin,
-  );
+  const visibleCards = FEATURE_CARDS.filter((card) => {
+    if (card.adminOnly && !isAdmin) return false;
+    if (card.requiresCreateMeeting && !canCreateMeeting) return false;
+    return true;
+  });
 
   const handleAISearch = () => navigate("/ai-search");
   const handleCardClick = (id) => navigate(ROUTE_MAP[id]);
@@ -139,7 +174,9 @@ const Dashboard = () => {
     <div className="min-h-screen flex flex-col bg-linear-to-b from-slate-50 via-white to-slate-50 dark:from-gray-900 dark:via-gray-900 dark:to-gray-900">
       <Navbar />
 
-      <main className="flex-1 w-full max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 pt-28 pb-12 sm:pb-16">
+      <div className="flex-1 w-full max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 pt-28 pb-12 sm:pb-16">
+        <PendingRsvpBanner />
+        <StoryThumbnails />
         {/* ── Hero + AI Search — unified panel ── */}
         <section
           aria-label="Dashboard hero"
@@ -332,18 +369,19 @@ const Dashboard = () => {
           </div>
         </section>
 
-        {/* ── Gamification ── */}
+        {/* ── Additional Widgets (Gamification & Notes) ── */}
         <section
-          aria-label="Organization Engagement"
-          className="mt-6 sm:mt-8 fade-in-up stagger-3"
+          aria-label="Additional Widgets"
+          className="mt-6 sm:mt-8 fade-in-up stagger-3 grid grid-cols-1 lg:grid-cols-2 gap-6"
         >
           <TopContributorsWidget
             organizationId={
               userData?.organization?._id || userData?.organization
             }
           />
+          <PersonalNotesSidebar />
         </section>
-      </main>
+      </div>
     </div>
   );
 };

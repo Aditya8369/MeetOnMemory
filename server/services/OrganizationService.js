@@ -143,7 +143,7 @@ const joinOrganization = async (userId, organization) => {
   }
 
   if (!Array.isArray(organization.members)) organization.members = [];
-  organization.members.push(userId);
+  organization.members.push({ userId, role: "member" });
   await organization.save();
 
   await userModel.findByIdAndUpdate(userId, {
@@ -207,7 +207,8 @@ export const createOrJoinOrganization = async (userId, orgName) => {
       slug: uniqueSlug,
       owner: userId,
       createdBy: userId,
-      members: [userId],
+      visibility: "public",
+      members: [{ userId, role: "admin" }],
     });
 
     // Create admin membership for the creator (RBAC); unique index prevents duplicates
@@ -458,6 +459,7 @@ export const getPublicOrganizationBySlug = async (slug) => {
  * ✅ Browse public organizations with pagination and filters
  */
 export const browsePublicOrganizations = async ({
+  userId = null,
   page = 1,
   limit = 12,
   search = "",
@@ -467,7 +469,7 @@ export const browsePublicOrganizations = async ({
   // Build base query - only public organizations
   const baseQuery = { visibility: "public" };
 
-  // Add search filter if provided
+  // Add search filter if provided (name, slug, description, tags)
   let searchQuery = { ...baseQuery };
   if (search && search.trim()) {
     const escapedSearch = escapeRegex(search.trim());
@@ -479,6 +481,8 @@ export const browsePublicOrganizations = async ({
         { name: searchRegex },
         { slug: searchRegex },
         { description: searchRegex },
+        { "metadata.tags": searchRegex },
+        { tags: searchRegex },
       ],
     };
   }
@@ -487,11 +491,24 @@ export const browsePublicOrganizations = async ({
   let sortObj = {};
   switch (sortBy) {
     case "name":
+    case "name_asc":
       sortObj = { name: 1 };
       break;
 
+    case "name_desc":
+      sortObj = { name: -1 };
+      break;
+
+    case "oldest":
+      sortObj = { createdAt: 1 };
+      break;
+
     case "members":
-      sortObj = { "members.length": -1 };
+      sortObj = { "members.length": -1, createdAt: -1 };
+      break;
+
+    case "recently_active":
+      sortObj = { updatedAt: -1, createdAt: -1 };
       break;
 
     case "createdAt":
@@ -511,6 +528,14 @@ export const browsePublicOrganizations = async ({
       ...searchQuery,
       createdAt: { $gte: thirtyDaysAgo },
     };
+  } else if (filter === "active" || filter === "recently_active") {
+    const thirtyDaysAgo = new Date();
+    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+
+    finalQuery = {
+      ...searchQuery,
+      updatedAt: { $gte: thirtyDaysAgo },
+    };
   }
 
   // Execute query with pagination
@@ -519,7 +544,7 @@ export const browsePublicOrganizations = async ({
   const [organizations, total] = await Promise.all([
     Organization.find(finalQuery)
       .select(
-        "name slug description logo bannerUrl visibility createdAt members metadata",
+        "name slug description logo bannerUrl visibility joinPolicy owner createdAt updatedAt members metadata",
       )
       .sort(sortObj)
       .skip(skip)
@@ -529,20 +554,89 @@ export const browsePublicOrganizations = async ({
     Organization.countDocuments(finalQuery),
   ]);
 
-  // Calculate member counts for each organization
-  const organizationsWithCounts = organizations.map((org) => ({
-    ...org,
-    memberCount: org.members ? org.members.length : 0,
-  }));
+  // Calculate member counts for each organization from Membership model
+  const orgIds = organizations.map((org) => org._id);
+  const membershipCounts =
+    typeof Membership.aggregate === "function"
+      ? await Membership.aggregate([
+          { $match: { organization: { $in: orgIds }, status: "active" } },
+          { $group: { _id: "$organization", count: { $sum: 1 } } },
+        ])
+      : [];
+  const countMap = new Map(
+    membershipCounts.map((item) => [item._id.toString(), item.count]),
+  );
+
+  // User membership and pending request maps if userId is provided
+  let activeMemberOrgSet = new Set();
+  let pendingRequestOrgSet = new Set();
+  let rejectedRequestOrgSet = new Set();
+
+  if (userId) {
+    const [userMemberships, userRequests] = await Promise.all([
+      Membership.find({
+        user: userId,
+        organization: { $in: orgIds },
+        status: "active",
+      })
+        .select("organization")
+        .lean(),
+      MembershipRequest.find({
+        user: userId,
+        organization: { $in: orgIds },
+      })
+        .select("organization status")
+        .lean(),
+    ]);
+
+    userMemberships.forEach((m) => {
+      if (m.organization) activeMemberOrgSet.add(m.organization.toString());
+    });
+
+    userRequests.forEach((reqItem) => {
+      const orgIdStr = reqItem.organization?.toString();
+      if (orgIdStr) {
+        if (reqItem.status === "pending") pendingRequestOrgSet.add(orgIdStr);
+        if (reqItem.status === "rejected") rejectedRequestOrgSet.add(orgIdStr);
+      }
+    });
+  }
+
+  const organizationsWithDetails = organizations.map((org) => {
+    const orgIdStr = org._id.toString();
+    const count =
+      countMap.get(orgIdStr) ?? (org.members ? org.members.length : 0);
+
+    let membershipStatus = "none";
+    if (userId) {
+      if (
+        activeMemberOrgSet.has(orgIdStr) ||
+        (org.owner && org.owner.toString() === userId.toString()) ||
+        isLegacyMember(org, userId)
+      ) {
+        membershipStatus = "member";
+      } else if (pendingRequestOrgSet.has(orgIdStr)) {
+        membershipStatus = "pending";
+      } else if (rejectedRequestOrgSet.has(orgIdStr)) {
+        membershipStatus = "rejected";
+      }
+    }
+
+    return {
+      ...org,
+      memberCount: count,
+      membershipStatus,
+    };
+  });
 
   return {
     success: true,
-    organizations: organizationsWithCounts,
+    organizations: organizationsWithDetails,
     pagination: {
       page,
       limit,
       total,
-      totalPages: Math.ceil(total / limit),
+      totalPages: Math.ceil(total / limit) || 1,
       hasNextPage: page < Math.ceil(total / limit),
       hasPrevPage: page > 1,
     },
@@ -552,7 +646,12 @@ export const browsePublicOrganizations = async ({
 /**
  * ✅ Search organizations (public only)
  */
-export const searchOrganizations = async (q, page = 1, limit = 12) => {
+export const searchOrganizations = async (
+  q,
+  page = 1,
+  limit = 12,
+  userId = null,
+) => {
   const escapedQuery = escapeRegex(q.trim());
   const searchRegex = new RegExp(escapedQuery, "i");
   const skip = (page - 1) * limit;
@@ -564,13 +663,15 @@ export const searchOrganizations = async (q, page = 1, limit = 12) => {
       { name: searchRegex },
       { slug: searchRegex },
       { description: searchRegex },
+      { "metadata.tags": searchRegex },
+      { tags: searchRegex },
     ],
   };
 
   const [organizations, total] = await Promise.all([
     Organization.find(query)
       .select(
-        "name slug description logo bannerUrl visibility createdAt members metadata",
+        "name slug description logo bannerUrl visibility joinPolicy owner createdAt updatedAt members metadata",
       )
       .sort({ createdAt: -1 })
       .skip(skip)
@@ -580,19 +681,87 @@ export const searchOrganizations = async (q, page = 1, limit = 12) => {
   ]);
 
   // Calculate member counts
-  const organizationsWithCounts = organizations.map((org) => ({
-    ...org,
-    memberCount: org.members ? org.members.length : 0,
-  }));
+  const searchOrgIds = organizations.map((org) => org._id);
+  const searchMembershipCounts =
+    typeof Membership.aggregate === "function"
+      ? await Membership.aggregate([
+          { $match: { organization: { $in: searchOrgIds }, status: "active" } },
+          { $group: { _id: "$organization", count: { $sum: 1 } } },
+        ])
+      : [];
+  const searchCountMap = new Map(
+    searchMembershipCounts.map((item) => [item._id.toString(), item.count]),
+  );
+
+  let activeMemberOrgSet = new Set();
+  let pendingRequestOrgSet = new Set();
+  let rejectedRequestOrgSet = new Set();
+
+  if (userId) {
+    const [userMemberships, userRequests] = await Promise.all([
+      Membership.find({
+        user: userId,
+        organization: { $in: searchOrgIds },
+        status: "active",
+      })
+        .select("organization")
+        .lean(),
+      MembershipRequest.find({
+        user: userId,
+        organization: { $in: searchOrgIds },
+      })
+        .select("organization status")
+        .lean(),
+    ]);
+
+    userMemberships.forEach((m) => {
+      if (m.organization) activeMemberOrgSet.add(m.organization.toString());
+    });
+
+    userRequests.forEach((reqItem) => {
+      const orgIdStr = reqItem.organization?.toString();
+      if (orgIdStr) {
+        if (reqItem.status === "pending") pendingRequestOrgSet.add(orgIdStr);
+        if (reqItem.status === "rejected") rejectedRequestOrgSet.add(orgIdStr);
+      }
+    });
+  }
+
+  const organizationsWithDetails = organizations.map((org) => {
+    const orgIdStr = org._id.toString();
+    const count =
+      searchCountMap.get(orgIdStr) ?? (org.members ? org.members.length : 0);
+
+    let membershipStatus = "none";
+    if (userId) {
+      if (
+        activeMemberOrgSet.has(orgIdStr) ||
+        (org.owner && org.owner.toString() === userId.toString()) ||
+        isLegacyMember(org, userId)
+      ) {
+        membershipStatus = "member";
+      } else if (pendingRequestOrgSet.has(orgIdStr)) {
+        membershipStatus = "pending";
+      } else if (rejectedRequestOrgSet.has(orgIdStr)) {
+        membershipStatus = "rejected";
+      }
+    }
+
+    return {
+      ...org,
+      memberCount: count,
+      membershipStatus,
+    };
+  });
 
   return {
     success: true,
-    organizations: organizationsWithCounts,
+    organizations: organizationsWithDetails,
     pagination: {
       page,
       limit,
       total,
-      totalPages: Math.ceil(total / limit),
+      totalPages: Math.ceil(total / limit) || 1,
       hasNextPage: page < Math.ceil(total / limit),
       hasPrevPage: page > 1,
     },
@@ -700,7 +869,7 @@ export const createOrganization = async (
     visibility: visibility || "private",
     joinPolicy: joinPolicy || "open",
     owner: userId,
-    members: [userId],
+    members: [{ userId, role: "admin" }],
     metadata: metadata || {},
   });
 

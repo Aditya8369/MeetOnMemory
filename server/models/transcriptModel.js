@@ -58,6 +58,18 @@ const transcriptSchema = new mongoose.Schema(
       type: String,
       default: "",
     },
+    /**
+     * Issue #1335 — optional ciphertext for fullText when E2EE is enabled.
+     * When present, fullText/segments text should be empty on the server.
+     */
+    encryptedFullText: {
+      type: mongoose.Schema.Types.Mixed,
+      default: null,
+    },
+    isEncrypted: {
+      type: Boolean,
+      default: false,
+    },
     // "active" retained for backward compatibility with older live-chunk docs.
     // Recording flow uses "recording" → "processing" → "completed"|"failed".
     status: {

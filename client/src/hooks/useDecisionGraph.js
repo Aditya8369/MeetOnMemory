@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from "react";
-import { getDecisionGraph } from "../services/decisionGraphApi";
+import { getAllDecisionGraphPages } from "../services/decisionGraphApi";
 
 const useDecisionGraph = () => {
   const [data, setData] = useState({ nodes: [], edges: [] });
@@ -10,18 +10,31 @@ const useDecisionGraph = () => {
   const [statusFilter, setStatusFilter] = useState("all");
 
   useEffect(() => {
+    let isCurrent = true;
+
     const fetchGraph = async () => {
       try {
         setLoading(true);
-        const graphData = await getDecisionGraph();
-        setData(graphData);
+        setError(null);
+        const graphData = await getAllDecisionGraphPages();
+        if (isCurrent) {
+          setData(graphData);
+        }
       } catch (err) {
-        setError(err.message || "Failed to fetch decision graph");
+        if (isCurrent) {
+          setError(err.message || "Failed to fetch decision graph");
+        }
       } finally {
-        setLoading(false);
+        if (isCurrent) {
+          setLoading(false);
+        }
       }
     };
     fetchGraph();
+
+    return () => {
+      isCurrent = false;
+    };
   }, []);
 
   // Filter logic: when filters change, we compute the visible subset of nodes and edges

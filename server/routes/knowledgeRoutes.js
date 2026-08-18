@@ -6,6 +6,8 @@ import {
   getDecisionLineageController,
   getOpenActionItems,
   getDecisions,
+  getArchivedMemories,
+  getLifecycleMemories,
   submitMemoryFeedback,
   recalculateImportance,
   updateActionItemStatus,
@@ -75,6 +77,12 @@ router.get(
   getDecisions,
 );
 router.get(
+  "/archive",
+  requireOrgMembership,
+  requirePermission("knowledge", "view"),
+  getArchivedMemories,
+);
+router.get(
   "/decisions/:id/lineage",
   requireOrgMembership,
   requirePermission("knowledge", "view"),
@@ -116,7 +124,13 @@ router.post(
   recalculateImportance,
 );
 
-// --- Memory Lifecycle Management (#377) ---
+// --- Memory Lifecycle Management (#377, #1552) ---
+router.get(
+  "/lifecycle",
+  requireOrgMembership,
+  requirePermission("knowledge", "view"),
+  getLifecycleMemories,
+);
 router.post(
   "/lifecycle/run",
   writeLimiter,

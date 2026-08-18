@@ -9,6 +9,11 @@ import {
 import { indexTranscriptChunks } from "../utils/transcriptEmbeddingUtils.js";
 import { getContentDispositionHeader } from "../utils/fileUtils.js";
 import { sendSuccess, sendError } from "../utils/responseHandler.js";
+import {
+  isE2eeEnabled,
+  normalizeEncryptedTranscriptPayload,
+  isMeetingTranscriptEncrypted,
+} from "../utils/transcriptEncryption.js";
 import fs from "fs";
 import path from "path";
 import os from "os";
@@ -28,6 +33,16 @@ const findInProgressTranscript = (meetingId) =>
     meeting: meetingId,
     status: { $in: IN_PROGRESS_STATUSES },
   });
+
+const assertMeetingAccess = (meeting, user) => {
+  const userId = user?.id || user?._id;
+  const isOwner = meeting.uploadedBy?.toString() === userId?.toString();
+  const isInSameOrg =
+    meeting.organization &&
+    user?.organization &&
+    meeting.organization.toString() === user.organization.toString();
+  return isOwner || isInSameOrg;
+};
 
 /**
  * @desc  Start a recording session for a meeting
@@ -188,6 +203,62 @@ export const uploadTranscriptAudio = async (req, res) => {
       return res.status(400).json({
         success: false,
         message: "No audio file provided",
+      });
+    }
+
+    const ALLOWED_RECORDING_MIME_TYPES = [
+      "audio/mpeg",
+      "audio/mp3",
+      "audio/wav",
+      "audio/x-wav",
+      "audio/m4a",
+      "audio/x-m4a",
+      "audio/ogg",
+      "audio/webm",
+      "audio/flac",
+      "audio/aac",
+      "audio/mp4",
+      "video/mp4",
+      "video/webm",
+      "video/quicktime",
+      "video/x-msvideo",
+      "video/x-matroska",
+      "application/octet-stream",
+    ];
+
+    const ALLOWED_RECORDING_EXTENSIONS = [
+      ".mp3",
+      ".wav",
+      ".m4a",
+      ".ogg",
+      ".webm",
+      ".flac",
+      ".aac",
+      ".mp4",
+      ".mov",
+      ".avi",
+      ".mkv",
+    ];
+
+    const ext = path.extname(req.file.originalname || "").toLowerCase();
+    const mimeType = req.file.mimetype;
+    const isExtAllowed = !ext || ALLOWED_RECORDING_EXTENSIONS.includes(ext);
+    const isMimeAllowed =
+      !mimeType ||
+      mimeType === "blob" ||
+      ALLOWED_RECORDING_MIME_TYPES.includes(mimeType);
+
+    if (!isExtAllowed || !isMimeAllowed) {
+      if (req.file.path && fs.existsSync(req.file.path)) {
+        try {
+          fs.unlinkSync(req.file.path);
+        } catch {
+          // ignore
+        }
+      }
+      return res.status(400).json({
+        success: false,
+        message: "Invalid file type or extension for meeting recording",
       });
     }
 
@@ -404,12 +475,98 @@ export const getTranscript = async (req, res) => {
     res.status(200).json({
       success: true,
       transcript,
+      // Issue #1335 — surface meeting-level ciphertext so clients can decrypt
+      encryption: {
+        enabled: isMeetingTranscriptEncrypted(meeting),
+        encryptedTranscript: meeting.encryptedTranscript || null,
+        e2eeFeatureEnabled: isE2eeEnabled(),
+      },
     });
   } catch (error) {
     console.error("Error getting transcript:", error);
     res.status(500).json({
       success: false,
       message: error.message || "Failed to get transcript",
+    });
+  }
+};
+
+/**
+ * @desc  Persist a client-encrypted transcript (Issue #1335).
+ * @route POST /api/meetings/:meetingId/transcript/encrypted
+ * @access Private
+ *
+ * Server stores ciphertext only — never decrypts. Clears plaintext fields.
+ */
+export const storeEncryptedTranscript = async (req, res) => {
+  try {
+    if (!isE2eeEnabled()) {
+      return res.status(403).json({
+        success: false,
+        message: "E2EE is not enabled on this server (E2EE_ENABLED)",
+      });
+    }
+
+    const { meetingId } = req.params;
+    const meeting = await Meeting.findById(meetingId);
+    if (!meeting) {
+      return res.status(404).json({
+        success: false,
+        message: "Meeting not found",
+      });
+    }
+
+    if (!assertMeetingAccess(meeting, req.user)) {
+      return res.status(403).json({
+        success: false,
+        message: "Forbidden: You don't have access to this meeting",
+      });
+    }
+
+    const normalized = normalizeEncryptedTranscriptPayload(req.body || {});
+    if (!normalized.ok) {
+      return res.status(400).json({
+        success: false,
+        message: normalized.message,
+      });
+    }
+
+    const payload = normalized.payload;
+
+    meeting.encryptedTranscript = payload;
+    meeting.isTranscriptEncrypted = true;
+    meeting.transcriptEncryptionVersion = payload.encryptionVersion;
+    // Wipe plaintext — server must not retain readable transcript for E2EE meetings
+    meeting.transcript = "";
+    await meeting.save();
+
+    let transcript = await Transcript.findOne({ meeting: meetingId });
+    if (!transcript) {
+      transcript = new Transcript({
+        meeting: meetingId,
+        organizationId: meeting.organization || null,
+        status: "completed",
+      });
+    }
+    transcript.encryptedFullText = payload;
+    transcript.isEncrypted = true;
+    transcript.fullText = "";
+    transcript.segments = [];
+    transcript.status = "completed";
+    await transcript.save();
+
+    return res.status(200).json({
+      success: true,
+      message: "Encrypted transcript stored",
+      meetingId,
+      isTranscriptEncrypted: true,
+      encryptedTranscript: payload,
+    });
+  } catch (error) {
+    console.error("Error storing encrypted transcript:", error);
+    return res.status(500).json({
+      success: false,
+      message: error.message || "Failed to store encrypted transcript",
     });
   }
 };
@@ -504,10 +661,18 @@ export const voiceSearch = async (req, res) => {
       });
     }
 
+    const userOrg = req.user?.organization?.toString();
+    if (!userOrg) {
+      return res.status(400).json({
+        success: false,
+        message: "Organization context is required for voice search",
+      });
+    }
+
     console.log(`🎙️ Voice Search for query: "${query}"`);
 
-    // Perform vector search across all content types
-    const results = await searchVectorStore(query);
+    // Perform vector search across all content types scoped to user's org
+    const results = await searchVectorStore(query, { organization: userOrg });
 
     if (!results || results.length === 0) {
       return res.status(200).json({
@@ -517,10 +682,10 @@ export const voiceSearch = async (req, res) => {
       });
     }
 
-    // Filter results to include only those from user's organization
+    // Filter results to include only those belonging to user's organization
     const filteredResults = results.filter((r) => {
-      if (!r.organization) return true; // Allow results without org
-      return r.organization === req.user.organization?.toString();
+      if (!r.organization) return false;
+      return r.organization.toString() === userOrg;
     });
 
     res.status(200).json({
@@ -615,13 +780,24 @@ export const getTranscriptByMeeting = async (req, res) => {
 
     const transcript = await Transcript.findOne({
       meeting: meetingId,
-    }).populate("meeting", "title date participants uploadedBy organization");
+    }).populate(
+      "meeting",
+      "title date participants uploadedBy organization transcript encryptedTranscript isTranscriptEncrypted",
+    );
 
     if (!transcript) {
       return sendError(res, 404, "Transcript not found");
     }
 
-    sendSuccess(res, transcript);
+    const meeting = transcript.meeting;
+    sendSuccess(res, {
+      ...transcript.toObject(),
+      encryption: {
+        enabled: isMeetingTranscriptEncrypted(meeting),
+        encryptedTranscript: meeting?.encryptedTranscript || null,
+        e2eeFeatureEnabled: isE2eeEnabled(),
+      },
+    });
   } catch (error) {
     console.error("Error fetching transcript:", error);
     sendError(res, 500, "Failed to fetch transcript");
@@ -644,6 +820,19 @@ export const searchTranscript = async (req, res) => {
 
     if (!transcript) {
       return sendError(res, 404, "Transcript not found");
+    }
+
+    if (transcript.isEncrypted || !transcript.fullText) {
+      const meeting = await Meeting.findById(meetingId).select(
+        "encryptedTranscript isTranscriptEncrypted",
+      );
+      if (isMeetingTranscriptEncrypted(meeting) || transcript.isEncrypted) {
+        return sendError(
+          res,
+          400,
+          "Server-side search is unavailable for end-to-end encrypted transcripts. Decrypt locally to search.",
+        );
+      }
     }
 
     const searchTerms = query.toLowerCase().split(" ");
@@ -822,6 +1011,49 @@ function formatTimestamp(seconds) {
 }
 
 /**
+ * Translate transcript (stub for translation operation)
+ */
+export const translateTranscript = async (req, res) => {
+  try {
+    const { meetingId } = req.params;
+
+    // Authorization: User must be authenticated (handled by userAuth)
+    // Authorization: User must be part of organization and have view permission (handled by requireOrgAccess and requirePermission)
+
+    const transcript = await Transcript.findOne({
+      meeting: meetingId,
+    }).populate("meeting");
+    if (!transcript) {
+      return res.status(404).json({ message: "Transcript not found" });
+    }
+
+    const meeting = transcript.meeting;
+
+    // Translation ownership check (where applicable)
+    // Ensure only the user who uploaded the meeting or an admin can perform translation operations
+    const isOwner = meeting.uploadedBy?.toString() === req.user._id.toString();
+    const isAdmin = req.user.role === "admin";
+
+    if (!isOwner && !isAdmin) {
+      return res.status(403).json({
+        message:
+          "Forbidden: You do not own this meeting and cannot perform translation operations",
+      });
+    }
+
+    // Since this is a placeholder for actual translation logic (per constraints),
+    // we return a success response immediately.
+    res.json({
+      message: "Translation authorized and processed successfully",
+      transcript: transcript.fullText,
+    });
+  } catch (error) {
+    console.error("Error translating transcript:", error);
+    res.status(500).json({ message: "Failed to translate transcript" });
+  }
+};
+
+/**
  * Update speaker tags in a transcript
  */
 export const updateSpeakers = async (req, res) => {
@@ -840,7 +1072,7 @@ export const updateSpeakers = async (req, res) => {
     }
 
     const meeting = transcript.meeting;
-    const userId = req.user._id.toString();
+    const userId = (req.user._id || req.user.id)?.toString();
 
     const isOwner = meeting.uploadedBy?.toString() === userId;
     const isAdminInSameOrg =

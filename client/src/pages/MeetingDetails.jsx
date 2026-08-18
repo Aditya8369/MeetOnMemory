@@ -7,29 +7,39 @@ import MeetingSummary from "../components/meeting-details/MeetingSummary";
 import MeetingCollaborativeNotes from "../components/meeting-details/MeetingCollaborativeNotes";
 import MeetingTranscript from "../components/meeting-details/MeetingTranscript";
 import MeetingParticipants from "../components/meeting-details/MeetingParticipants";
+import MeetingAgenda from "../components/meeting-details/MeetingAgenda";
 import MeetingMetadata from "../components/meeting-details/MeetingMetadata";
 import MeetingActions from "../components/meeting-details/MeetingActions";
+import TranscriptAnnotations from "../components/meeting-details/TranscriptAnnotations";
+import RsvpPanel from "../components/meeting-details/RsvpPanel";
+import KeyMomentsPanel from "../components/meetings/KeyMomentsPanel";
+import SentimentTimeline from "../components/meetings/SentimentTimeline";
+import MeetingGoalsPanel from "../components/meetings/MeetingGoalsPanel";
 import ShareModal from "../components/shared-links/ShareModal";
 import MeetingFollowUpBanner from "../components/meeting-details/MeetingFollowUpBanner";
 import PresentMode from "../components/meeting-details/PresentMode";
-import CommentSection from "../components/meeting-details/CommentSection";
-import PollSection from "../components/meeting-details/PollSection";
-import DigestActions from "../components/meeting-details/DigestActions";
-import AttachmentPanel from "../components/meeting-details/AttachmentPanel";
-import ReactionSummaryCard from "../components/meeting-details/ReactionSummaryCard";
-import SeriesNavigation from "../components/meeting-details/SeriesNavigation";
-import CompareButton from "../components/meeting-details/CompareButton";
-import AgendaTimer from "../components/meeting-details/AgendaTimer";
-import AgendaPacingReport from "../components/meeting-details/AgendaPacingReport";
+import PrepChecklist from "../components/meetings/PrepChecklist";
+import SpeakingTimeBreakdown from "../components/meetings/SpeakingTimeBreakdown";
+import CarryForwardConfig from "../components/meetings/CarryForwardConfig";
+import DuplicateDetectionPanel from "../components/meeting-details/DuplicateDetectionPanel";
+import MeetingTimeline from "../components/meeting-details/MeetingTimeline";
+import RecapStoryViewer from "../components/summaries/RecapStoryViewer";
+import { useUser } from "@clerk/clerk-react";
+import BriefingBanner from "../components/meeting-details/BriefingBanner";
+import { getBriefing } from "../services/briefingApi";
 
 const MeetingDetails = () => {
   const { id } = useParams();
   const navigate = useNavigate();
+  const { user: currentUser } = useUser();
   const [meeting, setMeeting] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [shareModalOpen, setShareModalOpen] = useState(false);
   const [isPresentModeOpen, setIsPresentModeOpen] = useState(false);
+  const [isAnalyticsExpanded, setIsAnalyticsExpanded] = useState(false);
+  const [isStoryViewerOpen, setIsStoryViewerOpen] = useState(false);
+  const [briefingStatus, setBriefingStatus] = useState("none");
 
   useEffect(() => {
     const fetchMeetingDetails = async () => {
@@ -41,6 +51,18 @@ const MeetingDetails = () => {
           setMeeting(data.meeting);
         } else {
           setError(data.message || "Failed to fetch meeting details");
+        }
+
+        // Fetch briefing status
+        try {
+          const bData = await getBriefing(id);
+          if (bData && bData.status) {
+            setBriefingStatus(bData.status);
+          }
+        } catch (bErr) {
+          // It's ok if it doesn't exist
+          console.warn("Could not fetch briefing", bErr);
+          setBriefingStatus("none");
         }
       } catch (err) {
         console.error("Error fetching meeting details:", err);
@@ -55,12 +77,36 @@ const MeetingDetails = () => {
     fetchMeetingDetails();
   }, [id]);
 
+  const handleBack = () => {
+    if (
+      window.history.state &&
+      typeof window.history.state.idx === "number" &&
+      window.history.state.idx > 0
+    ) {
+      navigate(-1);
+    } else {
+      navigate("/meetings");
+    }
+  };
+
   const handleDelete = async (meetingId) => {
     try {
       const { data } = await meetingApi.deleteMeeting(meetingId);
       if (data.success) {
+        toast.success(
+          <div className="flex items-center justify-between gap-3">
+            <span>Meeting moved to recycle bin</span>
+            <button
+              type="button"
+              onClick={() => navigate("/meetings/recycle-bin")}
+              className="text-xs font-semibold text-blue-600 hover:text-blue-700 underline shrink-0"
+            >
+              View Recycle Bin
+            </button>
+          </div>,
+        );
         toast.success("Meeting deleted successfully");
-        navigate("/summaries");
+        navigate("/meetings");
       } else {
         toast.error(data.message || "Failed to delete meeting");
       }
@@ -126,7 +172,7 @@ const MeetingDetails = () => {
               </h2>
               <p className="text-gray-600 dark:text-gray-400 mb-6">{error}</p>
               <button
-                onClick={() => navigate("/summaries")}
+                onClick={handleBack}
                 className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors"
               >
                 Back to Meetings
@@ -151,7 +197,7 @@ const MeetingDetails = () => {
                 The meeting you're looking for doesn't exist.
               </p>
               <button
-                onClick={() => navigate("/summaries")}
+                onClick={handleBack}
                 className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors"
               >
                 Back to Meetings
@@ -166,40 +212,132 @@ const MeetingDetails = () => {
   return (
     <div className="min-h-screen bg-gray-50 p-6">
       <div className="max-w-6xl mx-auto">
+        <div className="mb-4 flex justify-end">
+          <button
+            onClick={() => setIsStoryViewerOpen(true)}
+            className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-purple-500 to-pink-500 text-white rounded-lg font-medium shadow-sm hover:opacity-90 transition-opacity"
+          >
+            <svg
+              className="w-5 h-5"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth="2"
+                d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"
+              ></path>
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth="2"
+                d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+              ></path>
+            </svg>
+            Play Recap Story
+          </button>
+        </div>
+
+        {meeting.date && new Date(meeting.date) > new Date() && (
+          <BriefingBanner
+            meetingId={meeting._id}
+            briefingStatus={briefingStatus}
+            onRegenerate={() => setBriefingStatus("pending")}
+          />
+        )}
+
+        <DuplicateDetectionPanel meetingId={meeting._id} />
         <MeetingFollowUpBanner meeting={meeting} />
-        <SeriesNavigation meeting={meeting} />
         <MeetingHeader
           meeting={meeting}
           onShare={() => setShareModalOpen(true)}
           onPresent={() => setIsPresentModeOpen(true)}
         />
+        <MeetingSummary meeting={meeting} />
+        <MeetingCollaborativeNotes meeting={meeting} />
 
-        {/* Conditional rendering for Agenda Timer vs Pacing Report */}
-        {meeting.status !== "completed" &&
-        meeting.agendaProgress !== "completed" ? (
-          <AgendaTimer meeting={meeting} />
-        ) : (
-          <AgendaPacingReport meetingId={meeting._id} />
+        <div className="mt-6 mb-6">
+          <MeetingTimeline meetingId={meeting._id} meeting={meeting} />
+        </div>
+
+        <div className="bg-white rounded-lg shadow-sm border border-gray-200 mt-6 mb-6 overflow-hidden h-[500px]">
+          <KeyMomentsPanel meetingId={meeting._id} />
+        </div>
+
+        <MeetingTranscript meeting={meeting} />
+        <TranscriptAnnotations meeting={meeting} />
+
+        <div className="mt-6 mb-6">
+          <SentimentTimeline meetingId={meeting._id} />
+        </div>
+
+        {/* Speaking Time Analytics Section */}
+        <div className="bg-white rounded-lg shadow-sm border border-gray-200 mt-6 mb-6 p-6">
+          <div className="flex justify-between items-center mb-6">
+            <h2
+              className="text-xl font-bold text-gray-900 dark:text-white flex items-center gap-2 cursor-pointer"
+              onClick={() => setIsAnalyticsExpanded(!isAnalyticsExpanded)}
+            >
+              <button className="p-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-full transition-colors">
+                <svg
+                  className={`w-5 h-5 transform transition-transform ${isAnalyticsExpanded ? "rotate-180" : ""}`}
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M19 9l-7 7-7-7"
+                  />
+                </svg>
+              </button>
+              Speaking Time Analytics
+            </h2>
+            <button
+              onClick={() => navigate("/speaking-time-trends")}
+              className="text-sm text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 font-medium"
+            >
+              View My Trends →
+            </button>
+          </div>
+          {isAnalyticsExpanded && (
+            <SpeakingTimeBreakdown meetingId={meeting._id} />
+          )}
+        </div>
+
+        <MeetingParticipants meeting={meeting} />
+        <RsvpPanel
+          meetingId={meeting._id}
+          isOrganizer={
+            currentUser?.publicMetadata?.dbUserId === meeting.uploadedBy
+          }
+          participants={meeting.participants}
+        />
+        <PrepChecklist meeting={meeting} currentUser={currentUser} />
+        <MeetingGoalsPanel meeting={meeting} currentUser={currentUser} />
+
+        {meeting.series && (
+          <CarryForwardConfig
+            seriesId={meeting.series._id || meeting.series}
+            currentMeetingId={meeting._id}
+            onApplySuccess={() => {
+              // Reload meeting data to reflect new agenda items
+              window.location.reload();
+            }}
+          />
         )}
 
-        <MeetingSummary meeting={meeting} />
-        <ReactionSummaryCard meetingId={meeting._id} />
-        <MeetingCollaborativeNotes meeting={meeting} />
-        <MeetingTranscript meeting={meeting} />
-        <MeetingParticipants meeting={meeting} />
+        <MeetingAgenda meeting={meeting} />
         <MeetingMetadata meeting={meeting} />
-        <div className="mb-6 flex justify-end gap-2 items-center">
-          <CompareButton meetingId={meeting._id} />
-          <DigestActions meetingId={meeting._id} />
-        </div>
         <MeetingActions
           meeting={meeting}
           onDelete={handleDelete}
           onRename={handleRename}
         />
-        <AttachmentPanel meetingId={meeting._id} />
-        <PollSection meetingId={meeting._id} />
-        <CommentSection meetingId={meeting._id} />
       </div>
 
       <ShareModal
@@ -214,6 +352,13 @@ const MeetingDetails = () => {
         <PresentMode
           meeting={meeting}
           onClose={() => setIsPresentModeOpen(false)}
+        />
+      )}
+
+      {isStoryViewerOpen && (
+        <RecapStoryViewer
+          meetingId={meeting._id}
+          onClose={() => setIsStoryViewerOpen(false)}
         />
       )}
     </div>
