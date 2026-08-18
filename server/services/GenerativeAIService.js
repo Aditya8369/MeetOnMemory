@@ -636,3 +636,107 @@ export const generateMoMWithAI = async (
   );
   return mom;
 };
+
+export const generateDelegationContextBriefing = async (
+  meetingTitle,
+  delegatorName,
+  delegateeName,
+  openActionItems,
+  recentMeetingNotes,
+) => {
+  if (!GEMINI_API_KEY) {
+    throw new Error(
+      "Delegation context briefing is unavailable: GEMINI_API_KEY is not configured.",
+    );
+  }
+
+  const prompt = `
+You are an AI assistant helping to prepare a delegation context briefing.
+${delegatorName} is delegating their attendance to ${delegateeName} for the upcoming meeting: "${meetingTitle}".
+
+Here are the unresolved action items currently assigned to ${delegatorName} that may be relevant:
+${JSON.stringify(openActionItems, null, 2)}
+
+Here are some notes and context from recent related meetings:
+${JSON.stringify(recentMeetingNotes, null, 2)}
+
+Based on this information, generate a professional context briefing for ${delegateeName}. The briefing should summarize what ${delegatorName}'s responsibilities were, what is currently outstanding, and what ${delegateeName} needs to focus on or follow up on during the meeting.
+
+Return ONLY a valid JSON object matching this structure (no markdown formatting, no commentary):
+{
+  "briefing": "A comprehensive 2-3 paragraph context briefing."
+}
+`;
+
+  let outputText;
+  try {
+    outputText = await generateText(prompt, "Gemini delegation briefing");
+  } catch (err) {
+    console.error("❌ Delegation briefing generation failed:", err.message);
+    throw new Error(
+      `Delegation briefing generation failed (${err.kind ?? AI_ERROR_KIND.UNKNOWN}): ${err.message}`,
+    );
+  }
+
+  const parsed = parseJsonOutput(outputText);
+  if (!parsed || !parsed.briefing) {
+    throw new Error(
+      "Failed to parse Gemini JSON output for delegation briefing",
+    );
+  }
+
+  return parsed.briefing;
+};
+
+export const generateDelegationPostMeetingReport = async (
+  meetingTitle,
+  delegatorName,
+  delegateeName,
+  meetingSummary,
+  actionItems,
+  decisions,
+) => {
+  if (!GEMINI_API_KEY) {
+    throw new Error(
+      "Delegation post-meeting report is unavailable: GEMINI_API_KEY is not configured.",
+    );
+  }
+
+  const prompt = `
+You are an AI assistant helping to prepare a post-meeting report for a delegator.
+${delegatorName} delegated their attendance to ${delegateeName} for the meeting: "${meetingTitle}".
+
+Here is the general summary of the meeting:
+${JSON.stringify(meetingSummary, null, 2)}
+
+Here are the decisions made during the meeting:
+${JSON.stringify(decisions, null, 2)}
+
+Here are the action items resulting from the meeting:
+${JSON.stringify(actionItems, null, 2)}
+
+Based on this, generate a concise, professional post-meeting report specifically tailored for ${delegatorName}. It should highlight what they missed, any decisions that affect them, and any new action items assigned to them or their delegatee on their behalf.
+
+Return ONLY a valid JSON object matching this structure (no markdown formatting, no commentary):
+{
+  "report": "A comprehensive 2-3 paragraph post-meeting report."
+}
+`;
+
+  let outputText;
+  try {
+    outputText = await generateText(prompt, "Gemini delegation report");
+  } catch (err) {
+    console.error("❌ Delegation report generation failed:", err.message);
+    throw new Error(
+      `Delegation report generation failed (${err.kind ?? AI_ERROR_KIND.UNKNOWN}): ${err.message}`,
+    );
+  }
+
+  const parsed = parseJsonOutput(outputText);
+  if (!parsed || !parsed.report) {
+    throw new Error("Failed to parse Gemini JSON output for delegation report");
+  }
+
+  return parsed.report;
+};

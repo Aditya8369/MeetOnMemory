@@ -487,6 +487,11 @@ const Navbar = () => {
       permission: { resource: "calendar", action: "view" },
     },
     {
+      label: "My Delegations",
+      href: "/delegations",
+      icon: Users,
+    },
+    {
       label: t("navbar.teamMembers"),
       href: "/team-members",
       icon: Users,
