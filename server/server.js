@@ -45,6 +45,7 @@ import {
 import { startRecapBatchJob, stopRecapBatchJob } from "./jobs/recapBatchJob.js";
 import gamificationEngine from "./services/gamificationEngine.js";
 import { startLeaderboardJob } from "./jobs/leaderboardAggregationJob.js";
+import startMeetingPatternJob from "./services/meetingPatternJob.js";
 import {
   initAutoBriefingJob,
   stopAutoBriefingJob,
@@ -138,6 +139,9 @@ if (process.env.NODE_ENV !== "test") {
 
   // Start action-item reminder job (Issue #1397)
   startActionItemReminderJob();
+
+  // Start meeting pattern detection job
+  startMeetingPatternJob();
 
   // Start recap batch email jobs (Issue #1398)
   startRecapBatchJob();
