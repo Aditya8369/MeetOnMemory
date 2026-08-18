@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback, useRef } from "react";
 import { organizationApi, membershipRequestApi } from "../../services";
 import { toast } from "react-toastify";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
 import Navbar from "../../components/Navbar.jsx";
 import {
   Search,
@@ -15,7 +15,7 @@ import {
   UserCheck,
   UserPlus,
   Tag,
-  Sparkles,
+  ArrowLeft,
 } from "lucide-react";
 
 const BrowseOrganizations = () => {
@@ -40,51 +40,64 @@ const BrowseOrganizations = () => {
 
   const observerRef = useRef(null);
   const searchTimeoutRef = useRef(null);
+  const fetchSequenceRef = useRef(0);
 
-  // Fetch organizations
-  const fetchOrganizations = async (
-    page = 1,
-    search = searchQuery,
-    sort = sortBy,
-    filt = filter,
-    append = false,
-  ) => {
-    try {
-      if (!append) {
-        setLoading(true);
-      } else {
-        setLoadingMore(true);
-      }
-      setError(null);
+  const fetchOrganizations = useCallback(
+    async (
+      page = 1,
+      search = "",
+      sort = "createdAt",
+      filt = "all",
+      append = false,
+    ) => {
+      const requestId = ++fetchSequenceRef.current;
 
-      const params = {
-        page,
-        limit: pagination.limit,
-        search: search.trim(),
-        sortBy: sort,
-        filter: filt,
-      };
-
-      const { data } = await organizationApi.browsePublicOrganizations(params);
-
-      if (data.success) {
-        if (append) {
-          setOrganizations((prev) => [...prev, ...data.organizations]);
+      try {
+        if (!append) {
+          setLoading(true);
         } else {
-          setOrganizations(data.organizations);
+          setLoadingMore(true);
         }
-        setPagination(data.pagination);
-      } else {
-        setError(data.message || "Failed to fetch organizations");
+        setError(null);
+
+        const params = {
+          page,
+          limit: pagination.limit,
+          search: search.trim(),
+          sortBy: sort,
+          filter: filt,
+        };
+
+        const { data } =
+          await organizationApi.browsePublicOrganizations(params);
+
+        if (requestId !== fetchSequenceRef.current) return;
+
+        if (data.success) {
+          if (append) {
+            setOrganizations((prev) => [...prev, ...data.organizations]);
+          } else {
+            setOrganizations(data.organizations);
+          }
+          setPagination(data.pagination);
+        } else {
+          setError(data.message || "Failed to fetch organizations");
+        }
+      } catch (err) {
+        if (requestId !== fetchSequenceRef.current) return;
+        setError(
+          err.response?.data?.message || "Failed to fetch organizations",
+        );
+        toast.error("Failed to load organizations");
+      } finally {
+        if (requestId === fetchSequenceRef.current) {
+          setLoading(false);
+          setLoadingMore(false);
+        }
       }
-    } catch (err) {
-      setError(err.response?.data?.message || "Failed to fetch organizations");
-      toast.error("Failed to load organizations");
-    } finally {
-      setLoading(false);
-      setLoadingMore(false);
-    }
-  };
+    },
+    [pagination.limit],
+  );
 
   // Debounced search
   const debouncedSearch = useCallback(
@@ -183,6 +196,10 @@ const BrowseOrganizations = () => {
       );
       return;
     }
+    if (org.joinPolicy === "invite_only") {
+      toast.info("This organization is invite only");
+      return;
+    }
 
     try {
       setActionLoadingId(org._id);
@@ -236,6 +253,14 @@ const BrowseOrganizations = () => {
       <Navbar />
       <div className="flex-grow container mx-auto px-4 pt-28 pb-8">
         <div className="max-w-7xl mx-auto">
+          <Link
+            to="/organizations"
+            className="inline-flex items-center gap-2 text-sm font-medium text-gray-600 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400 mb-6 transition-colors"
+          >
+            <ArrowLeft className="w-4 h-4" />
+            Back to Organization Hub
+          </Link>
+
           {/* Header */}
           <div className="text-center mb-8">
             <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-gradient-to-br from-blue-500 to-purple-600 mb-4 shadow-lg">
@@ -539,6 +564,13 @@ const BrowseOrganizations = () => {
                             className="flex items-center justify-center gap-1 px-3 py-2 bg-red-500/10 text-red-500 rounded-xl font-semibold text-sm cursor-not-allowed"
                           >
                             Rejected
+                          </button>
+                        ) : org.joinPolicy === "invite_only" ? (
+                          <button
+                            disabled
+                            className="flex items-center justify-center gap-1 px-3 py-2 bg-gray-500/10 text-gray-500 rounded-xl font-semibold text-sm cursor-not-allowed"
+                          >
+                            Invite Only
                           </button>
                         ) : (
                           <button
