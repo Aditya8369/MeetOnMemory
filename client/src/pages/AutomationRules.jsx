@@ -3,6 +3,7 @@ import { toast } from "react-toastify";
 import { Plus, Trash2, Power, PowerOff, Activity, Sliders } from "lucide-react";
 import * as api from "../services/automationRuleApi";
 import ConfirmModal from "../components/ConfirmModal.jsx";
+import Navbar from "../components/Navbar.jsx";
 
 /** Shared field styles — light + dark (Issue #1371). */
 const FIELD_CLASS =
@@ -111,8 +112,9 @@ const AutomationRules = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100 transition-colors">
-      <div className="container mx-auto px-4 py-8 max-w-6xl">
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100 transition-colors flex flex-col">
+      <Navbar />
+      <div className="container mx-auto px-4 pt-24 pb-20 max-w-6xl">
         <div className="flex justify-between items-center mb-8">
           <div>
             <h1 className="text-3xl font-bold text-gray-900 dark:text-white">

@@ -18,6 +18,10 @@ vi.mock("../../services/automationRuleApi.js", () => ({
   createRule: vi.fn(),
 }));
 
+vi.mock("../components/Navbar.jsx", () => ({
+  default: () => <div data-testid="mock-navbar">Navbar</div>,
+}));
+
 describe("AutomationRules Dark Mode (#1371)", () => {
   beforeEach(() => {
     vi.clearAllMocks();
