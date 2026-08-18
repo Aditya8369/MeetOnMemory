@@ -100,6 +100,38 @@ describe("ProtectedRoute", () => {
     );
   });
 
+  it("allows onboarding users to access browse-organizations (#293)", () => {
+    vi.spyOn(useRBACHook, "useRBAC").mockReturnValue({
+      hasPermission: vi.fn(),
+    });
+
+    render(
+      <MemoryRouter initialEntries={["/browse-organizations"]}>
+        <AppContent.Provider
+          value={{
+            loading: false,
+            isLoggedin: true,
+            userData: { hasCompletedOnboarding: false },
+          }}
+        >
+          <Routes>
+            <Route
+              path="/browse-organizations"
+              element={
+                <ProtectedRoute>
+                  <div>Browse Organizations</div>
+                </ProtectedRoute>
+              }
+            />
+            <Route path="/organizations" element={<LocationDisplay />} />
+          </Routes>
+        </AppContent.Provider>
+      </MemoryRouter>,
+    );
+
+    expect(screen.getByText("Browse Organizations")).toBeInTheDocument();
+  });
+
   it("redirects to /dashboard if onboarding is completed but user is on an onboarding page", () => {
     vi.spyOn(useRBACHook, "useRBAC").mockReturnValue({
       hasPermission: vi.fn(),

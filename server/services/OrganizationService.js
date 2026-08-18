@@ -417,7 +417,7 @@ export const getPublicOrganizationBySlug = async (slug) => {
   // Find organization by slug - only select public fields
   const organization = await Organization.findOne(
     { slug, visibility: "public" },
-    "name slug description logo bannerUrl visibility createdAt metadata",
+    "name slug description logo bannerUrl visibility joinPolicy createdAt metadata",
   );
 
   if (!organization) {
@@ -442,6 +442,7 @@ export const getPublicOrganizationBySlug = async (slug) => {
     logoUrl,
     bannerUrl: organization.bannerUrl || "",
     visibility: organization.visibility,
+    joinPolicy: organization.joinPolicy || "open",
     createdAt: organization.createdAt,
     memberCount,
     website: metadata.website || organization.website || null,
