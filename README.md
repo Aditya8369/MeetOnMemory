@@ -499,11 +499,11 @@ Thanks to all the amazing contributors who have helped improve MeetOnMemory!
 
 <br/>
 
-🔀 <strong>83</strong> Merged PRs
+🔀 <strong>89</strong> Merged PRs
 
 <br/>
 
-⭐ <strong>97</strong> Commits
+⭐ <strong>103</strong> Commits
 
 </td>
 <td align="center" width="20%" valign="top">
