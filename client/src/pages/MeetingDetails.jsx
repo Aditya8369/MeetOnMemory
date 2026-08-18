@@ -26,6 +26,7 @@ import MeetingTimeline from "../components/meeting-details/MeetingTimeline";
 import RecapStoryViewer from "../components/summaries/RecapStoryViewer";
 import { useUser } from "@clerk/clerk-react";
 import BriefingBanner from "../components/meeting-details/BriefingBanner";
+import AgendaBuilder from "../components/meetings/AgendaBuilder";
 import { getBriefing } from "../services/briefingApi";
 
 const MeetingDetails = () => {
@@ -330,6 +331,13 @@ const MeetingDetails = () => {
             }}
           />
         )}
+
+        <AgendaBuilder
+          meetingId={meeting._id}
+          isOrganizer={
+            currentUser?.publicMetadata?.dbUserId === meeting.uploadedBy
+          }
+        />
 
         <MeetingAgenda meeting={meeting} />
         <MeetingMetadata meeting={meeting} />

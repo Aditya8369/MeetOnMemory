@@ -1,19 +1,19 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { jest } from "@jest/globals";
 import { retryDelivery, upsertSchedule } from "../recapScheduleController.js";
 import RecapDelivery from "../../models/recapDeliveryModel.js";
 import RecapSchedule from "../../models/recapScheduleModel.js";
 
-vi.mock("../../models/recapDeliveryModel.js");
-vi.mock("../../models/recapScheduleModel.js");
-vi.mock("../../services/queueService.js", () => ({
-  recapDeliveryQueue: { isActive: false, add: vi.fn() },
+jest.mock("../../models/recapDeliveryModel.js");
+jest.mock("../../models/recapScheduleModel.js");
+jest.mock("../../services/queueService.js", () => ({
+  recapDeliveryQueue: { isActive: false, add: jest.fn() },
 }));
 
 describe("Recap Schedule Controller Validation (#1609)", () => {
   let req, res;
 
   beforeEach(() => {
-    vi.clearAllMocks();
+    jest.clearAllMocks();
     req = {
       params: {},
       body: {},
@@ -21,8 +21,8 @@ describe("Recap Schedule Controller Validation (#1609)", () => {
       authorizedOrganizationId: "org123",
     };
     res = {
-      status: vi.fn().mockReturnThis(),
-      json: vi.fn(),
+      status: jest.fn().mockReturnThis(),
+      json: jest.fn(),
     };
   });
 
@@ -40,8 +40,8 @@ describe("Recap Schedule Controller Validation (#1609)", () => {
 
     it("retries delivery successfully for valid deliveryId", async () => {
       req.params.deliveryId = "507f1f77bcf86cd799439011";
-      RecapDelivery.findOne.mockReturnValue({
-        populate: vi.fn().mockResolvedValue({
+      jest.spyOn(RecapDelivery, "findOne").mockReturnValue({
+        populate: jest.fn().mockResolvedValue({
           _id: "507f1f77bcf86cd799439011",
           userId: "507f1f77bcf86cd799439011",
           meetingId: { organization: "org123", title: "Team Sync" },
@@ -77,7 +77,7 @@ describe("Recap Schedule Controller Validation (#1609)", () => {
         timezone: "America/New_York",
         preferredTime: "09:00",
       };
-      RecapSchedule.findOneAndUpdate.mockResolvedValue({
+      jest.spyOn(RecapSchedule, "findOneAndUpdate").mockResolvedValue({
         scheduleType: "daily",
         timezone: "America/New_York",
       });

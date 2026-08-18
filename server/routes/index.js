@@ -79,6 +79,7 @@ import meetingChecklistRoutes from "./meetingChecklistRoutes.js";
 import speakingTimeRoutes from "./speakingTimeRoutes.js";
 import keywordAlertRoutes from "./keywordAlertRoutes.js";
 import agendaVoteRoutes from "./agendaVoteRoutes.js";
+import agendaBuilderRoutes from "./agendaBuilderRoutes.js";
 import meetingDuplicateRoutes from "./meetingDuplicateRoutes.js";
 
 import notionIntegrationRoutes from "./notionIntegrationRoutes.js";
@@ -104,6 +105,7 @@ router.use("/api/meetings", meetingRoutes);
 router.use("/api/meetings", meetingTimelineRoutes);
 router.use("/api/bulk/meetings", bulkMeetingRoutes);
 router.use("/api/meetings", agendaVoteRoutes);
+router.use("/api/meetings", agendaBuilderRoutes);
 router.use("/api/search", searchRoutes);
 router.use("/api/ai", aiRoutes);
 router.use("/api/policies", policyRoutes);
