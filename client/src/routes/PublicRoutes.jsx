@@ -19,6 +19,7 @@ import DeveloperDocs from "../pages/DeveloperDocs.jsx";
 import AcceptInvite from "../pages/AcceptInvite.jsx";
 import MeetingInviteJoin from "../pages/MeetingInviteJoin.jsx";
 import Testimonials from "../pages/Testimonials.jsx";
+import GuestMeetingView from "../pages/GuestMeetingView.jsx";
 
 const PublicRoutes = (
   <React.Fragment>
@@ -47,6 +48,7 @@ const PublicRoutes = (
       element={<PublicOrganizationProfile />}
     />
     <Route path="/shared/:hash" element={<PublicSharedView />} />
+    <Route path="/guest/:token" element={<GuestMeetingView />} />
   </React.Fragment>
 );
 

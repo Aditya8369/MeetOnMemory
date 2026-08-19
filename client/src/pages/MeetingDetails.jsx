@@ -28,6 +28,7 @@ import { useUser } from "@clerk/clerk-react";
 import BriefingBanner from "../components/meeting-details/BriefingBanner";
 import AgendaBuilder from "../components/meetings/AgendaBuilder";
 import { getBriefing } from "../services/briefingApi";
+import GuestAccessManager from "../components/meetings/GuestAccessManager";
 
 const MeetingDetails = () => {
   const { id } = useParams();
@@ -341,6 +342,9 @@ const MeetingDetails = () => {
 
         <MeetingAgenda meeting={meeting} />
         <MeetingMetadata meeting={meeting} />
+        {currentUser?.publicMetadata?.dbUserId === meeting.uploadedBy && (
+          <GuestAccessManager meetingId={meeting._id} />
+        )}
         <MeetingActions
           meeting={meeting}
           onDelete={handleDelete}

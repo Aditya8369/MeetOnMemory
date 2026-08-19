@@ -221,4 +221,7 @@ router.use("/api/engagement", participantEngagementRoutes);
 import meetingPatternRoutes from "./meetingPatternRoutes.js";
 router.use("/api/patterns", meetingPatternRoutes);
 
+import guestAccessRoutes from "./guestAccessRoutes.js";
+router.use("/api", guestAccessRoutes);
+
 export default router;
