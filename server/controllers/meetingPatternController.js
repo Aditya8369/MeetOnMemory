@@ -3,7 +3,7 @@ import meetingPatternService from "../services/meetingPatternService.js";
 
 export const getPatterns = async (req, res) => {
   try {
-    const { orgId } = req.user;
+    const orgId = req.user.organization;
     if (!orgId) {
       return res
         .status(400)
@@ -26,7 +26,7 @@ export const getPatterns = async (req, res) => {
 export const acknowledgePattern = async (req, res) => {
   try {
     const { id } = req.params;
-    const { orgId } = req.user;
+    const orgId = req.user.organization;
 
     const pattern = await MeetingPattern.findOneAndUpdate(
       { _id: id, organization: orgId },
@@ -48,7 +48,7 @@ export const acknowledgePattern = async (req, res) => {
 export const dismissPattern = async (req, res) => {
   try {
     const { id } = req.params;
-    const { orgId } = req.user;
+    const orgId = req.user.organization;
 
     const pattern = await MeetingPattern.findOneAndUpdate(
       { _id: id, organization: orgId },
@@ -69,7 +69,7 @@ export const dismissPattern = async (req, res) => {
 
 export const triggerManualScan = async (req, res) => {
   try {
-    const { orgId } = req.user;
+    const orgId = req.user.organization;
     if (!orgId) {
       return res
         .status(400)

@@ -15,6 +15,7 @@ export default function ContactForm({
   submittedTicket,
   setSubmittedTicket,
   submitting,
+  submitError,
   handleFormSubmit,
 }) {
   if (submittedTicket) {
@@ -228,6 +229,15 @@ export default function ContactForm({
             className="w-full border border-gray-200 dark:border-slate-700 rounded-xl px-4 py-2 bg-white dark:bg-slate-900 text-gray-900 dark:text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm resize-none"
           />
         </div>
+
+        {submitError ? (
+          <p
+            role="alert"
+            className="text-sm text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-950/30 border border-red-100 dark:border-red-900/40 rounded-xl px-4 py-3"
+          >
+            {submitError}
+          </p>
+        ) : null}
 
         <button
           type="submit"

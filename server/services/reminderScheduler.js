@@ -2,6 +2,7 @@ import cron from "node-cron";
 import ActionItem from "../models/actionItemModel.js";
 import Meeting from "../models/meetingModel.js";
 import emailService from "./emailService.js";
+import notificationService from "./notificationService.js";
 import { createNotification } from "./notificationService.js";
 
 class ReminderScheduler {

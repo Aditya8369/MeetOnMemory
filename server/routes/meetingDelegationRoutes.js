@@ -7,7 +7,7 @@ import {
   getMyDelegations,
   getMeetingDelegation,
 } from "../controllers/meetingDelegationController.js";
-import authMiddleware from "../middleware/auth.js";
+import authMiddleware from "../middleware/userAuth.js";
 
 const router = express.Router();
 

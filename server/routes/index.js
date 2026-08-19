@@ -18,6 +18,7 @@ import knowledgeGraphRoutes from "./knowledgeGraphRoutes.js";
 import policyComplianceRoutes from "./policyComplianceRoutes.js";
 import sessionRoutes from "./sessionRoutes.js";
 import transcriptRoutes from "./transcriptRoutes.js";
+import customFieldRoutes from "./customFieldRoutes.js";
 import sharedLinkRoutes from "./sharedLinkRoutes.js";
 import meetingTemplateRoutes from "./meetingTemplateRoutes.js";
 import bookmarkRoutes from "./bookmarkRoutes.js";
@@ -56,6 +57,7 @@ import automationRuleRoutes from "./automationRuleRoutes.js";
 import meetingHealthRoutes from "./meetingHealthRoutes.js";
 import workspaceRoutes from "./workspaceRoutes.js";
 import recapRoutes from "./recapRoutes.js";
+import focusTimeRoutes from "./focusTimeRoutes.js";
 import recapStoryRoutes from "./recapStoryRoutes.js";
 import meetingQualityRoutes from "./meetingQualityRoutes.js";
 import exportRoutes from "./export.routes.js";
@@ -83,6 +85,7 @@ import agendaVoteRoutes from "./agendaVoteRoutes.js";
 import agendaBuilderRoutes from "./agendaBuilderRoutes.js";
 import meetingDuplicateRoutes from "./meetingDuplicateRoutes.js";
 import meetingDelegationRoutes from "./meetingDelegationRoutes.js";
+import breakoutRoomRoutes from "./breakoutRoomRoutes.js";
 
 import notionIntegrationRoutes from "./notionIntegrationRoutes.js";
 import gamificationRoutes from "./gamificationRoutes.js";
@@ -140,6 +143,8 @@ router.use("/api/comments", commentRoutes);
 router.use("/api/activities", activityRoutes);
 router.use("/api/tags", tagRoutes);
 router.use("/api/polls", pollRoutes);
+router.use("/api/meetings/:meetingId/topics", topicRoutes);
+router.use("/api/meetings/:meetingId/breakout-rooms", breakoutRoomRoutes);
 router.use("/api/meetings/:meetingId/attachments", attachmentRoutes);
 router.use("/api/meeting-series", meetingSeriesRoutes);
 router.use("/api/meeting-series", carryForwardRoutes);
@@ -179,6 +184,7 @@ router.use("/api/automation-rules", automationRuleRoutes);
 router.use("/api/meeting-health", meetingHealthRoutes);
 router.use("/api/workspace", workspaceRoutes);
 router.use("/api/recap", recapRoutes);
+router.use("/api/focus-time", focusTimeRoutes);
 router.use("/api/meetings", recapStoryRoutes);
 // /api/quality is the prefix MeetingQuality.jsx calls and the prefix every
 // @route line in meetingQualityController.js documents. The router was mounted
@@ -222,5 +228,7 @@ router.use("/api/engagement", participantEngagementRoutes);
 
 import meetingPatternRoutes from "./meetingPatternRoutes.js";
 router.use("/api/patterns", meetingPatternRoutes);
+
+router.use("/api/custom-fields", customFieldRoutes);
 
 export default router;

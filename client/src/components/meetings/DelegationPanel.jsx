@@ -44,7 +44,7 @@ const DelegationPanel = ({ meetingId, participants }) => {
 
   const fetchDelegation = async () => {
     try {
-      const response = await api.get(`/delegations/meeting/${meetingId}`);
+      const response = await api.get(`/api/delegations/meeting/${meetingId}`);
       if (response.data.delegation) {
         setDelegation(response.data.delegation);
       }
@@ -80,7 +80,7 @@ const DelegationPanel = ({ meetingId, participants }) => {
 
     setIsSubmitting(true);
     try {
-      const response = await api.post("/delegations", {
+      const response = await api.post("/api/delegations", {
         meetingId,
         delegateeId,
         scope: selectedScopes,
@@ -106,7 +106,9 @@ const DelegationPanel = ({ meetingId, participants }) => {
 
     setIsSubmitting(true);
     try {
-      const response = await api.post(`/delegations/${delegation._id}/revoke`);
+      const response = await api.post(
+        `/api/delegations/${delegation._id}/revoke`,
+      );
       setDelegation(response.data.delegation);
       toast.success("Delegation revoked.");
     } catch (err) {

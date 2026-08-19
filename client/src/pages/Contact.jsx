@@ -56,6 +56,7 @@ const Contact = () => {
     submittedTicket,
     setSubmittedTicket,
     submitting,
+    submitError,
     handleFormSubmit,
   } = useContactForm();
 
@@ -137,6 +138,7 @@ const Contact = () => {
                 submittedTicket={submittedTicket}
                 setSubmittedTicket={setSubmittedTicket}
                 submitting={submitting}
+                submitError={submitError}
                 handleFormSubmit={handleFormSubmit}
               />
             </div>

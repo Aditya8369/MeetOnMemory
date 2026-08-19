@@ -48,6 +48,7 @@ import {
   History,
   Archive,
   Network,
+  Clock,
 } from "lucide-react";
 
 const clerkPubKey = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY;
@@ -436,6 +437,12 @@ const Navbar = () => {
       href: "/organizations",
       icon: Building2,
       permission: { resource: "organizations", action: "view" },
+    },
+    {
+      label: "Focus Time",
+      href: "/focus-time",
+      icon: Clock,
+      permission: null,
     },
   ].filter(
     (link) =>

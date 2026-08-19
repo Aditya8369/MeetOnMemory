@@ -424,6 +424,36 @@ export default (io) => {
     });
 
     /**
+     * Breakout Rooms
+     */
+    socket.on("breakout:join", ({ roomId, breakoutRoomId }) => {
+      // Join the specific breakout room socket channel
+      socket.join(`breakout-${breakoutRoomId}`);
+      // Notify others in the main room that user joined a breakout room
+      socket.to(roomId).emit("breakout:user-joined", {
+        userId: socket.userId,
+        breakoutRoomId,
+      });
+    });
+
+    socket.on("breakout:leave", ({ roomId, breakoutRoomId }) => {
+      socket.leave(`breakout-${breakoutRoomId}`);
+      socket
+        .to(roomId)
+        .emit("breakout:user-left", { userId: socket.userId, breakoutRoomId });
+    });
+
+    socket.on("breakout:started", ({ roomId, breakoutRoomId }) => {
+      // Notify main room that a breakout room was started
+      socket.to(roomId).emit("breakout:started", { breakoutRoomId });
+    });
+
+    socket.on("breakout:closed", ({ roomId, breakoutRoomId }) => {
+      // Notify main room that a breakout room was closed
+      socket.to(roomId).emit("breakout:closed", { breakoutRoomId });
+    });
+
+    /**
      * Timer synchronization across all users in a meeting
      * Timer state remains local as it's instance-specific
      */
