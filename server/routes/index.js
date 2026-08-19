@@ -89,6 +89,7 @@ import breakoutRoomRoutes from "./breakoutRoomRoutes.js";
 
 import notionIntegrationRoutes from "./notionIntegrationRoutes.js";
 import gamificationRoutes from "./gamificationRoutes.js";
+import actionItemsRoutes from "./actionItems.routes.js";
 
 const router = express.Router();
 
@@ -217,6 +218,7 @@ router.use("/api/issue-tracker", issueTrackerRoutes);
 router.use("/api/webhooks", issueTrackerWebhookRoutes);
 
 router.use("/api/gamification", gamificationRoutes);
+router.use("/api/action-items", actionItemsRoutes);
 
 import preMeetingBriefingRoutes from "./preMeetingBriefingRoutes.js";
 router.use("/api/briefings", preMeetingBriefingRoutes);

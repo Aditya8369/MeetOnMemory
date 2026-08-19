@@ -20,7 +20,11 @@ router.get(
   verifyMeetingAccess,
   actionItemsController.getMeetingActionItems,
 );
-router.post("/", verifyMeetingAccess, actionItemsController.createActionItem);
+router.post(
+  "/meetings/:meetingId",
+  verifyMeetingAccess,
+  actionItemsController.createActionItem,
+);
 router.patch(
   "/:id",
   verifyActionItemAccess,
