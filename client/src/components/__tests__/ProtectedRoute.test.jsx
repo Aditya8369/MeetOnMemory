@@ -33,7 +33,7 @@ const renderWithProviders = (ui, contextValue, initialRoute = "/") => {
 };
 
 describe("ProtectedRoute", () => {
-  it("shows loading state when isLoading is true", () => {
+  it("shows loading state when loading is true", () => {
     vi.spyOn(useRBACHook, "useRBAC").mockReturnValue({
       hasPermission: vi.fn(),
     });
@@ -42,7 +42,7 @@ describe("ProtectedRoute", () => {
       <ProtectedRoute>
         <div>Protected Content</div>
       </ProtectedRoute>,
-      { isLoading: true, isLoggedin: false, userData: null },
+      { loading: true, isLoggedin: false, userData: null },
     );
 
     expect(screen.getByText("Loading...")).toBeInTheDocument();
@@ -57,7 +57,7 @@ describe("ProtectedRoute", () => {
       <ProtectedRoute>
         <div>Protected Content</div>
       </ProtectedRoute>,
-      { isLoading: false, isLoggedin: false, userData: null },
+      { loading: false, isLoggedin: false, userData: null },
     );
 
     expect(screen.getByTestId("location-display")).toHaveTextContent("/login");
@@ -88,7 +88,7 @@ describe("ProtectedRoute", () => {
         <div>Protected Content</div>
       </ProtectedRoute>,
       {
-        isLoading: false,
+        loading: false,
         isLoggedin: true,
         userData: { hasCompletedOnboarding: false },
       },
@@ -100,6 +100,38 @@ describe("ProtectedRoute", () => {
     );
   });
 
+  it("allows onboarding users to access browse-organizations (#293)", () => {
+    vi.spyOn(useRBACHook, "useRBAC").mockReturnValue({
+      hasPermission: vi.fn(),
+    });
+
+    render(
+      <MemoryRouter initialEntries={["/browse-organizations"]}>
+        <AppContent.Provider
+          value={{
+            loading: false,
+            isLoggedin: true,
+            userData: { hasCompletedOnboarding: false },
+          }}
+        >
+          <Routes>
+            <Route
+              path="/browse-organizations"
+              element={
+                <ProtectedRoute>
+                  <div>Browse Organizations</div>
+                </ProtectedRoute>
+              }
+            />
+            <Route path="/organizations" element={<LocationDisplay />} />
+          </Routes>
+        </AppContent.Provider>
+      </MemoryRouter>,
+    );
+
+    expect(screen.getByText("Browse Organizations")).toBeInTheDocument();
+  });
+
   it("redirects to /dashboard if onboarding is completed but user is on an onboarding page", () => {
     vi.spyOn(useRBACHook, "useRBAC").mockReturnValue({
       hasPermission: vi.fn(),
@@ -109,7 +141,7 @@ describe("ProtectedRoute", () => {
       <MemoryRouter initialEntries={["/organizations"]}>
         <AppContent.Provider
           value={{
-            isLoading: false,
+            loading: false,
             isLoggedin: true,
             userData: { hasCompletedOnboarding: true },
           }}
@@ -145,16 +177,14 @@ describe("ProtectedRoute", () => {
         <div>Protected Content</div>
       </ProtectedRoute>,
       {
-        isLoading: false,
+        loading: false,
         isLoggedin: true,
         userData: { hasCompletedOnboarding: true },
       },
     );
 
     expect(mockHasPermission).toHaveBeenCalledWith("meetings", "delete");
-    expect(screen.getByTestId("location-display")).toHaveTextContent(
-      "/dashboard",
-    );
+    expect(screen.getByText("accessDenied.title")).toBeInTheDocument();
   });
 
   it("renders children if user has required permissions", () => {
@@ -168,7 +198,7 @@ describe("ProtectedRoute", () => {
         <div>Protected Content</div>
       </ProtectedRoute>,
       {
-        isLoading: false,
+        loading: false,
         isLoggedin: true,
         userData: { hasCompletedOnboarding: true },
       },
@@ -192,7 +222,7 @@ describe("ProtectedRoute", () => {
         <div>Admin Content</div>
       </ProtectedRoute>,
       {
-        isLoading: false,
+        loading: false,
         isLoggedin: true,
         userData: { hasCompletedOnboarding: true },
       },

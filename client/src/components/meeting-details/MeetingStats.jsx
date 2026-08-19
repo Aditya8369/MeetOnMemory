@@ -186,8 +186,8 @@ const MeetingStats = ({ meeting }) => {
   }
 
   return (
-    <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-6">
-      <h3 className="text-base font-semibold text-gray-900 mb-4 flex items-center gap-2">
+    <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6 mb-6">
+      <h3 className="text-base font-semibold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
         <svg
           className="w-5 h-5"
           fill="none"
@@ -207,13 +207,15 @@ const MeetingStats = ({ meeting }) => {
         {stats.map((stat, index) => (
           <div
             key={index}
-            className="bg-gray-50 rounded-lg p-3 border border-gray-100"
+            className="bg-gray-50 dark:bg-gray-700/50 rounded-lg p-3 border border-gray-100 dark:border-gray-700"
           >
-            <div className="flex items-center gap-2 text-gray-500 text-xs mb-1">
+            <div className="flex items-center gap-2 text-gray-500 dark:text-gray-400 text-xs mb-1">
               {stat.icon}
               <span>{stat.label}</span>
             </div>
-            <p className="text-gray-900 font-semibold text-sm">{stat.value}</p>
+            <p className="text-gray-900 dark:text-white font-semibold text-sm">
+              {stat.value}
+            </p>
           </div>
         ))}
       </div>

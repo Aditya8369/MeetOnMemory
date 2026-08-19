@@ -1,36 +1,69 @@
-import { TIMERS } from "./constants.js";
+import { AUTOMATION, TIMERS, reminderMarker } from "./constants.js";
+import { syncActivityFromOpenPullRequests } from "./activity.js";
 import { comments } from "./comments.js";
 import {
   createComment,
+  findCommentByMarker,
   getIssue,
+  hasOpenLinkedPullRequest,
   listComments,
   listOpenAssignedIssues,
+  listOpenUnassignedIssues,
   removeAssignee,
 } from "./helpers.js";
 import {
   clearAssignmentMetadata,
+  isManualAssignment,
   readMetadata,
+  resetReminderTracking,
+  touchAssigneeActivity,
   updateIssueMetadata,
 } from "./metadata.js";
-import { isActivitySignal } from "./regex.js";
-import { hasMarker, hoursSince, nowIso } from "./utils.js";
+import { isAuthorPriorityActive, issueAuthorRole } from "./permissions.js";
+import { hasMarker, hoursSince, isIgnoredBotUser, nowIso } from "./utils.js";
 
-function hasLinkedPrActivity(commentsList, assignee) {
-  return commentsList.some((comment) => {
-    if (comment.user?.login !== assignee) return false;
-    return /#\d+|pull request|pr/i.test(comment.body || "");
-  });
+function isAssigneeProgressComment(comment, assignee) {
+  if (!comment || comment.user?.login !== assignee) return false;
+  if (isIgnoredBotUser(comment.user)) return false;
+  // Any non-empty assignee comment counts as meaningful activity.
+  return String(comment.body || "").trim().length > 0;
 }
 
 export async function processClaimExpiration({ github, context, core }) {
   const issues = await listOpenAssignedIssues(github, context, core);
+  const linkedPrCache = new Map();
+
   for (const issueSummary of issues) {
     const issue = await getIssue(github, context, core, issueSummary.number);
     if (!issue || issue.state !== "open" || issue.locked) continue;
     const assignee = issue.assignees?.[0]?.login;
     if (!assignee) continue;
 
-    const metadata = readMetadata(issue.body);
+    let metadata = readMetadata(issue.body);
+
+    // Maintainer manual assignments are never expired or reminded by the bot.
+    if (isManualAssignment(metadata)) continue;
+
+    // Freeze while ANY linked PR is still open (including drafts).
+    const openLinked = await hasOpenLinkedPullRequest(
+      github,
+      context,
+      core,
+      issue.number,
+      linkedPrCache,
+    );
+    if (openLinked) {
+      await syncActivityFromOpenPullRequests(
+        github,
+        context,
+        core,
+        issue,
+        assignee,
+        linkedPrCache,
+      );
+      continue;
+    }
+
     const issueComments = await listComments(
       github,
       context,
@@ -39,10 +72,7 @@ export async function processClaimExpiration({ github, context, core }) {
     );
 
     const lastSignal = issueComments
-      .filter((c) => c.user?.login === assignee)
-      .filter(
-        (c) => isActivitySignal(c.body) || hasLinkedPrActivity([c], assignee),
-      )
+      .filter((c) => isAssigneeProgressComment(c, assignee))
       .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))[0];
 
     if (lastSignal) {
@@ -52,9 +82,7 @@ export async function processClaimExpiration({ github, context, core }) {
         new Date(signalTime) > new Date(metadata.lastActivityAt)
       ) {
         await updateIssueMetadata(github, context, core, issue, (draft) => {
-          draft.lastActivityAt = signalTime;
-          draft.reminder12SentAt = null;
-          draft.reminder18SentAt = null;
+          touchAssigneeActivity(draft, signalTime);
           return draft;
         });
       }
@@ -63,6 +91,8 @@ export async function processClaimExpiration({ github, context, core }) {
     const freshIssue = await getIssue(github, context, core, issue.number);
     if (!freshIssue) continue;
     const freshMeta = readMetadata(freshIssue.body);
+    if (isManualAssignment(freshMeta)) continue;
+
     const baseline =
       freshMeta.lastActivityAt || freshMeta.assignedAt || freshIssue.updated_at;
     const inactiveHours = hoursSince(baseline);
@@ -74,7 +104,7 @@ export async function processClaimExpiration({ github, context, core }) {
         context,
         core,
         issue.number,
-        comments.expiration24h({ assignee }),
+        comments.expiration({ assignee }),
       );
       await updateIssueMetadata(github, context, core, freshIssue, (draft) =>
         clearAssignmentMetadata(draft),
@@ -82,41 +112,82 @@ export async function processClaimExpiration({ github, context, core }) {
       continue;
     }
 
+    // Highest due reminder first; at most one reminder comment per run.
+    const reminderHoursDesc = [...TIMERS.reminderHours].sort((a, b) => b - a);
+    const remindersSentAt = freshMeta.remindersSentAt || {};
+    for (const hours of reminderHoursDesc) {
+      const key = String(hours);
+      const marker = reminderMarker(hours);
+      if (
+        inactiveHours >= hours &&
+        !remindersSentAt[key] &&
+        !issueComments.some((c) => hasMarker(c.body, marker))
+      ) {
+        await createComment(
+          github,
+          context,
+          core,
+          issue.number,
+          comments.reminder({ assignee, hours }),
+        );
+        await updateIssueMetadata(
+          github,
+          context,
+          core,
+          freshIssue,
+          (draft) => {
+            draft.remindersSentAt = {
+              ...(draft.remindersSentAt || {}),
+              [key]: nowIso(),
+            };
+            return draft;
+          },
+        );
+        break;
+      }
+    }
+  }
+
+  await notifyExpiredAuthorPriorityWindows({ github, context, core });
+}
+
+async function notifyExpiredAuthorPriorityWindows({ github, context, core }) {
+  const issues = await listOpenUnassignedIssues(github, context, core);
+
+  for (const issueSummary of issues) {
+    const issue = await getIssue(github, context, core, issueSummary.number);
+    if (!issue || issue.state !== "open" || issue.locked) continue;
+    if ((issue.assignees || []).length > 0) continue;
+
+    const author = issue.user?.login;
+    if (!author) continue;
     if (
-      inactiveHours >= TIMERS.reminder18Hours &&
-      !freshMeta.reminder18SentAt &&
-      !issueComments.some((c) => hasMarker(c.body, "mom:reminder-18h"))
+      ["owner", "maintainer", "collaborator"].includes(issueAuthorRole(issue))
     ) {
-      await createComment(
-        github,
-        context,
-        core,
-        issue.number,
-        comments.reminder18h({ assignee }),
-      );
-      await updateIssueMetadata(github, context, core, freshIssue, (draft) => {
-        draft.reminder18SentAt = nowIso();
-        return draft;
-      });
       continue;
     }
 
-    if (
-      inactiveHours >= TIMERS.reminder12Hours &&
-      !freshMeta.reminder12SentAt &&
-      !issueComments.some((c) => hasMarker(c.body, "mom:reminder-12h"))
-    ) {
-      await createComment(
-        github,
-        context,
-        core,
-        issue.number,
-        comments.reminder12h({ assignee }),
-      );
-      await updateIssueMetadata(github, context, core, freshIssue, (draft) => {
-        draft.reminder12SentAt = nowIso();
-        return draft;
-      });
-    }
+    const metadata = readMetadata(issue.body);
+    if (isAuthorPriorityActive(issue, metadata)) continue;
+
+    const existing = await findCommentByMarker(
+      github,
+      context,
+      core,
+      issue.number,
+      AUTOMATION.authorPriorityExpiredMarker,
+    );
+    if (existing) continue;
+
+    await createComment(
+      github,
+      context,
+      core,
+      issue.number,
+      comments.authorPriorityExpired({ author }),
+    );
   }
 }
+
+// Re-export for tests that may spy on reminder reset behavior.
+export { resetReminderTracking };
