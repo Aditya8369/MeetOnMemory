@@ -310,3 +310,24 @@ export const createCareersApplicationLimiter = (overrides = {}) =>
   });
 
 export const careersApplicationLimiter = createCareersApplicationLimiter();
+
+/**
+ * Public contact form submissions (Issue #1793).
+ * Limits abuse by client IP.
+ */
+export const createContactSubmitLimiter = (overrides = {}) =>
+  rateLimit({
+    ...baseOptions,
+    windowMs: 60 * 60 * 1000, // 1 hour
+    max: 10,
+    keyGenerator: (req) => `ip:${getClientIp(req)}`,
+    message: {
+      success: false,
+      message:
+        "Too many contact submissions from this address. Please try again later.",
+    },
+    store: createStore("rl:contact_submit:"),
+    ...overrides,
+  });
+
+export const contactSubmitLimiter = createContactSubmitLimiter();
