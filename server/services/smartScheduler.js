@@ -1,5 +1,5 @@
 import { getFreeBusy } from "./calendarService.js";
-
+import FocusTimeService from "./focusTimeService.js";
 /**
  * Core scheduling algorithm: participant availability → ranked slot proposals.
  */
@@ -30,6 +30,20 @@ class SmartScheduler {
     // Prefer Google free/busy map (email → { busy: [...] }); empty is OK.
     const freeBusyData = raw?.google || {};
 
+    // Fetch Focus Time intervals for all participants
+    const focusTimeData = {};
+    for (const participant of participants) {
+      const userId = participant._id || participant.id;
+      if (userId) {
+        const intervals = await FocusTimeService.getActiveIntervals(
+          userId,
+          dateRange.start,
+          dateRange.end,
+        );
+        focusTimeData[userId] = intervals;
+      }
+    }
+
     const allSlots = this.generateTimeSlots(
       dateRange.start,
       dateRange.end,
@@ -42,6 +56,7 @@ class SmartScheduler {
         slot,
         participants,
         freeBusyData,
+        focusTimeData,
         preferences || {},
       );
       return {
@@ -98,17 +113,28 @@ class SmartScheduler {
     return true;
   }
 
-  static analyzeSlot(slot, participants, freeBusyData, preferences) {
+  static analyzeSlot(
+    slot,
+    participants,
+    freeBusyData,
+    focusTimeData,
+    preferences,
+  ) {
     let score = 100;
     const conflicts = [];
     let availableCount = 0;
 
     participants.forEach((participant) => {
+      const userId = participant._id || participant.id;
       const busyIntervals = freeBusyData[participant.email]?.busy || [];
-      const isBusy = this.hasConflict(slot, busyIntervals);
+      const focusIntervals = focusTimeData[userId] || [];
+
+      const isBusyCalendar = this.hasConflict(slot, busyIntervals);
+      const isBusyFocusTime = this.hasConflict(slot, focusIntervals);
+      const isBusy = isBusyCalendar || isBusyFocusTime;
 
       if (isBusy) {
-        conflicts.push(participant._id || participant.id);
+        conflicts.push(userId);
         score -= 20;
       } else {
         availableCount++;
