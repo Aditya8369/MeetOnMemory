@@ -70,17 +70,35 @@ export const toggleFavorite = async (req, res) => {
   }
 };
 
-// Get all favorite meeting IDs for the current user.
+// Get all favorite meeting IDs for the current user in active organization.
 export const getFavorites = async (req, res) => {
   try {
+    const userOrgId = (
+      req.user?.organization?._id || req.user?.organization
+    )?.toString();
+
     const favorites = await Favorite.find({
       user: req.user._id,
     })
-      .select("meeting")
+      .populate({
+        path: "meeting",
+        select: "organization _id",
+      })
       .sort({ createdAt: -1 });
 
+    const validFavorites = favorites
+      .filter((fav) => {
+        if (!fav.meeting) return false;
+        if (!userOrgId) return true;
+        const meetingOrgId = (
+          fav.meeting.organization?._id || fav.meeting.organization
+        )?.toString();
+        return meetingOrgId === userOrgId;
+      })
+      .map((fav) => fav.meeting._id || fav.meeting);
+
     return res.status(200).json({
-      favorites: favorites.map((favorite) => favorite.meeting),
+      favorites: validFavorites,
     });
   } catch (error) {
     console.error("Error fetching favorites:", error);
@@ -98,6 +116,19 @@ export const getFavoriteStatus = async (req, res) => {
 
     if (!mongoose.Types.ObjectId.isValid(meetingId)) {
       return res.status(400).json({ message: "Invalid meetingId" });
+    }
+
+    const meeting =
+      await Meeting.findById(meetingId).select("organization _id");
+
+    if (!meeting) {
+      return res.status(404).json({ message: "Meeting not found" });
+    }
+
+    if (!isSameOrganization(req.user, meeting)) {
+      return res.status(403).json({
+        message: "Meeting does not belong to your organization",
+      });
     }
 
     const favorite = await Favorite.findOne({
