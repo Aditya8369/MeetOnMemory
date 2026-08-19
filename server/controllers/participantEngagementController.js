@@ -1,3 +1,4 @@
+import mongoose from "mongoose";
 import ParticipantEngagementService from "../services/participantEngagementService.js";
 import ParticipantEngagement from "../models/participantEngagementModel.js";
 
@@ -7,7 +8,22 @@ import ParticipantEngagement from "../models/participantEngagementModel.js";
 export const getParticipantScorecard = async (req, res) => {
   try {
     const { userId } = req.params;
-    const orgId = req.user.organization; // Assuming userAuth middleware sets req.user
+    const orgId = (
+      req.user?.organization?._id || req.user?.organization
+    )?.toString();
+
+    if (!orgId || !mongoose.Types.ObjectId.isValid(orgId)) {
+      return res.status(400).json({
+        success: false,
+        message: "Organization ID is required and must be valid",
+      });
+    }
+
+    if (!userId || !mongoose.Types.ObjectId.isValid(userId)) {
+      return res
+        .status(400)
+        .json({ success: false, message: "Invalid user ID format" });
+    }
 
     let scorecard = await ParticipantEngagement.findOne({
       userId,
@@ -39,7 +55,17 @@ export const getParticipantScorecard = async (req, res) => {
  */
 export const getOrganizationRankings = async (req, res) => {
   try {
-    const orgId = req.user.organization;
+    const orgId = (
+      req.user?.organization?._id || req.user?.organization
+    )?.toString();
+
+    if (!orgId || !mongoose.Types.ObjectId.isValid(orgId)) {
+      return res.status(400).json({
+        success: false,
+        message: "Organization ID is required and must be valid",
+      });
+    }
+
     const {
       page = 1,
       limit = 20,
@@ -47,13 +73,18 @@ export const getOrganizationRankings = async (req, res) => {
       order = -1,
     } = req.query;
 
+    const parsedPage = Math.max(1, parseInt(page, 10) || 1);
+    const parsedLimit = Math.min(100, Math.max(1, parseInt(limit, 10) || 20));
+    const parsedOrder =
+      order === 1 || order === "1" || order === "asc" ? 1 : -1;
+
     const result = await ParticipantEngagementService.getOrganizationRankings(
       orgId,
       {
-        page: parseInt(page, 10),
-        limit: parseInt(limit, 10),
-        sortBy,
-        order: parseInt(order, 10),
+        page: parsedPage,
+        limit: parsedLimit,
+        sortBy: typeof sortBy === "string" ? sortBy : "overallScore",
+        order: parsedOrder,
       },
     );
 
@@ -70,7 +101,22 @@ export const getOrganizationRankings = async (req, res) => {
 export const recalculateScorecard = async (req, res) => {
   try {
     const { userId } = req.params;
-    const orgId = req.user.organization;
+    const orgId = (
+      req.user?.organization?._id || req.user?.organization
+    )?.toString();
+
+    if (!orgId || !mongoose.Types.ObjectId.isValid(orgId)) {
+      return res.status(400).json({
+        success: false,
+        message: "Organization ID is required and must be valid",
+      });
+    }
+
+    if (!userId || !mongoose.Types.ObjectId.isValid(userId)) {
+      return res
+        .status(400)
+        .json({ success: false, message: "Invalid user ID format" });
+    }
 
     const scorecard = await ParticipantEngagementService.updateScorecard(
       userId,
