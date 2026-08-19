@@ -25,7 +25,7 @@ const MyDelegations = () => {
 
   const fetchDelegations = async () => {
     try {
-      const response = await api.get("/delegations/my-delegations");
+      const response = await api.get("/api/delegations/my-delegations");
       setDelegatedByMe(response.data.delegatedByMe || []);
       setDelegatedToMe(response.data.delegatedToMe || []);
     } catch (err) {
@@ -38,7 +38,7 @@ const MyDelegations = () => {
 
   const handleAction = async (id, action) => {
     try {
-      await api.post(`/delegations/${id}/${action}`);
+      await api.post(`/api/delegations/${id}/${action}`);
       toast.success(`Delegation ${action} successfully.`);
       fetchDelegations();
     } catch (err) {
