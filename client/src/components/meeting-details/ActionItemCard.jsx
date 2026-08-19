@@ -9,25 +9,27 @@ const ActionItemCard = ({ actionItem, index }) => {
   const getStatusColor = (status) => {
     switch (status?.toLowerCase()) {
       case "completed":
-        return "bg-green-100 text-green-700";
+        return "bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-300";
       case "in progress":
-        return "bg-blue-100 text-blue-700";
+        return "bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300";
       case "pending":
       default:
-        return "bg-yellow-100 text-yellow-700";
+        return "bg-yellow-100 text-yellow-700 dark:bg-yellow-900/40 dark:text-yellow-300";
     }
   };
 
   return (
-    <div className="flex items-start gap-3 p-3 bg-gray-50 rounded-lg border border-gray-100 hover:border-gray-200 transition-colors">
-      <div className="flex-shrink-0 w-6 h-6 bg-blue-100 text-blue-700 rounded-full flex items-center justify-center text-xs font-semibold">
+    <div className="flex items-start gap-3 p-3 bg-gray-50 dark:bg-gray-700/50 rounded-lg border border-gray-100 dark:border-gray-700 hover:border-gray-200 dark:hover:border-gray-600 transition-colors">
+      <div className="flex-shrink-0 w-6 h-6 bg-blue-100 text-blue-700 dark:bg-blue-900/50 dark:text-blue-300 rounded-full flex items-center justify-center text-xs font-semibold">
         {index + 1}
       </div>
       <div className="flex-1 min-w-0">
-        <p className="text-gray-700 text-sm font-medium mb-1">{task}</p>
+        <p className="text-gray-700 dark:text-gray-200 text-sm font-medium mb-1">
+          {task}
+        </p>
         <div className="flex flex-wrap gap-2 text-xs">
           {owner && (
-            <span className="inline-flex items-center gap-1 text-gray-600">
+            <span className="inline-flex items-center gap-1 text-gray-600 dark:text-gray-400">
               <svg
                 className="w-3 h-3"
                 fill="none"
@@ -45,7 +47,7 @@ const ActionItemCard = ({ actionItem, index }) => {
             </span>
           )}
           {dueDate && (
-            <span className="inline-flex items-center gap-1 text-gray-600">
+            <span className="inline-flex items-center gap-1 text-gray-600 dark:text-gray-400">
               <svg
                 className="w-3 h-3"
                 fill="none"

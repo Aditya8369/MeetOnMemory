@@ -6,7 +6,12 @@
 // ================================
 
 import { hybridRetrieve } from "../services/hybridRetrievalService.js";
-import { getRedisClient } from "../services/redisService.js";
+import { setSearchCache } from "../services/redisService.js";
+import { sendSuccess, sendError } from "../utils/responseHandler.js";
+import {
+  assertHybridSearchOrganization,
+  resolveHybridSearchContext,
+} from "../utils/resolveSearchTenant.js";
 
 /**
  * @desc  Hybrid retrieval: semantic vector search fused with knowledge-graph
@@ -30,69 +35,82 @@ import { getRedisClient } from "../services/redisService.js";
 export const hybridSearch = async (req, res) => {
   try {
     if (!req.body || Object.keys(req.body).length === 0) {
-      return res.status(400).json({
-        success: false,
-        message:
-          "Missing request body. Please send a valid JSON with { query: 'your question' }.",
-      });
+      return sendError(
+        res,
+        400,
+        "Missing request body. Please send a valid JSON with { query: 'your question' }.",
+      );
     }
 
-    const { query, ...options } = req.body;
+    const { query, organizationId, options } = resolveHybridSearchContext(req);
 
     if (!query || typeof query !== "string" || query.trim().length < 3) {
-      return res.status(400).json({
-        success: false,
-        message:
-          "Please provide a valid search query (minimum 3 characters). Example: { query: 'attendance policy' }",
-      });
+      return sendError(
+        res,
+        400,
+        "Please provide a valid search query (minimum 3 characters). Example: { query: 'attendance policy' }",
+      );
     }
 
-    const organization = req.user?.organization || null;
+    if (!organizationId) {
+      return sendError(
+        res,
+        403,
+        "Forbidden: Organization membership required for hybrid search",
+      );
+    }
 
     console.log(
-      `🔀 Hybrid search for query: "${query}" (org: ${organization})`,
+      `🔀 Hybrid search for query: "${query}" (org: ${organizationId})`,
     );
+
+    try {
+      assertHybridSearchOrganization(organizationId);
+    } catch (error) {
+      return sendError(res, 403, error.message);
+    }
 
     const { results, meta } = await hybridRetrieve(
       query,
-      organization,
+      organizationId,
       options,
     );
 
+    const message = results.length
+      ? "Hybrid search successful."
+      : "No relevant memories found.";
+
     const responsePayload = {
       success: true,
-      message: results.length
-        ? "Hybrid search successful."
-        : "No relevant memories found.",
+      message,
       results,
       meta,
     };
 
     if (req.cacheKey) {
-      const redisClient = getRedisClient();
-      if (redisClient && redisClient.isReady) {
-        await redisClient.setEx(
-          req.cacheKey,
-          3600,
-          JSON.stringify(responsePayload),
-        );
-      }
+      await setSearchCache(req.cacheKey, req.organizationId, responsePayload);
     }
 
-    return res.status(200).json(responsePayload);
+    return sendSuccess(res, { results, meta }, message);
   } catch (error) {
     console.error("❌ Hybrid search error:", error);
 
     if (error.message === "A non-empty query string is required") {
-      return res.status(400).json({ success: false, message: error.message });
+      return sendError(res, 400, error.message);
     }
 
-    res.status(500).json({
-      success: false,
-      message:
-        error.response?.data?.error ||
+    if (
+      error.message === "Organization context is required for hybrid search"
+    ) {
+      return sendError(res, 403, error.message);
+    }
+
+    sendError(
+      res,
+      500,
+      error.response?.data?.error ||
         error.message ||
         "Server error during hybrid search.",
-    });
+    );
   }
 };
