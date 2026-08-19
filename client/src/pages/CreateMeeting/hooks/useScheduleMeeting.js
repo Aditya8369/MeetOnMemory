@@ -5,6 +5,7 @@ import {
   aiSummaryTemplateApi,
 } from "../../../services";
 import { useCallback, useContext, useEffect, useMemo, useState } from "react";
+import { customFieldApi } from "../../../api/customFieldApi";
 import AppContent from "../../../context/AppContent";
 import {
   buildMeetingDraftKey,
@@ -76,6 +77,10 @@ export const useScheduleMeeting = ({
   const [aiSummaryTemplates, setAiSummaryTemplates] = useState([]);
   const [selectedAiSummaryTemplateId, setSelectedAiSummaryTemplateId] =
     useState("");
+  const [customFields, setCustomFields] = useState({
+    fields: [],
+    isValid: true,
+  });
   const [duplicateMetadata, setDuplicateMetadata] = useState({
     tags: [],
     policyDetails: null,
@@ -255,7 +260,6 @@ export const useScheduleMeeting = ({
   };
 
   const handleScheduleSubmit = async (e) => {
-    const response = await meetingApi.scheduleMeeting(payload);
     e.preventDefault();
     if (!scheduleData.title.trim()) {
       toast.error("Meeting title is required");
@@ -281,6 +285,18 @@ export const useScheduleMeeting = ({
       const response = await meetingApi.scheduleMeeting(payload);
 
       if (response.data?.success) {
+        if (customFields.fields.length > 0 && userData?.organization) {
+          try {
+            await customFieldApi.setMeetingFields(
+              response.data.meeting._id,
+              userData.organization,
+              customFields.fields,
+            );
+          } catch (err) {
+            console.error("Failed to save custom fields", err);
+            toast.error("Meeting saved, but custom fields failed to save");
+          }
+        }
         toast.success("✅ Meeting scheduled and synced to calendars!");
 
         // Trigger calendar integration
@@ -357,5 +373,8 @@ export const useScheduleMeeting = ({
     restoreDraft,
     discardDraft,
     setAgendaItems,
+    customFields,
+    setCustomFields,
+    userData,
   };
 };

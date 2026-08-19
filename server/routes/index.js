@@ -18,6 +18,7 @@ import knowledgeGraphRoutes from "./knowledgeGraphRoutes.js";
 import policyComplianceRoutes from "./policyComplianceRoutes.js";
 import sessionRoutes from "./sessionRoutes.js";
 import transcriptRoutes from "./transcriptRoutes.js";
+import customFieldRoutes from "./customFieldRoutes.js";
 import sharedLinkRoutes from "./sharedLinkRoutes.js";
 import meetingTemplateRoutes from "./meetingTemplateRoutes.js";
 import bookmarkRoutes from "./bookmarkRoutes.js";
@@ -220,5 +221,7 @@ router.use("/api/engagement", participantEngagementRoutes);
 
 import meetingPatternRoutes from "./meetingPatternRoutes.js";
 router.use("/api/patterns", meetingPatternRoutes);
+
+router.use("/api/custom-fields", customFieldRoutes);
 
 export default router;

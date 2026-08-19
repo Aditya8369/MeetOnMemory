@@ -2,9 +2,7 @@ import cron from "node-cron";
 import ActionItem from "../models/actionItemModel.js";
 import Meeting from "../models/meetingModel.js";
 import emailService from "./emailService.js";
-import {
-  createNotification,
-} from "./notificationService.js";
+import notificationService from "./notificationService.js";
 
 class ReminderScheduler {
   constructor() {
@@ -32,9 +30,7 @@ class ReminderScheduler {
 
     this.isRunning = true;
 
-    console.log(
-      `[ReminderScheduler] Started with timezone: ${this.timezone}`,
-    );
+    console.log(`[ReminderScheduler] Started with timezone: ${this.timezone}`);
   }
 
   /**
@@ -168,8 +164,7 @@ class ReminderScheduler {
        * is also present in participants.
        */
       const alreadyAdded = recipients.some(
-        (recipient) =>
-          String(recipient.userId) === String(participant.user),
+        (recipient) => String(recipient.userId) === String(participant.user),
       );
 
       if (!alreadyAdded && participant.user) {

@@ -6,6 +6,7 @@ import AttachmentSection from "./AttachmentSection";
 import CalendarNotice from "./CalendarNotice";
 import DraftRecoveryBanner from "./DraftRecoveryBanner";
 import SmartAgendaGenerator from "../../../../components/meetings/SmartAgendaGenerator";
+import CustomFieldsEditor from "../../../../components/meetings/CustomFieldsEditor";
 
 const ScheduleMeeting = ({ hookProps, loadingDuplicate = false }) => {
   const {
@@ -40,6 +41,9 @@ const ScheduleMeeting = ({ hookProps, loadingDuplicate = false }) => {
     selectedAiSummaryTemplateId,
     setSelectedAiSummaryTemplateId,
     setAgendaItems,
+    customFields,
+    setCustomFields,
+    userData,
   } = hookProps;
 
   return (
@@ -132,6 +136,11 @@ const ScheduleMeeting = ({ hookProps, loadingDuplicate = false }) => {
           </div>
         )}
 
+        <CustomFieldsEditor
+          orgId={userData?.organization}
+          onChange={(fields, isValid) => setCustomFields({ fields, isValid })}
+        />
+
         <AgendaSection
           agendaItems={agendaItems}
           setAgendaItems={setAgendaItems}
@@ -206,13 +215,17 @@ const ScheduleMeeting = ({ hookProps, loadingDuplicate = false }) => {
             </div>
           )}
         </div>
-        
+
         <CalendarNotice />
 
         {/* Submit */}
         <button
           type="submit"
-          disabled={loading || loadingDuplicate}
+          disabled={
+            loading ||
+            loadingDuplicate ||
+            (customFields && !customFields.isValid)
+          }
           className="w-full px-6 py-3 bg-blue-600 text-white rounded-lg font-semibold hover:bg-blue-700 transition flex items-center justify-center gap-2 disabled:opacity-50"
         >
           {loading ? (
