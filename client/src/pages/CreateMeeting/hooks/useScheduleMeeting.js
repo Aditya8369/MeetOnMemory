@@ -255,7 +255,6 @@ export const useScheduleMeeting = ({
   };
 
   const handleScheduleSubmit = async (e) => {
-    const response = await meetingApi.scheduleMeeting(payload);
     e.preventDefault();
     if (!scheduleData.title.trim()) {
       toast.error("Meeting title is required");
