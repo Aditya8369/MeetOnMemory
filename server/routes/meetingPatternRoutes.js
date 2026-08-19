@@ -5,18 +5,18 @@ import {
   dismissPattern,
   triggerManualScan,
 } from "../controllers/meetingPatternController.js";
-import { requireAuth } from "../middleware/authMiddleware.js";
-import { requireOrganizationAdmin } from "../middleware/organizationMiddleware.js";
+import userAuth from "../middleware/userAuth.js";
+import { requireAdminOrOwner } from "../middleware/rbac.js";
 
 const router = express.Router();
 
-router.use(requireAuth);
+router.use(userAuth);
 
 router.get("/", getPatterns);
 router.patch("/:id/acknowledge", acknowledgePattern);
 router.patch("/:id/dismiss", dismissPattern);
 
 // Admin only routes
-router.post("/scan", requireOrganizationAdmin, triggerManualScan);
+router.post("/scan", requireAdminOrOwner, triggerManualScan);
 
 export default router;

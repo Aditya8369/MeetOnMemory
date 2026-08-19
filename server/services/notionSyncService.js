@@ -1,8 +1,69 @@
-import { Client } from "@notionhq/client";
+import { Client, APIResponseError } from "@notionhq/client";
+import { decryptToken } from "../utils/crypto.js";
+import { transformMeetingToNotionBlocks } from "../utils/notionBlockTransformer.js";
+import logger from "../utils/logger.js";
 
-// Notion OAuth endpoints
 const NOTION_TOKEN_URL = "https://api.notion.com/v1/oauth/token";
+const MAX_RETRIES = 3;
+const BASE_DELAY_MS = 1000;
 
+/**
+ * Sleep helper for retry/rate-limit backoff.
+ */
+function sleep(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+/**
+ * Execute a Notion API call with bounded retries and rate-limit awareness.
+ */
+async function withRetry(fn, retries = MAX_RETRIES) {
+  for (let attempt = 0; attempt <= retries; attempt++) {
+    try {
+      return await fn();
+    } catch (err) {
+      const isRateLimit = err instanceof APIResponseError && err.status === 429;
+      const isTransient =
+        err instanceof APIResponseError &&
+        err.status >= 500 &&
+        err.status < 600;
+
+      if (attempt >= retries || (!isRateLimit && !isTransient)) {
+        throw err;
+      }
+
+      let delayMs;
+      if (isRateLimit) {
+        const retryAfter = err.headers?.get?.("retry-after");
+        delayMs = retryAfter
+          ? parseInt(retryAfter, 10) * 1000
+          : BASE_DELAY_MS * 2 ** attempt;
+      } else {
+        delayMs = BASE_DELAY_MS * 2 ** attempt;
+      }
+
+      logger.warn(
+        `Notion API retry ${attempt + 1}/${retries} after ${delayMs}ms`,
+        {
+          status: err.status,
+        },
+      );
+      await sleep(delayMs);
+    }
+  }
+}
+
+/**
+ * Build an authenticated Notion Client, decrypting the stored token.
+ */
+function buildClient(encryptedToken) {
+  const token = decryptToken(encryptedToken);
+  return new Client({ auth: token });
+}
+
+/**
+ * Exchange OAuth authorization code for a Notion access token.
+ */
 export const exchangeOAuthToken = async (code, redirectUri) => {
   const clientId = process.env.NOTION_CLIENT_ID;
   const clientSecret = process.env.NOTION_CLIENT_SECRET;
@@ -29,7 +90,6 @@ export const exchangeOAuthToken = async (code, redirectUri) => {
 
   const data = await response.json();
   if (!response.ok) {
-    console.error("Notion OAuth error:", data);
     throw new Error(
       data.error_description || "Failed to exchange Notion token",
     );
@@ -38,20 +98,18 @@ export const exchangeOAuthToken = async (code, redirectUri) => {
   return data;
 };
 
-export const fetchDatabases = async (accessToken) => {
-  const notion = new Client({ auth: accessToken });
+/**
+ * List Notion databases the integration has access to.
+ */
+export const fetchDatabases = async (encryptedToken) => {
+  const notion = buildClient(encryptedToken);
 
-  // Fetch databases the integration has been shared with
-  const response = await notion.search({
-    filter: {
-      value: "database",
-      property: "object",
-    },
-    sort: {
-      direction: "descending",
-      timestamp: "last_edited_time",
-    },
-  });
+  const response = await withRetry(() =>
+    notion.search({
+      filter: { value: "database", property: "object" },
+      sort: { direction: "descending", timestamp: "last_edited_time" },
+    }),
+  );
 
   return response.results.map((db) => ({
     id: db.id,
@@ -60,120 +118,65 @@ export const fetchDatabases = async (accessToken) => {
   }));
 };
 
-export const createMeetingPage = async (meeting, integration) => {
+/**
+ * Create a Notion page for a meeting. Uses the block transformer for content
+ * and handles deduplication via sync history on the integration document.
+ *
+ * @param {Object} meeting - Meeting document
+ * @param {Object} integration - NotionIntegration document (Mongoose)
+ * @param {Array}  actionItems - ActionItem documents for this meeting
+ * @returns {{ pageId: string, pageUrl: string, alreadySynced: boolean }}
+ */
+export const createMeetingPage = async (
+  meeting,
+  integration,
+  actionItems = [],
+) => {
   if (!integration.targetDatabaseId) {
     throw new Error("Target Notion database is not configured.");
   }
 
-  const notion = new Client({ auth: integration.accessToken });
-
-  const children = [];
-
-  // Add Transcript Link if available
-  if (meeting.fileUrl || meeting.transcript) {
-    children.push({
-      object: "block",
-      type: "paragraph",
-      paragraph: {
-        rich_text: [
-          {
-            type: "text",
-            text: {
-              content: "Transcript: ",
-            },
-            annotations: {
-              bold: true,
-            },
-          },
-          {
-            type: "text",
-            text: {
-              content: meeting.fileUrl
-                ? "Recording Link"
-                : "Available in MeetOnMemory",
-            },
-          },
-        ],
-      },
-    });
+  const existingSync = integration.syncHistory?.find(
+    (s) =>
+      s.meetingId?.toString() === meeting._id?.toString() &&
+      s.status === "success",
+  );
+  if (existingSync) {
+    return {
+      pageId: existingSync.notionPageId,
+      pageUrl: existingSync.notionPageUrl,
+      alreadySynced: true,
+    };
   }
 
-  // Add Summary
-  if (meeting.summary) {
-    children.push({
-      object: "block",
-      type: "heading_2",
-      heading_2: {
-        rich_text: [{ type: "text", text: { content: "Summary" } }],
-      },
-    });
+  const notion = buildClient(integration.accessToken);
+  const { properties, children } = transformMeetingToNotionBlocks(
+    meeting,
+    actionItems,
+  );
 
-    // Split summary by paragraphs (very basic splitting)
-    const paragraphs = meeting.summary.split("\n\n").filter((p) => p.trim());
-    for (const p of paragraphs) {
-      children.push({
-        object: "block",
-        type: "paragraph",
-        paragraph: {
-          rich_text: [
-            { type: "text", text: { content: p.substring(0, 2000) } },
-          ], // Notion text limits
-        },
-      });
-    }
-  }
+  const response = await withRetry(() =>
+    notion.pages.create({
+      parent: { database_id: integration.targetDatabaseId },
+      properties,
+      children,
+    }),
+  );
 
-  // Add Action Items
-  if (
-    meeting.structuredMoM &&
-    meeting.structuredMoM.actionItems &&
-    meeting.structuredMoM.actionItems.length > 0
-  ) {
-    children.push({
-      object: "block",
-      type: "heading_2",
-      heading_2: {
-        rich_text: [{ type: "text", text: { content: "Action Items" } }],
-      },
-    });
-
-    for (const item of meeting.structuredMoM.actionItems) {
-      let text = item.task || "Action item";
-      if (item.assignee) text += ` (Assignee: ${item.assignee})`;
-      if (item.dueDate) text += ` [Due: ${item.dueDate}]`;
-
-      children.push({
-        object: "block",
-        type: "to_do",
-        to_do: {
-          rich_text: [
-            { type: "text", text: { content: text.substring(0, 2000) } },
-          ],
-          checked: false,
-        },
-      });
-    }
-  }
-
-  const response = await notion.pages.create({
-    parent: { database_id: integration.targetDatabaseId },
-    properties: {
-      // Notion Database title property is usually "Name" or "title" type.
-      // We will assume "Name" or title field. In a real integration, we might need to introspect the DB properties.
-      // Passing "title" property directly (it maps to whatever the title property of the DB is).
-      title: {
-        title: [
-          {
-            type: "text",
-            text: {
-              content: meeting.title || "Untitled Meeting",
-            },
-          },
-        ],
-      },
-    },
-    children: children,
+  integration.syncHistory.push({
+    meetingId: meeting._id,
+    notionPageId: response.id,
+    notionPageUrl: response.url || null,
+    syncedAt: new Date(),
+    status: "success",
   });
+  await integration.save();
 
-  return response;
+  logger.info(`Meeting ${meeting._id} synced to Notion page ${response.id}`);
+
+  return {
+    pageId: response.id,
+    pageUrl: response.url,
+    alreadySynced: false,
+  };
 };

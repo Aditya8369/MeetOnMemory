@@ -3,6 +3,7 @@ import ActionItem from "../models/actionItemModel.js";
 import Meeting from "../models/meetingModel.js";
 import emailService from "./emailService.js";
 import notificationService from "./notificationService.js";
+import { createNotification } from "./notificationService.js";
 
 class ReminderScheduler {
   constructor() {
@@ -186,7 +187,7 @@ class ReminderScheduler {
 
     for (const recipient of recipients) {
       try {
-        await notificationService.create({
+        await createNotification({
           userId: recipient.userId,
           type: "meeting_reminder",
           title: subject,
@@ -316,7 +317,7 @@ class ReminderScheduler {
       "7_day": `📅 Upcoming: "${taskTitle}" due next week`,
     };
 
-    await notificationService.create({
+    await createNotification({
       userId: item.assignee._id,
       type: "action_item_reminder",
       title: subjectMap[type],

@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect, useRef } from "react";
+import React, { useState, useMemo, useEffect, useRef, useId } from "react";
 import { Link } from "react-router-dom";
 import { toast } from "react-toastify";
 import Navbar from "../components/Navbar.jsx";
@@ -24,6 +24,9 @@ import {
   Globe,
   HelpCircle,
 } from "lucide-react";
+
+const FOCUSABLE_SELECTOR =
+  'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
 
 // Curated Mock Job Listings
 const initialJobs = [
@@ -280,6 +283,12 @@ const Careers = () => {
   const resumeInputRef = useRef(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  // Modal accessibility refs and IDs
+  const modalDialogRef = useRef(null);
+  const modalCloseButtonRef = useRef(null);
+  const modalTriggerRef = useRef(null);
+  const modalTitleId = useId();
+
   const resetApplicationForm = () => {
     setFormData({
       name: "",
@@ -294,21 +303,46 @@ const Careers = () => {
     }
   };
 
-  // Accessibility Enhancement: Close modal on Escape key press
+  // Focus management: trap focus, handle Escape, restore focus on close
   useEffect(() => {
     if (!isModalOpen) return;
 
+    const animationFrame = window.requestAnimationFrame(() => {
+      modalCloseButtonRef.current?.focus();
+    });
+
     const handleKeyDown = (e) => {
       if (e.key === "Escape") {
-        setIsModalOpen(false);
-        setActiveJobForModal(null);
-        resetApplicationForm();
+        e.preventDefault();
+        closeModal();
+        return;
+      }
+
+      if (e.key !== "Tab" || !modalDialogRef.current) return;
+
+      const focusables = [
+        ...modalDialogRef.current.querySelectorAll(FOCUSABLE_SELECTOR),
+      ];
+      if (!focusables.length) return;
+
+      const firstElement = focusables[0];
+      const lastElement = focusables[focusables.length - 1];
+
+      if (e.shiftKey && document.activeElement === firstElement) {
+        e.preventDefault();
+        lastElement.focus();
+      } else if (!e.shiftKey && document.activeElement === lastElement) {
+        e.preventDefault();
+        firstElement.focus();
       }
     };
 
     document.addEventListener("keydown", handleKeyDown);
+
     return () => {
+      window.cancelAnimationFrame(animationFrame);
       document.removeEventListener("keydown", handleKeyDown);
+      modalTriggerRef.current?.focus?.();
     };
   }, [isModalOpen]);
 
@@ -359,6 +393,7 @@ const Careers = () => {
 
   // Open modal
   const openApplication = (job) => {
+    modalTriggerRef.current = document.activeElement;
     setActiveJobForModal(job);
     setIsModalOpen(true);
   };
@@ -881,10 +916,22 @@ const Careers = () => {
 
       {/* Application Form Modal */}
       {isModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/60 backdrop-blur-xs transition-opacity duration-300">
-          <div className="relative w-full max-w-xl bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-2xl p-6 sm:p-8 animate-in fade-in zoom-in-95 duration-200">
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/60 backdrop-blur-xs transition-opacity duration-300"
+          role="presentation"
+          onClick={closeModal}
+        >
+          <div
+            ref={modalDialogRef}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby={modalTitleId}
+            className="relative w-full max-w-xl bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-2xl p-6 sm:p-8 animate-in fade-in zoom-in-95 duration-200"
+            onClick={(e) => e.stopPropagation()}
+          >
             {/* Modal Close */}
             <button
+              ref={modalCloseButtonRef}
               onClick={closeModal}
               className="absolute top-4 right-4 p-2 rounded-full text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800/80 transition-colors cursor-pointer"
               aria-label="Close modal"
@@ -897,7 +944,10 @@ const Careers = () => {
               <span className="text-[10px] font-extrabold tracking-wider text-blue-600 dark:text-blue-400 uppercase bg-blue-50 dark:bg-blue-900/30 border border-blue-100 dark:border-blue-800/30 px-2 py-0.5 rounded-md">
                 Application Form
               </span>
-              <h3 className="text-2xl font-extrabold text-slate-900 dark:text-white mt-2">
+              <h3
+                id={modalTitleId}
+                className="text-2xl font-extrabold text-slate-900 dark:text-white mt-2"
+              >
                 Apply for {activeJobForModal?.title}
               </h3>
               <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">

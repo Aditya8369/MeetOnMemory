@@ -1,5 +1,5 @@
 import express from "express";
-import { userAuth } from "../middleware/meetingAuth.js"; // or wherever userAuth is located in this codebase
+import userAuth from "../middleware/userAuth.js";
 import {
   getParticipantScorecard,
   getOrganizationRankings,

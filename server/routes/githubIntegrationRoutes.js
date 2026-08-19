@@ -4,23 +4,39 @@ import {
   handleCallback,
   getStatus,
   disconnect,
+  updateRepository,
+  syncActionItem,
 } from "../controllers/githubIntegrationController.js";
-// Assuming there is an auth middleware
-// import { protect } from "../middleware/authMiddleware.js";
+import userAuth from "../middleware/userAuth.js";
+import { requireOrgMembership } from "../middleware/rbac.js";
 
 const router = express.Router();
 
-// GET /api/github/auth
-router.get("/auth", initiateOAuth);
-
-// GET /api/github/callback
+// OAuth flow — callback does not have a session cookie yet (redirect from GitHub)
+router.get("/auth", userAuth, initiateOAuth);
 router.get("/callback", handleCallback);
 
-// GET /api/github/status/:organizationId
-// Usually you'd protect this route: router.get("/status/:organizationId", protect, getStatus);
-router.get("/status/:organizationId", getStatus);
+// Protected organization-scoped routes
+router.get(
+  "/status/:organizationId",
+  userAuth,
+  requireOrgMembership,
+  getStatus,
+);
+router.delete(
+  "/disconnect/:organizationId",
+  userAuth,
+  requireOrgMembership,
+  disconnect,
+);
+router.patch(
+  "/repository/:organizationId",
+  userAuth,
+  requireOrgMembership,
+  updateRepository,
+);
 
-// DELETE /api/github/disconnect/:organizationId
-router.delete("/disconnect/:organizationId", disconnect);
+// Manual sync trigger
+router.post("/sync", userAuth, requireOrgMembership, syncActionItem);
 
 export default router;
