@@ -7,7 +7,9 @@ on:
 
 permissions:
   issues: write
+  pull-requests: write
   contents: read
+  checks: read
 
 concurrency:
   group: expiration-${{ github.repository }}
@@ -19,9 +21,11 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v5
-      - name: Process claim expiration
+      - name: Process claim expiration and PR automation
         uses: actions/github-script@v8
         with:
           script: |
             const { processClaimExpiration } = await import(`${process.cwd()}/.github/scripts/expiration.js`);
+            const { processPrAutomation } = await import(`${process.cwd()}/.github/scripts/pr.js`);
             await processClaimExpiration({ github, context, core });
+            await processPrAutomation({ github, context, core });

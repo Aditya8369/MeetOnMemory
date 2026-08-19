@@ -37,6 +37,10 @@ async function makeMeeting(overrides = {}) {
 }
 
 describe("hybridRetrievalService", () => {
+  beforeAll(async () => {
+    await mongoose.connect(process.env.TEST_MONGODB_URI);
+  });
+
   beforeEach(() => {
     jest.clearAllMocks();
     mockSearchVectorStore.mockResolvedValue([]); // no Pinecone in unit tests
@@ -70,24 +74,33 @@ describe("hybridRetrievalService", () => {
 
   describe("hybridRetrieve", () => {
     it("throws on an empty query", async () => {
-      await expect(hybridRetrieve("", null)).rejects.toThrow(
-        "A non-empty query string is required",
+      await expect(
+        hybridRetrieve("", new mongoose.Types.ObjectId().toString()),
+      ).rejects.toThrow("A non-empty query string is required");
+    });
+
+    it("throws when organization context is missing", async () => {
+      await expect(hybridRetrieve("valid query", null)).rejects.toThrow(
+        "Organization context is required for hybrid search",
       );
     });
 
     it("finds a semantically-matched decision and expands to its graph neighbor", async () => {
-      const meeting = await makeMeeting();
+      const orgA = new mongoose.Types.ObjectId();
+      const meeting = await makeMeeting({ organization: orgA });
 
       // Two related decisions: only "chessDecision" will match the query
       // semantically; "openaiDecision" is reachable only through the graph.
       const chessDecision = await Decision.create({
         text: "Alice likes chess",
         sourceMeetingId: meeting._id,
+        organization: orgA,
         embedding: [1, 0, 0],
       });
       const openaiDecision = await Decision.create({
         text: "Alice works at OpenAI",
         sourceMeetingId: meeting._id,
+        organization: orgA,
         embedding: [0, 1, 0], // deliberately dissimilar to the query embedding
         relatesTo: [{ target: chessDecision._id, confidence: 95 }],
       });
@@ -97,7 +110,7 @@ describe("hybridRetrievalService", () => {
 
       const { results, meta } = await hybridRetrieve(
         "Where does the person who likes chess work?",
-        null,
+        orgA.toString(),
         { maxHops: 2, includeTypes: ["decision"] },
       );
 
@@ -123,7 +136,7 @@ describe("hybridRetrievalService", () => {
     it("respects organization scoping", async () => {
       const orgA = new mongoose.Types.ObjectId();
       const orgB = new mongoose.Types.ObjectId();
-      const meeting = await makeMeeting();
+      const meeting = await makeMeeting({ organization: orgA });
 
       await Decision.create({
         text: "Org A only decision",
@@ -140,7 +153,7 @@ describe("hybridRetrievalService", () => {
 
       mockEmbedText.mockResolvedValue([1, 0, 0]);
 
-      const { results } = await hybridRetrieve("decision", orgA, {
+      const { results } = await hybridRetrieve("decision", orgA.toString(), {
         includeTypes: ["decision"],
       });
 
@@ -156,14 +169,16 @@ describe("hybridRetrievalService", () => {
       );
       mockEmbedText.mockResolvedValue([1, 0, 0]);
 
-      const meeting = await makeMeeting();
+      const orgA = new mongoose.Types.ObjectId();
+      const meeting = await makeMeeting({ organization: orgA });
       await Decision.create({
         text: "Still findable via decision embeddings",
         sourceMeetingId: meeting._id,
+        organization: orgA,
         embedding: [1, 0, 0],
       });
 
-      const { results } = await hybridRetrieve("query", null, {
+      const { results } = await hybridRetrieve("query", orgA.toString(), {
         includeTypes: ["meeting", "decision"],
       });
 
@@ -175,33 +190,41 @@ describe("hybridRetrievalService", () => {
     });
 
     it("higher graphWeight favors graph-connected results over weakly-matching semantic ones", async () => {
-      const meeting = await makeMeeting();
+      const orgA = new mongoose.Types.ObjectId();
+      const meeting = await makeMeeting({ organization: orgA });
 
       const seed = await Decision.create({
         text: "Seed decision",
         sourceMeetingId: meeting._id,
+        organization: orgA,
         embedding: [1, 0, 0],
       });
       const strongGraphNeighbor = await Decision.create({
         text: "Strongly linked neighbor",
         sourceMeetingId: meeting._id,
+        organization: orgA,
         embedding: [0, 1, 0],
         relatesTo: [{ target: seed._id, confidence: 100 }],
       });
       const weakSemanticOnly = await Decision.create({
         text: "Weak semantic-only match",
         sourceMeetingId: meeting._id,
+        organization: orgA,
         embedding: [0.15, 0.98, 0],
       });
 
       mockEmbedText.mockResolvedValue([1, 0, 0]);
 
-      const { results } = await hybridRetrieve("seed decision", null, {
-        includeTypes: ["decision"],
-        semanticWeight: 0.1,
-        graphWeight: 0.9,
-        maxHops: 1,
-      });
+      const { results } = await hybridRetrieve(
+        "seed decision",
+        orgA.toString(),
+        {
+          includeTypes: ["decision"],
+          semanticWeight: 0.1,
+          graphWeight: 0.9,
+          maxHops: 1,
+        },
+      );
 
       const neighborKey = nodeKey(NODE_TYPES.DECISION, strongGraphNeighbor._id);
       const weakKey = nodeKey(NODE_TYPES.DECISION, weakSemanticOnly._id);
