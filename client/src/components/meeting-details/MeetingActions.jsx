@@ -36,7 +36,7 @@ const MeetingActions = ({ meeting, onDelete, onRename }) => {
 
   const handleDownloadTranscript = () => {
     if (!meeting.transcript) {
-      alert("No transcript available to download.");
+      toast.error("No transcript available to download.");
       return;
     }
 

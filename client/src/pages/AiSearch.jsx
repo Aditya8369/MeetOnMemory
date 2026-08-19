@@ -11,6 +11,7 @@ import SearchSkeleton from "../components/ai-search/SearchSkeleton.jsx";
 import SearchEmptyState from "../components/ai-search/SearchEmptyState.jsx";
 import { apiClient } from "../services";
 import { sanitizeHtml } from "../utils/sanitizeHtml";
+import { toast } from "react-toastify";
 
 const FOCUSABLE_SELECTOR =
   'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
@@ -270,7 +271,7 @@ const AiSearch = () => {
     if (textToCopy) {
       try {
         await navigator.clipboard.writeText(textToCopy);
-        alert(t("aiSearch.copiedToClipboard"));
+        toast.success(t("aiSearch.copiedToClipboard"));
       } catch (err) {
         console.error("Failed to copy:", err);
       }
