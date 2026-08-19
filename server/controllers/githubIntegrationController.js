@@ -1,36 +1,38 @@
 import GithubIntegration from "../models/githubIntegrationModel.js";
+import ActionItem from "../models/actionItemModel.js";
+import { syncActionItemToGitHub } from "../services/githubSyncService.js";
+import { encryptToken, decryptToken } from "../utils/crypto.js";
+import { sendSuccess, sendError } from "../utils/responseHandler.js";
+import { ValidationError } from "../utils/errors.js";
 import axios from "axios";
-
-// Environment variables needed:
-// GITHUB_CLIENT_ID
-// GITHUB_CLIENT_SECRET
-// CLIENT_URL
+import logger from "../utils/logger.js";
 
 export const initiateOAuth = async (req, res) => {
   try {
-    const { organizationId } = req.query;
+    const organizationId =
+      req.query.organizationId || req.user?.organization?.toString();
     if (!organizationId) {
-      return res.status(400).json({ message: "organizationId is required" });
+      return sendError(res, 400, "organizationId is required.");
     }
 
     const clientId = process.env.GITHUB_CLIENT_ID;
     if (!clientId) {
-      return res
-        .status(500)
-        .json({ message: "GitHub OAuth is not configured on the server." });
+      return sendError(
+        res,
+        500,
+        "GitHub OAuth is not configured on the server.",
+      );
     }
 
-    // Include state to prevent CSRF and pass along organizationId
     const state = Buffer.from(JSON.stringify({ organizationId })).toString(
       "base64",
     );
 
-    // Redirect to GitHub
     const githubAuthUrl = `https://github.com/login/oauth/authorize?client_id=${clientId}&scope=repo&state=${state}`;
     res.redirect(githubAuthUrl);
   } catch (error) {
-    console.error("GitHub Auth Error:", error);
-    res.status(500).json({ message: "Failed to initiate GitHub OAuth" });
+    logger.error("GitHub Auth Error:", error);
+    sendError(res, 500, "Failed to initiate GitHub OAuth.");
   }
 };
 
@@ -38,20 +40,18 @@ export const handleCallback = async (req, res) => {
   try {
     const { code, state } = req.query;
     if (!code) {
-      return res.status(400).json({ message: "Code is missing" });
+      return sendError(res, 400, "Authorization code is missing.");
     }
 
-    // Decode state
     let decodedState;
     try {
       decodedState = JSON.parse(Buffer.from(state, "base64").toString("utf-8"));
-    } catch (_e) {
-      return res.status(400).json({ message: "Invalid state parameter" });
+    } catch {
+      return sendError(res, 400, "Invalid state parameter.");
     }
 
     const { organizationId, repositoryFullName } = decodedState;
 
-    // Exchange code for token
     const tokenResponse = await axios.post(
       "https://github.com/login/oauth/access_token",
       {
@@ -59,30 +59,21 @@ export const handleCallback = async (req, res) => {
         client_secret: process.env.GITHUB_CLIENT_SECRET,
         code,
       },
-      {
-        headers: { Accept: "application/json" },
-      },
+      { headers: { Accept: "application/json" } },
     );
 
     const accessToken = tokenResponse.data.access_token;
     if (!accessToken) {
-      return res.status(400).json({ message: "Failed to obtain access token" });
+      return sendError(res, 400, "Failed to obtain access token.");
     }
-
-    // We still need the user to specify a repository.
-    // If it was provided in the state (e.g. from frontend redirect), we can save it.
-    // Otherwise, we might save the token and have them choose the repo in a separate step.
-    // For this flow, let's assume the user already selected the repo on the frontend,
-    // OR we will update it via another endpoint. Let's just save the token first.
 
     await GithubIntegration.findOneAndUpdate(
       { organization: organizationId },
       {
         organization: organizationId,
-        accessToken,
-        // If repo wasn't in state, we default to something or require a subsequent update
-        repositoryFullName: repositoryFullName || "imuniqueshiv/MeetOnMemory",
-        connectedBy: req.user?._id || null, // Assuming standard auth middleware sets req.user
+        accessToken: encryptToken(accessToken),
+        repositoryFullName: repositoryFullName || "",
+        connectedBy: req.user?._id || null,
       },
       { upsert: true, new: true },
     );
@@ -92,41 +83,138 @@ export const handleCallback = async (req, res) => {
       `${clientUrl}/organization/settings?tab=integrations&github_success=true`,
     );
   } catch (error) {
-    console.error("GitHub Callback Error:", error);
-    res.status(500).json({ message: "Failed to handle GitHub callback" });
+    logger.error("GitHub Callback Error:", error);
+    sendError(res, 500, "Failed to handle GitHub callback.");
   }
 };
 
 export const getStatus = async (req, res) => {
   try {
-    const { organizationId } = req.params;
+    const organizationId = req.params.organizationId;
     const integration = await GithubIntegration.findOne({
       organization: organizationId,
     });
 
     if (!integration) {
-      return res.status(200).json({ isConnected: false });
+      return sendSuccess(res, { isConnected: false });
     }
 
-    return res.status(200).json({
+    return sendSuccess(res, {
       isConnected: true,
       repositoryFullName: integration.repositoryFullName,
     });
   } catch (error) {
-    console.error("Get Status Error:", error);
-    res
-      .status(500)
-      .json({ message: "Failed to get GitHub integration status" });
+    logger.error("Get Status Error:", error);
+    sendError(res, 500, "Failed to get GitHub integration status.");
   }
 };
 
 export const disconnect = async (req, res) => {
   try {
-    const { organizationId } = req.params;
+    const organizationId = req.params.organizationId;
     await GithubIntegration.findOneAndDelete({ organization: organizationId });
-    return res.status(200).json({ message: "Disconnected successfully" });
+    return sendSuccess(res, {}, "Disconnected successfully.");
   } catch (error) {
-    console.error("Disconnect Error:", error);
-    res.status(500).json({ message: "Failed to disconnect GitHub" });
+    logger.error("Disconnect Error:", error);
+    sendError(res, 500, "Failed to disconnect GitHub.");
+  }
+};
+
+/**
+ * Update the linked repository for an organization (Issue #1600).
+ */
+export const updateRepository = async (req, res) => {
+  try {
+    const organizationId = req.params.organizationId;
+    const { repositoryFullName } = req.body;
+
+    if (
+      !repositoryFullName ||
+      typeof repositoryFullName !== "string" ||
+      !repositoryFullName.includes("/")
+    ) {
+      throw new ValidationError(
+        "repositoryFullName is required and must be in 'owner/repo' format.",
+      );
+    }
+
+    const integration = await GithubIntegration.findOne({
+      organization: organizationId,
+    });
+    if (!integration) {
+      return sendError(
+        res,
+        404,
+        "GitHub integration not found for this organization.",
+      );
+    }
+
+    integration.repositoryFullName = repositoryFullName.trim();
+    await integration.save();
+
+    return sendSuccess(
+      res,
+      {
+        repositoryFullName: integration.repositoryFullName,
+      },
+      "Repository updated.",
+    );
+  } catch (error) {
+    if (error instanceof ValidationError) {
+      return sendError(res, 400, error.message);
+    }
+    logger.error("Update Repository Error:", error);
+    sendError(res, 500, "Failed to update repository.");
+  }
+};
+
+/**
+ * Manually trigger sync of a specific action item to GitHub (Issue #1600).
+ */
+export const syncActionItem = async (req, res) => {
+  try {
+    const { actionItemId } = req.body;
+    if (!actionItemId) {
+      throw new ValidationError("actionItemId is required.");
+    }
+
+    const userOrgId = req.user?.organization?.toString();
+    const actionItem = await ActionItem.findById(actionItemId);
+    if (!actionItem) {
+      return sendError(res, 404, "Action item not found.");
+    }
+
+    const itemOrgId = actionItem.organization?.toString();
+    if (itemOrgId && userOrgId && itemOrgId !== userOrgId) {
+      return sendError(res, 403, "You do not have access to this action item.");
+    }
+
+    const result = await syncActionItemToGitHub(actionItem);
+    if (!result) {
+      return sendError(
+        res,
+        400,
+        "No GitHub integration configured for this organization.",
+      );
+    }
+
+    return sendSuccess(
+      res,
+      {
+        githubIssueNumber: result.number,
+        githubIssueUrl: result.html_url,
+        alreadySynced: result.alreadySynced || false,
+      },
+      result.alreadySynced
+        ? "Action item was already synced."
+        : "Action item synced to GitHub.",
+      result.alreadySynced ? 200 : 201,
+    );
+  } catch (error) {
+    if (error instanceof ValidationError) {
+      return sendError(res, 400, error.message);
+    }
+    logger.error("Sync Action Item Error:", error);
+    sendError(res, 500, "Failed to sync action item to GitHub.");
   }
 };
