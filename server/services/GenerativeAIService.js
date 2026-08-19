@@ -740,3 +740,75 @@ Return ONLY a valid JSON object matching this structure (no markdown formatting,
 
   return parsed.report;
 };
+
+export const generateHighlightReelAI = async (
+  meetingTitle,
+  transcript,
+  keyMoments,
+  sentimentTimeline,
+) => {
+  if (!GEMINI_API_KEY) {
+    throw new Error(
+      "Highlight Reel generation is unavailable: GEMINI_API_KEY is not configured.",
+    );
+  }
+
+  const prompt = `
+You are an AI meeting assistant. Create a structured highlight reel for the meeting: "${meetingTitle}".
+
+Here is the meeting transcript (in segments):
+${JSON.stringify(transcript, null, 2)}
+
+Here are the user-identified key moments:
+${JSON.stringify(keyMoments, null, 2)}
+
+Here is the sentiment timeline:
+${JSON.stringify(sentimentTimeline, null, 2)}
+
+Your task is to identify the most critical 3-8 highlights from the meeting (e.g., breakthroughs, key decisions, action items, important debates).
+For each highlight, include:
+- type: "decision", "action_item", "insight", "breakthrough", "debate", or "other"
+- timestamp: The start time in seconds (match with transcript/key moment data)
+- speaker: The person speaking
+- excerpt: An exact quote or highly accurate paraphrase from the transcript
+- sentiment: "positive", "neutral", or "negative"
+- importance: An integer from 1-10
+- aiRationale: A brief explanation (1-2 sentences) of why this moment was selected as a highlight.
+
+Also, provide an overall "narrative" (2-3 paragraphs) summarizing the arc of the meeting.
+
+Return ONLY a valid JSON object matching this structure (no markdown formatting, no commentary):
+{
+  "narrative": "Overall narrative...",
+  "highlights": [
+    {
+      "type": "decision",
+      "timestamp": 120,
+      "speaker": "Alice",
+      "excerpt": "We are going with the new design.",
+      "sentiment": "positive",
+      "importance": 9,
+      "aiRationale": "This was the final decision made on the primary agenda topic."
+    }
+  ]
+}
+`;
+
+  let outputText;
+  try {
+    // Generate text using the shared resilient method
+    outputText = await generateText(prompt, "Gemini highlight reel");
+  } catch (err) {
+    console.error("❌ Highlight reel generation failed:", err.message);
+    throw new Error(
+      `Highlight reel generation failed (${err.kind ?? AI_ERROR_KIND.UNKNOWN}): ${err.message}`,
+    );
+  }
+
+  const parsed = parseJsonOutput(outputText);
+  if (!parsed || !parsed.narrative || !Array.isArray(parsed.highlights)) {
+    throw new Error("Failed to parse Gemini JSON output for highlight reel");
+  }
+
+  return parsed;
+};

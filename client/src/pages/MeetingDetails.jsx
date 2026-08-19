@@ -13,6 +13,7 @@ import MeetingActions from "../components/meeting-details/MeetingActions";
 import TranscriptAnnotations from "../components/meeting-details/TranscriptAnnotations";
 import RsvpPanel from "../components/meeting-details/RsvpPanel";
 import KeyMomentsPanel from "../components/meetings/KeyMomentsPanel";
+import HighlightReel from "../components/meetings/HighlightReel";
 import SentimentTimeline from "../components/meetings/SentimentTimeline";
 import MeetingGoalsPanel from "../components/meetings/MeetingGoalsPanel";
 import ShareModal from "../components/shared-links/ShareModal";
@@ -265,6 +266,10 @@ const MeetingDetails = () => {
 
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 mt-6 mb-6 overflow-hidden h-[500px]">
           <KeyMomentsPanel meetingId={meeting._id} />
+        </div>
+
+        <div className="mt-6 mb-6">
+          <HighlightReel meetingId={meeting._id} />
         </div>
 
         <MeetingTranscript meeting={meeting} />
