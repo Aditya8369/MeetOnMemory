@@ -36,7 +36,16 @@ export function configureExpress(app) {
   // guarantees would be lost. (Issue #1118)
   app.use("/api/slack", slackWebhookParser, slackRoutes);
 
-  app.use(express.json({ limit: "2mb" }));
+  app.use(
+    express.json({
+      limit: "2mb",
+      verify: (req, _res, buf) => {
+        if (buf && buf.length) {
+          req.rawBody = buf;
+        }
+      },
+    }),
+  );
   app.use(express.urlencoded({ extended: true, limit: "2mb" }));
 
   // Dependency-aware health probes must not be blocked by the global limiter
