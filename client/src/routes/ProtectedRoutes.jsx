@@ -64,6 +64,7 @@ import Leaderboard from "../pages/Leaderboard.jsx";
 import ParticipantEngagement from "../pages/ParticipantEngagement.jsx";
 import MyDelegations from "../pages/MyDelegations.jsx";
 import MeetingPatterns from "../pages/MeetingPatterns.jsx";
+import FocusTime from "../pages/FocusTime.jsx";
 
 const ProtectedRoutes = (
   <React.Fragment>
@@ -256,6 +257,14 @@ const ProtectedRoutes = (
       element={
         <ProtectedRoute>
           <MyDelegations />
+        </ProtectedRoute>
+      }
+    />
+    <Route
+      path="/focus-time"
+      element={
+        <ProtectedRoute>
+          <FocusTime />
         </ProtectedRoute>
       }
     />
