@@ -1,5 +1,37 @@
 import mongoose from "mongoose";
 
+const notionSyncRecordSchema = new mongoose.Schema(
+  {
+    meetingId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Meeting",
+      required: true,
+    },
+    notionPageId: {
+      type: String,
+      required: true,
+    },
+    notionPageUrl: {
+      type: String,
+      default: null,
+    },
+    syncedAt: {
+      type: Date,
+      default: Date.now,
+    },
+    status: {
+      type: String,
+      enum: ["success", "failed"],
+      default: "success",
+    },
+    errorMessage: {
+      type: String,
+      default: null,
+    },
+  },
+  { _id: false },
+);
+
 const notionIntegrationSchema = new mongoose.Schema(
   {
     organization: {
@@ -24,10 +56,15 @@ const notionIntegrationSchema = new mongoose.Schema(
     },
     workspaceName: {
       type: String,
+      default: "",
     },
     targetDatabaseId: {
       type: String,
       default: null,
+    },
+    syncHistory: {
+      type: [notionSyncRecordSchema],
+      default: [],
     },
   },
   {
@@ -35,9 +72,8 @@ const notionIntegrationSchema = new mongoose.Schema(
   },
 );
 
-const NotionIntegration = mongoose.model(
-  "NotionIntegration",
-  notionIntegrationSchema,
-);
+const NotionIntegration =
+  mongoose.models.NotionIntegration ||
+  mongoose.model("NotionIntegration", notionIntegrationSchema);
 
 export default NotionIntegration;

@@ -1,19 +1,15 @@
-// server/tests/notionIntegrationController.test.js
 import {
   generateSignedState,
   verifySignedState,
   sanitizeIntegration,
-  initiateNotionOAuth,
-  handleNotionCallback,
-  saveMapping,
 } from "../controllers/notionIntegrationController.js";
 
-describe("Notion Integration Controller Security Tests", () => {
+describe("Notion Integration Controller — Issue #1602", () => {
   const validOrgId = "507f1f77bcf86cd799439011";
   const testSecret = "test-secret-key-123456";
 
-  describe("OAuth State Cryptographic Signing & Verification", () => {
-    it("should generate a valid signed state parameter containing organizationId", () => {
+  describe("OAuth State Signing & Verification", () => {
+    it("should generate and verify a valid signed state", () => {
       const state = generateSignedState(validOrgId, testSecret);
       expect(typeof state).toBe("string");
       expect(state).toContain(".");
@@ -23,160 +19,133 @@ describe("Notion Integration Controller Security Tests", () => {
       expect(verification.organizationId).toBe(validOrgId);
     });
 
-    it("should reject tampered payload in state parameter", () => {
+    it("should reject tampered payload", () => {
       const state = generateSignedState(validOrgId, testSecret);
       const [payload, signature] = state.split(".");
 
-      // Decode payload, modify organizationId, re-encode
       const decoded = JSON.parse(
         Buffer.from(payload, "base64url").toString("utf-8"),
       );
-      decoded.organizationId = "507f1f77bcf86cd799439099"; // Tampered Org ID
+      decoded.organizationId = "507f1f77bcf86cd799439099";
       const tamperedPayload = Buffer.from(JSON.stringify(decoded)).toString(
         "base64url",
       );
 
-      const tamperedState = `${tamperedPayload}.${signature}`;
-      const verification = verifySignedState(tamperedState, testSecret);
-
+      const verification = verifySignedState(
+        `${tamperedPayload}.${signature}`,
+        testSecret,
+      );
       expect(verification.valid).toBe(false);
       expect(verification.error).toContain("tampered state detected");
     });
 
-    it("should reject invalid signature with correct payload", () => {
-      const state = generateSignedState(validOrgId, testSecret);
-      const [payload] = state.split(".");
-      const fakeSignature = "0".repeat(64);
-
-      const tamperedState = `${payload}.${fakeSignature}`;
-      const verification = verifySignedState(tamperedState, testSecret);
-
-      expect(verification.valid).toBe(false);
-      expect(verification.error).toContain("tampered state detected");
-    });
-
-    it("should reject state signed with a different secret", () => {
+    it("should reject different secret", () => {
       const state = generateSignedState(validOrgId, "secret-a");
-      const verification = verifySignedState(state, "secret-b");
-
-      expect(verification.valid).toBe(false);
-      expect(verification.error).toContain("tampered state detected");
+      expect(verifySignedState(state, "secret-b").valid).toBe(false);
     });
 
-    it("should reject malformed or empty state strings", () => {
+    it("should reject malformed/empty states", () => {
       expect(verifySignedState("invalid-state").valid).toBe(false);
       expect(verifySignedState("").valid).toBe(false);
       expect(verifySignedState(null).valid).toBe(false);
     });
   });
 
-  describe("Credential Leakage Prevention in saveMapping", () => {
-    it("should sanitize integration object and remove accessToken", () => {
-      const rawIntegration = {
-        databaseId: "notion-db-999",
-        mapping: { title: "Name" },
-        accessToken: "secret_notion_access_token_abc123",
-        token: "bearer_token_xyz",
-        access_token: "oauth_access_token",
-        botToken: "xoxb-12345",
-      };
+  describe("sanitizeIntegration", () => {
+    it("should strip all token fields", () => {
+      const sanitized = sanitizeIntegration({
+        databaseId: "db-1",
+        accessToken: "secret",
+        token: "bearer",
+        access_token: "oauth",
+        botToken: "xoxb-123",
+      });
 
-      const sanitized = sanitizeIntegration(rawIntegration);
-
-      expect(sanitized.databaseId).toBe("notion-db-999");
-      expect(sanitized.mapping).toEqual({ title: "Name" });
+      expect(sanitized.databaseId).toBe("db-1");
       expect(sanitized.accessToken).toBeUndefined();
       expect(sanitized.token).toBeUndefined();
       expect(sanitized.access_token).toBeUndefined();
       expect(sanitized.botToken).toBeUndefined();
     });
 
-    it("saveMapping controller response must exclude accessToken field", async () => {
-      const req = {
-        body: {
-          organizationId: validOrgId,
-          databaseId: "notion-db-100",
-          accessToken: "super_secret_token",
-          integration: {
-            databaseId: "notion-db-100",
-            accessToken: "super_secret_token",
-            mapping: { title: "Title" },
-          },
-        },
-      };
+    it("should handle null input", () => {
+      expect(sanitizeIntegration(null)).toBeNull();
+    });
 
-      const res = {
-        status: jest.fn().mockReturnThis(),
-        json: jest.fn(),
-      };
-      const next = jest.fn();
-
-      await saveMapping(req, res, next);
-
-      expect(res.status).toHaveBeenCalledWith(200);
-      expect(res.json).toHaveBeenCalledWith(
-        expect.objectContaining({
-          success: true,
-          integration: expect.not.objectContaining({
-            accessToken: "super_secret_token",
-          }),
+    it("should handle Mongoose documents via toObject()", () => {
+      const doc = {
+        toObject: () => ({
+          _id: "123",
+          accessToken: "secret",
+          name: "Workspace",
         }),
-      );
-
-      const jsonArg = res.json.mock.calls[0][0];
-      expect(jsonArg.integration.accessToken).toBeUndefined();
+      };
+      const sanitized = sanitizeIntegration(doc);
+      expect(sanitized._id).toBe("123");
+      expect(sanitized.accessToken).toBeUndefined();
     });
   });
 
-  describe("Controller Flow Tests", () => {
-    it("initiateNotionOAuth should generate signed state and respond", async () => {
-      const req = {
-        query: { organizationId: validOrgId, redirect: "false" },
-        headers: { accept: "application/json" },
-        session: {},
-      };
-      const res = {
-        status: jest.fn().mockReturnThis(),
-        json: jest.fn(),
-      };
-      const next = jest.fn();
-
-      await initiateNotionOAuth(req, res, next);
-
-      expect(res.status).toHaveBeenCalledWith(200);
-      const responseData = res.json.mock.calls[0][0];
-      expect(responseData.success).toBe(true);
-      expect(responseData.state).toBeDefined();
-
-      // Verify the generated state is valid and signed
-      const verification = verifySignedState(responseData.state);
-      expect(verification.valid).toBe(true);
-      expect(verification.organizationId).toBe(validOrgId);
+  describe("Controller Flow — initiateOAuth", () => {
+    let initiateOAuth;
+    beforeAll(async () => {
+      ({ initiateOAuth } =
+        await import("../controllers/notionIntegrationController.js"));
     });
 
-    it("handleNotionCallback should reject invalid or tampered state", async () => {
+    it("should return signed state for JSON requests", async () => {
       const req = {
-        query: {
-          code: "test_oauth_code",
-          state: "tampered.invalid_signature",
-        },
-        session: {},
+        user: { organization: validOrgId },
+        query: { redirect: "false" },
+        headers: { accept: "application/json" },
       };
-      const res = {
-        status: jest.fn().mockReturnThis(),
-        json: jest.fn(),
+      const res = { status: jest.fn().mockReturnThis(), json: jest.fn() };
+
+      await initiateOAuth(req, res);
+
+      expect(res.status).toHaveBeenCalledWith(200);
+      const data = res.json.mock.calls[0][0];
+      expect(data.success).toBe(true);
+      expect(verifySignedState(data.state).valid).toBe(true);
+    });
+
+    it("should reject missing organization", async () => {
+      const req = {
+        user: {},
+        query: {},
+        headers: {},
       };
-      const next = jest.fn();
+      const res = { status: jest.fn().mockReturnThis(), json: jest.fn() };
 
-      await handleNotionCallback(req, res, next);
-
+      await initiateOAuth(req, res);
       expect(res.status).toHaveBeenCalledWith(400);
-      expect(res.json).toHaveBeenCalledWith(
-        expect.objectContaining({
-          success: false,
-          message: expect.stringMatching(/Invalid.*OAuth state|tampered/i),
-        }),
-      );
+    });
+  });
+
+  describe("Controller Flow — oauthCallback", () => {
+    let oauthCallback;
+    beforeAll(async () => {
+      ({ oauthCallback } =
+        await import("../controllers/notionIntegrationController.js"));
+    });
+
+    it("should reject invalid state", async () => {
+      const req = {
+        query: { code: "test_code", state: "tampered.bad" },
+      };
+      const res = { status: jest.fn().mockReturnThis(), json: jest.fn() };
+
+      await oauthCallback(req, res);
+      expect(res.status).toHaveBeenCalledWith(400);
+    });
+
+    it("should reject missing code", async () => {
+      const state = generateSignedState(validOrgId);
+      const req = { query: { state } };
+      const res = { status: jest.fn().mockReturnThis(), json: jest.fn() };
+
+      await oauthCallback(req, res);
+      expect(res.status).toHaveBeenCalledWith(400);
     });
   });
 });

@@ -8,11 +8,12 @@ import {
   saveMapping,
   getStatus,
   disconnect,
+  syncMeeting,
 } from "../controllers/notionIntegrationController.js";
 
 const router = express.Router();
 
-// Public route for OAuth callback
+// Public route for OAuth callback (no session cookie yet)
 router.get("/callback", oauthCallback);
 
 // Protected routes
@@ -22,6 +23,7 @@ router.get("/auth", requireAdminOrOwner, initiateOAuth);
 router.get("/status", requireAdminOrOwner, getStatus);
 router.get("/databases", requireAdminOrOwner, getDatabases);
 router.post("/mapping", requireAdminOrOwner, saveMapping);
+router.post("/sync", requireAdminOrOwner, syncMeeting);
 router.delete("/disconnect", requireAdminOrOwner, disconnect);
 
 export default router;
