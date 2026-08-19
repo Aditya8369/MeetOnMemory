@@ -1,4 +1,11 @@
-import React, { useState, useMemo, useEffect, useRef, useId } from "react";
+import React, {
+  useState,
+  useMemo,
+  useEffect,
+  useRef,
+  useId,
+  useCallback,
+} from "react";
 import { Link } from "react-router-dom";
 import { toast } from "react-toastify";
 import Navbar from "../components/Navbar.jsx";
@@ -289,7 +296,7 @@ const Careers = () => {
   const modalTriggerRef = useRef(null);
   const modalTitleId = useId();
 
-  const resetApplicationForm = () => {
+  const resetApplicationForm = useCallback(() => {
     setFormData({
       name: "",
       email: "",
@@ -301,7 +308,7 @@ const Careers = () => {
     if (resumeInputRef.current) {
       resumeInputRef.current.value = "";
     }
-  };
+  }, []);
 
   // Focus management: trap focus, handle Escape, restore focus on close
   useEffect(() => {
@@ -344,7 +351,7 @@ const Careers = () => {
       document.removeEventListener("keydown", handleKeyDown);
       modalTriggerRef.current?.focus?.();
     };
-  }, [isModalOpen]);
+  }, [isModalOpen, closeModal]);
 
   // Dynamic filter collections
   const departments = useMemo(() => {
@@ -399,11 +406,11 @@ const Careers = () => {
   };
 
   // Close modal
-  const closeModal = () => {
+  const closeModal = useCallback(() => {
     setIsModalOpen(false);
     setActiveJobForModal(null);
     resetApplicationForm();
-  };
+  }, [resetApplicationForm]);
 
   // Handle Form Change
   const handleChange = (e) => {
