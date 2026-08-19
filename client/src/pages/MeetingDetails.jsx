@@ -211,7 +211,7 @@ const MeetingDetails = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 p-6">
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100 p-6">
       <div className="max-w-6xl mx-auto">
         <div className="mb-4 flex justify-end">
           <button
@@ -263,7 +263,7 @@ const MeetingDetails = () => {
           <MeetingTimeline meetingId={meeting._id} meeting={meeting} />
         </div>
 
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 mt-6 mb-6 overflow-hidden h-[500px]">
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 mt-6 mb-6 overflow-hidden h-[500px]">
           <KeyMomentsPanel meetingId={meeting._id} />
         </div>
 
@@ -275,7 +275,7 @@ const MeetingDetails = () => {
         </div>
 
         {/* Speaking Time Analytics Section */}
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 mt-6 mb-6 p-6">
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 mt-6 mb-6 p-6">
           <div className="flex justify-between items-center mb-6">
             <h2
               className="text-xl font-bold text-gray-900 dark:text-white flex items-center gap-2 cursor-pointer"
