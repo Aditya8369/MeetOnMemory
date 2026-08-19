@@ -1,4 +1,5 @@
 import React, { useState, useContext, useEffect } from "react";
+import { useTranslation } from "react-i18next";
 import axios from "axios";
 import Navbar from "../components/Navbar.jsx";
 import { toast } from "react-toastify";
@@ -20,6 +21,7 @@ import {
 
 const Profile = () => {
   const { userData, setUserData } = useContext(AppContent);
+  const { t, i18n } = useTranslation();
   const [isEditing, setIsEditing] = useState(false);
   const [loading, setLoading] = useState(false);
   const [profilePicFailed, setProfilePicFailed] = useState(false);
@@ -71,7 +73,7 @@ const Profile = () => {
         <div className="flex-1 flex justify-center items-center">
           <Loader2 className="animate-spin w-8 h-8 text-blue-500" />
           <span className="ml-3 text-slate-500 font-medium">
-            Loading profile...
+            {t("profile.loading")}
           </span>
         </div>
       </div>
@@ -94,10 +96,10 @@ const Profile = () => {
     let isValid = true;
 
     if (!name.trim()) {
-      newErrors.name = "Full Name is required.";
+      newErrors.name = t("profile.fullNameRequired");
       isValid = false;
     } else if (name.trim().length < 2) {
-      newErrors.name = "Full Name must be at least 2 characters.";
+      newErrors.name = t("profile.fullNameMinLength");
       isValid = false;
     }
 
@@ -105,12 +107,11 @@ const Profile = () => {
       try {
         const u = new URL(profilePic.trim());
         if (u.protocol !== "http:" && u.protocol !== "https:") {
-          newErrors.profilePic = "Image URL must use http or https.";
+          newErrors.profilePic = t("profile.invalidImageProtocol");
           isValid = false;
         }
       } catch {
-        newErrors.profilePic =
-          "Please enter a valid URL (starting with http:// or https://).";
+        newErrors.profilePic = t("profile.invalidImageUrl");
         isValid = false;
       }
     }
@@ -133,17 +134,17 @@ const Profile = () => {
       });
 
       if (data.success) {
-        toast.success(data.message || "Profile updated successfully!");
+        toast.success(data.message || t("profile.profileUpdated"));
         setUserData(data.user);
         localStorage.setItem("userData", JSON.stringify(data.user));
         setIsEditing(false);
       } else {
-        toast.error(data.message || "Failed to update profile.");
+        toast.error(data.message || t("profile.profileUpdateFailed"));
       }
     } catch (err) {
       console.error("Profile update error:", err);
       const msg =
-        err.response?.data?.message || "Server error while updating profile.";
+        err.response?.data?.message || t("profile.profileUpdateServerError");
       toast.error(msg);
     } finally {
       setLoading(false);
@@ -161,16 +162,19 @@ const Profile = () => {
 
   // Formatted date string (e.g. Mar 2025)
   const formattedMemberSince = userData.createdAt
-    ? new Date(userData.createdAt).toLocaleDateString("en-US", {
-        month: "short",
-        year: "numeric",
-      })
+    ? new Date(userData.createdAt).toLocaleDateString(
+        i18n.language === "hi" ? "hi-IN" : "en-US",
+        {
+          month: "short",
+          year: "numeric",
+        },
+      )
     : "N/A";
 
   const displayRole = userData.role
     ? userData.role.charAt(0).toUpperCase() +
       userData.role.slice(1).toLowerCase()
-    : "Member";
+    : t("profile.member");
 
   return (
     <div className="min-h-screen bg-linear-to-b from-slate-50 via-white to-slate-50 dark:from-slate-950 dark:via-slate-900 dark:to-slate-950 text-slate-800 dark:text-slate-200 flex flex-col font-sans">
@@ -180,11 +184,10 @@ const Profile = () => {
         {/* Page title header */}
         <div className="text-center mb-8 fade-in-up stagger-1">
           <h1 className="text-3xl font-extrabold tracking-tight text-slate-900 dark:text-white sm:text-4xl">
-            User Profile
+            {t("profile.title")}
           </h1>
           <p className="text-slate-500 dark:text-slate-400 mt-2 text-sm max-w-md mx-auto">
-            Manage your personal credentials, view your organization link, and
-            customize your bio.
+            {t("profile.description")}
           </p>
         </div>
 
@@ -204,9 +207,7 @@ const Profile = () => {
                       alt={userData.name}
                       className="w-20 h-20 rounded-full object-cover border border-slate-200 shadow-xs"
                       onError={() => {
-                        toast.warning(
-                          "Failed to load custom profile image. Displaying initials fallback.",
-                        );
+                        toast.warning(t("profile.failedProfileImage"));
                         setProfilePicFailed(true);
                       }}
                     />
@@ -227,12 +228,12 @@ const Profile = () => {
                       {userData.isAccountVerified ? (
                         <span className="inline-flex items-center gap-1 text-[11px] font-medium text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-100">
                           <ShieldCheck className="w-3 h-3 text-emerald-600" />
-                          Verified
+                          {t("profile.verified")}
                         </span>
                       ) : (
                         <span className="inline-flex items-center gap-1 text-[11px] font-medium text-amber-700 bg-amber-50 px-2 py-0.5 rounded-full border border-amber-100">
                           <ShieldAlert className="w-3 h-3 text-amber-600" />
-                          Unverified
+                          {t("profile.unverified")}
                         </span>
                       )}
                     </div>
@@ -244,7 +245,7 @@ const Profile = () => {
                   className="inline-flex items-center gap-2 px-4 py-2 text-xs font-semibold text-slate-700 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 rounded-xl transition-all shadow-xs cursor-pointer focus-visible:ring-2 focus-visible:ring-blue-500"
                 >
                   <Edit2 className="w-3 h-3" />
-                  Edit profile
+                  {t("profile.editProfile")}
                 </button>
               </div>
 
@@ -253,7 +254,7 @@ const Profile = () => {
                 <div className="space-y-1.5">
                   <div className="text-[11px] text-slate-400 dark:text-slate-500 font-bold uppercase tracking-wider flex items-center gap-1.5">
                     <Mail className="w-3 h-3 text-slate-400" />
-                    Email
+                    {t("profile.email")}
                   </div>
                   <div className="text-sm font-semibold text-slate-900 dark:text-slate-200 break-all">
                     {userData.email}
@@ -263,17 +264,17 @@ const Profile = () => {
                 <div className="space-y-1.5">
                   <div className="text-[11px] text-slate-400 dark:text-slate-500 font-bold uppercase tracking-wider flex items-center gap-1.5">
                     <Building2 className="w-3 h-3 text-slate-400" />
-                    Organization
+                    {t("profile.organization")}
                   </div>
                   <div className="text-sm font-semibold text-slate-900 dark:text-slate-200">
-                    {userData.organization?.name || "No Organization"}
+                    {userData.organization?.name || t("profile.noOrganization")}
                   </div>
                 </div>
 
                 <div className="space-y-1.5">
                   <div className="text-[11px] text-slate-400 dark:text-slate-500 font-bold uppercase tracking-wider flex items-center gap-1.5">
                     <User className="w-3 h-3 text-slate-400" />
-                    Role
+                    {t("profile.role")}
                   </div>
                   <div className="text-sm font-semibold text-slate-900 dark:text-slate-200 capitalize">
                     {displayRole}
@@ -283,7 +284,7 @@ const Profile = () => {
                 <div className="space-y-1.5">
                   <div className="text-[11px] text-slate-400 dark:text-slate-500 font-bold uppercase tracking-wider flex items-center gap-1.5">
                     <Calendar className="w-3 h-3 text-slate-400" />
-                    Member since
+                    {t("profile.memberSince")}
                   </div>
                   <div className="text-sm font-semibold text-slate-900 dark:text-slate-200">
                     {formattedMemberSince}
@@ -294,10 +295,10 @@ const Profile = () => {
               {/* Bio section */}
               <div className="pt-6 border-t border-slate-100 dark:border-slate-800 space-y-2">
                 <div className="text-[11px] text-slate-400 dark:text-slate-500 font-bold uppercase tracking-wider">
-                  Bio
+                  {t("profile.bio")}
                 </div>
                 <p className="text-sm text-slate-600 dark:text-slate-400 leading-relaxed italic">
-                  {userData.bio || "No bio added yet. Tell us about yourself!"}
+                  {userData.bio || t("profile.noBio")}
                 </p>
               </div>
 
@@ -305,11 +306,11 @@ const Profile = () => {
               {gamificationData && (
                 <div className="pt-6 border-t border-slate-100 dark:border-slate-800 space-y-4">
                   <div className="text-[11px] text-slate-400 dark:text-slate-500 font-bold uppercase tracking-wider">
-                    Trophy Case
+                    {t("profile.trophyCase")}
                   </div>
                   <div className="flex items-center gap-4">
                     <div className="bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 px-4 py-2 rounded-lg font-bold">
-                      {gamificationData.totalPoints} Points
+                      {gamificationData.totalPoints} {t("profile.points")}
                     </div>
                   </div>
                   {gamificationData.unlockedBadges?.length > 0 && (
@@ -319,7 +320,7 @@ const Profile = () => {
                           key={idx}
                           className="bg-yellow-100 dark:bg-yellow-900/30 text-yellow-800 dark:text-yellow-200 text-xs px-3 py-1 rounded-full font-medium flex items-center gap-1 border border-yellow-200 dark:border-yellow-700/50"
                         >
-                          🏅 {ub.badge?.name || "Badge"}
+                          🏅 {ub.badge?.name || t("profile.badge")}
                         </div>
                       ))}
                     </div>
@@ -332,13 +333,13 @@ const Profile = () => {
             <form onSubmit={handleSave} className="space-y-6">
               <div className="pb-4 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
                 <h3 className="text-lg font-bold text-slate-900 dark:text-white">
-                  Edit Profile Details
+                  {t("profile.editDetails")}
                 </h3>
                 <button
                   type="button"
                   onClick={handleCancel}
                   className="p-1.5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 rounded-lg transition-colors cursor-pointer"
-                  aria-label="Cancel editing"
+                  aria-label={t("profile.cancelEditing")}
                 >
                   <X className="w-4 h-4" />
                 </button>
@@ -351,7 +352,7 @@ const Profile = () => {
                     htmlFor="name-input"
                     className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider"
                   >
-                    Full Name
+                    {t("profile.fullName")}
                   </label>
                   <div className="relative">
                     <User className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
@@ -360,7 +361,7 @@ const Profile = () => {
                       type="text"
                       value={name}
                       onChange={(e) => setName(e.target.value)}
-                      placeholder="Your Full Name"
+                      placeholder={t("profile.fullNamePlaceholder")}
                       disabled={loading}
                       className={`w-full bg-slate-50/50 dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700 border ${
                         errors.name
@@ -382,7 +383,7 @@ const Profile = () => {
                     htmlFor="pic-input"
                     className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider"
                   >
-                    Profile Picture URL
+                    {t("profile.profilePictureUrl")}
                   </label>
                   <div className="relative">
                     <Globe className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
@@ -391,7 +392,7 @@ const Profile = () => {
                       type="text"
                       value={profilePic}
                       onChange={(e) => setProfilePic(e.target.value)}
-                      placeholder="https://example.com/avatar.jpg"
+                      placeholder={t("profile.profilePicturePlaceholder")}
                       disabled={loading}
                       className={`w-full bg-slate-50/50 dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700 border ${
                         errors.profilePic
@@ -413,20 +414,20 @@ const Profile = () => {
                     htmlFor="bio-input"
                     className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider"
                   >
-                    Bio (Optional)
+                    {t("profile.bioOptional")}
                   </label>
                   <textarea
                     id="bio-input"
                     value={bio}
                     onChange={(e) => setBio(e.target.value)}
-                    placeholder="Tell us about yourself..."
+                    placeholder={t("profile.bioPlaceholder")}
                     disabled={loading}
                     rows="3"
                     maxLength="250"
                     className="w-full bg-slate-50/50 dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 focus:border-blue-500 focus:bg-white dark:focus:bg-slate-800 rounded-xl py-2.5 px-4 text-sm text-slate-800 dark:text-slate-200 placeholder-slate-400 transition-all outline-none resize-none"
                   />
                   <div className="flex justify-end text-[10px] text-slate-400 font-bold">
-                    {bio.length}/250 characters
+                    {bio.length}/250 {t("profile.characters")}
                   </div>
                 </div>
               </div>
@@ -439,7 +440,7 @@ const Profile = () => {
                   disabled={loading}
                   className="px-4 py-2 text-xs font-semibold text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 rounded-xl transition-all cursor-pointer disabled:opacity-50"
                 >
-                  Cancel
+                  {t("profile.cancel")}
                 </button>
                 <button
                   type="submit"
@@ -454,7 +455,7 @@ const Profile = () => {
                   ) : (
                     <>
                       <Check className="w-3.5 h-3.5" />
-                      Save Changes
+                      {t("profile.saveChanges")}
                     </>
                   )}
                 </button>

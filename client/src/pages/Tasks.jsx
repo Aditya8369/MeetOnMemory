@@ -1,5 +1,6 @@
 import React from "react";
 import { useNavigate } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import Navbar from "../components/Navbar.jsx";
 import RoleGate from "../components/RoleGate.jsx";
 import { useRBAC } from "../hooks/useRBAC.js";
@@ -19,6 +20,7 @@ import Pagination from "../components/meetings/Pagination";
 
 const Tasks = () => {
   const navigate = useNavigate();
+  const { t } = useTranslation();
   const taskState = useTasks();
   const { hasPermission } = useRBAC();
   const canCreateMeeting = hasPermission("meetings", "create");
@@ -32,10 +34,10 @@ const Tasks = () => {
         <div className="mb-8 fade-in-up flex items-start justify-between gap-4 flex-wrap">
           <div>
             <h1 className="text-3xl font-bold text-slate-900 dark:text-white mb-2">
-              Tasks & Action Items
+              {t("tasks.actionItemsTitle")}
             </h1>
             <p className="text-slate-600 dark:text-slate-400">
-              Track and manage action items from your meeting summaries
+              {t("tasks.description")}
             </p>
           </div>
           <button
@@ -43,7 +45,7 @@ const Tasks = () => {
             className="inline-flex items-center gap-2 px-4 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-sm font-medium text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800"
           >
             <GitMerge className="w-4 h-4" />
-            Consolidate memories
+            {t("tasks.consolidateMemories")}
           </button>
         </div>
 
@@ -59,21 +61,21 @@ const Tasks = () => {
           <div className="flex flex-col items-center justify-center py-20 fade-in-up">
             <Loader2 className="w-8 h-8 text-blue-600 animate-spin mb-4" />
             <p className="text-slate-600 dark:text-slate-400">
-              Loading tasks...
+              {t("tasks.loading")}
             </p>
           </div>
         ) : taskState.error ? (
           <div className="bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-800/60 rounded-xl p-8 text-center fade-in-up">
             <AlertCircle className="w-12 h-12 text-red-600 dark:text-red-400 mx-auto mb-4" />
             <h3 className="text-lg font-semibold text-red-900 dark:text-red-200 mb-2">
-              Error Loading Tasks
+              {t("tasks.errorLoading")}
             </h3>
             <p className="text-red-700 dark:text-red-300">{taskState.error}</p>
             <button
               onClick={() => taskState.refetch()}
               className="mt-4 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
             >
-              Retry
+              {t("tasks.retry")}
             </button>
           </div>
         ) : taskState.sortedTasks.length === 0 ? (
@@ -83,15 +85,15 @@ const Tasks = () => {
             </div>
             <h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-2">
               {taskState.hasActiveFilters
-                ? "No tasks match your filters"
-                : "No action items yet"}
+                ? t("tasks.noTasksMatchFilters")
+                : t("tasks.noActionItems")}
             </h3>
             <p className="text-slate-600 dark:text-slate-400 mb-6">
               {taskState.hasActiveFilters
-                ? "Try adjusting your filters or search terms"
+                ? t("tasks.adjustFilters")
                 : canCreateMeeting
-                  ? "Upload and transcribe meetings to generate action items"
-                  : "Action items from meetings will appear here."}
+                  ? t("tasks.uploadGenerate")
+                  : t("tasks.actionItemsAppear")}
             </p>
             {!taskState.hasActiveFilters && (
               <RoleGate resource="meetings" action="create">
@@ -100,7 +102,7 @@ const Tasks = () => {
                   className="inline-flex items-center gap-2 px-6 py-2.5 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-colors"
                 >
                   <FileText className="w-4 h-4" />
-                  Upload Meeting
+                  {t("tasks.uploadMeeting")}
                 </button>
               </RoleGate>
             )}
