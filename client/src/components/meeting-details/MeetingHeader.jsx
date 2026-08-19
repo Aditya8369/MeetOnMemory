@@ -65,26 +65,26 @@ const MeetingHeader = ({ meeting, onShare, onShareInvite, onPresent }) => {
   const getStatusColor = (status) => {
     switch (status) {
       case "completed":
-        return "bg-green-100 text-green-800";
+        return "bg-green-100 text-green-800 dark:bg-green-900/40 dark:text-green-300";
       case "processing":
-        return "bg-yellow-100 text-yellow-800";
+        return "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/40 dark:text-yellow-300";
       case "uploaded":
-        return "bg-blue-100 text-blue-800";
+        return "bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-300";
       case "failed":
-        return "bg-red-100 text-red-800";
+        return "bg-red-100 text-red-800 dark:bg-red-900/40 dark:text-red-300";
       default:
-        return "bg-gray-100 text-gray-800";
+        return "bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300";
     }
   };
 
   return (
-    <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-6">
+    <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6 mb-6">
       <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-4">
         <div className="flex-1">
-          <h1 className="text-2xl font-bold text-gray-900 mb-2">
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
             {meeting.title || "Untitled Meeting"}
           </h1>
-          <div className="flex flex-wrap items-center gap-4 text-sm text-gray-600">
+          <div className="flex flex-wrap items-center gap-4 text-sm text-gray-600 dark:text-gray-400">
             <span className="flex items-center gap-1">
               <svg
                 className="w-4 h-4"
@@ -194,7 +194,9 @@ const MeetingHeader = ({ meeting, onShare, onShareInvite, onPresent }) => {
       </div>
 
       {meeting.description && (
-        <p className="mt-4 text-gray-600 text-sm">{meeting.description}</p>
+        <p className="mt-4 text-gray-600 dark:text-gray-300 text-sm">
+          {meeting.description}
+        </p>
       )}
     </div>
   );
