@@ -14,6 +14,7 @@ import { toast } from "react-toastify";
 const PollSection = ({ meetingId }) => {
   const { userData, backendUrl } = useContext(AppContent);
   const [polls, setPolls] = useState([]);
+  const [error, setError] = useState(null);
 
   // Create Poll State
   const [isCreating, setIsCreating] = useState(false);
@@ -31,10 +32,12 @@ const PollSection = ({ meetingId }) => {
   useEffect(() => {
     const fetchPolls = async () => {
       try {
+        setError(null);
         const data = await getPollsByMeeting(meetingId);
         setPolls(data || []);
       } catch (error) {
         console.error("Failed to fetch polls", error);
+        setError("Failed to load polls. Please try again later.");
       }
     };
     fetchPolls();
@@ -222,7 +225,7 @@ const PollSection = ({ meetingId }) => {
 
   const renderPoll = (poll) => {
     const totalVotes = poll.options.reduce((sum, opt) => {
-      return sum + (poll.isAnonymous ? opt.voteCount : opt.votes.length);
+      return sum + (opt.votes?.length ?? opt.voteCount ?? 0);
     }, 0);
 
     const isCreator = poll.createdBy?._id === userData?._id;
@@ -232,7 +235,9 @@ const PollSection = ({ meetingId }) => {
     const hasVoted = poll.isAnonymous
       ? poll.options.some((opt) => opt.hasVoted)
       : poll.options.some((opt) =>
-          opt.votes.some((v) => v._id === userData?._id || v === userData?._id),
+          (opt.votes || []).some(
+            (v) => v._id === userData?._id || v === userData?._id,
+          ),
         );
 
     return (
@@ -280,7 +285,7 @@ const PollSection = ({ meetingId }) => {
               </div>
             )}
             {poll.options.map((opt) => {
-              const votes = poll.isAnonymous ? opt.voteCount : opt.votes.length;
+              const votes = opt.votes?.length ?? opt.voteCount ?? 0;
               const percentage =
                 totalVotes > 0 ? Math.round((votes / totalVotes) * 100) : 0;
               return (
@@ -308,9 +313,7 @@ const PollSection = ({ meetingId }) => {
             ) : (
               <div className="space-y-3">
                 {poll.options.map((opt) => {
-                  const votes = poll.isAnonymous
-                    ? opt.voteCount
-                    : opt.votes.length;
+                  const votes = opt.votes?.length ?? opt.voteCount ?? 0;
                   const percentage =
                     totalVotes > 0 ? Math.round((votes / totalVotes) * 100) : 0;
                   return (
@@ -320,8 +323,7 @@ const PollSection = ({ meetingId }) => {
                       tabIndex={0}
                       aria-label={`Vote for ${opt.text}`}
                       className={`relative overflow-hidden rounded-md border p-3 cursor-pointer transition-colors ${
-                        !poll.isAnonymous &&
-                        opt.votes.some(
+                        (opt.votes || []).some(
                           (v) => v._id === userData?._id || v === userData?._id,
                         )
                           ? "border-blue-500 bg-blue-50 dark:bg-blue-900/20"
@@ -388,6 +390,12 @@ const PollSection = ({ meetingId }) => {
           </button>
         )}
       </div>
+
+      {error && (
+        <div className="mb-4 p-4 rounded-lg bg-red-50 border border-red-200 dark:bg-red-950/20 dark:border-red-800 text-red-700 dark:text-red-300 text-center text-sm font-medium">
+          {error}
+        </div>
+      )}
 
       {isCreating && (
         <form

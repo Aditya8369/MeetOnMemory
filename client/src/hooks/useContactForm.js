@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { submitContactForm } from "../services/contactApi";
 
 export default function useContactForm() {
   const [formData, setFormData] = useState({
@@ -11,29 +12,38 @@ export default function useContactForm() {
   });
   const [submittedTicket, setSubmittedTicket] = useState(null);
   const [submitting, setSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState("");
 
-  const handleFormSubmit = (e) => {
+  const handleFormSubmit = async (e) => {
     e.preventDefault();
-    setSubmitting(true);
+    if (submitting) return;
 
-    // Simulate API call
-    setTimeout(() => {
-      const ticketId = "MOM-" + Math.floor(100000 + Math.random() * 900000);
-      setSubmittedTicket({
-        id: ticketId,
+    setSubmitting(true);
+    setSubmitError("");
+
+    try {
+      const response = await submitContactForm({
         name: formData.name,
         email: formData.email,
+        organization: formData.org,
         department: formData.department,
         subject: formData.subject,
-        date: new Date().toLocaleString(),
-        status: "Open / Queued",
-        sla:
-          formData.department === "sales"
-            ? "Within 4 hours"
-            : "Within 12 hours",
+        message: formData.message,
       });
-      setSubmitting(false);
-      // Clear form
+
+      const data = response.data;
+
+      setSubmittedTicket({
+        id: data.ticketId,
+        name: formData.name,
+        email: formData.email,
+        department: data.department,
+        subject: formData.subject,
+        date: new Date().toLocaleString(),
+        status: data.status || "Open / Queued",
+        sla: data.sla,
+      });
+
       setFormData({
         name: "",
         email: "",
@@ -42,7 +52,15 @@ export default function useContactForm() {
         department: "support",
         message: "",
       });
-    }, 1500);
+    } catch (error) {
+      const message =
+        error?.response?.data?.message ||
+        error?.message ||
+        "Unable to submit your request. Please try again.";
+      setSubmitError(message);
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   return {
@@ -51,6 +69,7 @@ export default function useContactForm() {
     submittedTicket,
     setSubmittedTicket,
     submitting,
+    submitError,
     handleFormSubmit,
   };
 }

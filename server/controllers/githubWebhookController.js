@@ -1,8 +1,16 @@
 import crypto from "crypto";
-import ActionItem from "../models/actionItemModel.js";
-import GithubIntegration from "../models/githubIntegrationModel.js";
+import WebhookDeliveryLog from "../models/webhookDeliveryLogModel.js";
+import { handleGitHubIssueEvent } from "../services/githubSyncService.js";
+import logger from "../utils/logger.js";
 
-// Webhook payload handler for GitHub
+// Compute a deterministic SHA-256 hash of the delivery for fallback idempotency when X-GitHub-Delivery is missing
+function computePayloadHash(body) {
+  return crypto.createHash("sha256").update(JSON.stringify(body)).digest("hex");
+}
+
+/**
+ * GitHub webhook handler with idempotent delivery processing, secure HMAC verification, and tenant scoping.
+ */
 export const handleWebhook = async (req, res) => {
   try {
     const signature = req.headers["x-hub-signature-256"];
@@ -11,7 +19,11 @@ export const handleWebhook = async (req, res) => {
 
     // Mandate GITHUB_WEBHOOK_SECRET configuration
     if (!secret) {
+      logger.error(
+        "GitHub Webhook Error: GITHUB_WEBHOOK_SECRET is not configured",
+      );
       return res.status(500).json({
+        success: false,
         message:
           "Server configuration error: GITHUB_WEBHOOK_SECRET is not configured",
       });
@@ -19,14 +31,16 @@ export const handleWebhook = async (req, res) => {
 
     // Mandate HMAC signature header presence
     if (!signature) {
-      return res.status(401).json({ message: "Signature is required" });
+      return res
+        .status(401)
+        .json({ success: false, message: "Signature is required" });
     }
 
     // Ensure raw request body buffer is captured
     if (!req.rawBody) {
       return res
         .status(400)
-        .json({ message: "Missing raw request body buffer" });
+        .json({ success: false, message: "Missing raw request body buffer" });
     }
 
     // Verify HMAC signature using raw body buffer and timing-safe comparison
@@ -40,72 +54,45 @@ export const handleWebhook = async (req, res) => {
       digestBuffer.length !== signatureBuffer.length ||
       !crypto.timingSafeEqual(digestBuffer, signatureBuffer)
     ) {
-      return res.status(401).json({ message: "Invalid signature" });
+      return res
+        .status(401)
+        .json({ success: false, message: "Invalid signature" });
     }
+
+    // Idempotent delivery processing (Issue #1600)
+    const deliveryId =
+      req.headers["x-github-delivery"] || computePayloadHash(req.body);
+
+    const existingDelivery = await WebhookDeliveryLog.findOne({ deliveryId });
+    if (existingDelivery) {
+      return res
+        .status(200)
+        .json({ success: true, message: "Already processed" });
+    }
+
+    let result = { updated: false };
 
     // We only care about issues events for now
     if (event === "issues") {
       const { action, issue, repository } = req.body;
-
-      if (!repository?.full_name) {
-        return res
-          .status(400)
-          .json({ message: "Repository full name is required in payload" });
-      }
-
-      // Resolve the tenant/organization linked to this repository webhook
-      const integration = await GithubIntegration.findOne({
-        repositoryFullName: repository.full_name,
-      });
-
-      if (!integration) {
-        return res
-          .status(404)
-          .json({ message: "Integration not found for this repository" });
-      }
-
-      const orgId = integration.organization;
-
-      if (action === "closed") {
-        const issueNumber = issue.number;
-
-        // Find action item by external GitHub issue ID scoped to organization
-        const actionItem = await ActionItem.findOne({
-          externalGitHubIssueId: issueNumber,
-          organization: orgId,
-        });
-
-        if (actionItem) {
-          actionItem.status = "completed";
-          actionItem.resolvedAt = new Date();
-          await actionItem.save();
-          console.log(
-            `ActionItem ${actionItem._id} completed via GitHub Webhook for organization ${orgId}.`,
-          );
-        }
-      }
-
-      // If issue reopened, sync it back to "open" or "in_progress"
-      if (action === "reopened") {
-        const issueNumber = issue.number;
-        const actionItem = await ActionItem.findOne({
-          externalGitHubIssueId: issueNumber,
-          organization: orgId,
-        });
-        if (actionItem) {
-          actionItem.status = "open";
-          actionItem.resolvedAt = null;
-          await actionItem.save();
-          console.log(
-            `ActionItem ${actionItem._id} reopened via GitHub Webhook for organization ${orgId}.`,
-          );
-        }
-      }
+      result = await handleGitHubIssueEvent({ action, issue, repository });
     }
 
-    res.status(200).send("OK");
+    // Log the delivery for idempotency
+    try {
+      await WebhookDeliveryLog.create({
+        deliveryId,
+        provider: "github",
+        event: event || "unknown",
+        action: req.body?.action || null,
+      });
+    } catch (dupErr) {
+      if (dupErr?.code !== 11000) throw dupErr;
+    }
+
+    return res.status(200).json({ success: true, ...result });
   } catch (error) {
-    console.error("GitHub Webhook Error:", error);
-    res.status(500).send("Server Error");
+    logger.error("GitHub Webhook Error:", error);
+    return res.status(500).json({ success: false, message: "Server Error" });
   }
 };

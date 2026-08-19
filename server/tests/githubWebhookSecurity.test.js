@@ -9,6 +9,10 @@ const { handleWebhook } =
 const { default: ActionItem } = await import("../models/actionItemModel.js");
 const { default: GithubIntegration } =
   await import("../models/githubIntegrationModel.js");
+const { default: GitHubIssueSync } =
+  await import("../models/githubIssueSyncModel.js");
+const { default: WebhookDeliveryLog } =
+  await import("../models/webhookDeliveryLogModel.js");
 
 const app = express();
 
@@ -47,6 +51,8 @@ describe("GitHub Webhook Security Integration Tests (#1809)", () => {
   beforeEach(async () => {
     await ActionItem.deleteMany({});
     await GithubIntegration.deleteMany({});
+    await GitHubIssueSync.deleteMany({});
+    await WebhookDeliveryLog.deleteMany({});
   });
 
   const getSignature = (payload, secret = WEBHOOK_SECRET) => {
@@ -125,7 +131,6 @@ describe("GitHub Webhook Security Integration Tests (#1809)", () => {
       sourceMeetingId: MEETING_A_ID,
       organization: ORG_A,
       status: "open",
-      externalGitHubIssueId: 1,
     });
 
     const actionItemB = await ActionItem.create({
@@ -133,10 +138,26 @@ describe("GitHub Webhook Security Integration Tests (#1809)", () => {
       sourceMeetingId: MEETING_B_ID,
       organization: ORG_B,
       status: "open",
-      externalGitHubIssueId: 1,
     });
 
-    // 3. Receive closed issue #1 webhook for ORG_A's repository
+    // 3. Seed sync mapping mappings linking them to issue #1
+    await GitHubIssueSync.create({
+      organization: ORG_A,
+      actionItem: actionItemA._id,
+      repositoryFullName: "org-a/repo",
+      githubIssueNumber: 1,
+      githubIssueUrl: "https://github.com/org-a/repo/issues/1",
+    });
+
+    await GitHubIssueSync.create({
+      organization: ORG_B,
+      actionItem: actionItemB._id,
+      repositoryFullName: "org-b/repo",
+      githubIssueNumber: 1,
+      githubIssueUrl: "https://github.com/org-b/repo/issues/1",
+    });
+
+    // 4. Receive closed issue #1 webhook for ORG_A's repository
     const payload = {
       action: "closed",
       issue: { number: 1 },
@@ -152,7 +173,7 @@ describe("GitHub Webhook Security Integration Tests (#1809)", () => {
 
     expect(res.status).toBe(200);
 
-    // 4. Verify ONLY Tenant A's action item is completed
+    // 5. Verify ONLY Tenant A's action item is completed
     const updatedA = await ActionItem.findById(actionItemA._id);
     expect(updatedA.status).toBe("completed");
     expect(updatedA.resolvedAt).toBeDefined();
