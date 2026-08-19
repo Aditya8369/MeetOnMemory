@@ -139,6 +139,9 @@ const PollSection = ({ meetingId }) => {
       const selectedOptionIds = [optionId];
       await castVote(pollId, selectedOptionIds);
       toast.success("Vote submitted successfully!");
+    } catch (err) {
+      console.error(err);
+      toast.error(err.response?.data?.message || "Error casting vote");
     }
   };
 
