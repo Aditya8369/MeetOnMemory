@@ -7,13 +7,13 @@ const SummarySection = ({ title, icon, children, className = "" }) => {
 
   return (
     <div
-      className={`bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-4 ${className}`}
+      className={`bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6 mb-4 ${className}`}
     >
-      <h3 className="text-base font-semibold text-gray-900 mb-3 flex items-center gap-2">
+      <h3 className="text-base font-semibold text-gray-900 dark:text-white mb-3 flex items-center gap-2">
         {icon}
         {title}
       </h3>
-      <div className="text-gray-700 text-sm">{children}</div>
+      <div className="text-gray-700 dark:text-gray-300 text-sm">{children}</div>
     </div>
   );
 };

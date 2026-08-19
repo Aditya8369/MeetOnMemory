@@ -1,7 +1,48 @@
-import React from "react";
+import React, { useState, useEffect } from "react";
 import { format } from "date-fns";
+import { useNavigate } from "react-router-dom";
+import CalendarSyncBadge from "../CalendarSyncBadge.jsx";
+import {
+  Share2,
+  Presentation,
+  Bookmark,
+  MessageSquare,
+  Link2,
+} from "lucide-react";
+import { toast } from "react-toastify";
+import { toggleBookmarkAPI, getBookmarkStatusAPI } from "../../api/bookmarkApi";
+import { askAssistantAbout } from "../../utils/askAssistant.js";
 
-const MeetingHeader = ({ meeting }) => {
+const MeetingHeader = ({ meeting, onShare, onShareInvite, onPresent }) => {
+  const navigate = useNavigate();
+  const [isBookmarked, setIsBookmarked] = useState(false);
+  const [isLoadingBookmark, setIsLoadingBookmark] = useState(false);
+
+  useEffect(() => {
+    if (meeting?._id) {
+      getBookmarkStatusAPI(meeting._id)
+        .then((data) => {
+          setIsBookmarked(data.bookmarked);
+        })
+        .catch((err) => console.error("Error fetching bookmark status:", err));
+    }
+  }, [meeting]);
+
+  const handleToggleBookmark = async () => {
+    if (!meeting?._id) return;
+    setIsLoadingBookmark(true);
+    try {
+      const data = await toggleBookmarkAPI(meeting._id);
+      setIsBookmarked(data.bookmarked);
+      toast.success(data.message);
+    } catch (error) {
+      console.error(error);
+      toast.error("Failed to toggle bookmark");
+    } finally {
+      setIsLoadingBookmark(false);
+    }
+  };
+
   if (!meeting) return null;
 
   const formatDate = (dateString) => {
@@ -24,26 +65,26 @@ const MeetingHeader = ({ meeting }) => {
   const getStatusColor = (status) => {
     switch (status) {
       case "completed":
-        return "bg-green-100 text-green-800";
+        return "bg-green-100 text-green-800 dark:bg-green-900/40 dark:text-green-300";
       case "processing":
-        return "bg-yellow-100 text-yellow-800";
+        return "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/40 dark:text-yellow-300";
       case "uploaded":
-        return "bg-blue-100 text-blue-800";
+        return "bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-300";
       case "failed":
-        return "bg-red-100 text-red-800";
+        return "bg-red-100 text-red-800 dark:bg-red-900/40 dark:text-red-300";
       default:
-        return "bg-gray-100 text-gray-800";
+        return "bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300";
     }
   };
 
   return (
-    <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-6">
+    <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6 mb-6">
       <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-4">
         <div className="flex-1">
-          <h1 className="text-2xl font-bold text-gray-900 mb-2">
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
             {meeting.title || "Untitled Meeting"}
           </h1>
-          <div className="flex flex-wrap items-center gap-4 text-sm text-gray-600">
+          <div className="flex flex-wrap items-center gap-4 text-sm text-gray-600 dark:text-gray-400">
             <span className="flex items-center gap-1">
               <svg
                 className="w-4 h-4"
@@ -94,17 +135,68 @@ const MeetingHeader = ({ meeting }) => {
             </span>
           </div>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex flex-col sm:flex-row items-center gap-3">
+          <CalendarSyncBadge
+            externalCalendarRefs={meeting.externalCalendarRefs}
+          />
           <span
             className={`px-3 py-1 rounded-full text-xs font-medium capitalize ${getStatusColor(meeting.status)}`}
           >
             {meeting.status || "uploaded"}
           </span>
+          <button
+            onClick={handleToggleBookmark}
+            disabled={isLoadingBookmark}
+            className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
+              isBookmarked
+                ? "bg-blue-100 text-blue-700 dark:bg-blue-900/50 dark:text-blue-300"
+                : "bg-gray-50 text-gray-700 hover:bg-gray-100 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700"
+            }`}
+          >
+            <Bookmark
+              className="w-4 h-4"
+              fill={isBookmarked ? "currentColor" : "none"}
+            />
+            {isBookmarked ? "Saved" : "Save"}
+          </button>
+          <button
+            onClick={onPresent}
+            className="flex items-center gap-2 px-3 py-1.5 bg-blue-50 text-blue-700 hover:bg-blue-100 dark:bg-blue-900/30 dark:text-blue-300 dark:hover:bg-blue-900/50 rounded-lg text-sm font-medium transition-colors"
+          >
+            <Presentation className="w-4 h-4" /> Present
+          </button>
+          <button
+            type="button"
+            onClick={() =>
+              askAssistantAbout(navigate, {
+                type: "meeting",
+                refId: meeting._id,
+                title: meeting.title || "Untitled Meeting",
+              })
+            }
+            className="flex items-center gap-2 px-3 py-1.5 bg-violet-50 text-violet-700 hover:bg-violet-100 dark:bg-violet-900/30 dark:text-violet-300 dark:hover:bg-violet-900/50 rounded-lg text-sm font-medium transition-colors"
+          >
+            <MessageSquare className="w-4 h-4" /> Ask Assistant
+          </button>
+          <button
+            onClick={onShareInvite}
+            className="flex items-center gap-2 px-3 py-1.5 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 dark:bg-emerald-900/30 dark:text-emerald-300 dark:hover:bg-emerald-900/50 rounded-lg text-sm font-medium transition-colors"
+          >
+            <Link2 className="w-4 h-4" /> Share Invite
+          </button>
+          <button
+            onClick={onShare}
+            className="flex items-center gap-2 px-3 py-1.5 bg-indigo-50 text-indigo-700 hover:bg-indigo-100 dark:bg-indigo-900/30 dark:text-indigo-300 dark:hover:bg-indigo-900/50 rounded-lg text-sm font-medium transition-colors"
+          >
+            <Share2 className="w-4 h-4" /> Share
+          </button>
         </div>
       </div>
 
       {meeting.description && (
-        <p className="mt-4 text-gray-600 text-sm">{meeting.description}</p>
+        <p className="mt-4 text-gray-600 dark:text-gray-300 text-sm">
+          {meeting.description}
+        </p>
       )}
     </div>
   );

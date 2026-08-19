@@ -3,6 +3,7 @@ import SummarySection from "./SummarySection";
 import DecisionCard from "./DecisionCard";
 import ActionItemCard from "./ActionItemCard";
 import MeetingStats from "./MeetingStats";
+import GlossaryHighlighter from "./GlossaryHighlighter";
 
 const MeetingSummary = ({ meeting }) => {
   const [isExpanded, setIsExpanded] = useState(false);
@@ -13,8 +14,8 @@ const MeetingSummary = ({ meeting }) => {
 
   if (!summary) {
     return (
-      <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-6">
-        <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
+      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6 mb-6">
+        <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
           <svg
             className="w-5 h-5"
             fill="none"
@@ -30,7 +31,7 @@ const MeetingSummary = ({ meeting }) => {
           </svg>
           AI Summary
         </h2>
-        <div className="text-gray-500 text-sm py-8 text-center bg-gray-50 rounded-lg">
+        <div className="text-gray-500 dark:text-gray-400 text-sm py-8 text-center bg-gray-50 dark:bg-gray-900/50 rounded-lg border border-gray-100 dark:border-gray-750">
           <p>No summary available yet.</p>
           <p className="text-xs mt-1">
             Generate a summary to view AI insights.
@@ -63,7 +64,9 @@ const MeetingSummary = ({ meeting }) => {
             </svg>
           }
         >
-          <p className="whitespace-pre-wrap">{structured.summary}</p>
+          <div className="whitespace-pre-wrap">
+            <GlossaryHighlighter text={structured.summary} />
+          </div>
         </SummarySection>
 
         {structured.agenda && structured.agenda.length > 0 && (
@@ -287,10 +290,16 @@ const MeetingSummary = ({ meeting }) => {
   const summaryText = typeof summary === "string" ? summary : null;
   const shouldShowExpandButton = summaryText && summaryText.length > 500;
 
+  const truncateAtWord = (text, maxLength) => {
+    if (text.length <= maxLength) return text;
+    const lastSpace = text.lastIndexOf(" ", maxLength);
+    return text.substring(0, lastSpace > 0 ? lastSpace : maxLength) + "...";
+  };
+
   return (
     <>
-      <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-6">
-        <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
+      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6 mb-6">
+        <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
           <svg
             className="w-5 h-5"
             fill="none"
@@ -307,28 +316,30 @@ const MeetingSummary = ({ meeting }) => {
           AI Summary
         </h2>
 
-        <div className="text-gray-700 text-sm">
+        <div className="text-gray-700 dark:text-gray-300 text-sm">
           {typeof summary === "object" ? (
             renderStructuredSummary(summary)
           ) : (
             <div className="whitespace-pre-wrap">
               {shouldShowExpandButton && !isExpanded ? (
                 <>
-                  {summaryText.substring(0, 500)}...
+                  <GlossaryHighlighter
+                    text={truncateAtWord(summaryText, 500)}
+                  />
                   <button
                     onClick={() => setIsExpanded(true)}
-                    className="ml-2 text-blue-600 hover:text-blue-800 font-medium"
+                    className="ml-2 text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 font-medium"
                   >
                     Read more
                   </button>
                 </>
               ) : (
                 <>
-                  {summaryText}
+                  <GlossaryHighlighter text={summaryText} />
                   {shouldShowExpandButton && isExpanded && (
                     <button
                       onClick={() => setIsExpanded(false)}
-                      className="ml-2 text-blue-600 hover:text-blue-800 font-medium"
+                      className="ml-2 text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 font-medium"
                     >
                       Show less
                     </button>
