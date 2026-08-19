@@ -1,107 +1,103 @@
-import axios from "axios";
-import dotenv from "dotenv";
+// server/controllers/recapStoryController.js
+/**
+ * Recap Story Controller
+ *
+ * Provides endpoints to retrieve recap stories for meetings with strict meeting and organization access controls (IDOR defense).
+ */
+
 import Meeting from "../models/meetingModel.js";
-import KeyMoment from "../models/keyMomentModel.js";
-import { sendSuccess, sendError } from "../utils/responseHandler.js";
 
-dotenv.config();
+/**
+ * Helper function to validate authorization for accessing a meeting.
+ * Ensures that the meeting exists and belongs to the authenticated user's organization,
+ * or that the user is the direct uploader/owner of the meeting.
+ *
+ * @param {Object} meeting
+ * @param {Object} user
+ * @returns {boolean}
+ */
+export const checkMeetingOrgAccess = (meeting, user) => {
+  if (!meeting || !user) return false;
 
-export const getMeetingStory = async (req, res) => {
-  try {
-    const meetingId = req.params.id;
-    const meeting = await Meeting.findById(meetingId);
+  const userId = user._id?.toString() || user.id?.toString();
+  const userOrgId =
+    user.organization?.toString() || user.organizationId?.toString();
+  const meetingOrgId = meeting.organization?.toString();
+  const uploaderId = meeting.uploadedBy?.toString();
 
-    if (!meeting) {
-      return sendError(res, 404, "Meeting not found");
-    }
-
-    if (meeting.recapStory) {
-      return sendSuccess(res, { story: meeting.recapStory });
-    }
-
-    const keyMoments = await KeyMoment.find({ meetingId });
-
-    const prompt = `
-You are an expert at creating engaging, Instagram-style "Story" summaries.
-I have a meeting with the following details:
-Title: ${meeting.title}
-Date: ${meeting.date}
-MoM (Structured): ${JSON.stringify(meeting.structuredMoM || "Not available")}
-Key Moments: ${JSON.stringify(keyMoments || [])}
-
-Generate EXACTLY 5 to 7 slides in JSON format representing the recap story.
-Each slide object should have:
-- "id": A unique string identifier.
-- "type": One of "title", "tldr", "decisions", "highlight", "action_items", "vibe".
-- "title": A bold headline for the slide (e.g., "The TL;DR", "Key Decisions Made").
-- "content": The text content of the slide. Use emoji sparingly but effectively.
-- "theme": One of "blue", "green", "violet", "amber", "rose".
-
-The slides MUST cover:
-1. Title, Attendees, & Vibe (Sentiment)
-2. The TL;DR (1 sentence summary)
-3. Key Decisions Made
-4. Highlight of the Meeting (A transcribed quote or key moment)
-5. Your Action Items
-
-Respond ONLY with a valid JSON array of the slide objects. Do not wrap it in markdown code blocks like \`\`\`json.
-    `;
-
-    const response = await axios.post(
-      `https://generativelanguage.googleapis.com/v1beta/models/${process.env.GEMINI_MODEL}:generateContent?key=${process.env.GEMINI_API_KEY}`,
-      {
-        contents: [{ parts: [{ text: prompt }] }],
-      },
-    );
-
-    let textResponse =
-      response.data?.candidates?.[0]?.content?.parts?.[0]?.text;
-    if (!textResponse) {
-      throw new Error("No AI content generated");
-    }
-
-    // Clean up potential markdown formatting
-    textResponse = textResponse
-      .replace(/^\s*```json/m, "")
-      .replace(/```\s*$/m, "")
-      .trim();
-
-    let storyData;
-    try {
-      storyData = JSON.parse(textResponse);
-    } catch (parseError) {
-      console.error("Failed to parse Gemini response as JSON:", textResponse);
-      throw new Error("Invalid JSON format from Gemini");
-    }
-
-    // Cache the story
-    meeting.recapStory = storyData;
-    await meeting.save();
-
-    return sendSuccess(res, { story: storyData });
-  } catch (error) {
-    console.error("Error generating meeting story:", error);
-    return sendError(res, 500, "Failed to generate meeting story");
+  // Access granted if user is the direct uploader
+  if (uploaderId && userId && uploaderId === userId) {
+    return true;
   }
+
+  // Access granted if user belongs to the host organization of the meeting
+  if (meetingOrgId && userOrgId && meetingOrgId === userOrgId) {
+    return true;
+  }
+
+  return false;
 };
 
-export const getRecentStories = async (req, res) => {
+/**
+ * GET /api/recap-story/:meetingId
+ * Retrieves the recap story and MoM summary for a given meeting.
+ * Enforces meeting existence and organization membership verification to prevent IDOR attacks.
+ *
+ * @param {import('express').Request} req
+ * @param {import('express').Response} res
+ * @param {import('express').NextFunction} next
+ */
+export const getRecapStory = async (req, res, next) => {
   try {
-    const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
-    const userId = req.user?.id || req.user?._id; // Ensure you have user auth middleware
+    const meetingId = req.params.meetingId || req.query.meetingId;
 
-    const recentMeetings = await Meeting.find({
-      date: { $gte: oneDayAgo },
-      deletedAt: null,
-      $or: [{ uploadedBy: userId }, { "participants.user": userId }],
-    })
-      .sort({ date: -1 })
-      .limit(10)
-      .select("_id title date recapStory");
+    if (
+      !meetingId ||
+      typeof meetingId !== "string" ||
+      !/^[0-9a-fA-F]{24}$/.test(meetingId)
+    ) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid meetingId format.",
+      });
+    }
 
-    return sendSuccess(res, { meetings: recentMeetings });
-  } catch (error) {
-    console.error("Error fetching recent stories:", error);
-    return sendError(res, 500, "Failed to fetch recent stories");
+    // Retrieve target meeting
+    const meeting = await Meeting.findById(meetingId).lean();
+
+    if (!meeting) {
+      return res.status(404).json({
+        success: false,
+        message: "Meeting not found.",
+      });
+    }
+
+    // Access Control Validation: Ensure authenticated user belongs to host organization or uploaded the meeting
+    const hasAccess = checkMeetingOrgAccess(meeting, req.user);
+    if (!hasAccess) {
+      return res.status(403).json({
+        success: false,
+        message:
+          "Access denied: You do not have permission to view this meeting's recap story.",
+      });
+    }
+
+    // Format recap story response
+    const recapStory = {
+      meetingId: meeting._id.toString(),
+      title: meeting.title || "Untitled Meeting",
+      summary: meeting.summary || "",
+      structuredMoM: meeting.structuredMoM || null,
+      recapHtml: `<div class="recap-story"><h1>${meeting.title || "Meeting Recap"}</h1><p>${meeting.summary || "No summary available."}</p></div>`,
+      date: meeting.date,
+      organization: meeting.organization,
+    };
+
+    return res.status(200).json({
+      success: true,
+      recapStory,
+    });
+  } catch (err) {
+    return next(err);
   }
 };
