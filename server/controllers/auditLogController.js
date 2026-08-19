@@ -11,6 +11,7 @@ import { sendSuccess, sendError } from "../utils/responseHandler.js";
 import fs from "fs";
 import path from "path";
 import { getContentDispositionHeader } from "../utils/fileUtils.js";
+import { parsePagination } from "../utils/pagination.js";
 
 const LARGE_EXPORT_THRESHOLD = 10000;
 const EXPORT_TTL_MS = 24 * 60 * 60 * 1000;
@@ -33,22 +34,16 @@ const parseFilters = (query, organizationId) => {
 export const getOrganizationAuditLogs = async (req, res) => {
   try {
     const organizationId = req.params.id;
-    const { format, page = 1, limit = 20 } = req.query;
+    const { format } = req.query;
     if (format && !["csv", "xlsx"].includes(format)) {
       return sendError(res, 400, "Export format must be csv or xlsx.");
     }
 
-    const pageNum = parseInt(page, 10);
-    const limitNum = parseInt(limit, 10);
-    if (
-      !Number.isInteger(pageNum) ||
-      pageNum < 1 ||
-      !Number.isInteger(limitNum) ||
-      limitNum < 1
-    ) {
-      return sendError(res, 400, "page and limit must be positive integers.");
-    }
-    const skip = (pageNum - 1) * limitNum;
+    const {
+      page: pageNum,
+      limit: limitNum,
+      skip,
+    } = parsePagination(req.query, { defaultLimit: 20 });
     const filter = parseFilters(req.query, organizationId);
 
     if (format) {
