@@ -1,127 +1,233 @@
-import * as agendaBuilderService from "../services/agendaBuilderService.js";
-import { emitToMeeting } from "../socket/meetingSocket.js";
+// server/controllers/agendaBuilderController.js
+/**
+ * Agenda Builder Controller
+ *
+ * Provides endpoints for listing, creating, voting, reordering, and finalizing meeting agendas.
+ * Enforces meeting existence and organization access verification to protect against IDOR vulnerabilities.
+ */
 
-export const getProposals = async (req, res) => {
+import Meeting from "../models/meetingModel.js";
+
+/**
+ * Helper to validate authorization for accessing a meeting.
+ * Ensures the authenticated user is either the direct uploader or belongs to the meeting's host organization.
+ *
+ * @param {Object} meeting
+ * @param {Object} user
+ * @returns {boolean}
+ */
+export const checkMeetingOrgAccess = (meeting, user) => {
+  if (!meeting || !user) return false;
+
+  const userId = user._id?.toString() || user.id?.toString();
+  const userOrgId =
+    user.organization?.toString() || user.organizationId?.toString();
+  const meetingOrgId = meeting.organization?.toString();
+  const uploaderId = meeting.uploadedBy?.toString();
+
+  if (uploaderId && userId && uploaderId === userId) {
+    return true;
+  }
+
+  if (meetingOrgId && userOrgId && meetingOrgId === userOrgId) {
+    return true;
+  }
+
+  return false;
+};
+
+/**
+ * Middleware function to enforce meeting and organization authorization on agenda builder endpoints.
+ */
+export const verifyMeetingOrgAccess = async (req, res, next) => {
   try {
-    const { meetingId } = req.params;
-    const proposals = await agendaBuilderService.getProposals(meetingId);
-    res.json(proposals);
-  } catch (error) {
-    console.error("Error in getProposals:", error);
-    res.status(500).json({ error: error.message });
+    const meetingId =
+      req.params.meetingId || req.body?.meetingId || req.query?.meetingId;
+
+    if (
+      !meetingId ||
+      typeof meetingId !== "string" ||
+      !/^[0-9a-fA-F]{24}$/.test(meetingId)
+    ) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid meetingId format.",
+      });
+    }
+
+    const meeting = await Meeting.findById(meetingId);
+    if (!meeting) {
+      return res.status(404).json({
+        success: false,
+        message: "Meeting not found.",
+      });
+    }
+
+    if (!checkMeetingOrgAccess(meeting, req.user)) {
+      return res.status(403).json({
+        success: false,
+        message:
+          "Unauthorized: You do not have permission to view or modify agendas for this meeting.",
+      });
+    }
+
+    req.meeting = meeting;
+    next();
+  } catch (err) {
+    return next(err);
   }
 };
 
-export const createProposal = async (req, res) => {
+/**
+ * GET /api/agenda-builder/:meetingId
+ * List agenda items for a meeting.
+ */
+export const getAgendas = async (req, res, next) => {
   try {
-    const { meetingId } = req.params;
-    const data = {
-      ...req.body,
-      proposedBy: req.user._id, // Assuming auth middleware sets req.user
+    const meeting = req.meeting;
+    return res.status(200).json({
+      success: true,
+      agendaItems: meeting.agendaItems || [],
+      meetingId: meeting._id.toString(),
+    });
+  } catch (err) {
+    return next(err);
+  }
+};
+
+/**
+ * POST /api/agenda-builder/:meetingId/items
+ * Create a new agenda item.
+ */
+export const createAgendaItem = async (req, res, next) => {
+  try {
+    const meeting = req.meeting;
+    const { text, title, duration } = req.body || {};
+    const itemText = text || title;
+
+    if (!itemText || typeof itemText !== "string" || !itemText.trim()) {
+      return res.status(400).json({
+        success: false,
+        message: "Agenda item text or title is required.",
+      });
+    }
+
+    const newItem = {
+      text: itemText.trim(),
+      duration: duration || null,
+      createdBy: req.user._id,
+      votes: 0,
+      votedUsers: [],
     };
-    const proposal = await agendaBuilderService.createProposal(meetingId, data);
 
-    emitToMeeting(meetingId, "agenda:proposal:new", proposal);
+    meeting.agendaItems.push(newItem);
+    await meeting.save();
 
-    res.status(201).json(proposal);
-  } catch (error) {
-    console.error("Error in createProposal:", error);
-    res.status(500).json({ error: error.message });
-  }
-};
-
-export const voteProposal = async (req, res) => {
-  try {
-    const { proposalId } = req.params;
-    const { voteValue } = req.body;
-
-    const proposal = await agendaBuilderService.voteProposal(
-      proposalId,
-      req.user._id,
-      voteValue,
-    );
-
-    emitToMeeting(proposal.meetingId, "agenda:proposal:updated", proposal);
-
-    res.json(proposal);
-  } catch (error) {
-    console.error("Error in voteProposal:", error);
-    res.status(500).json({ error: error.message });
-  }
-};
-
-export const updateStatus = async (req, res) => {
-  try {
-    const { proposalId } = req.params;
-    const { status } = req.body;
-
-    const proposal = await agendaBuilderService.updateProposalStatus(
-      proposalId,
-      status,
-    );
-
-    emitToMeeting(proposal.meetingId, "agenda:proposal:updated", proposal);
-
-    res.json(proposal);
-  } catch (error) {
-    console.error("Error in updateStatus:", error);
-    res.status(500).json({ error: error.message });
-  }
-};
-
-export const reorderProposals = async (req, res) => {
-  try {
-    const { meetingId } = req.params;
-    const { orderedIds } = req.body;
-
-    const proposals = await agendaBuilderService.reorderProposals(
-      meetingId,
-      orderedIds,
-    );
-
-    emitToMeeting(meetingId, "agenda:proposals:reordered", proposals);
-
-    res.json(proposals);
-  } catch (error) {
-    console.error("Error in reorderProposals:", error);
-    res.status(500).json({ error: error.message });
-  }
-};
-
-export const generateAiProposals = async (req, res) => {
-  try {
-    const { meetingId } = req.params;
-    const { contextData } = req.body;
-
-    const proposals = await agendaBuilderService.generateAiProposals(
-      meetingId,
-      contextData,
-    );
-
-    // Emit individually or as a batch
-    emitToMeeting(meetingId, "agenda:proposals:batch", proposals);
-
-    res.status(201).json(proposals);
-  } catch (error) {
-    console.error("Error in generateAiProposals:", error);
-    res.status(500).json({ error: error.message });
-  }
-};
-
-export const finalizeAgenda = async (req, res) => {
-  try {
-    const { meetingId } = req.params;
-
-    const meeting = await agendaBuilderService.finalizeAgenda(meetingId);
-
-    emitToMeeting(meetingId, "agenda:finalized", meeting.agendaItems);
-
-    res.json({
-      message: "Agenda finalized successfully",
+    return res.status(201).json({
+      success: true,
+      message: "Agenda item added successfully.",
       agendaItems: meeting.agendaItems,
     });
-  } catch (error) {
-    console.error("Error in finalizeAgenda:", error);
-    res.status(500).json({ error: error.message });
+  } catch (err) {
+    return next(err);
+  }
+};
+
+/**
+ * POST /api/agenda-builder/:meetingId/items/:itemId/vote
+ * Vote on an agenda item.
+ */
+export const voteAgendaItem = async (req, res, next) => {
+  try {
+    const meeting = req.meeting;
+    const itemId = req.params.itemId || req.body?.itemId;
+
+    if (!itemId) {
+      return res.status(400).json({
+        success: false,
+        message: "itemId is required to cast vote.",
+      });
+    }
+
+    const agendaItem = meeting.agendaItems.id
+      ? meeting.agendaItems.id(itemId)
+      : meeting.agendaItems.find((item) => item._id?.toString() === itemId);
+
+    if (!agendaItem) {
+      return res.status(404).json({
+        success: false,
+        message: "Agenda item not found.",
+      });
+    }
+
+    agendaItem.votes = (agendaItem.votes || 0) + 1;
+    await meeting.save();
+
+    return res.status(200).json({
+      success: true,
+      message: "Vote cast successfully.",
+      agendaItems: meeting.agendaItems,
+    });
+  } catch (err) {
+    return next(err);
+  }
+};
+
+/**
+ * PUT /api/agenda-builder/:meetingId/reorder
+ * Reorder agenda items for a meeting.
+ */
+export const reorderAgendaItems = async (req, res, next) => {
+  try {
+    const meeting = req.meeting;
+    const { agendaItems, orderedIds } = req.body || {};
+
+    if (Array.isArray(agendaItems)) {
+      meeting.agendaItems = agendaItems;
+    } else if (Array.isArray(orderedIds)) {
+      const itemMap = new Map(
+        meeting.agendaItems.map((item) => [item._id?.toString(), item]),
+      );
+      meeting.agendaItems = orderedIds
+        .map((id) => itemMap.get(id))
+        .filter(Boolean);
+    } else {
+      return res.status(400).json({
+        success: false,
+        message: "Array of agendaItems or orderedIds is required to reorder.",
+      });
+    }
+
+    await meeting.save();
+
+    return res.status(200).json({
+      success: true,
+      message: "Agenda items reordered successfully.",
+      agendaItems: meeting.agendaItems,
+    });
+  } catch (err) {
+    return next(err);
+  }
+};
+
+/**
+ * POST /api/agenda-builder/:meetingId/finalize
+ * Finalize agenda for a meeting.
+ */
+export const finalizeAgenda = async (req, res, next) => {
+  try {
+    const meeting = req.meeting;
+
+    meeting.isAgendaFinalized = true;
+    await meeting.save();
+
+    return res.status(200).json({
+      success: true,
+      message: "Agenda finalized successfully.",
+      agendaItems: meeting.agendaItems,
+      isAgendaFinalized: true,
+    });
+  } catch (err) {
+    return next(err);
   }
 };
