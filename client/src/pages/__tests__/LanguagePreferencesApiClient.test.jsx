@@ -1,5 +1,5 @@
 import React from "react";
-import { render, screen, waitFor } from "@testing-library/react";
+import { render, screen, waitFor, fireEvent } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import LanguagePreferences from "../LanguagePreferences.jsx";
 
@@ -24,11 +24,11 @@ vi.mock("../../services/apiClient.js", () => ({
   },
 }));
 
-describe("LanguagePreferences uses Clerk-aware apiClient (#1407)", () => {
+describe("LanguagePreferences (#1407, #1802)", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockGet.mockImplementation((url) => {
-      if (url === "/api/translation/preferences") {
+      if (url === "/api/translations/preferences") {
         return Promise.resolve({
           data: {
             autoTranslate: true,
@@ -40,7 +40,7 @@ describe("LanguagePreferences uses Clerk-aware apiClient (#1407)", () => {
           },
         });
       }
-      if (url === "/api/translation/languages") {
+      if (url === "/api/translations/languages") {
         return Promise.resolve({
           data: { languages: [{ code: "en", name: "English" }] },
         });
@@ -49,14 +49,62 @@ describe("LanguagePreferences uses Clerk-aware apiClient (#1407)", () => {
     });
   });
 
-  it("loads preferences and languages through apiClient instead of raw fetch", async () => {
+  it("loads preferences and languages through plural /api/translations endpoints", async () => {
     render(<LanguagePreferences />);
 
     await waitFor(() => {
       expect(screen.getByText("Language Preferences")).toBeInTheDocument();
     });
 
-    expect(mockGet).toHaveBeenCalledWith("/api/translation/preferences");
-    expect(mockGet).toHaveBeenCalledWith("/api/translation/languages");
+    expect(mockGet).toHaveBeenCalledWith("/api/translations/preferences");
+    expect(mockGet).toHaveBeenCalledWith("/api/translations/languages");
+  });
+
+  it("decouples error state from loading and renders error UI on fetch failure (#1802)", async () => {
+    mockGet.mockImplementation((url) => {
+      if (url === "/api/translations/preferences") {
+        return Promise.reject(new Error("Network Error"));
+      }
+      return Promise.resolve({ data: { languages: [] } });
+    });
+
+    render(<LanguagePreferences />);
+
+    await waitFor(() => {
+      expect(screen.getByRole("alert")).toBeInTheDocument();
+      expect(
+        screen.getByText("Unable to Load Preferences"),
+      ).toBeInTheDocument();
+    });
+
+    // Make sure it doesn't get stuck in "Loading preferences..."
+    expect(
+      screen.queryByText("Loading preferences..."),
+    ).not.toBeInTheDocument();
+
+    // Verify retry recovers successfully
+    mockGet.mockImplementation((url) => {
+      if (url === "/api/translations/preferences") {
+        return Promise.resolve({
+          data: {
+            autoTranslate: false,
+            showConfidenceScores: false,
+            preferredProvider: "auto",
+            defaultSourceLanguage: "en",
+            defaultTargetLanguages: [],
+            customGlossary: [],
+          },
+        });
+      }
+      return Promise.resolve({ data: { languages: [] } });
+    });
+
+    const retryBtn = screen.getByRole("button", { name: /retry/i });
+    fireEvent.click(retryBtn);
+
+    await waitFor(() => {
+      expect(screen.getByText("Language Preferences")).toBeInTheDocument();
+    });
   });
 });
+
