@@ -1,3 +1,4 @@
+import mongoose from "mongoose";
 import * as activityService from "../services/activityService.js";
 import { parsePagination } from "../utils/pagination.js";
 
@@ -7,10 +8,14 @@ import { parsePagination } from "../utils/pagination.js";
  */
 export const getActivities = async (req, res) => {
   try {
-    const orgId = req.user.organization;
+    const orgId = (
+      req.user?.organization?._id || req.user?.organization
+    )?.toString();
 
-    if (!orgId) {
-      return res.status(400).json({ error: "No organization selected." });
+    if (!orgId || !mongoose.Types.ObjectId.isValid(orgId)) {
+      return res
+        .status(400)
+        .json({ error: "Valid organization ID is required." });
     }
 
     const { action, actor } = req.query;
@@ -21,11 +26,16 @@ export const getActivities = async (req, res) => {
       maxLimit: 100,
     });
 
+    const sanitizedAction =
+      typeof action === "string" ? action.trim().slice(0, 100) : undefined;
+    const sanitizedActor =
+      typeof actor === "string" ? actor.trim().slice(0, 100) : undefined;
+
     const result = await activityService.getOrgActivities(orgId, {
       page,
       limit,
-      action,
-      actor,
+      action: sanitizedAction,
+      actor: sanitizedActor,
     });
 
     res.status(200).json(result);
@@ -41,10 +51,14 @@ export const getActivities = async (req, res) => {
  */
 export const getActivityStats = async (req, res) => {
   try {
-    const orgId = req.user.organization;
+    const orgId = (
+      req.user?.organization?._id || req.user?.organization
+    )?.toString();
 
-    if (!orgId) {
-      return res.status(400).json({ error: "No organization selected." });
+    if (!orgId || !mongoose.Types.ObjectId.isValid(orgId)) {
+      return res
+        .status(400)
+        .json({ error: "Valid organization ID is required." });
     }
 
     const stats = await activityService.getActivityStats(orgId);
