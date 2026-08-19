@@ -1,11 +1,13 @@
-import { Calendar, Loader2, Send } from "lucide-react";
+import { Calendar, Loader2, Send, FileText } from "lucide-react";
 import MeetingInformationForm from "./MeetingInformationForm";
 import ParticipantsSection from "./ParticipantsSection";
 import AgendaSection from "./AgendaSection";
 import AttachmentSection from "./AttachmentSection";
 import CalendarNotice from "./CalendarNotice";
+import DraftRecoveryBanner from "./DraftRecoveryBanner";
+import SmartAgendaGenerator from "../../../../components/meetings/SmartAgendaGenerator";
 
-const ScheduleMeeting = ({ hookProps }) => {
+const ScheduleMeeting = ({ hookProps, loadingDuplicate = false }) => {
   const {
     scheduleData,
     setScheduleData,
@@ -17,14 +19,27 @@ const ScheduleMeeting = ({ hookProps }) => {
     setNewAgenda,
     attachments,
     loading,
+    templates,
+    selectedTemplateId,
+    handleTemplateSelect,
     handleScheduleChange,
     addParticipant,
     removeParticipant,
     addAgendaItem,
     removeAgendaItem,
+    reorderAgendaItem,
     handleAttachmentUpload,
     removeAttachment,
     handleScheduleSubmit,
+    recoverableDraft,
+    lastSavedAt,
+    draftStatus,
+    restoreDraft,
+    discardDraft,
+    aiSummaryTemplates,
+    selectedAiSummaryTemplateId,
+    setSelectedAiSummaryTemplateId,
+    setAgendaItems,
   } = hookProps;
 
   return (
@@ -40,7 +55,23 @@ const ScheduleMeeting = ({ hookProps }) => {
         </div>
       </div>
 
+      {loadingDuplicate && (
+        <div
+          className="mb-6 rounded-lg border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-800"
+          role="status"
+        >
+          Loading reusable meeting details...
+        </div>
+      )}
+
       <form onSubmit={handleScheduleSubmit}>
+        <DraftRecoveryBanner
+          savedAt={recoverableDraft?.savedAt}
+          lastSavedAt={lastSavedAt}
+          status={draftStatus}
+          onRestore={restoreDraft}
+          onDiscard={discardDraft}
+        />
         <MeetingInformationForm
           scheduleData={scheduleData}
           setScheduleData={setScheduleData}
@@ -55,12 +86,60 @@ const ScheduleMeeting = ({ hookProps }) => {
           removeParticipant={removeParticipant}
         />
 
+        {templates && templates.length > 0 && (
+          <div className="mb-6 bg-blue-50/50 p-4 rounded-xl border border-blue-100">
+            <label className="flex items-center gap-2 text-sm font-semibold text-blue-900 mb-2">
+              <FileText size={16} /> Load Meeting Template
+            </label>
+            <select
+              value={selectedTemplateId}
+              onChange={handleTemplateSelect}
+              className="w-full px-4 py-2 bg-white border border-blue-200 rounded-lg focus:ring-2 focus:ring-blue-400 outline-none text-sm text-gray-700"
+            >
+              <option value="">
+                -- Select a template to populate agenda --
+              </option>
+              {templates.map((t) => (
+                <option key={t._id} value={t._id}>
+                  {t.title} ({t.agendaBlocks?.length || 0} items)
+                </option>
+              ))}
+            </select>
+          </div>
+        )}
+
+        {aiSummaryTemplates && aiSummaryTemplates.length > 0 && (
+          <div className="mb-6 bg-indigo-50/50 p-4 rounded-xl border border-indigo-100">
+            <label className="flex items-center gap-2 text-sm font-semibold text-indigo-900 mb-2">
+              <FileText size={16} /> AI Summary Instructions
+            </label>
+            <select
+              value={selectedAiSummaryTemplateId || ""}
+              onChange={(e) => setSelectedAiSummaryTemplateId(e.target.value)}
+              className="w-full px-4 py-2 bg-white border border-indigo-200 rounded-lg focus:ring-2 focus:ring-indigo-400 outline-none text-sm text-gray-700"
+            >
+              <option value="">-- Standard Summary Format --</option>
+              {aiSummaryTemplates.map((t) => (
+                <option key={t._id} value={t._id}>
+                  {t.name} {t.isDefault ? "(Default)" : ""}
+                </option>
+              ))}
+            </select>
+            <p className="text-xs text-indigo-700 mt-2">
+              Custom instructions allow you to dictate exactly how the AI will
+              write the MoM (e.g. Sales BANT, Sprint Retro).
+            </p>
+          </div>
+        )}
+
         <AgendaSection
           agendaItems={agendaItems}
+          setAgendaItems={setAgendaItems}
           newAgenda={newAgenda}
           setNewAgenda={setNewAgenda}
           addAgendaItem={addAgendaItem}
           removeAgendaItem={removeAgendaItem}
+          reorderAgendaItem={reorderAgendaItem}
         />
 
         <AttachmentSection
@@ -68,13 +147,72 @@ const ScheduleMeeting = ({ hookProps }) => {
           handleAttachmentUpload={handleAttachmentUpload}
           removeAttachment={removeAttachment}
         />
+        {/* Meeting Reminder */}
+        <div className="mb-6 rounded-xl border border-blue-100 bg-blue-50/50 p-4">
+          <div className="flex items-center gap-2 mb-3">
+            <Calendar className="text-blue-600" size={18} />
 
+            <h3 className="text-sm font-semibold text-blue-900">
+              Meeting Reminder
+            </h3>
+          </div>
+
+          <label className="flex items-center gap-3 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={scheduleData.reminderEnabled || false}
+              onChange={(e) =>
+                setScheduleData((prev) => ({
+                  ...prev,
+                  reminderEnabled: e.target.checked,
+                }))
+              }
+              className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+            />
+
+            <span className="text-sm text-gray-700">
+              Send me a notification before this meeting starts
+            </span>
+          </label>
+
+          {scheduleData.reminderEnabled && (
+            <div className="mt-4">
+              <label
+                htmlFor="reminderMinutesBefore"
+                className="block text-sm font-medium text-gray-700 mb-2"
+              >
+                Remind me
+              </label>
+
+              <select
+                id="reminderMinutesBefore"
+                value={scheduleData.reminderMinutesBefore || 30}
+                onChange={(e) =>
+                  setScheduleData((prev) => ({
+                    ...prev,
+                    reminderMinutesBefore: Number(e.target.value),
+                  }))
+                }
+                className="w-full px-4 py-2 bg-white border border-blue-200 rounded-lg focus:ring-2 focus:ring-blue-400 outline-none text-sm text-gray-700"
+              >
+                <option value={10}>10 minutes before</option>
+                <option value={30}>30 minutes before</option>
+                <option value={60}>1 hour before</option>
+              </select>
+
+              <p className="text-xs text-blue-700 mt-2">
+                You will receive an in-app notification and email reminder.
+              </p>
+            </div>
+          )}
+        </div>
+        
         <CalendarNotice />
 
         {/* Submit */}
         <button
           type="submit"
-          disabled={loading}
+          disabled={loading || loadingDuplicate}
           className="w-full px-6 py-3 bg-blue-600 text-white rounded-lg font-semibold hover:bg-blue-700 transition flex items-center justify-center gap-2 disabled:opacity-50"
         >
           {loading ? (

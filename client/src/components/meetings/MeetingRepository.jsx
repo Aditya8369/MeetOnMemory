@@ -1,21 +1,23 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { toast } from "react-toastify";
 import { meetingApi } from "../../services";
-import { Trash2, Download, Edit2, Eye, Search, Filter } from "lucide-react";
-import AppContent from "../../context/AppContent";
 import MeetingCard from "./MeetingCard.jsx";
 import MeetingSearch from "./MeetingSearch.jsx";
 import MeetingFilters from "./MeetingFilters.jsx";
 import Pagination from "./Pagination.jsx";
 import EmptyState from "./EmptyState.jsx";
 import { useNavigate } from "react-router-dom";
+import useApiRequest from "../../hooks/useApiRequest.js";
+import { savedFilterApi } from "../../services";
+import SavedFilterBar from "./SavedFilterBar.jsx";
+import SaveFilterModal from "./SaveFilterModal.jsx";
+import { BookmarkPlus, ListChecks } from "lucide-react";
+import useBulkMeetingActions from "../../hooks/useBulkMeetingActions.js";
+import BulkActionBar from "./BulkActionBar.jsx";
 
 const MeetingRepository = () => {
   const navigate = useNavigate();
-  const [meetings, setMeetings] = useState([]);
   const [filteredMeetings, setFilteredMeetings] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [filters, setFilters] = useState({
     status: "all",
@@ -28,33 +30,92 @@ const MeetingRepository = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 9;
 
-  // Fetch meetings
-  const fetchMeetings = async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const response = await meetingApi.getAllMeetings();
+  // Saved Filters
+  const [savedFilters, setSavedFilters] = useState([]);
+  const [isSaveModalOpen, setIsSaveModalOpen] = useState(false);
 
+  const fetchSavedFilters = useCallback(async () => {
+    try {
+      const response = await savedFilterApi.getFilters();
       if (response.data?.success) {
-        setMeetings(response.data.meetings || []);
-      } else {
-        setError("Failed to fetch meetings");
+        setSavedFilters(response.data.filters);
       }
     } catch (err) {
-      console.error("Error fetching meetings:", err);
-      setError(err.response?.data?.message || "Failed to load meetings");
-    } finally {
-      setLoading(false);
+      console.error("Failed to fetch saved filters", err);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchSavedFilters();
+  }, [fetchSavedFilters]);
+
+  const handleApplySavedFilter = (savedFilter) => {
+    if (savedFilter.filters) {
+      setFilters(savedFilter.filters);
+      if (savedFilter.filters.searchQuery !== undefined) {
+        setSearchQuery(savedFilter.filters.searchQuery);
+      }
     }
   };
 
+  const handleSaveFilter = async (filterData) => {
+    try {
+      const response = await savedFilterApi.createFilter(filterData);
+      if (response.data?.success) {
+        toast.success("Filter saved successfully");
+        fetchSavedFilters();
+      }
+    } catch (err) {
+      toast.error(err.response?.data?.message || "Failed to save filter");
+    }
+  };
+
+  // Abort in-flight loads when a newer refresh starts (#1131 / #978).
+  const loadMeetings = useCallback(async (signal) => {
+    const response = await meetingApi.getAllMeetings({}, { signal });
+
+    if (!response.data?.success) {
+      const failure = new Error(
+        response.data?.message || "Failed to fetch meetings",
+      );
+      throw failure;
+    }
+
+    return response.data.meetings || [];
+  }, []);
+
+  const {
+    data: meetings,
+    error: requestError,
+    loading,
+    execute: fetchMeetings,
+  } = useApiRequest(loadMeetings, { initialData: [] });
+
+  const error = requestError
+    ? requestError.response?.data?.message ||
+      requestError.message ||
+      "Failed to load meetings"
+    : null;
+
   useEffect(() => {
     fetchMeetings();
-  }, []);
+  }, [fetchMeetings]);
+
+  const {
+    isBulkMode,
+    toggleBulkMode,
+    selectedMeetings,
+    toggleSelection,
+    isProcessing,
+    handleBulkArchive,
+    handleBulkTag,
+    handleBulkSoftDelete,
+    handleBulkExport,
+  } = useBulkMeetingActions(fetchMeetings);
 
   // Apply filters and search
   useEffect(() => {
-    let filtered = [...meetings];
+    let filtered = [...(meetings || [])];
 
     // Apply search
     if (searchQuery.trim()) {
@@ -149,7 +210,11 @@ const MeetingRepository = () => {
 
   // Meeting actions
   const handleDelete = async (meetingId) => {
-    if (!window.confirm("Are you sure you want to delete this meeting?")) {
+    if (
+      !window.confirm(
+        "Move this meeting to the Recycle Bin? You can restore it from there later.",
+      )
+    ) {
       return;
     }
 
@@ -157,7 +222,27 @@ const MeetingRepository = () => {
       const response = await meetingApi.deleteMeeting(meetingId);
 
       if (response.data?.success) {
-        toast.success("Meeting deleted successfully");
+        toast.success(
+          <span>
+            Meeting moved to Recycle Bin.{" "}
+            <button
+              onClick={() => navigate("/meetings/recycle-bin")}
+              className="underline font-medium"
+            >
+              View Recycle Bin
+            </button>
+          </span>,
+          <div className="flex items-center justify-between gap-3">
+            <span>Meeting moved to recycle bin</span>
+            <button
+              type="button"
+              onClick={() => navigate("/meetings/recycle-bin")}
+              className="text-xs font-semibold text-blue-600 hover:text-blue-700 underline shrink-0"
+            >
+              View Recycle Bin
+            </button>
+          </div>,
+        );
         fetchMeetings();
       } else {
         toast.error(response.data?.message || "Failed to delete meeting");
@@ -215,7 +300,9 @@ const MeetingRepository = () => {
       <div className="flex items-center justify-center py-20">
         <div className="text-center">
           <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
-          <p className="mt-4 text-gray-600">Loading meetings...</p>
+          <p className="mt-4 text-gray-600 dark:text-gray-400">
+            Loading meetings...
+          </p>
         </div>
       </div>
     );
@@ -226,9 +313,9 @@ const MeetingRepository = () => {
       <div className="flex items-center justify-center py-20">
         <div className="text-center">
           <div className="text-red-500 text-6xl mb-4">⚠️</div>
-          <p className="text-gray-700 text-lg">{error}</p>
+          <p className="text-gray-700 dark:text-gray-200 text-lg">{error}</p>
           <button
-            onClick={fetchMeetings}
+            onClick={() => fetchMeetings()}
             className="mt-4 px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
           >
             Retry
@@ -240,46 +327,76 @@ const MeetingRepository = () => {
 
   return (
     <div className="space-y-6">
+      <SavedFilterBar
+        savedFilters={savedFilters}
+        onApplyFilter={handleApplySavedFilter}
+        fetchFilters={fetchSavedFilters}
+      />
+
       {/* Search and Filters */}
       <div className="flex flex-col lg:flex-row gap-4 items-start lg:items-center justify-between">
         <MeetingSearch
           searchQuery={searchQuery}
           onSearchChange={setSearchQuery}
         />
-        <MeetingFilters
-          filters={filters}
-          onFilterChange={handleFilterChange}
-          onClearFilters={handleClearFilters}
-        />
+        <div className="flex gap-3 items-center w-full lg:w-auto">
+          <MeetingFilters
+            filters={filters}
+            onFilterChange={handleFilterChange}
+            onClearFilters={handleClearFilters}
+          />
+          <button
+            onClick={() => setIsSaveModalOpen(true)}
+            className="flex items-center gap-1.5 px-3 py-2 text-sm font-medium text-blue-600 bg-blue-50 hover:bg-blue-100 dark:text-blue-400 dark:bg-blue-900/30 dark:hover:bg-blue-900/50 rounded-lg transition-colors whitespace-nowrap cursor-pointer"
+            title="Save current filters as a smart view"
+          >
+            <BookmarkPlus className="w-4 h-4" />
+            Save View
+          </button>
+          <button
+            onClick={toggleBulkMode}
+            className={`flex items-center gap-1.5 px-3 py-2 text-sm font-medium rounded-lg transition-colors whitespace-nowrap cursor-pointer ${
+              isBulkMode
+                ? "bg-blue-600 text-white hover:bg-blue-700"
+                : "text-gray-700 bg-gray-100 hover:bg-gray-200 dark:text-gray-300 dark:bg-gray-800 dark:hover:bg-gray-700"
+            }`}
+            title="Toggle bulk selection mode"
+          >
+            <ListChecks className="w-4 h-4" />
+            Bulk Mode
+          </button>
+        </div>
       </div>
 
       {/* Active Filters Display */}
       {hasActiveFilters && (
         <div className="flex flex-wrap gap-2 items-center text-sm">
-          <span className="text-gray-600">Active filters:</span>
+          <span className="text-gray-600 dark:text-gray-400">
+            Active filters:
+          </span>
           {searchQuery && (
-            <span className="bg-blue-100 text-blue-700 px-3 py-1 rounded-full">
+            <span className="bg-blue-100 text-blue-700 dark:bg-blue-950/60 dark:text-blue-300 px-3 py-1 rounded-full">
               Search: "{searchQuery}"
             </span>
           )}
           {filters.status !== "all" && (
-            <span className="bg-blue-100 text-blue-700 px-3 py-1 rounded-full">
+            <span className="bg-blue-100 text-blue-700 dark:bg-blue-950/60 dark:text-blue-300 px-3 py-1 rounded-full">
               Status: {filters.status}
             </span>
           )}
           {filters.meetingType !== "all" && (
-            <span className="bg-blue-100 text-blue-700 px-3 py-1 rounded-full">
+            <span className="bg-blue-100 text-blue-700 dark:bg-blue-950/60 dark:text-blue-300 px-3 py-1 rounded-full">
               Type: {filters.meetingType}
             </span>
           )}
           {filters.dateRange !== "all" && (
-            <span className="bg-blue-100 text-blue-700 px-3 py-1 rounded-full">
+            <span className="bg-blue-100 text-blue-700 dark:bg-blue-950/60 dark:text-blue-300 px-3 py-1 rounded-full">
               Date: {filters.dateRange}
             </span>
           )}
           <button
             onClick={handleClearFilters}
-            className="text-red-600 hover:text-red-800 underline"
+            className="text-red-600 dark:text-red-400 hover:text-red-800 dark:hover:text-red-300 underline"
           >
             Clear all
           </button>
@@ -307,6 +424,9 @@ const MeetingRepository = () => {
                 onDelete={handleDelete}
                 onRename={handleRename}
                 onView={handleView}
+                isBulkMode={isBulkMode}
+                isSelected={selectedMeetings.has(meeting._id)}
+                onToggleSelect={toggleSelection}
               />
             ))}
           </div>
@@ -320,6 +440,25 @@ const MeetingRepository = () => {
             />
           )}
         </>
+      )}
+
+      <SaveFilterModal
+        isOpen={isSaveModalOpen}
+        onClose={() => setIsSaveModalOpen(false)}
+        onSave={handleSaveFilter}
+        initialFilters={{ ...filters, searchQuery }}
+      />
+
+      {isBulkMode && (
+        <BulkActionBar
+          selectedCount={selectedMeetings.size}
+          isProcessing={isProcessing}
+          onArchive={handleBulkArchive}
+          onDelete={handleBulkSoftDelete}
+          onExport={handleBulkExport}
+          onTag={handleBulkTag}
+          onCancel={toggleBulkMode}
+        />
       )}
     </div>
   );

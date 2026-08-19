@@ -50,7 +50,7 @@ const Hero = () => {
   const mockupRef = useFadeIn();
 
   const handleGetStarted = () => {
-    navigate("/login?mode=signup");
+    navigate("/signup");
   };
 
   const handleLearnMore = () => {
@@ -60,7 +60,7 @@ const Hero = () => {
   return (
     <section
       id="hero"
-      className="relative min-h-screen flex items-center justify-center overflow-hidden bg-linear-to-br from-blue-50 via-white to-purple-50 dark:from-gray-900 dark:via-gray-900 dark:to-slate-900 pt-16"
+      className="relative min-h-screen flex items-center justify-center overflow-hidden bg-linear-to-b from-slate-50 to-white dark:from-slate-950 dark:to-slate-900 pt-16"
     >
       {/* Decorative background blobs */}
       <div className="absolute inset-0 overflow-hidden" aria-hidden="true">
@@ -135,7 +135,11 @@ const Hero = () => {
                 label={t("hero.statAutoSummaries")}
                 sub={t("hero.statAutoSummariesSub")}
               />
-              <StatItem emoji="🏢" label={t("hero.statOrgs")} sub={t("hero.statOrgsSub")} />
+              <StatItem
+                emoji="🏢"
+                label={t("hero.statOrgs")}
+                sub={t("hero.statOrgsSub")}
+              />
             </div>
           </div>
 
