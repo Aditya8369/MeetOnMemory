@@ -1,56 +1,40 @@
-// server/controllers/notionIntegrationController.js
 /**
- * Notion Integration Controller
+ * Notion Integration Controller (Issue #1602).
  *
- * Handles Notion OAuth flow and database mapping configuration with security protections:
- * 1. HMAC-signed OAuth state parameter to prevent state tampering / CSRF during authentication.
- * 2. Credential masking to prevent leakage of access tokens in API responses.
+ * Handles OAuth flow, database configuration, manual sync, status, and disconnect.
+ * Uses HMAC-signed state for CSRF protection and encrypts tokens at rest.
  */
 
 import crypto from "crypto";
+import NotionIntegration from "../models/notionIntegrationModel.js";
+import Meeting from "../models/meetingModel.js";
+import ActionItem from "../models/actionItemModel.js";
 import Organization from "../models/organizationModel.js";
+import { encryptToken } from "../utils/crypto.js";
+import { sendSuccess, sendError } from "../utils/responseHandler.js";
+import * as notionSync from "../services/notionSyncService.js";
+import logger from "../utils/logger.js";
 
-/**
- * Retrieves the secret key used for HMAC state signing.
- * @returns {string}
- */
-const getSecretKey = () => {
-  return (
-    process.env.NOTION_OAUTH_SECRET ||
-    process.env.JWT_SECRET ||
-    "fallback-notion-oauth-secret-key"
-  );
-};
+// ── OAuth state helpers ─────────────────────────────────────────────────
 
-/**
- * Helper function to strip sensitive credential fields (such as accessToken)
- * from integration objects before sending them in client API responses.
- *
- * @param {Object} integration
- * @returns {Object|null} Sanitized integration object without sensitive tokens
- */
+const getSecretKey = () =>
+  process.env.NOTION_OAUTH_SECRET ||
+  process.env.JWT_SECRET ||
+  "fallback-notion-oauth-secret-key";
+
 export const sanitizeIntegration = (integration) => {
   if (!integration) return null;
   const obj =
     typeof integration.toObject === "function"
       ? integration.toObject()
       : { ...integration };
-
   delete obj.accessToken;
   delete obj.token;
   delete obj.access_token;
   delete obj.botToken;
-
   return obj;
 };
 
-/**
- * Generates an HMAC-signed state parameter containing organizationId, timestamp, and nonce.
- *
- * @param {string} organizationId
- * @param {string} [secret]
- * @returns {string} Signed state parameter formatted as `${base64urlPayload}.${signature}`
- */
 export const generateSignedState = (
   organizationId,
   secret = getSecretKey(),
@@ -72,22 +56,14 @@ export const generateSignedState = (
   return `${payload}.${signature}`;
 };
 
-/**
- * Verifies and decodes an HMAC-signed OAuth state parameter.
- *
- * @param {string} state
- * @param {string} [secret]
- * @returns {{ valid: boolean, organizationId?: string, error?: string }}
- */
 export const verifySignedState = (state, secret = getSecretKey()) => {
   if (!state || typeof state !== "string" || !state.includes(".")) {
     return { valid: false, error: "Invalid state format" };
   }
 
   const parts = state.split(".");
-  if (parts.length !== 2) {
+  if (parts.length !== 2)
     return { valid: false, error: "Malformed state parameter" };
-  }
 
   const [payload, signature] = parts;
   if (!payload || !signature) {
@@ -116,65 +92,34 @@ export const verifySignedState = (state, secret = getSecretKey()) => {
     const decoded = JSON.parse(
       Buffer.from(payload, "base64url").toString("utf-8"),
     );
-
     if (!decoded.organizationId) {
       return { valid: false, error: "Missing organizationId in state payload" };
     }
-
-    // Reject expired state parameters (older than 15 minutes)
     const MAX_AGE_MS = 15 * 60 * 1000;
     if (decoded.timestamp && Date.now() - decoded.timestamp > MAX_AGE_MS) {
       return { valid: false, error: "OAuth state has expired" };
     }
-
     return { valid: true, organizationId: decoded.organizationId };
   } catch {
     return { valid: false, error: "Failed to parse state payload" };
   }
 };
 
-/**
- * GET /api/notion/install (or POST /api/notion/initiate)
- * Initiates the Notion OAuth flow with an HMAC-signed state parameter.
- *
- * @param {import('express').Request} req
- * @param {import('express').Response} res
- * @param {import('express').NextFunction} next
- */
-export const initiateNotionOAuth = async (req, res, next) => {
-  try {
-    const organizationId =
-      req.query.organizationId ||
-      req.body?.organizationId ||
-      req.user?.organization?.toString() ||
-      "";
+// ── Route handlers ──────────────────────────────────────────────────────
 
-    if (
-      !organizationId ||
-      typeof organizationId !== "string" ||
-      !/^[0-9a-fA-F]{24}$/.test(organizationId)
-    ) {
-      return res.status(400).json({
-        success: false,
-        message: "Invalid or missing organizationId format.",
-      });
+export const initiateOAuth = async (req, res) => {
+  try {
+    const organizationId = req.user?.organization?.toString();
+    if (!organizationId || !/^[0-9a-fA-F]{24}$/.test(organizationId)) {
+      return sendError(res, 400, "Invalid or missing organization.");
     }
 
     const clientId = process.env.NOTION_CLIENT_ID;
     const redirectUri = process.env.NOTION_REDIRECT_URI;
-
     const state = generateSignedState(organizationId);
 
-    if (req.session) {
-      req.session.notionOAuthState = state;
-    }
-
     if (!clientId) {
-      return res.status(200).json({
-        success: true,
-        state,
-        message: "Notion integration OAuth state generated.",
-      });
+      return sendSuccess(res, { state }, "Notion OAuth state generated.");
     }
 
     const params = new URLSearchParams({
@@ -191,129 +136,188 @@ export const initiateNotionOAuth = async (req, res, next) => {
       req.query.redirect === "false" ||
       req.headers["accept"]?.includes("application/json")
     ) {
-      return res.status(200).json({ success: true, authUrl, state });
+      return sendSuccess(res, { authUrl, state });
     }
 
     return res.redirect(authUrl);
-  } catch (err) {
-    return next(err);
+  } catch (error) {
+    logger.error("Notion OAuth initiate error:", error);
+    sendError(res, 500, "Failed to initiate Notion OAuth.");
   }
 };
 
-/**
- * GET /api/notion/oauth_redirect
- * Handles the Notion OAuth callback, verifying state integrity.
- *
- * @param {import('express').Request} req
- * @param {import('express').Response} res
- * @param {import('express').NextFunction} next
- */
-export const handleNotionCallback = async (req, res, next) => {
+export const oauthCallback = async (req, res) => {
   try {
     const { code, state, error: notionError } = req.query;
 
     if (notionError) {
-      return res.status(400).json({
-        success: false,
-        message: `Notion OAuth error: ${notionError}`,
-      });
+      return sendError(res, 400, `Notion OAuth error: ${notionError}`);
     }
-
-    if (!state || typeof state !== "string") {
-      return res.status(400).json({
-        success: false,
-        message: "Missing OAuth state parameter.",
-      });
-    }
-
-    if (
-      req.session?.notionOAuthState &&
-      req.session.notionOAuthState !== state
-    ) {
-      return res.status(400).json({
-        success: false,
-        message: "OAuth state parameter does not match session state.",
-      });
-    }
+    if (!state) return sendError(res, 400, "Missing OAuth state parameter.");
+    if (!code) return sendError(res, 400, "Missing OAuth code.");
 
     const verification = verifySignedState(state);
     if (!verification.valid) {
-      return res.status(400).json({
-        success: false,
-        message:
-          verification.error || "Invalid or tampered OAuth state parameter.",
-      });
+      return sendError(res, 400, verification.error || "Invalid OAuth state.");
     }
 
     const organizationId = verification.organizationId;
-
-    if (!code || typeof code !== "string") {
-      return res.status(400).json({
-        success: false,
-        message: "Missing or invalid OAuth code from Notion.",
-      });
-    }
-
     const org = await Organization.findById(organizationId);
-    if (!org) {
-      return res.status(404).json({
-        success: false,
-        message: "Organization not found.",
-      });
-    }
+    if (!org) return sendError(res, 404, "Organization not found.");
 
-    if (req.session) {
-      delete req.session.notionOAuthState;
-    }
+    const redirectUri = process.env.NOTION_REDIRECT_URI;
+    const tokenData = await notionSync.exchangeOAuthToken(code, redirectUri);
 
-    return res.status(200).json({
-      success: true,
-      message: "Notion OAuth authorization successful.",
-      organizationId,
-    });
-  } catch (err) {
-    return next(err);
+    const accessToken = tokenData.access_token;
+    if (!accessToken)
+      return sendError(res, 400, "Failed to obtain Notion access token.");
+
+    await NotionIntegration.findOneAndUpdate(
+      { organization: organizationId },
+      {
+        organization: organizationId,
+        accessToken: encryptToken(accessToken),
+        workspaceId: tokenData.workspace_id || "",
+        workspaceName: tokenData.workspace_name || "",
+        createdBy: req.user?._id || null,
+      },
+      { upsert: true, new: true },
+    );
+
+    const clientUrl = process.env.CLIENT_URL || "http://localhost:3000";
+    return res.redirect(
+      `${clientUrl}/organization/settings?tab=integrations&notion_success=true`,
+    );
+  } catch (error) {
+    logger.error("Notion OAuth callback error:", error);
+    sendError(res, 500, "Failed to complete Notion OAuth.");
   }
 };
 
-/**
- * POST /api/notion/mapping
- * Saves the database mapping configuration for Notion integration.
- * Excludes sensitive credential fields (accessToken) from the API response payload.
- *
- * @param {import('express').Request} req
- * @param {import('express').Response} res
- * @param {import('express').NextFunction} next
- */
-export const saveMapping = async (req, res, next) => {
+export const getStatus = async (req, res) => {
   try {
-    const { organizationId, databaseId, mapping, accessToken, integration } =
-      req.body || {};
+    const orgId = req.user?.organization?.toString();
+    const integration = await NotionIntegration.findOne({
+      organization: orgId,
+    });
+    if (!integration) {
+      return sendSuccess(res, { isConnected: false });
+    }
+    return sendSuccess(res, {
+      isConnected: true,
+      workspaceName: integration.workspaceName,
+      targetDatabaseId: integration.targetDatabaseId,
+    });
+  } catch (error) {
+    logger.error("Notion getStatus error:", error);
+    sendError(res, 500, "Failed to get Notion integration status.");
+  }
+};
 
-    if (organizationId && /^[0-9a-fA-F]{24}$/.test(organizationId)) {
-      const org = await Organization.findById(organizationId);
-      if (!org) {
-        return res.status(404).json({
-          success: false,
-          message: "Organization not found.",
-        });
-      }
+export const getDatabases = async (req, res) => {
+  try {
+    const orgId = req.user?.organization?.toString();
+    const integration = await NotionIntegration.findOne({
+      organization: orgId,
+    });
+    if (!integration)
+      return sendError(res, 404, "Notion integration not found.");
+
+    const databases = await notionSync.fetchDatabases(integration.accessToken);
+    return sendSuccess(res, { databases });
+  } catch (error) {
+    logger.error("Notion getDatabases error:", error);
+    sendError(res, 500, "Failed to fetch Notion databases.");
+  }
+};
+
+export const saveMapping = async (req, res) => {
+  try {
+    const orgId = req.user?.organization?.toString();
+    const { databaseId } = req.body;
+
+    if (!databaseId || typeof databaseId !== "string") {
+      return sendError(res, 400, "databaseId is required.");
     }
 
-    const rawIntegration = integration || {
-      databaseId: databaseId || "default-database-id",
-      mapping: mapping || {},
-      accessToken: accessToken || "secret_notion_access_token",
-      updatedAt: new Date(),
-    };
-
-    const sanitizedIntegration = sanitizeIntegration(rawIntegration);
-
-    return res.status(200).json({
-      success: true,
-      integration: sanitizedIntegration,
+    const integration = await NotionIntegration.findOne({
+      organization: orgId,
     });
-  } catch (err) {
-    return next(err);
+    if (!integration)
+      return sendError(res, 404, "Notion integration not found.");
+
+    integration.targetDatabaseId = databaseId;
+    await integration.save();
+
+    return sendSuccess(
+      res,
+      { integration: sanitizeIntegration(integration) },
+      "Database mapping saved.",
+    );
+  } catch (error) {
+    logger.error("Notion saveMapping error:", error);
+    sendError(res, 500, "Failed to save Notion mapping.");
+  }
+};
+
+export const disconnect = async (req, res) => {
+  try {
+    const orgId = req.user?.organization?.toString();
+    await NotionIntegration.findOneAndDelete({ organization: orgId });
+    return sendSuccess(res, {}, "Notion integration disconnected.");
+  } catch (error) {
+    logger.error("Notion disconnect error:", error);
+    sendError(res, 500, "Failed to disconnect Notion.");
+  }
+};
+
+export const syncMeeting = async (req, res) => {
+  try {
+    const orgId = req.user?.organization?.toString();
+    const { meetingId } = req.body;
+
+    if (!meetingId) return sendError(res, 400, "meetingId is required.");
+
+    const meeting = await Meeting.findById(meetingId);
+    if (!meeting) return sendError(res, 404, "Meeting not found.");
+    if (meeting.organization?.toString() !== orgId) {
+      return sendError(res, 403, "Access denied.");
+    }
+
+    const integration = await NotionIntegration.findOne({
+      organization: orgId,
+    });
+    if (!integration)
+      return sendError(res, 404, "Notion integration not found.");
+    if (!integration.targetDatabaseId) {
+      return sendError(res, 400, "Target Notion database is not configured.");
+    }
+
+    const actionItems = await ActionItem.find({
+      sourceMeetingId: meetingId,
+      organization: orgId,
+    });
+
+    const result = await notionSync.createMeetingPage(
+      meeting,
+      integration,
+      actionItems,
+    );
+
+    return sendSuccess(
+      res,
+      {
+        notionPageId: result.pageId,
+        notionPageUrl: result.pageUrl,
+        alreadySynced: result.alreadySynced || false,
+      },
+      result.alreadySynced
+        ? "Meeting was already synced."
+        : "Meeting synced to Notion.",
+      result.alreadySynced ? 200 : 201,
+    );
+  } catch (error) {
+    logger.error("Notion syncMeeting error:", error);
+    sendError(res, 500, "Failed to sync meeting to Notion.");
   }
 };
