@@ -41,6 +41,17 @@ const BrowseOrganizations = () => {
   const observerRef = useRef(null);
   const searchTimeoutRef = useRef(null);
   const fetchSequenceRef = useRef(0);
+  const paginationRef = useRef(pagination);
+  const searchQueryRef = useRef(searchQuery);
+  const sortByRef = useRef(sortBy);
+  const filterRef = useRef(filter);
+  const loadingPageRef = useRef(null);
+  const requestedPagesRef = useRef(new Set());
+
+  paginationRef.current = pagination;
+  searchQueryRef.current = searchQuery;
+  sortByRef.current = sortBy;
+  filterRef.current = filter;
 
   const fetchOrganizations = useCallback(
     async (
@@ -52,6 +63,17 @@ const BrowseOrganizations = () => {
     ) => {
       const requestId = ++fetchSequenceRef.current;
 
+      if (!append) {
+        requestedPagesRef.current.clear();
+      }
+      if (append) {
+        if (requestedPagesRef.current.has(page)) return;
+        requestedPagesRef.current.add(page);
+        loadingPageRef.current = page;
+      } else {
+        requestedPagesRef.current.add(page);
+      }
+
       try {
         if (!append) {
           setLoading(true);
@@ -62,7 +84,7 @@ const BrowseOrganizations = () => {
 
         const params = {
           page,
-          limit: pagination.limit,
+          limit: paginationRef.current.limit,
           search: search.trim(),
           sortBy: sort,
           filter: filt,
@@ -75,10 +97,19 @@ const BrowseOrganizations = () => {
 
         if (data.success) {
           if (append) {
-            setOrganizations((prev) => [...prev, ...data.organizations]);
+            setOrganizations((prev) => {
+              const existingIds = new Set(
+                prev.map((organization) => organization._id),
+              );
+              const nextOrganizations = data.organizations.filter(
+                (organization) => !existingIds.has(organization._id),
+              );
+              return [...prev, ...nextOrganizations];
+            });
           } else {
             setOrganizations(data.organizations);
           }
+          paginationRef.current = data.pagination;
           setPagination(data.pagination);
         } else {
           setError(data.message || "Failed to fetch organizations");
@@ -90,6 +121,9 @@ const BrowseOrganizations = () => {
         );
         toast.error("Failed to load organizations");
       } finally {
+        if (append && loadingPageRef.current === page) {
+          loadingPageRef.current = null;
+        }
         if (requestId === fetchSequenceRef.current) {
           setLoading(false);
           setLoadingMore(false);
@@ -147,26 +181,44 @@ const BrowseOrganizations = () => {
   // Infinite scroll observer
   const lastElementRef = useCallback(
     (node) => {
-      if (loadingMore) return;
       if (observerRef.current) observerRef.current.disconnect();
+      if (!node) return;
 
       observerRef.current = new IntersectionObserver((entries) => {
-        if (entries[0].isIntersecting && pagination.hasNextPage) {
-          fetchOrganizations(
-            pagination.page + 1,
-            searchQuery,
-            sortBy,
-            filter,
-            true,
-          );
+        if (!entries[0]?.isIntersecting) return;
+
+        const currentPagination = paginationRef.current;
+        const nextPage = currentPagination.page + 1;
+
+        if (
+          !currentPagination.hasNextPage ||
+          loadingPageRef.current !== null ||
+          requestedPagesRef.current.has(nextPage)
+        ) {
+          return;
         }
+
+        fetchOrganizations(
+          nextPage,
+          searchQueryRef.current,
+          sortByRef.current,
+          filterRef.current,
+          true,
+        );
       });
 
-      if (node) observerRef.current.observe(node);
+      observerRef.current.observe(node);
     },
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [loadingMore, pagination.hasNextPage, searchQuery, sortBy, filter],
+    [fetchOrganizations],
   );
+
+  useEffect(() => {
+    return () => {
+      if (observerRef.current) observerRef.current.disconnect();
+      if (searchTimeoutRef.current) clearTimeout(searchTimeoutRef.current);
+      fetchSequenceRef.current += 1;
+    };
+  }, []);
 
   // Format date
   const formatDate = (dateString) => {

@@ -142,3 +142,185 @@ describe("BrowseOrganizations (#293)", () => {
     ).toHaveAttribute("href", "/organizations");
   });
 });
+
+describe("BrowseOrganizations infinite-scroll pagination", () => {
+  let observers;
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    observers = [];
+    globalThis.IntersectionObserver = vi.fn(
+      function IntersectionObserverMock(callback) {
+        this.callback = callback;
+        this.observe = vi.fn();
+        this.disconnect = vi.fn();
+        observers.push(this);
+      },
+    );
+  });
+
+  it("requests pagination pages sequentially without skipping or duplicating pages", async () => {
+    organizationApi.browsePublicOrganizations.mockImplementation(
+      async ({ page }) => ({
+        data: {
+          success: true,
+          organizations: [
+            {
+              ...mockOrganizations[0],
+              _id: `org-${page}`,
+              name: `Organization ${page}`,
+            },
+          ],
+          pagination: {
+            page,
+            limit: 12,
+            total: 3,
+            totalPages: 3,
+            hasNextPage: page < 3,
+            hasPrevPage: page > 1,
+          },
+        },
+      }),
+    );
+
+    render(
+      <MemoryRouter>
+        <BrowseOrganizations />
+      </MemoryRouter>,
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText("Organization 1")).toBeInTheDocument();
+    });
+
+    observers.at(-1).callback([{ isIntersecting: true }]);
+    observers.at(-1).callback([{ isIntersecting: true }]);
+
+    await waitFor(() => {
+      expect(screen.getByText("Organization 2")).toBeInTheDocument();
+    });
+
+    observers.at(-1).callback([{ isIntersecting: true }]);
+
+    await waitFor(() => {
+      expect(screen.getByText("Organization 3")).toBeInTheDocument();
+    });
+
+    expect(
+      organizationApi.browsePublicOrganizations.mock.calls.map(
+        ([params]) => params.page,
+      ),
+    ).toEqual([1, 2, 3]);
+  });
+
+  it("prevents concurrent requests when the sentinel intersects repeatedly", async () => {
+    let resolvePageTwo;
+    organizationApi.browsePublicOrganizations.mockImplementation(({ page }) => {
+      if (page === 1) {
+        return Promise.resolve({
+          data: {
+            success: true,
+            organizations: [mockOrganizations[0]],
+            pagination: {
+              page: 1,
+              limit: 12,
+              total: 2,
+              totalPages: 2,
+              hasNextPage: true,
+              hasPrevPage: false,
+            },
+          },
+        });
+      }
+
+      return new Promise((resolve) => {
+        resolvePageTwo = resolve;
+      });
+    });
+
+    render(
+      <MemoryRouter>
+        <BrowseOrganizations />
+      </MemoryRouter>,
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText("Open Community")).toBeInTheDocument();
+    });
+
+    const observer = observers.at(-1);
+    observer.callback([{ isIntersecting: true }]);
+    observer.callback([{ isIntersecting: true }]);
+
+    expect(
+      organizationApi.browsePublicOrganizations.mock.calls.filter(
+        ([params]) => params.page === 2,
+      ),
+    ).toHaveLength(1);
+
+    resolvePageTwo({
+      data: {
+        success: true,
+        organizations: [mockOrganizations[1]],
+        pagination: {
+          page: 2,
+          limit: 12,
+          total: 2,
+          totalPages: 2,
+          hasNextPage: false,
+          hasPrevPage: true,
+        },
+      },
+    });
+
+    await waitFor(() => {
+      expect(screen.getByText("Approval Required Org")).toBeInTheDocument();
+    });
+  });
+
+  it("resets pagination to page one when search changes", async () => {
+    vi.useFakeTimers();
+    try {
+      organizationApi.browsePublicOrganizations.mockResolvedValue({
+        data: {
+          success: true,
+          organizations: mockOrganizations,
+          pagination: {
+            page: 1,
+            limit: 12,
+            total: 2,
+            totalPages: 1,
+            hasNextPage: false,
+            hasPrevPage: false,
+          },
+        },
+      });
+
+      render(
+        <MemoryRouter>
+          <BrowseOrganizations />
+        </MemoryRouter>,
+      );
+
+      await waitFor(() => {
+        expect(screen.getByText("Open Community")).toBeInTheDocument();
+      });
+
+      const input = screen.getByPlaceholderText(
+        /Search by organization name, slug, description, or tags/i,
+      );
+      fireEvent.change(input, { target: { value: "engineering" } });
+      vi.advanceTimersByTime(300);
+
+      await waitFor(() => {
+        expect(
+          organizationApi.browsePublicOrganizations,
+        ).toHaveBeenLastCalledWith(
+          expect.objectContaining({ page: 1, search: "engineering" }),
+        );
+      });
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+});
