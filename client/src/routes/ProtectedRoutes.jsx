@@ -511,7 +511,18 @@ const ProtectedRoutes = (
       }
     />
     <Route path="/meeting-templates" element={<MeetingTemplates />} />
-    <Route path="/ai-summary-templates" element={<AiSummaryTemplates />} />
+    <Route
+      path="/ai-summary-templates"
+      element={
+        <ProtectedRoute
+          resource="admin_panel"
+          action="view"
+          forbiddenFallback={<AccessDenied />}
+        >
+          <AiSummaryTemplates />
+        </ProtectedRoute>
+      }
+    />
     <Route path="/access-denied" element={<AccessDenied />} />
     <Route
       path="/leaderboard"
