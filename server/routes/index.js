@@ -82,6 +82,7 @@ import agendaVoteRoutes from "./agendaVoteRoutes.js";
 import agendaBuilderRoutes from "./agendaBuilderRoutes.js";
 import meetingDuplicateRoutes from "./meetingDuplicateRoutes.js";
 import meetingDelegationRoutes from "./meetingDelegationRoutes.js";
+import breakoutRoomRoutes from "./breakoutRoomRoutes.js";
 
 import notionIntegrationRoutes from "./notionIntegrationRoutes.js";
 import gamificationRoutes from "./gamificationRoutes.js";
@@ -138,6 +139,8 @@ router.use("/api/comments", commentRoutes);
 router.use("/api/activities", activityRoutes);
 router.use("/api/tags", tagRoutes);
 router.use("/api/polls", pollRoutes);
+router.use("/api/meetings/:meetingId/topics", topicRoutes);
+router.use("/api/meetings/:meetingId/breakout-rooms", breakoutRoomRoutes);
 router.use("/api/meetings/:meetingId/attachments", attachmentRoutes);
 router.use("/api/meeting-series", meetingSeriesRoutes);
 router.use("/api/meeting-series", carryForwardRoutes);
