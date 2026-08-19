@@ -1,3 +1,5 @@
+import { z } from "zod";
+import mongoose from "mongoose";
 import ActionItem from "../models/actionItemModel.js";
 import ActionItemExtractor from "../services/actionItemExtractor.js";
 import { syncActionItemToGitHub } from "../services/githubSyncService.js";
@@ -93,6 +95,133 @@ export const extractFromMeeting = async (req, res) => {
     res
       .status(500)
       .json({ success: false, error: error.message || "Server error" });
+  }
+};
+
+/**
+ * @desc Create a manual action item for a meeting
+ * @route POST /api/action-items
+ * @access Private
+ */
+const createActionItemSchema = z
+  .object({
+    text: z
+      .string()
+      .trim()
+      .min(1, "Action item text is required")
+      .max(2000)
+      .optional(),
+    title: z
+      .string()
+      .trim()
+      .min(1, "Action item title is required")
+      .max(2000)
+      .optional(),
+    description: z.string().trim().max(2000).optional(),
+    assignee: z.string().trim().optional().nullable(),
+    status: z
+      .enum([
+        "open",
+        "in-progress",
+        "resolved",
+        "superseded",
+        "pending",
+        "in_progress",
+        "completed",
+        "overdue",
+        "cancelled",
+      ])
+      .optional(),
+    priority: z.enum(["low", "medium", "high", "urgent"]).optional(),
+    dueDate: z.union([z.string(), z.date()]).optional().nullable(),
+    deadline: z.union([z.string(), z.date()]).optional().nullable(),
+    sourceContext: z.string().max(5000).optional(),
+    remindersEnabled: z.boolean().optional(),
+  })
+  .refine((data) => data.text || data.title, {
+    message: "Action item text is required",
+    path: ["text"],
+  });
+
+export const createActionItem = async (req, res) => {
+  try {
+    const { meetingId } = req.params;
+    const parsed = createActionItemSchema.safeParse(req.body);
+
+    if (!mongoose.isValidObjectId(meetingId)) {
+      return res.status(400).json({
+        success: false,
+        error: "Invalid meeting ID",
+      });
+    }
+
+    if (!parsed.success) {
+      return res.status(400).json({
+        success: false,
+        error: "Validation error",
+        errors: parsed.error.issues,
+      });
+    }
+
+    const data = parsed.data;
+    const text = data.text || data.title;
+    const dueDate = data.dueDate ?? data.deadline ?? null;
+
+    if (dueDate !== null && Number.isNaN(new Date(dueDate).getTime())) {
+      return res.status(400).json({
+        success: false,
+        error: "Invalid due date",
+      });
+    }
+
+    if (data.assignee && !mongoose.isValidObjectId(data.assignee)) {
+      return res.status(400).json({
+        success: false,
+        error: "Invalid assignee ID",
+      });
+    }
+
+    const item = await ActionItem.create({
+      text,
+      description: data.description || "",
+      assignee: data.assignee || null,
+      assignedBy: req.user._id || req.user.id,
+      status: data.status || "open",
+      priority: data.priority || "medium",
+      sourceMeetingId: meetingId,
+      organization:
+        req.meeting.organization ||
+        req.meeting.organizationId ||
+        req.user.organization ||
+        req.user.organizationId ||
+        null,
+      dueDate,
+      sourceContext: data.sourceContext || "",
+      remindersEnabled: data.remindersEnabled ?? true,
+    });
+
+    const populatedItem = await ActionItem.findById(item._id)
+      .populate("assignee", "name avatar")
+      .populate("assignedBy", "name")
+      .populate("sourceMeetingId", "title date");
+
+    return res.status(201).json({
+      success: true,
+      data: populatedItem || item,
+    });
+  } catch (error) {
+    if (error?.name === "ValidationError" || error?.name === "CastError") {
+      return res.status(400).json({
+        success: false,
+        error: error.message,
+      });
+    }
+
+    console.error("Error creating action item:", error);
+    return res.status(500).json({
+      success: false,
+      error: "Server error",
+    });
   }
 };
 
