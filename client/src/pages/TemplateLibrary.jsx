@@ -5,7 +5,8 @@ import {
   cloneTemplate,
   rateTemplate,
 } from "../services/templateLibraryApi";
-import { CopyPlus, Star, ChevronDown, Filter } from "lucide-react";
+import { CopyPlus, Star, ChevronDown, Filter, X } from "lucide-react";
+import { toast } from "react-toastify";
 
 const TemplateLibrary = () => {
   const [templates, setTemplates] = useState([]);
@@ -40,16 +41,26 @@ const TemplateLibrary = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [categoryFilter, sortOption]);
 
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (e.key === "Escape" && selectedTemplate) {
+        setSelectedTemplate(null);
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [selectedTemplate]);
+
   const handleClone = async (templateId) => {
     if (cloningTemplateId) return;
 
     setCloningTemplateId(templateId);
     try {
       await cloneTemplate(templateId);
-      alert("Template cloned successfully!");
+      toast.success("Template cloned successfully!");
       await fetchTemplates();
     } catch {
-      alert("Failed to clone template");
+      toast.error("Failed to clone template");
     } finally {
       setCloningTemplateId(null);
     }
@@ -64,13 +75,13 @@ const TemplateLibrary = () => {
         rating: ratingInput,
         review: reviewInput,
       });
-      alert("Rating submitted successfully!");
+      toast.success("Rating submitted successfully!");
       setRatingInput(5);
       setReviewInput("");
       await fetchTemplates();
       setSelectedTemplate(null);
     } catch {
-      alert("Failed to submit rating");
+      toast.error("Failed to submit rating");
     } finally {
       setRatingTemplateId(null);
     }
@@ -130,8 +141,17 @@ const TemplateLibrary = () => {
             {templates.map((template) => (
               <div
                 key={template._id}
-                className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden hover:shadow-md transition cursor-pointer"
+                role="button"
+                tabIndex={0}
+                aria-label={`View details for ${template.name}`}
+                className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden hover:shadow-md transition cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
                 onClick={() => setSelectedTemplate(template)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" || e.key === " ") {
+                    e.preventDefault();
+                    setSelectedTemplate(template);
+                  }
+                }}
               >
                 <div className="p-6">
                   <div className="flex justify-between items-start mb-4">
@@ -148,11 +168,17 @@ const TemplateLibrary = () => {
                   <div className="flex items-center justify-between text-sm text-gray-500 dark:text-gray-400">
                     <div className="flex items-center">
                       <CopyPlus className="w-4 h-4 mr-1" />
-                      <span>{template.cloneCount} clones</span>
+                      <span>{template.cloneCount ?? 0} clones</span>
                     </div>
                     <div className="flex items-center">
                       <Star className="w-4 h-4 mr-1 text-yellow-400" />
-                      <span>{template.averageRating.toFixed(1)}</span>
+                      <span>
+                        {typeof template.averageRating === "number"
+                          ? template.averageRating.toFixed(1)
+                          : template.averageRating != null
+                            ? Number(template.averageRating).toFixed(1)
+                            : "N/A"}
+                      </span>
                     </div>
                   </div>
                 </div>
@@ -171,9 +197,25 @@ const TemplateLibrary = () => {
       </div>
 
       {selectedTemplate && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white dark:bg-gray-800 rounded-xl max-w-lg w-full p-6">
-            <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="template-detail-title"
+          className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4"
+        >
+          <div className="bg-white dark:bg-gray-800 rounded-xl max-w-lg w-full p-6 relative">
+            <button
+              type="button"
+              onClick={() => setSelectedTemplate(null)}
+              aria-label="Close dialog"
+              className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 cursor-pointer"
+            >
+              <X className="w-5 h-5" />
+            </button>
+            <h2
+              id="template-detail-title"
+              className="text-2xl font-bold text-gray-900 dark:text-white mb-2 pr-8"
+            >
               {selectedTemplate.name}
             </h2>
             <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
@@ -198,7 +240,7 @@ const TemplateLibrary = () => {
                 onClick={() => handleClone(selectedTemplate._id)}
                 disabled={cloningTemplateId === selectedTemplate._id}
                 aria-busy={cloningTemplateId === selectedTemplate._id}
-                className="flex-1 bg-blue-600 hover:bg-blue-700 disabled:opacity-60 disabled:cursor-not-allowed text-white py-2 px-4 rounded-lg font-medium transition flex items-center justify-center"
+                className="flex-1 bg-blue-600 hover:bg-blue-700 disabled:opacity-60 disabled:cursor-not-allowed text-white py-2 px-4 rounded-lg font-medium transition flex items-center justify-center cursor-pointer"
               >
                 <CopyPlus className="w-5 h-5 mr-2" />
                 {cloningTemplateId === selectedTemplate._id
@@ -215,17 +257,24 @@ const TemplateLibrary = () => {
               </h4>
               <div className="flex items-center mb-2">
                 {[1, 2, 3, 4, 5].map((star) => (
-                  <Star
+                  <button
                     key={star}
-                    className={`w-6 h-6 cursor-pointer ${
-                      ratingInput >= star
-                        ? "text-yellow-400 fill-current"
-                        : "text-gray-300"
-                    }`}
+                    type="button"
+                    aria-label={`Rate ${star} star${star > 1 ? "s" : ""}`}
+                    disabled={Boolean(ratingTemplateId)}
+                    className="p-1 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 rounded cursor-pointer"
                     onClick={() => {
                       if (!ratingTemplateId) setRatingInput(star);
                     }}
-                  />
+                  >
+                    <Star
+                      className={`w-6 h-6 ${
+                        ratingInput >= star
+                          ? "text-yellow-400 fill-current"
+                          : "text-gray-300 dark:text-gray-600"
+                      }`}
+                    />
+                  </button>
                 ))}
               </div>
               <textarea
@@ -240,7 +289,7 @@ const TemplateLibrary = () => {
                 <button
                   onClick={() => setSelectedTemplate(null)}
                   disabled={Boolean(ratingTemplateId)}
-                  className="px-4 py-2 text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition disabled:opacity-60 disabled:cursor-not-allowed"
+                  className="px-4 py-2 text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition disabled:opacity-60 disabled:cursor-not-allowed cursor-pointer"
                 >
                   Cancel
                 </button>
@@ -248,7 +297,7 @@ const TemplateLibrary = () => {
                   onClick={() => handleRate(selectedTemplate._id)}
                   disabled={ratingTemplateId === selectedTemplate._id}
                   aria-busy={ratingTemplateId === selectedTemplate._id}
-                  className="px-4 py-2 bg-green-600 hover:bg-green-700 disabled:opacity-60 disabled:cursor-not-allowed text-white rounded-lg transition"
+                  className="px-4 py-2 bg-green-600 hover:bg-green-700 disabled:opacity-60 disabled:cursor-not-allowed text-white rounded-lg transition cursor-pointer"
                 >
                   {ratingTemplateId === selectedTemplate._id
                     ? "Submitting..."
