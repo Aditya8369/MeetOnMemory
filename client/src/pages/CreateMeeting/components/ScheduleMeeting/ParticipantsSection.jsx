@@ -9,7 +9,7 @@ const ParticipantsSection = ({
 }) => {
   return (
     <div className="mb-6">
-      <label className="block mb-3 font-semibold text-gray-700 flex items-center gap-2">
+      <label className="block mb-3 font-semibold text-gray-700 dark:text-gray-300 flex items-center gap-2">
         <Users size={18} /> Invite Participants
       </label>
       <div className="grid md:grid-cols-2 gap-3 mb-3">
@@ -23,7 +23,7 @@ const ParticipantsSection = ({
             })
           }
           placeholder="Full Name"
-          className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-400 outline-none"
+          className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-400 outline-none bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500"
         />
         <input
           type="email"
@@ -35,13 +35,13 @@ const ParticipantsSection = ({
             })
           }
           placeholder="Email Address"
-          className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-400 outline-none"
+          className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-400 outline-none bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500"
         />
       </div>
       <button
         type="button"
         onClick={addParticipant}
-        className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 flex items-center gap-2"
+        className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 flex items-center gap-2 cursor-pointer"
       >
         <UserPlus size={16} /> Add Participant
       </button>
@@ -51,7 +51,7 @@ const ParticipantsSection = ({
           {participants.map((p) => (
             <div
               key={p.id}
-              className="flex items-center justify-between bg-gray-50 px-4 py-2 rounded-lg"
+              className="flex items-center justify-between bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 px-4 py-2 rounded-lg text-gray-900 dark:text-gray-100"
             >
               <span className="text-sm">
                 <strong>{p.name}</strong> - {p.email}
@@ -59,7 +59,7 @@ const ParticipantsSection = ({
               <button
                 type="button"
                 onClick={() => removeParticipant(p.id)}
-                className="text-red-600 hover:text-red-800"
+                className="text-red-600 dark:text-red-400 hover:text-red-800 dark:hover:text-red-300 cursor-pointer"
               >
                 <X size={18} />
               </button>
