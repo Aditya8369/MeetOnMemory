@@ -3,6 +3,8 @@ import Membership from "../models/membershipModel.js";
 import Organization from "../models/organizationModel.js";
 import userModel from "../models/userModel.js";
 import { sendSuccess, sendError } from "../utils/responseHandler.js";
+import * as activityService from "../services/activityService.js";
+import { syncMembershipAndUserRole } from "../services/MembershipService.js";
 
 /**
  * ✅ Get User Memberships
@@ -122,13 +124,32 @@ export const updateMembershipRole = async (req, res) => {
       }
     }
 
-    membership.role = role;
-    await membership.save();
+    // Issue #1361: update Membership.role and User.role atomically when the
+    // membership belongs to the user's primary organization.
+    const { membership: updatedMembership } = await syncMembershipAndUserRole(
+      membership,
+      role,
+    );
 
-    sendSuccess(res, { membership }, "Membership role updated successfully.");
+    const io = req.app.get("io");
+    activityService.logActivity(
+      io,
+      updatedMembership.organization._id || updatedMembership.organization,
+      req.user.id,
+      "membership.role_updated",
+      "User",
+      updatedMembership.user,
+      "Role updated to " + role,
+    );
+
+    sendSuccess(
+      res,
+      { membership: updatedMembership },
+      "Membership role updated successfully.",
+    );
   } catch (error) {
     console.error("❌ Error updating membership role:", error);
-    sendError(res, 500, "Server error");
+    sendError(res, error.statusCode || 500, error.message || "Server error");
   }
 };
 
@@ -199,6 +220,17 @@ export const removeMembership = async (req, res) => {
       });
     }
 
+    const io = req.app.get("io");
+    activityService.logActivity(
+      io,
+      removedOrgId,
+      req.user.id,
+      "membership.removed",
+      "User",
+      targetUserId,
+      isSelf ? "Left organization" : "Removed from organization",
+    );
+
     sendSuccess(res, null, "Membership removed successfully.");
   } catch (error) {
     console.error("❌ Error removing membership:", error);
@@ -246,6 +278,17 @@ export const leaveOrganization = async (req, res) => {
       organization: null,
       role: null,
     });
+
+    const io = req.app.get("io");
+    activityService.logActivity(
+      io,
+      organizationId,
+      req.user.id,
+      "membership.left",
+      "User",
+      req.user.id,
+      "Left organization",
+    );
 
     sendSuccess(res, null, "Left organization successfully.");
   } catch (error) {

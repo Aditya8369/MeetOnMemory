@@ -2,6 +2,7 @@ import React, { useContext } from "react";
 import { Navigate, useLocation } from "react-router-dom";
 import AppContent from "../context/AppContent";
 import { useRBAC } from "../hooks/useRBAC.js";
+import AccessDenied from "../pages/AccessDenied.jsx";
 
 const ProtectedRoute = ({
   children,
@@ -10,12 +11,14 @@ const ProtectedRoute = ({
   action,
   forbiddenFallback,
 }) => {
-  const { isLoggedin, userData, loading, isLoading } = useContext(AppContent);
+  const { isLoggedin, userData, loading } = useContext(AppContent);
   const { hasPermission } = useRBAC();
   const location = useLocation();
 
-  // Show loading while fetching user data
-  if (loading || isLoading) {
+  // Hold the route until ClerkSessionSync finishes Mongo bootstrap.
+  // Redirecting while loading=false && !isLoggedin during a transient failure
+  // races Clerk's signed-in redirect back to /dashboard.
+  if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         Loading...
@@ -46,10 +49,15 @@ const ProtectedRoute = ({
     "/create-organization",
     "/join-organization",
   ];
+  const isJoinWithToken =
+    location.pathname === "/join-organization" &&
+    new URLSearchParams(location.search).has("token");
+
   if (
     userData &&
     userData.hasCompletedOnboarding &&
-    onboardingOnlyPages.includes(location.pathname)
+    onboardingOnlyPages.includes(location.pathname) &&
+    !isJoinWithToken
   ) {
     return <Navigate to="/dashboard" replace />;
   }
@@ -57,8 +65,7 @@ const ProtectedRoute = ({
   // RBAC: Check if user has required permission
   if (resource && action) {
     if (!hasPermission(resource, action)) {
-      if (forbiddenFallback) return forbiddenFallback;
-      return <Navigate to="/dashboard" state={{ from: location }} replace />;
+      return forbiddenFallback || <AccessDenied />;
     }
   } else if (requiredPermission) {
     const permResource =
@@ -70,8 +77,7 @@ const ProtectedRoute = ({
         ? requiredPermission.action
         : "view";
     if (!hasPermission(permResource, permAction)) {
-      if (forbiddenFallback) return forbiddenFallback;
-      return <Navigate to="/dashboard" state={{ from: location }} replace />;
+      return forbiddenFallback || <AccessDenied />;
     }
   }
 

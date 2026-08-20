@@ -3,14 +3,14 @@
 // Handles AI Embeddings + Pinecone Vector Search (Offline + Free)
 // ==============================================
 
-import { pipeline } from "@xenova/transformers";
-import { Pinecone } from "@pinecone-database/pinecone";
 import dotenv from "dotenv";
 import Meeting from "../models/meetingModel.js";
 
 dotenv.config();
 
 // ======= 🌐 Global Singletons =======
+// Transformers + Pinecone are loaded on first use so importing this module
+// does not eagerly initialize the AI runtime (Jest ESM linker / cold start).
 let pineconeClient = null;
 let pineconeIndex = null;
 let embedder = null;
@@ -34,6 +34,7 @@ export const initVectorStore = async () => {
 
   try {
     if (!pineconeClient) {
+      const { Pinecone } = await import("@pinecone-database/pinecone");
       pineconeClient = new Pinecone({ apiKey: PINECONE_API_KEY });
       console.log("✅ Pinecone client initialized.");
     }
@@ -51,11 +52,25 @@ export const initVectorStore = async () => {
 };
 
 // ===================================================
+// ⚙️ 1.5️⃣ Pre-warm Pinecone (for workers)
+// ===================================================
+export const preWarmPinecone = async () => {
+  try {
+    await initVectorStore();
+    await getEmbedder();
+    console.log("🔥 Pinecone and Embedder pre-warmed.");
+  } catch (err) {
+    console.error("❌ Failed to pre-warm Pinecone:", err);
+  }
+};
+
+// ===================================================
 // 🧠 2️⃣ Load Local Hugging Face Embedding Model
 // ===================================================
 async function getEmbedder() {
   if (!embedder) {
     console.log("⏳ Loading local Hugging Face model (MiniLM-L6-v2)...");
+    const { pipeline } = await import("@xenova/transformers");
     embedder = await pipeline("feature-extraction", "Xenova/all-MiniLM-L6-v2");
     console.log("✅ Local Hugging Face model loaded");
   }
@@ -153,10 +168,7 @@ export const indexMeeting = async (meeting) => {
         metadata: {
           meetingId: meeting._id.toString(),
           chunkIndex: i,
-          title,
-          summary,
-          transcript: meeting.transcript,
-          createdAt: meeting.createdAt || new Date(),
+          text: transcriptChunks[i],
           organization: meeting.organization?.toString() || null,
         },
       });
@@ -170,6 +182,7 @@ export const indexMeeting = async (meeting) => {
     );
   } catch (error) {
     console.error("❌ Failed to index meeting:", error);
+    throw error;
   }
 };
 
@@ -185,6 +198,20 @@ export const searchVectorStore = async (query, filters = {}) => {
       throw new Error("Empty query received for vector search");
     }
 
+    if (!filters || !filters.organization) {
+      throw new Error("Organization context is required for vector search");
+    }
+
+    const orgFilter = filters.organization;
+    const hasOrgArray = Array.isArray(orgFilter);
+    const orgs = hasOrgArray
+      ? orgFilter.map((id) => id.toString())
+      : [orgFilter.toString()];
+
+    if (orgs.length === 0 || orgs.some((id) => !id)) {
+      throw new Error("Invalid organization context provided");
+    }
+
     const indexInstance = await initVectorStore();
 
     console.log(
@@ -198,11 +225,23 @@ export const searchVectorStore = async (query, filters = {}) => {
 
     const topK = filters.limit || 10;
 
-    const results = await indexInstance.query({
+    const queryOptions = {
       vector: queryEmbedding,
       topK: topK,
       includeMetadata: true,
-    });
+    };
+
+    if (hasOrgArray) {
+      queryOptions.filter = {
+        organization: { $in: orgs },
+      };
+    } else {
+      queryOptions.filter = {
+        organization: { $eq: orgs[0] },
+      };
+    }
+
+    const results = await indexInstance.query(queryOptions);
 
     if (!results.matches?.length) {
       console.warn("⚠️ No results returned from Pinecone");
@@ -248,11 +287,11 @@ export const searchVectorStore = async (query, filters = {}) => {
       );
     }
 
-    if (filters.organization) {
-      filteredResults = filteredResults.filter(
-        (r) => r.organization === filters.organization,
-      );
-    }
+    // Force organization-level isolation post-query
+    filteredResults = filteredResults.filter((r) => {
+      if (!r.organization) return false;
+      return orgs.includes(r.organization.toString());
+    });
 
     if (filters.dateFrom) {
       filteredResults = filteredResults.filter((r) => {
@@ -281,7 +320,16 @@ export const searchVectorStore = async (query, filters = {}) => {
     return filteredResults;
   } catch (error) {
     console.error("❌ Pinecone vector search error:", error);
-    throw new Error("Vector search failed");
+    if (
+      error.message.includes(
+        "Organization context is required for vector search",
+      ) ||
+      error.message.includes("Empty query received for vector search") ||
+      error.message.includes("Invalid organization context provided")
+    ) {
+      throw error;
+    }
+    throw error;
   }
 };
 
@@ -359,8 +407,12 @@ export const indexTranscript = async (transcript) => {
         id: `transcript-${transcript._id.toString()}-chunk-${i}`,
         values: embedding,
         metadata: {
-          meetingId: transcript.meetingId.toString(),
-          organizationId: transcript.organizationId.toString(),
+          meetingId: (transcript.meeting?._id || transcript.meeting).toString(),
+          organizationId: (
+            transcript.organizationId ||
+            transcript.meeting?.organization ||
+            ""
+          ).toString(),
           type: "transcript",
           segmentIndex: i,
           startTime: transcript.segments[i]?.startTime || 0,

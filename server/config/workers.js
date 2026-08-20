@@ -1,34 +1,96 @@
 import { initRedis } from "../services/redisService.js";
 import {
-  initAIWorker,
+  initAiResultsWorker,
+  initAiGenerationWorker,
   initDataExportWorker,
+  initExportCleanupWorker,
   initConflictScanWorker,
   initSentimentWorker,
+  initRecalculateImportanceWorker,
+  initMemoryLifecycleWorker,
+  initRecapDeliveryWorker,
 } from "../services/queueService.js";
 import { initWebhookWorker } from "../services/webhookDispatcherService.js";
+import { describeRateLimitBacking } from "../middleware/rateLimitStore.js";
 
-export function startWorkers(app) {
+/**
+ * Boots every background service.
+ *
+ * Issue #975: `safeInit` was declared `async` but called without `await`, so its
+ * try/catch could never actually catch anything an initializer rejected with —
+ * the rejection escaped as an unhandled promise rejection instead of producing
+ * the intended log line. Nothing recorded which workers came up either, so a
+ * worker that silently failed to start was indistinguishable from one that was
+ * processing normally.
+ *
+ * Now every initializer is awaited and the outcome is summarised, so a failed
+ * worker is visible in the boot logs instead of being discovered later via jobs
+ * that never complete.
+ *
+ * Initialization is sequential on purpose: these share Redis connections and the
+ * log output is far easier to read when it isn't interleaved. The total cost is
+ * a handful of milliseconds at boot.
+ *
+ * @param {import("express").Express} app
+ * @returns {Promise<{started: string[], failed: {name: string, error: string}[]}>}
+ */
+export async function startWorkers(app) {
+  const started = [];
+  const failed = [];
+
   const safeInit = async (name, initFn) => {
     try {
       await initFn();
+      started.push(name);
     } catch (err) {
+      const error = err?.message || String(err);
+      failed.push({ name, error });
       console.error(
         `⚠️ Failed to initialize background service "${name}":`,
-        err.message || err,
+        error,
       );
     }
   };
 
-  safeInit("Redis", () => initRedis());
-  safeInit("AI Worker", () => initAIWorker(app));
-  safeInit("Data Export Worker", () => initDataExportWorker(app));
-  safeInit("Conflict Scan Worker", () => initConflictScanWorker(app));
-  safeInit("Webhook Worker", () => initWebhookWorker());
-  safeInit("Sentiment Worker", () => initSentimentWorker(app));
+  await safeInit("Redis", () => initRedis());
 
-  import("../utils/embeddingUtils.js")
-    .then(({ preWarmPinecone }) => {
-      safeInit("Pinecone DB", () => preWarmPinecone());
-    })
-    .catch(() => {});
+  // Issue #1452: the rate limiters used to bind their store at import time,
+  // long before this point, so they always fell back to an in-process
+  // MemoryStore and nothing said so. They bind lazily now — this line makes
+  // the resulting configuration visible in the boot log either way.
+  console.log(describeRateLimitBacking().message);
+
+  await safeInit("AI Results Worker", () => initAiResultsWorker(app));
+  await safeInit("AI MoM Worker", () => initAiGenerationWorker(app));
+  await safeInit("Data Export Worker", () => initDataExportWorker(app));
+  await safeInit("Export Cleanup Worker", () => initExportCleanupWorker());
+  await safeInit("Conflict Scan Worker", () => initConflictScanWorker(app));
+  await safeInit("Webhook Worker", () => initWebhookWorker());
+  await safeInit("Sentiment Worker", () => initSentimentWorker(app));
+  await safeInit("Recalculate Importance Worker", () =>
+    initRecalculateImportanceWorker(app),
+  );
+  await safeInit("Memory Lifecycle Worker", () =>
+    initMemoryLifecycleWorker(app),
+  );
+  await safeInit("Recap Delivery Worker", () => initRecapDeliveryWorker());
+
+  // Pinecone pre-warm is best-effort and independent of the queue layer.
+  try {
+    const { preWarmPinecone } = await import("../utils/embeddingUtils.js");
+    await safeInit("Pinecone DB", () => preWarmPinecone());
+  } catch {
+    // Module unavailable (optional dependency) — not fatal.
+  }
+
+  if (failed.length === 0) {
+    console.log(`✅ Background services started (${started.length}).`);
+  } else {
+    console.warn(
+      `⚠️ Background services started with ${failed.length} failure(s): ` +
+        failed.map((f) => f.name).join(", "),
+    );
+  }
+
+  return { started, failed };
 }

@@ -3,6 +3,7 @@ import crypto from "crypto";
 import axios from "axios";
 import Organization from "../models/organizationModel.js";
 import eventBus from "./eventBus.js";
+import { decryptToken } from "../utils/crypto.js";
 
 // Slack Request Signature Verification
 
@@ -162,7 +163,7 @@ export const postBlockMessage = async (
  * @returns {Array} Block Kit blocks array
  */
 export const buildMeetingCreatedBlocks = (meeting, createdBy) => {
-  const frontendUrl = process.env.FRONTEND_URL || "http://localhost:5173";
+  const frontendUrl = process.env.CLIENT_URL || "http://localhost:5173";
   const meetingUrl = `${frontendUrl}/meetings/${meeting._id}`;
 
   return [
@@ -224,7 +225,7 @@ export const buildMeetingCreatedBlocks = (meeting, createdBy) => {
  * @returns {Array} Block Kit blocks array
  */
 export const buildMoMSummaryBlocks = (meeting) => {
-  const frontendUrl = process.env.FRONTEND_URL || "http://localhost:5173";
+  const frontendUrl = process.env.CLIENT_URL || "http://localhost:5173";
   const meetingUrl = `${frontendUrl}/meetings/${meeting._id}`;
   const mom = meeting.structuredMoM || {};
 
@@ -322,14 +323,15 @@ eventBus.on("mom.generated", async (meeting) => {
       .lean();
 
     const slack = org?.slackIntegration;
-    if (!slack?.botToken || !slack?.channelId) {
+    const decryptedToken = decryptToken(slack?.botToken);
+    if (!decryptedToken || !slack?.channelId) {
       // Slack not integrated for this org — silently skip
       return;
     }
 
     const blocks = buildMoMSummaryBlocks(meeting);
     await postBlockMessage(
-      slack.botToken,
+      decryptedToken,
       slack.channelId,
       blocks,
       `AI Meeting Summary ready for "${meeting.title}"`,

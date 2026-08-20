@@ -1,6 +1,9 @@
 import { MongoMemoryServer } from "mongodb-memory-server";
 import mongoose from "mongoose";
 
+process.env.CALENDAR_ENCRYPTION_KEY =
+  "test_encryption_key_32_bytes_long_xxxxxxxxx";
+
 // ─── DOM polyfills for pdf-parse / pdfjs-dist ──────────────────────────────
 // pdfjs-dist (used by pdf-parse) expects browser globals like DOMMatrix,
 // ImageData, and Path2D.  In a Node.js test environment these don't exist,
@@ -38,6 +41,14 @@ const uri = mongoServer.getUri();
 process.env.TEST_MONGODB_URI = uri.replace(/\/$/, "");
 process.env.NODE_ENV = "test";
 process.env.JWT_SECRET = process.env.JWT_SECRET || "test_jwt_secret";
+process.env.AUTH_PROVIDER = "clerk";
+process.env.CLERK_TEST_AUTH = "jwt";
+process.env.CLERK_SECRET_KEY =
+  process.env.CLERK_SECRET_KEY || "test_clerk_secret";
+
+// Force Redis disabled for tests to prevent ioredis from hanging while retrying connections
+process.env.REDIS_URI = "";
+process.env.REDIS_URL = "";
 
 // ─── Teardown ──────────────────────────────────────────────────────────────
 afterAll(async () => {

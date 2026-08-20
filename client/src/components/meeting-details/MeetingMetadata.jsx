@@ -1,5 +1,8 @@
 import React from "react";
 import { format } from "date-fns";
+import CustomFieldsEditor from "../meetings/CustomFieldsEditor";
+import { customFieldApi } from "../../api/customFieldApi";
+import { toast } from "react-toastify";
 
 const MeetingMetadata = ({ meeting }) => {
   if (!meeting) return null;
@@ -213,6 +216,29 @@ const MeetingMetadata = ({ meeting }) => {
               </span>
             ))}
           </div>
+        </div>
+      )}
+
+      {meeting.organization && (
+        <div className="mt-6 pt-4 border-t border-gray-200">
+          <CustomFieldsEditor
+            orgId={meeting.organization}
+            meetingId={meeting._id}
+            onChange={async (fields, isValid) => {
+              if (isValid && fields.length > 0) {
+                try {
+                  await customFieldApi.setMeetingFields(
+                    meeting._id,
+                    meeting.organization,
+                    fields,
+                  );
+                } catch (err) {
+                  console.error(err);
+                  toast.error("Failed to update custom fields");
+                }
+              }
+            }}
+          />
         </div>
       )}
     </div>

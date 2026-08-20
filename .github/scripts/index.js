@@ -5,8 +5,12 @@ export {
   processPrMerged,
   processPrValidation,
   processFirstContributorWelcome,
+  processPrAutomation,
 } from "./pr.js";
 export { processIssueCommentGuidance } from "./issue-comments.js";
 export { processIssueLifecycle } from "./lifecycle.js";
 export { autoLabelEcs } from "./label-ecs.js";
-
+export {
+  processPrActivityRefresh,
+  processIssueCommentActivity,
+} from "./activity.js";

@@ -1,7 +1,15 @@
-import React, { useState, useMemo } from "react";
+import React, {
+  useState,
+  useMemo,
+  useEffect,
+  useRef,
+  useId,
+  useCallback,
+} from "react";
 import { Link } from "react-router-dom";
 import { toast } from "react-toastify";
 import Navbar from "../components/Navbar.jsx";
+import { submitCareerApplication } from "../services/careersApi.js";
 import {
   Briefcase,
   MapPin,
@@ -24,6 +32,9 @@ import {
   HelpCircle,
 } from "lucide-react";
 
+const FOCUSABLE_SELECTOR =
+  'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
+
 // Curated Mock Job Listings
 const initialJobs = [
   {
@@ -35,7 +46,8 @@ const initialJobs = [
     experience: "5+ Years",
     tag: "Senior",
     salary: "$130k - $160k",
-    description: "Join us in crafting the frontend architecture for our real-time meeting transcription and visual workspace dashboards. You will work closely with Gemini API integrations and leverage high-performance React patterns.",
+    description:
+      "Join us in crafting the frontend architecture for our real-time meeting transcription and visual workspace dashboards. You will work closely with Gemini API integrations and leverage high-performance React patterns.",
     requirements: [
       "Expertise in modern React (Hooks, Context, performance optimization)",
       "Strong understanding of TailwindCSS, CSS variables, and fluid layouts",
@@ -52,7 +64,8 @@ const initialJobs = [
     experience: "3+ Years",
     tag: "Mid-Senior",
     salary: "$150k - $180k + Equity",
-    description: "Design and implement custom embedding models and Gemini-driven consolidation pipelines. You will lead semantic database designs (Pinecone) and solve challenges around long-context window retrieval.",
+    description:
+      "Design and implement custom embedding models and Gemini-driven consolidation pipelines. You will lead semantic database designs (Pinecone) and solve challenges around long-context window retrieval.",
     requirements: [
       "Strong background in NLP, LLMs, and vector embeddings",
       "Proficient in Python and Node.js backend integration",
@@ -69,7 +82,8 @@ const initialJobs = [
     experience: "4+ Years",
     tag: "Mid-Senior",
     salary: "$110k - $140k",
-    description: "Lead design initiatives from concept to production. You will craft interfaces that render semantic relationship maps, custom editor tools, and onboarding directories.",
+    description:
+      "Lead design initiatives from concept to production. You will craft interfaces that render semantic relationship maps, custom editor tools, and onboarding directories.",
     requirements: [
       "Stunning portfolio demonstrating clean, premium visual design and prototyping",
       "Expert-level knowledge of Figma and component library systems",
@@ -86,7 +100,8 @@ const initialJobs = [
     experience: "3+ Years",
     tag: "Mid",
     salary: "$90k - $120k",
-    description: "Position MeetOnMemory as the market leader in meeting productivity. You will create multi-channel campaigns, draft case studies, and coordinate product launch pipelines.",
+    description:
+      "Position MeetOnMemory as the market leader in meeting productivity. You will create multi-channel campaigns, draft case studies, and coordinate product launch pipelines.",
     requirements: [
       "Proven track record in B2B product marketing or developer relations",
       "Outstanding storytelling and content creation capabilities",
@@ -102,7 +117,8 @@ const initialJobs = [
     experience: "Student / Graduate",
     tag: "Internship",
     salary: "Paid Stipend",
-    description: "Work directly on prototype tools connecting user transcription logs to Google Gemini models. You will receive 1-on-1 mentorship from senior software staff.",
+    description:
+      "Work directly on prototype tools connecting user transcription logs to Google Gemini models. You will receive 1-on-1 mentorship from senior software staff.",
     requirements: [
       "Currently enrolled in or recently graduated from a CS or related degree",
       "Solid knowledge of JavaScript, ES6+, and React basics",
@@ -118,7 +134,8 @@ const initialJobs = [
     experience: "New Graduate",
     tag: "Graduate Program",
     salary: "$80k - $95k",
-    description: "Kickstart your product management journey by co-leading key features such as Slack integration dashboards, scheduling controllers, and translation pipelines.",
+    description:
+      "Kickstart your product management journey by co-leading key features such as Slack integration dashboards, scheduling controllers, and translation pipelines.",
     requirements: [
       "Recent graduate with a degree in CS, Business, Design, or equivalent field",
       "Demonstrated leadership capabilities in university projects or startups",
@@ -266,10 +283,75 @@ const Careers = () => {
     name: "",
     email: "",
     portfolio: "",
-    resume: "",
     coverLetter: "",
   });
+  const [resumeFile, setResumeFile] = useState(null);
+  const [submitError, setSubmitError] = useState("");
+  const resumeInputRef = useRef(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Modal accessibility refs and IDs
+  const modalDialogRef = useRef(null);
+  const modalCloseButtonRef = useRef(null);
+  const modalTriggerRef = useRef(null);
+  const modalTitleId = useId();
+
+  const resetApplicationForm = useCallback(() => {
+    setFormData({
+      name: "",
+      email: "",
+      portfolio: "",
+      coverLetter: "",
+    });
+    setResumeFile(null);
+    setSubmitError("");
+    if (resumeInputRef.current) {
+      resumeInputRef.current.value = "";
+    }
+  }, []);
+
+  // Focus management: trap focus, handle Escape, restore focus on close
+  useEffect(() => {
+    if (!isModalOpen) return;
+
+    const animationFrame = window.requestAnimationFrame(() => {
+      modalCloseButtonRef.current?.focus();
+    });
+
+    const handleKeyDown = (e) => {
+      if (e.key === "Escape") {
+        e.preventDefault();
+        closeModal();
+        return;
+      }
+
+      if (e.key !== "Tab" || !modalDialogRef.current) return;
+
+      const focusables = [
+        ...modalDialogRef.current.querySelectorAll(FOCUSABLE_SELECTOR),
+      ];
+      if (!focusables.length) return;
+
+      const firstElement = focusables[0];
+      const lastElement = focusables[focusables.length - 1];
+
+      if (e.shiftKey && document.activeElement === firstElement) {
+        e.preventDefault();
+        lastElement.focus();
+      } else if (!e.shiftKey && document.activeElement === lastElement) {
+        e.preventDefault();
+        firstElement.focus();
+      }
+    };
+
+    document.addEventListener("keydown", handleKeyDown);
+
+    return () => {
+      window.cancelAnimationFrame(animationFrame);
+      document.removeEventListener("keydown", handleKeyDown);
+      modalTriggerRef.current?.focus?.();
+    };
+  }, [isModalOpen, closeModal]);
 
   // Dynamic filter collections
   const departments = useMemo(() => {
@@ -287,9 +369,10 @@ const Careers = () => {
       const matchSearch =
         job.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
         job.description.toLowerCase().includes(searchQuery.toLowerCase());
-      
-      const matchDept = selectedDept === "All" || job.department === selectedDept;
-      
+
+      const matchDept =
+        selectedDept === "All" || job.department === selectedDept;
+
       const matchLoc =
         selectedLoc === "All" ||
         job.location.toLowerCase().includes(selectedLoc.toLowerCase());
@@ -303,6 +386,13 @@ const Careers = () => {
     setExpandedJob(expandedJob === id ? null : id);
   };
 
+  const handleJobHeaderKeyDown = (event, jobId) => {
+    if (event.key === "Enter" || event.key === " ") {
+      event.preventDefault();
+      toggleJob(jobId);
+    }
+  };
+
   // Expand FAQ accordion
   const toggleFaq = (index) => {
     setExpandedFaq(expandedFaq === index ? null : index);
@@ -310,46 +400,91 @@ const Careers = () => {
 
   // Open modal
   const openApplication = (job) => {
+    modalTriggerRef.current = document.activeElement;
     setActiveJobForModal(job);
     setIsModalOpen(true);
   };
 
   // Close modal
-  const closeModal = () => {
+  const closeModal = useCallback(() => {
     setIsModalOpen(false);
     setActiveJobForModal(null);
-    setFormData({
-      name: "",
-      email: "",
-      portfolio: "",
-      resume: "",
-      coverLetter: "",
-    });
-  };
+    resetApplicationForm();
+  }, [resetApplicationForm]);
 
   // Handle Form Change
   const handleChange = (e) => {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
+    if (submitError) setSubmitError("");
   };
 
-  // Submit application
-  const handleSubmit = (e) => {
+  const handleResumeChange = (e) => {
+    const file = e.target.files?.[0] || null;
+    setResumeFile(file);
+    if (submitError) setSubmitError("");
+  };
+
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!formData.name || !formData.email || !formData.resume) {
+    if (isSubmitting) return;
+
+    if (!formData.name.trim() || !formData.email.trim() || !resumeFile) {
       toast.error("Please fill in all required fields (Name, Email, Resume).");
       return;
     }
+
+    if (!activeJobForModal?.id) {
+      toast.error("Please select a valid job opening.");
+      return;
+    }
+
+    const allowedExtensions = [".pdf", ".docx"];
+    const resumeExt = resumeFile.name
+      .slice(resumeFile.name.lastIndexOf("."))
+      .toLowerCase();
+    if (!allowedExtensions.includes(resumeExt)) {
+      const message = "Resume must be a PDF or DOCX file.";
+      setSubmitError(message);
+      toast.error(message);
+      return;
+    }
+
     setIsSubmitting(true);
-    setTimeout(() => {
-      setIsSubmitting(false);
-      toast.success("✨ Application submitted successfully! We will contact you soon.");
+    setSubmitError("");
+
+    try {
+      const response = await submitCareerApplication({
+        name: formData.name,
+        email: formData.email,
+        jobId: activeJobForModal.id,
+        portfolio: formData.portfolio,
+        coverLetter: formData.coverLetter,
+        resumeFile,
+      });
+
+      if (response.status !== 200 && response.status !== 201) {
+        throw new Error("Application submission failed.");
+      }
+
+      toast.success(
+        "✨ Application submitted successfully! We will contact you soon.",
+      );
       closeModal();
-    }, 1200);
+    } catch (error) {
+      const message =
+        error?.response?.data?.message ||
+        error?.message ||
+        "Unable to submit your application. Please try again.";
+      setSubmitError(message);
+      toast.error(message);
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
-    <div className="min-h-screen bg-linear-to-b from-slate-50 via-white to-slate-50 dark:from-slate-950 dark:via-slate-900 dark:to-slate-950 text-slate-800 dark:text-slate-200 transition-colors duration-300 flex flex-col font-sans select-none">
+    <div className="min-h-screen bg-linear-to-b from-slate-50 via-white to-slate-50 dark:from-slate-950 dark:via-slate-900 dark:to-slate-950 text-slate-800 dark:text-slate-200 transition-colors duration-300 flex flex-col font-sans">
       <Navbar />
 
       {/* Hero Section */}
@@ -367,7 +502,9 @@ const Careers = () => {
             Shape the Future of Meeting Intelligence
           </h1>
           <p className="text-slate-500 dark:text-slate-400 max-w-xl mx-auto text-sm sm:text-base mb-8">
-            Help us build semantic graphs and generative memories to keep global teams aligned. Explore internships, graduate roles, and senior opportunities.
+            Help us build semantic graphs and generative memories to keep global
+            teams aligned. Explore internships, graduate roles, and senior
+            opportunities.
           </p>
 
           {/* Interactive Search & Filter Controls */}
@@ -392,10 +529,20 @@ const Careers = () => {
                 onChange={(e) => setSelectedDept(e.target.value)}
                 className="w-full bg-transparent border-none text-slate-700 dark:text-slate-300 text-sm focus:outline-none cursor-pointer appearance-none pr-8"
               >
-                <option value="All" className="dark:bg-slate-900">All Departments</option>
-                {departments.filter(d => d !== "All").map(dept => (
-                  <option key={dept} value={dept} className="dark:bg-slate-900">{dept}</option>
-                ))}
+                <option value="All" className="dark:bg-slate-900">
+                  All Departments
+                </option>
+                {departments
+                  .filter((d) => d !== "All")
+                  .map((dept) => (
+                    <option
+                      key={dept}
+                      value={dept}
+                      className="dark:bg-slate-900"
+                    >
+                      {dept}
+                    </option>
+                  ))}
               </select>
               <ChevronDown className="w-4 h-4 text-slate-400 absolute right-3 pointer-events-none" />
             </div>
@@ -408,7 +555,7 @@ const Careers = () => {
                 onChange={(e) => setSelectedLoc(e.target.value)}
                 className="w-full bg-transparent border-none text-slate-700 dark:text-slate-300 text-sm focus:outline-none cursor-pointer appearance-none pr-8"
               >
-                {locations.map(loc => (
+                {locations.map((loc) => (
                   <option key={loc} value={loc} className="dark:bg-slate-900">
                     {loc === "All" ? "All Locations" : loc}
                   </option>
@@ -423,9 +570,12 @@ const Careers = () => {
       {/* Core Values Section */}
       <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16 w-full">
         <div className="text-center mb-12">
-          <h2 className="text-3xl font-extrabold text-slate-900 dark:text-white">Our Culture & Values</h2>
+          <h2 className="text-3xl font-extrabold text-slate-900 dark:text-white">
+            Our Culture & Values
+          </h2>
           <p className="text-slate-500 dark:text-slate-400 mt-2 max-w-lg mx-auto text-sm">
-            We are built on trust, innovation, and psychological safety. Here is what we care about.
+            We are built on trust, innovation, and psychological safety. Here is
+            what we care about.
           </p>
         </div>
 
@@ -440,8 +590,12 @@ const Careers = () => {
                 <div className="w-12 h-12 rounded-xl bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
                   <Icon className="w-6 h-6" />
                 </div>
-                <h3 className="text-lg font-bold text-slate-900 dark:text-white mb-2">{val.title}</h3>
-                <p className="text-sm text-slate-500 dark:text-slate-400 leading-relaxed">{val.desc}</p>
+                <h3 className="text-lg font-bold text-slate-900 dark:text-white mb-2">
+                  {val.title}
+                </h3>
+                <p className="text-sm text-slate-500 dark:text-slate-400 leading-relaxed">
+                  {val.desc}
+                </p>
               </div>
             );
           })}
@@ -453,9 +607,12 @@ const Careers = () => {
         <div className="max-w-7xl mx-auto">
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-8 gap-4">
             <div>
-              <h2 className="text-3xl font-extrabold text-slate-900 dark:text-white">Explore Opportunities</h2>
+              <h2 className="text-3xl font-extrabold text-slate-900 dark:text-white">
+                Explore Opportunities
+              </h2>
               <p className="text-slate-500 dark:text-slate-400 mt-1 text-sm">
-                Browse our open positions and select a role to view details and apply.
+                Browse our open positions and select a role to view details and
+                apply.
               </p>
             </div>
             <span className="text-xs text-slate-500 dark:text-slate-400 font-bold bg-slate-200/60 dark:bg-slate-800/80 px-3 py-1.5 rounded-full border border-slate-300/40 dark:border-slate-700/50">
@@ -470,14 +627,16 @@ const Careers = () => {
                 No matching opportunities found
               </h3>
               <p className="text-sm text-slate-500 dark:text-slate-400 max-w-sm mx-auto">
-                Try modifying your department or location filters, or check back soon for updates.
+                Try modifying your department or location filters, or check back
+                soon for updates.
               </p>
             </div>
           ) : (
             <div className="space-y-4">
               {filteredJobs.map((job) => {
                 const isOpen = expandedJob === job.id;
-                const isSpecial = job.type === "Internship" || job.type === "Graduate Program";
+                const isSpecial =
+                  job.type === "Internship" || job.type === "Graduate Program";
                 return (
                   <div
                     key={job.id}
@@ -485,8 +644,16 @@ const Careers = () => {
                   >
                     {/* Header Card */}
                     <div
+                      role="button"
+                      tabIndex={0}
+                      aria-expanded={isOpen}
+                      aria-controls={`job-panel-${job.id}`}
+                      aria-label={`Toggle details for ${job.title}`}
                       onClick={() => toggleJob(job.id)}
-                      className="p-6 flex flex-col md:flex-row md:items-center justify-between gap-4 cursor-pointer hover:bg-slate-50/50 dark:hover:bg-slate-800/10 transition-colors"
+                      onKeyDown={(event) =>
+                        handleJobHeaderKeyDown(event, job.id)
+                      }
+                      className="p-6 flex flex-col md:flex-row md:items-center justify-between gap-4 cursor-pointer hover:bg-slate-50/50 dark:hover:bg-slate-800/10 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-slate-900"
                     >
                       <div className="space-y-1.5">
                         <div className="flex flex-wrap items-center gap-2">
@@ -529,30 +696,45 @@ const Careers = () => {
                           {job.salary}
                         </span>
                         <div className="p-1.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-500 transition-colors">
-                          {isOpen ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+                          {isOpen ? (
+                            <ChevronUp className="w-4 h-4" />
+                          ) : (
+                            <ChevronDown className="w-4 h-4" />
+                          )}
                         </div>
                       </div>
                     </div>
 
                     {/* Expandable Panel */}
                     <div
+                      id={`job-panel-${job.id}`}
+                      aria-hidden={!isOpen}
                       className={`transition-all duration-300 ease-in-out overflow-hidden ${
-                        isOpen ? "max-h-[800px] border-t border-slate-100 dark:border-slate-800/60" : "max-h-0"
+                        isOpen
+                          ? "max-h-[800px] border-t border-slate-100 dark:border-slate-800/60"
+                          : "max-h-0"
                       }`}
                     >
                       <div className="p-6 bg-slate-50/30 dark:bg-slate-800/10 space-y-6">
                         <div>
-                          <h4 className="text-sm font-bold text-slate-400 uppercase tracking-wider mb-2">Role Description</h4>
+                          <h4 className="text-sm font-bold text-slate-400 uppercase tracking-wider mb-2">
+                            Role Description
+                          </h4>
                           <p className="text-sm text-slate-600 dark:text-slate-300 leading-relaxed max-w-3xl">
                             {job.description}
                           </p>
                         </div>
 
                         <div>
-                          <h4 className="text-sm font-bold text-slate-400 uppercase tracking-wider mb-2">Key Requirements</h4>
+                          <h4 className="text-sm font-bold text-slate-400 uppercase tracking-wider mb-2">
+                            Key Requirements
+                          </h4>
                           <ul className="space-y-2">
                             {job.requirements.map((req, ridx) => (
-                              <li key={ridx} className="flex items-start gap-2.5 text-sm text-slate-600 dark:text-slate-300">
+                              <li
+                                key={ridx}
+                                className="flex items-start gap-2.5 text-sm text-slate-600 dark:text-slate-300"
+                              >
                                 <CheckCircle2 className="w-4 h-4 text-blue-500 mt-0.5 flex-shrink-0" />
                                 <span>{req}</span>
                               </li>
@@ -583,9 +765,12 @@ const Careers = () => {
       {/* Timeline Section */}
       <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20 w-full">
         <div className="text-center mb-16">
-          <h2 className="text-3xl font-extrabold text-slate-900 dark:text-white">Our Hiring Process</h2>
+          <h2 className="text-3xl font-extrabold text-slate-900 dark:text-white">
+            Our Hiring Process
+          </h2>
           <p className="text-slate-500 dark:text-slate-400 mt-2 max-w-md mx-auto text-sm">
-            Here is a look at what you can expect after you submit your application.
+            Here is a look at what you can expect after you submit your
+            application.
           </p>
         </div>
 
@@ -594,13 +779,20 @@ const Careers = () => {
           <div className="hidden md:block absolute top-[44px] left-[10%] right-[10%] h-0.5 bg-slate-200 dark:bg-slate-800 -z-10" />
 
           {hiringSteps.map((step, idx) => (
-            <div key={idx} className="flex flex-col items-center md:items-start text-center md:text-left space-y-4">
+            <div
+              key={idx}
+              className="flex flex-col items-center md:items-start text-center md:text-left space-y-4"
+            >
               <div className="w-14 h-14 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 flex items-center justify-center shadow-sm relative font-extrabold text-blue-600 dark:text-blue-400 text-lg">
                 {step.step}
               </div>
               <div>
-                <h3 className="text-lg font-bold text-slate-900 dark:text-white">{step.title}</h3>
-                <p className="text-sm text-slate-500 dark:text-slate-400 mt-1 leading-relaxed">{step.desc}</p>
+                <h3 className="text-lg font-bold text-slate-900 dark:text-white">
+                  {step.title}
+                </h3>
+                <p className="text-sm text-slate-500 dark:text-slate-400 mt-1 leading-relaxed">
+                  {step.desc}
+                </p>
               </div>
             </div>
           ))}
@@ -611,9 +803,12 @@ const Careers = () => {
       <section className="bg-slate-50/50 dark:bg-slate-900/10 border-t border-slate-200/60 dark:border-slate-800/60 py-20 px-4 sm:px-6 lg:px-8 w-full">
         <div className="max-w-7xl mx-auto">
           <div className="text-center mb-16">
-            <h2 className="text-3xl font-extrabold text-slate-900 dark:text-white">Benefits & Perks</h2>
+            <h2 className="text-3xl font-extrabold text-slate-900 dark:text-white">
+              Benefits & Perks
+            </h2>
             <p className="text-slate-500 dark:text-slate-400 mt-2 max-w-md mx-auto text-sm">
-              We care about your well-being, growth, and workflow. Here is how we support you.
+              We care about your well-being, growth, and workflow. Here is how
+              we support you.
             </p>
           </div>
 
@@ -621,13 +816,20 @@ const Careers = () => {
             {benefitsData.map((benefit, idx) => {
               const Icon = benefit.icon;
               return (
-                <div key={idx} className="flex gap-4 items-start bg-white dark:bg-slate-900/40 p-6 rounded-2xl border border-slate-200/80 dark:border-slate-800/80 shadow-xs">
+                <div
+                  key={idx}
+                  className="flex gap-4 items-start bg-white dark:bg-slate-900/40 p-6 rounded-2xl border border-slate-200/80 dark:border-slate-800/80 shadow-xs"
+                >
                   <div className="p-3 rounded-xl bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 flex-shrink-0">
                     <Icon className="w-5 h-5" />
                   </div>
                   <div>
-                    <h3 className="text-lg font-bold text-slate-900 dark:text-white">{benefit.title}</h3>
-                    <p className="text-sm text-slate-500 dark:text-slate-400 mt-1 leading-relaxed">{benefit.desc}</p>
+                    <h3 className="text-lg font-bold text-slate-900 dark:text-white">
+                      {benefit.title}
+                    </h3>
+                    <p className="text-sm text-slate-500 dark:text-slate-400 mt-1 leading-relaxed">
+                      {benefit.desc}
+                    </p>
                   </div>
                 </div>
               );
@@ -639,9 +841,12 @@ const Careers = () => {
       {/* FAQs Section */}
       <section className="max-w-4xl mx-auto px-4 py-20 w-full">
         <div className="text-center mb-12">
-          <h2 className="text-3xl font-extrabold text-slate-900 dark:text-white">Frequently Asked Questions</h2>
+          <h2 className="text-3xl font-extrabold text-slate-900 dark:text-white">
+            Frequently Asked Questions
+          </h2>
           <p className="text-slate-500 dark:text-slate-400 mt-2 text-sm">
-            Everything you need to know about applying and working at MeetOnMemory.
+            Everything you need to know about applying and working at
+            MeetOnMemory.
           </p>
         </div>
 
@@ -666,7 +871,9 @@ const Careers = () => {
                 </button>
                 <div
                   className={`transition-all duration-300 ease-in-out overflow-hidden ${
-                    isOpen ? "max-h-60 border-t border-slate-100 dark:border-slate-800/60" : "max-h-0"
+                    isOpen
+                      ? "max-h-60 border-t border-slate-100 dark:border-slate-800/60"
+                      : "max-h-0"
                   }`}
                 >
                   <div className="px-6 py-5 text-sm leading-relaxed text-slate-600 dark:text-slate-300 bg-slate-50/50 dark:bg-slate-800/30">
@@ -693,10 +900,18 @@ const Careers = () => {
               Don't see your matching role?
             </h2>
             <p className="text-slate-500 dark:text-slate-400 text-sm sm:text-base mb-8 max-w-md mx-auto">
-              We are always on the lookout for talented engineers, designers, and innovators. Drop us an open application.
+              We are always on the lookout for talented engineers, designers,
+              and innovators. Drop us an open application.
             </p>
             <button
-              onClick={() => openApplication({ title: "General Application", id: "general", department: "Any", location: "Remote" })}
+              onClick={() =>
+                openApplication({
+                  title: "General Application",
+                  id: "general",
+                  department: "Any",
+                  location: "Remote",
+                })
+              }
               className="inline-flex items-center gap-2 px-6 py-3.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-semibold transition-all hover:shadow-xl hover:-translate-y-0.5 active:translate-y-0"
             >
               Submit Open Application
@@ -708,12 +923,25 @@ const Careers = () => {
 
       {/* Application Form Modal */}
       {isModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/60 backdrop-blur-xs transition-opacity duration-300">
-          <div className="relative w-full max-w-xl bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-2xl p-6 sm:p-8 animate-in fade-in zoom-in-95 duration-200">
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/60 backdrop-blur-xs transition-opacity duration-300"
+          role="presentation"
+          onClick={closeModal}
+        >
+          <div
+            ref={modalDialogRef}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby={modalTitleId}
+            className="relative w-full max-w-xl bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-2xl p-6 sm:p-8 animate-in fade-in zoom-in-95 duration-200"
+            onClick={(e) => e.stopPropagation()}
+          >
             {/* Modal Close */}
             <button
+              ref={modalCloseButtonRef}
               onClick={closeModal}
               className="absolute top-4 right-4 p-2 rounded-full text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800/80 transition-colors cursor-pointer"
+              aria-label="Close modal"
             >
               <X className="w-5 h-5" />
             </button>
@@ -723,16 +951,20 @@ const Careers = () => {
               <span className="text-[10px] font-extrabold tracking-wider text-blue-600 dark:text-blue-400 uppercase bg-blue-50 dark:bg-blue-900/30 border border-blue-100 dark:border-blue-800/30 px-2 py-0.5 rounded-md">
                 Application Form
               </span>
-              <h3 className="text-2xl font-extrabold text-slate-900 dark:text-white mt-2">
+              <h3
+                id={modalTitleId}
+                className="text-2xl font-extrabold text-slate-900 dark:text-white mt-2"
+              >
                 Apply for {activeJobForModal?.title}
               </h3>
               <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-                Fill out the details below to submit your profile for consideration.
+                Fill out the details below to submit your profile for
+                consideration.
               </p>
             </div>
 
             {/* Application Form */}
-            <form onSubmit={handleSubmit} className="space-y-4">
+            <form onSubmit={handleSubmit} noValidate className="space-y-4">
               {/* Full Name */}
               <div>
                 <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1.5">
@@ -780,20 +1012,29 @@ const Careers = () => {
                 />
               </div>
 
-              {/* Resume Link */}
+              {/* Resume Upload */}
               <div>
-                <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1.5">
-                  Resume Link (PDF/Drive) <span className="text-red-500">*</span>
+                <label
+                  htmlFor="careers-resume"
+                  className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1.5"
+                >
+                  Resume (PDF or DOCX) <span className="text-red-500">*</span>
                 </label>
                 <input
-                  type="url"
+                  id="careers-resume"
+                  ref={resumeInputRef}
+                  type="file"
                   name="resume"
                   required
-                  value={formData.resume}
-                  onChange={handleChange}
-                  placeholder="https://drive.google.com/..."
-                  className="w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-950/60 text-slate-900 dark:text-white border border-slate-200 dark:border-slate-800/80 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-sm"
+                  accept=".pdf,.docx,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+                  onChange={handleResumeChange}
+                  className="w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-950/60 text-slate-900 dark:text-white border border-slate-200 dark:border-slate-800/80 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-sm file:mr-3 file:py-1 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-blue-50 file:text-blue-700 dark:file:bg-blue-900/30 dark:file:text-blue-300"
                 />
+                {resumeFile ? (
+                  <p className="mt-1.5 text-xs text-slate-500 dark:text-slate-400">
+                    Selected: {resumeFile.name}
+                  </p>
+                ) : null}
               </div>
 
               {/* Cover Letter */}
@@ -811,12 +1052,22 @@ const Careers = () => {
                 />
               </div>
 
+              {submitError ? (
+                <p
+                  role="alert"
+                  className="text-sm text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-950/30 border border-red-100 dark:border-red-900/40 rounded-xl px-4 py-3"
+                >
+                  {submitError}
+                </p>
+              ) : null}
+
               {/* Action Buttons */}
               <div className="pt-2 flex items-center justify-end gap-3">
                 <button
                   type="button"
                   onClick={closeModal}
-                  className="px-4 py-2 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700/80 text-slate-700 dark:text-slate-300 rounded-xl text-sm font-semibold transition-colors cursor-pointer"
+                  disabled={isSubmitting}
+                  className="px-4 py-2 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700/80 text-slate-700 dark:text-slate-300 rounded-xl text-sm font-semibold transition-colors cursor-pointer disabled:opacity-50"
                 >
                   Cancel
                 </button>

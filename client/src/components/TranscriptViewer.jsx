@@ -1,20 +1,24 @@
 import React, { useState, useEffect } from "react";
 import { Search, Clock, User } from "lucide-react";
-import axios from "axios";
+import apiClient from "../services/apiClient";
+import TranslationSelector from "./meeting-details/TranslationSelector";
 
 const TranscriptViewer = ({ meetingId }) => {
   const [transcript, setTranscript] = useState(null);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState("");
   const [filteredSegments, setFilteredSegments] = useState([]);
+  const [translatedSegments, setTranslatedSegments] = useState(null);
+  const [isTranslating, setIsTranslating] = useState(false);
+  const [currentLanguage, setCurrentLanguage] = useState("Original");
 
   useEffect(() => {
     const fetchTranscript = async () => {
       try {
         setLoading(true);
-        const { data } = await axios.get(
+        const { data } = await apiClient.get(
           `/api/meetings/${meetingId}/transcript`,
-          { withCredentials: true }
+          { withCredentials: true },
         );
 
         if (data.success) {
@@ -43,9 +47,10 @@ const TranscriptViewer = ({ meetingId }) => {
       return;
     }
 
-    const filtered = transcript.segments.filter((segment) =>
-      segment.text.toLowerCase().includes(filter.toLowerCase()) ||
-      segment.speaker.toLowerCase().includes(filter.toLowerCase())
+    const filtered = transcript.segments.filter(
+      (segment) =>
+        segment.text.toLowerCase().includes(filter.toLowerCase()) ||
+        segment.speaker.toLowerCase().includes(filter.toLowerCase()),
     );
     setFilteredSegments(filtered);
   }, [transcript, filter]);
@@ -79,7 +84,9 @@ const TranscriptViewer = ({ meetingId }) => {
   if (!transcript) {
     return (
       <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-        <p className="text-gray-500 text-center py-8">No transcript available</p>
+        <p className="text-gray-500 text-center py-8">
+          No transcript available
+        </p>
       </div>
     );
   }
@@ -87,20 +94,32 @@ const TranscriptViewer = ({ meetingId }) => {
   return (
     <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
       <div className="flex items-center justify-between mb-4">
-        <h3 className="text-lg font-semibold text-gray-900">Meeting Transcript</h3>
+        <h3 className="text-lg font-semibold text-gray-900">
+          Meeting Transcript
+        </h3>
         <div className="flex items-center gap-2">
+          <TranslationSelector
+            meetingId={meetingId}
+            sourceType="transcript"
+            onTranslate={setTranslatedSegments}
+            isTranslating={isTranslating}
+            setIsTranslating={setIsTranslating}
+            currentLanguage={currentLanguage}
+            setCurrentLanguage={setCurrentLanguage}
+          />
           <span
             className={`px-3 py-1 rounded-full text-xs font-medium ${
               transcript.status === "completed"
                 ? "bg-green-100 text-green-700"
                 : transcript.status === "processing"
-                ? "bg-yellow-100 text-yellow-700"
-                : transcript.status === "failed"
-                ? "bg-red-100 text-red-700"
-                : "bg-gray-100 text-gray-700"
+                  ? "bg-yellow-100 text-yellow-700"
+                  : transcript.status === "failed"
+                    ? "bg-red-100 text-red-700"
+                    : "bg-gray-100 text-gray-700"
             }`}
           >
-            {transcript.status.charAt(0).toUpperCase() + transcript.status.slice(1)}
+            {transcript.status.charAt(0).toUpperCase() +
+              transcript.status.slice(1)}
           </span>
         </div>
       </div>
@@ -123,46 +142,65 @@ const TranscriptViewer = ({ meetingId }) => {
       <div className="space-y-3 max-h-96 overflow-y-auto pr-2">
         {filteredSegments.length === 0 ? (
           <p className="text-gray-500 text-center py-8">
-            {filter ? "No matching segments found" : "No transcript segments available"}
+            {filter
+              ? "No matching segments found"
+              : "No transcript segments available"}
           </p>
         ) : (
-          filteredSegments.map((segment, index) => (
-            <div
-              key={index}
-              className="p-3 bg-gray-50 rounded-lg border border-gray-200 hover:bg-gray-100 transition-colors cursor-pointer"
-              onClick={() => jumpToTimestamp(segment.startTime)}
-            >
-              <div className="flex items-center justify-between mb-1">
-                <div className="flex items-center gap-2">
-                  <User className="w-4 h-4 text-blue-600" />
-                  <span className="text-xs font-medium text-blue-600">
-                    {segment.speaker || "Unknown"}
-                  </span>
-                </div>
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    jumpToTimestamp(segment.startTime);
-                  }}
-                  className="flex items-center gap-1 text-xs text-gray-500 hover:text-blue-600 transition-colors"
-                >
-                  <Clock className="w-3 h-3" />
-                  {formatTime(segment.startTime)}
-                </button>
-              </div>
-              <p className="text-sm text-gray-700">{segment.text}</p>
-              {segment.confidence && (
-                <div className="mt-1">
-                  <div className="w-full bg-gray-200 rounded-full h-1">
-                    <div
-                      className="bg-blue-600 h-1 rounded-full"
-                      style={{ width: `${segment.confidence * 100}%` }}
-                    />
+          (translatedSegments || filteredSegments).map((segment, index) => {
+            const isTranslated = !!translatedSegments;
+            const originalSegment = isTranslated
+              ? filteredSegments.find((s) => s.startTime === segment.startTime)
+              : null;
+
+            return (
+              <div
+                key={index}
+                className="p-3 bg-gray-50 rounded-lg border border-gray-200 hover:bg-gray-100 transition-colors cursor-pointer relative group"
+                onClick={() => jumpToTimestamp(segment.startTime)}
+              >
+                <div className="flex items-center justify-between mb-1">
+                  <div className="flex items-center gap-2">
+                    <User className="w-4 h-4 text-blue-600" />
+                    <span className="text-xs font-medium text-blue-600">
+                      {segment.speaker || "Unknown"}
+                    </span>
                   </div>
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      jumpToTimestamp(segment.startTime);
+                    }}
+                    className="flex items-center gap-1 text-xs text-gray-500 hover:text-blue-600 transition-colors"
+                  >
+                    <Clock className="w-3 h-3" />
+                    {formatTime(segment.startTime)}
+                  </button>
                 </div>
-              )}
-            </div>
-          ))
+                <p className="text-sm text-gray-700">{segment.text}</p>
+
+                {isTranslated && originalSegment && (
+                  <div className="absolute left-1/2 bottom-full mb-2 hidden w-max max-w-xs -translate-x-1/2 rounded bg-gray-900 px-2 py-1 text-xs text-white opacity-0 transition-opacity group-hover:block group-hover:opacity-100 z-10 pointer-events-none">
+                    <span className="font-semibold block mb-1 text-gray-300">
+                      Original:
+                    </span>
+                    {originalSegment.text}
+                  </div>
+                )}
+
+                {segment.confidence && !isTranslated && (
+                  <div className="mt-1">
+                    <div className="w-full bg-gray-200 rounded-full h-1">
+                      <div
+                        className="bg-blue-600 h-1 rounded-full"
+                        style={{ width: `${segment.confidence * 100}%` }}
+                      />
+                    </div>
+                  </div>
+                )}
+              </div>
+            );
+          })
         )}
       </div>
 
@@ -171,7 +209,9 @@ const TranscriptViewer = ({ meetingId }) => {
         <div className="mt-4 pt-4 border-t border-gray-200">
           <button
             onClick={() => {
-              const blob = new Blob([transcript.fullText], { type: "text/plain" });
+              const blob = new Blob([transcript.fullText], {
+                type: "text/plain",
+              });
               const url = URL.createObjectURL(blob);
               const a = document.createElement("a");
               a.href = url;

@@ -10,6 +10,8 @@ import {
 import { sendSuccess, sendError } from "../utils/responseHandler.js";
 import fs from "fs";
 import path from "path";
+import { getContentDispositionHeader } from "../utils/fileUtils.js";
+import { parsePagination } from "../utils/pagination.js";
 
 const LARGE_EXPORT_THRESHOLD = 10000;
 const EXPORT_TTL_MS = 24 * 60 * 60 * 1000;
@@ -32,22 +34,16 @@ const parseFilters = (query, organizationId) => {
 export const getOrganizationAuditLogs = async (req, res) => {
   try {
     const organizationId = req.params.id;
-    const { format, page = 1, limit = 20 } = req.query;
+    const { format } = req.query;
     if (format && !["csv", "xlsx"].includes(format)) {
       return sendError(res, 400, "Export format must be csv or xlsx.");
     }
 
-    const pageNum = parseInt(page, 10);
-    const limitNum = parseInt(limit, 10);
-    if (
-      !Number.isInteger(pageNum) ||
-      pageNum < 1 ||
-      !Number.isInteger(limitNum) ||
-      limitNum < 1
-    ) {
-      return sendError(res, 400, "page and limit must be positive integers.");
-    }
-    const skip = (pageNum - 1) * limitNum;
+    const {
+      page: pageNum,
+      limit: limitNum,
+      skip,
+    } = parsePagination(req.query, { defaultLimit: 20 });
     const filter = parseFilters(req.query, organizationId);
 
     if (format) {
@@ -98,7 +94,7 @@ export const getOrganizationAuditLogs = async (req, res) => {
       );
       res.setHeader(
         "Content-Disposition",
-        `attachment; filename="${filename}"`,
+        getContentDispositionHeader(filename),
       );
       if (format === "csv") return streamCsvExport(res, filter);
       return streamXlsxExport(res, filter);
@@ -175,7 +171,8 @@ export const downloadAuditLogExport = async (req, res) => {
     ) {
       return sendError(res, 404, "Audit log export file not found.");
     }
-    return res.download(filePath, `audit-logs.${exportRecord.format}`);
+    const downloadName = `audit-logs.${exportRecord.format}`;
+    return res.download(filePath, downloadName);
   } catch (_error) {
     return sendError(res, 500, "Server error downloading audit log export.");
   }
