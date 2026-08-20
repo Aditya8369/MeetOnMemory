@@ -26,6 +26,7 @@ import DuplicateDetectionPanel from "../components/meeting-details/DuplicateDete
 import MeetingTimeline from "../components/meeting-details/MeetingTimeline";
 import RecapStoryViewer from "../components/summaries/RecapStoryViewer";
 import { useUser } from "@clerk/clerk-react";
+import Navbar from "../components/Navbar.jsx";
 import BriefingBanner from "../components/meeting-details/BriefingBanner";
 import AgendaBuilder from "../components/meetings/AgendaBuilder";
 import { getBriefing } from "../services/briefingApi";
@@ -155,13 +156,16 @@ const MeetingDetails = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 p-6">
-        <div className="max-w-6xl mx-auto">
-          <div className="animate-pulse space-y-6">
-            <div className="h-32 bg-gray-200 dark:bg-gray-700 rounded-lg"></div>
-            <div className="h-48 bg-gray-200 dark:bg-gray-700 rounded-lg"></div>
-            <div className="h-64 bg-gray-200 dark:bg-gray-700 rounded-lg"></div>
-            <div className="h-48 bg-gray-200 dark:bg-gray-700 rounded-lg"></div>
+      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex flex-col">
+        <Navbar />
+        <div className="flex-grow pt-28 pb-12 px-6">
+          <div className="max-w-6xl mx-auto">
+            <div className="animate-pulse space-y-6">
+              <div className="h-32 bg-gray-200 dark:bg-gray-700 rounded-lg"></div>
+              <div className="h-48 bg-gray-200 dark:bg-gray-700 rounded-lg"></div>
+              <div className="h-64 bg-gray-200 dark:bg-gray-700 rounded-lg"></div>
+              <div className="h-48 bg-gray-200 dark:bg-gray-700 rounded-lg"></div>
+            </div>
           </div>
         </div>
       </div>
@@ -170,33 +174,36 @@ const MeetingDetails = () => {
 
   if (error) {
     return (
-      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 p-6">
-        <div className="max-w-6xl mx-auto">
-          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6">
-            <div className="text-center py-12">
-              <svg
-                className="w-16 h-16 text-red-500 mx-auto mb-4"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77-1.333.192 3 1.732 3z"
-                />
-              </svg>
-              <h2 className="text-xl font-semibold text-gray-900 dark:text-gray-100 mb-2">
-                Error Loading Meeting
-              </h2>
-              <p className="text-gray-600 dark:text-gray-400 mb-6">{error}</p>
-              <button
-                onClick={handleBack}
-                className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors"
-              >
-                Back to Meetings
-              </button>
+      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex flex-col">
+        <Navbar />
+        <div className="flex-grow pt-28 pb-12 px-6">
+          <div className="max-w-6xl mx-auto">
+            <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6">
+              <div className="text-center py-12">
+                <svg
+                  className="w-16 h-16 text-red-500 mx-auto mb-4"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77-1.333.192 3 1.732 3z"
+                  />
+                </svg>
+                <h2 className="text-xl font-semibold text-gray-900 dark:text-gray-100 mb-2">
+                  Error Loading Meeting
+                </h2>
+                <p className="text-gray-600 dark:text-gray-400 mb-6">{error}</p>
+                <button
+                  onClick={handleBack}
+                  className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors"
+                >
+                  Back to Meetings
+                </button>
+              </div>
             </div>
           </div>
         </div>
@@ -206,22 +213,25 @@ const MeetingDetails = () => {
 
   if (!meeting) {
     return (
-      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 p-6">
-        <div className="max-w-6xl mx-auto">
-          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6">
-            <div className="text-center py-12">
-              <h2 className="text-xl font-semibold text-gray-900 dark:text-gray-100 mb-2">
-                Meeting Not Found
-              </h2>
-              <p className="text-gray-600 dark:text-gray-400 mb-6">
-                The meeting you're looking for doesn't exist.
-              </p>
-              <button
-                onClick={handleBack}
-                className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors"
-              >
-                Back to Meetings
-              </button>
+      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex flex-col">
+        <Navbar />
+        <div className="flex-grow pt-28 pb-12 px-6">
+          <div className="max-w-6xl mx-auto">
+            <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6">
+              <div className="text-center py-12">
+                <h2 className="text-xl font-semibold text-gray-900 dark:text-gray-100 mb-2">
+                  Meeting Not Found
+                </h2>
+                <p className="text-gray-600 dark:text-gray-400 mb-6">
+                  The meeting you're looking for doesn't exist.
+                </p>
+                <button
+                  onClick={handleBack}
+                  className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors"
+                >
+                  Back to Meetings
+                </button>
+              </div>
             </div>
           </div>
         </div>
@@ -230,197 +240,200 @@ const MeetingDetails = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100 p-6">
-      <div className="max-w-6xl mx-auto">
-        <div className="mb-4 flex justify-end">
-          <button
-            onClick={() => setIsStoryViewerOpen(true)}
-            className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-purple-500 to-pink-500 text-white rounded-lg font-medium shadow-sm hover:opacity-90 transition-opacity"
-          >
-            <svg
-              className="w-5 h-5"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth="2"
-                d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"
-              ></path>
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth="2"
-                d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-              ></path>
-            </svg>
-            Play Recap Story
-          </button>
-        </div>
-
-        {meeting.date && new Date(meeting.date) > new Date() && (
-          <BriefingBanner
-            meetingId={meeting._id}
-            briefingStatus={briefingStatus}
-            onRegenerate={() => setBriefingStatus("pending")}
-          />
-        )}
-
-        <DuplicateDetectionPanel meetingId={meeting._id} />
-        <MeetingFollowUpBanner meeting={meeting} />
-        <MeetingHeader
-          meeting={meeting}
-          onShare={() => setShareModalOpen(true)}
-          onPresent={() => setIsPresentModeOpen(true)}
-        />
-
-        <div className="p-6 bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 shadow-sm mt-6 mb-6">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-            <div>
-              <h3 className="text-base font-bold text-gray-900 dark:text-gray-100">
-                AI Intelligence Core
-              </h3>
-              <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
-                Parse discussion timelines, profile histories, and open action
-                paths.
-              </p>
-            </div>
-
-            <div className="flex items-center gap-3">
-              {briefingStatus === "generating" && (
-                <div className="flex items-center gap-2 text-xs font-semibold text-amber-600 bg-amber-50 dark:bg-amber-950/30 px-3 py-1.5 rounded-xl border border-amber-200 dark:border-amber-900/40">
-                  <span className="w-3 h-3 border-2 border-amber-600/30 border-t-amber-600 rounded-full animate-spin" />
-                  Synthesizing Briefing...
-                </div>
-              )}
-
-              {briefingStatus === "failed" && (
-                <span className="text-xs font-semibold text-red-600 bg-red-50 dark:bg-red-950/30 px-3 py-1.5 rounded-xl border border-red-200 dark:border-red-900/40">
-                  ⚠️ Generation Failed
-                </span>
-              )}
-
-              {briefingStatus === "ready" && (
-                <button
-                  onClick={() => navigate(`/meeting/${id}/briefing`)}
-                  className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-black uppercase tracking-wider rounded-xl shadow transition"
-                >
-                  📖 Open Pre-Meeting Briefing
-                </button>
-              )}
-
-              {(briefingStatus === "idle" ||
-                briefingStatus === "none" ||
-                briefingStatus === "failed") && (
-                <button
-                  onClick={handleGenerateBriefing}
-                  className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-black uppercase tracking-wider rounded-xl shadow transition"
-                >
-                  ⚡ Generate Intelligent Brief
-                </button>
-              )}
-            </div>
-          </div>
-        </div>
-        <MeetingSummary meeting={meeting} />
-        <MeetingCollaborativeNotes meeting={meeting} />
-
-        <div className="mt-6 mb-6">
-          <MeetingTimeline meetingId={meeting._id} meeting={meeting} />
-        </div>
-
-        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 mt-6 mb-6 overflow-hidden h-[500px]">
-          <KeyMomentsPanel meetingId={meeting._id} />
-        </div>
-
-        <div className="mt-6 mb-6">
-          <HighlightReel meetingId={meeting._id} />
-        </div>
-
-        <MeetingTranscript meeting={meeting} />
-        <TranscriptAnnotations meeting={meeting} />
-
-        <div className="mt-6 mb-6">
-          <SentimentTimeline meetingId={meeting._id} />
-        </div>
-
-        {/* Speaking Time Analytics Section */}
-        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 mt-6 mb-6 p-6">
-          <div className="flex justify-between items-center mb-6">
-            <h2
-              className="text-xl font-bold text-gray-900 dark:text-white flex items-center gap-2 cursor-pointer"
-              onClick={() => setIsAnalyticsExpanded(!isAnalyticsExpanded)}
-            >
-              <button className="p-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-full transition-colors">
-                <svg
-                  className={`w-5 h-5 transform transition-transform ${isAnalyticsExpanded ? "rotate-180" : ""}`}
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M19 9l-7 7-7-7"
-                  />
-                </svg>
-              </button>
-              Speaking Time Analytics
-            </h2>
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100 flex flex-col">
+      <Navbar />
+      <div className="flex-grow pt-28 pb-12 px-6">
+        <div className="max-w-6xl mx-auto">
+          <div className="mb-4 flex justify-end">
             <button
-              onClick={() => navigate("/speaking-time-trends")}
-              className="text-sm text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 font-medium"
+              onClick={() => setIsStoryViewerOpen(true)}
+              className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-purple-500 to-pink-500 text-white rounded-lg font-medium shadow-sm hover:opacity-90 transition-opacity"
             >
-              View My Trends →
+              <svg
+                className="w-5 h-5"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth="2"
+                  d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"
+                ></path>
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth="2"
+                  d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                ></path>
+              </svg>
+              Play Recap Story
             </button>
           </div>
-          {isAnalyticsExpanded && (
-            <SpeakingTimeBreakdown meetingId={meeting._id} />
+
+          {meeting.date && new Date(meeting.date) > new Date() && (
+            <BriefingBanner
+              meetingId={meeting._id}
+              briefingStatus={briefingStatus}
+              onRegenerate={() => setBriefingStatus("pending")}
+            />
           )}
-        </div>
 
-        <MeetingParticipants meeting={meeting} />
-        <RsvpPanel
-          meetingId={meeting._id}
-          isOrganizer={
-            currentUser?.publicMetadata?.dbUserId === meeting.uploadedBy
-          }
-          participants={meeting.participants}
-        />
-        <PrepChecklist meeting={meeting} currentUser={currentUser} />
-        <MeetingGoalsPanel meeting={meeting} currentUser={currentUser} />
-
-        {meeting.series && (
-          <CarryForwardConfig
-            seriesId={meeting.series._id || meeting.series}
-            currentMeetingId={meeting._id}
-            onApplySuccess={() => {
-              // Reload meeting data to reflect new agenda items
-              window.location.reload();
-            }}
+          <DuplicateDetectionPanel meetingId={meeting._id} />
+          <MeetingFollowUpBanner meeting={meeting} />
+          <MeetingHeader
+            meeting={meeting}
+            onShare={() => setShareModalOpen(true)}
+            onPresent={() => setIsPresentModeOpen(true)}
           />
-        )}
 
-        <AgendaBuilder
-          meetingId={meeting._id}
-          isOrganizer={
-            currentUser?.publicMetadata?.dbUserId === meeting.uploadedBy
-          }
-        />
+          <div className="p-6 bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 shadow-sm mt-6 mb-6">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <div>
+                <h3 className="text-base font-bold text-gray-900 dark:text-gray-100">
+                  AI Intelligence Core
+                </h3>
+                <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+                  Parse discussion timelines, profile histories, and open action
+                  paths.
+                </p>
+              </div>
 
-        <MeetingAgenda meeting={meeting} />
-        <MeetingMetadata meeting={meeting} />
-        {currentUser?.publicMetadata?.dbUserId === meeting.uploadedBy && (
-          <GuestAccessManager meetingId={meeting._id} />
-        )}
-        <MeetingActions
-          meeting={meeting}
-          onDelete={handleDelete}
-          onRename={handleRename}
-        />
+              <div className="flex items-center gap-3">
+                {briefingStatus === "generating" && (
+                  <div className="flex items-center gap-2 text-xs font-semibold text-amber-600 bg-amber-50 dark:bg-amber-950/30 px-3 py-1.5 rounded-xl border border-amber-200 dark:border-amber-900/40">
+                    <span className="w-3 h-3 border-2 border-amber-600/30 border-t-amber-600 rounded-full animate-spin" />
+                    Synthesizing Briefing...
+                  </div>
+                )}
+
+                {briefingStatus === "failed" && (
+                  <span className="text-xs font-semibold text-red-600 bg-red-50 dark:bg-red-950/30 px-3 py-1.5 rounded-xl border border-red-200 dark:border-red-900/40">
+                    ⚠️ Generation Failed
+                  </span>
+                )}
+
+                {briefingStatus === "ready" && (
+                  <button
+                    onClick={() => navigate(`/meeting/${id}/briefing`)}
+                    className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-black uppercase tracking-wider rounded-xl shadow transition"
+                  >
+                    📖 Open Pre-Meeting Briefing
+                  </button>
+                )}
+
+                {(briefingStatus === "idle" ||
+                  briefingStatus === "none" ||
+                  briefingStatus === "failed") && (
+                  <button
+                    onClick={handleGenerateBriefing}
+                    className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-black uppercase tracking-wider rounded-xl shadow transition"
+                  >
+                    ⚡ Generate Intelligent Brief
+                  </button>
+                )}
+              </div>
+            </div>
+          </div>
+          <MeetingSummary meeting={meeting} />
+          <MeetingCollaborativeNotes meeting={meeting} />
+
+          <div className="mt-6 mb-6">
+            <MeetingTimeline meetingId={meeting._id} meeting={meeting} />
+          </div>
+
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 mt-6 mb-6 overflow-hidden h-[500px]">
+            <KeyMomentsPanel meetingId={meeting._id} />
+          </div>
+
+          <div className="mt-6 mb-6">
+            <HighlightReel meetingId={meeting._id} />
+          </div>
+
+          <MeetingTranscript meeting={meeting} />
+          <TranscriptAnnotations meeting={meeting} />
+
+          <div className="mt-6 mb-6">
+            <SentimentTimeline meetingId={meeting._id} />
+          </div>
+
+          {/* Speaking Time Analytics Section */}
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 mt-6 mb-6 p-6">
+            <div className="flex justify-between items-center mb-6">
+              <h2
+                className="text-xl font-bold text-gray-900 dark:text-white flex items-center gap-2 cursor-pointer"
+                onClick={() => setIsAnalyticsExpanded(!isAnalyticsExpanded)}
+              >
+                <button className="p-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-full transition-colors">
+                  <svg
+                    className={`w-5 h-5 transform transition-transform ${isAnalyticsExpanded ? "rotate-180" : ""}`}
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M19 9l-7 7-7-7"
+                    />
+                  </svg>
+                </button>
+                Speaking Time Analytics
+              </h2>
+              <button
+                onClick={() => navigate("/speaking-time-trends")}
+                className="text-sm text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 font-medium"
+              >
+                View My Trends →
+              </button>
+            </div>
+            {isAnalyticsExpanded && (
+              <SpeakingTimeBreakdown meetingId={meeting._id} />
+            )}
+          </div>
+
+          <MeetingParticipants meeting={meeting} />
+          <RsvpPanel
+            meetingId={meeting._id}
+            isOrganizer={
+              currentUser?.publicMetadata?.dbUserId === meeting.uploadedBy
+            }
+            participants={meeting.participants}
+          />
+          <PrepChecklist meeting={meeting} currentUser={currentUser} />
+          <MeetingGoalsPanel meeting={meeting} currentUser={currentUser} />
+
+          {meeting.series && (
+            <CarryForwardConfig
+              seriesId={meeting.series._id || meeting.series}
+              currentMeetingId={meeting._id}
+              onApplySuccess={() => {
+                // Reload meeting data to reflect new agenda items
+                window.location.reload();
+              }}
+            />
+          )}
+
+          <AgendaBuilder
+            meetingId={meeting._id}
+            isOrganizer={
+              currentUser?.publicMetadata?.dbUserId === meeting.uploadedBy
+            }
+          />
+
+          <MeetingAgenda meeting={meeting} />
+          <MeetingMetadata meeting={meeting} />
+          {currentUser?.publicMetadata?.dbUserId === meeting.uploadedBy && (
+            <GuestAccessManager meetingId={meeting._id} />
+          )}
+          <MeetingActions
+            meeting={meeting}
+            onDelete={handleDelete}
+            onRename={handleRename}
+          />
+        </div>
       </div>
 
       <ShareModal
