@@ -23,6 +23,24 @@ const ParticipantEngagement = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
+  const fetchScorecard = useCallback(async (userId) => {
+    if (!userId) return;
+    try {
+      setError(null);
+      const scorecardRes = await api.get(
+        `/api/engagement/participant/${userId}`,
+      );
+      if (scorecardRes.data.success) {
+        setScorecard(scorecardRes.data.data);
+      } else {
+        setError(scorecardRes.data.message || "Failed to load scorecard");
+      }
+    } catch (err) {
+      console.error("Error fetching scorecard", err);
+      setError("Failed to load scorecard. Please try again.");
+    }
+  }, []);
+
   const fetchDashboardData = useCallback(async () => {
     try {
       setLoading(true);
@@ -39,12 +57,7 @@ const ParticipantEngagement = () => {
         const firstUserId = rankingsRes.data.data.rankings[0].userId?._id;
 
         if (firstUserId) {
-          const scorecardRes = await api.get(
-            `/api/engagement/participant/${firstUserId}`,
-          );
-          if (scorecardRes.data.success) {
-            setScorecard(scorecardRes.data.data);
-          }
+          await fetchScorecard(firstUserId);
         }
       } else if (rankingsRes.data.success) {
         setRankings([]);
@@ -57,7 +70,7 @@ const ParticipantEngagement = () => {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [fetchScorecard]);
 
   useEffect(() => {
     fetchDashboardData();
@@ -312,48 +325,66 @@ const ParticipantEngagement = () => {
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
-                {rankings.map((row) => (
-                  <tr
-                    key={row._id}
-                    className="hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
-                  >
-                    <td className="px-6 py-4">
-                      <div className="flex items-center space-x-3">
-                        {row.userId?.profilePic ? (
-                          <img
-                            src={row.userId.profilePic}
-                            alt=""
-                            className="w-8 h-8 rounded-full"
-                          />
-                        ) : (
-                          <div className="w-8 h-8 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-600 font-bold">
-                            {row.userId?.name?.charAt(0) || "?"}
+                {rankings.map((row) => {
+                  const isActive = row.userId?._id === scorecard?.userId?._id;
+                  return (
+                    <tr
+                      key={row._id}
+                      role="button"
+                      tabIndex={0}
+                      onClick={() => fetchScorecard(row.userId?._id)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter" || e.key === " ") {
+                          e.preventDefault();
+                          fetchScorecard(row.userId?._id);
+                        }
+                      }}
+                      aria-label={`View scorecard for ${row.userId?.name}`}
+                      aria-current={isActive ? "true" : undefined}
+                      className={`cursor-pointer transition-colors ${
+                        isActive
+                          ? "bg-indigo-50/40 dark:bg-indigo-950/30 hover:bg-indigo-100/40 dark:hover:bg-indigo-900/30"
+                          : "hover:bg-gray-50 dark:hover:bg-gray-700"
+                      }`}
+                    >
+                      <td className="px-6 py-4">
+                        <div className="flex items-center space-x-3">
+                          {row.userId?.profilePic ? (
+                            <img
+                              src={row.userId.profilePic}
+                              alt=""
+                              className="w-8 h-8 rounded-full"
+                            />
+                          ) : (
+                            <div className="w-8 h-8 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-600 font-bold">
+                              {row.userId?.name?.charAt(0) || "?"}
+                            </div>
+                          )}
+                          <div>
+                            <p className="text-sm font-medium text-gray-900 dark:text-white">
+                              {row.userId?.name}
+                            </p>
+                            <p className="text-xs text-gray-500">
+                              {row.userId?.email}
+                            </p>
                           </div>
-                        )}
-                        <div>
-                          <p className="text-sm font-medium text-gray-900 dark:text-white">
-                            {row.userId?.name}
-                          </p>
-                          <p className="text-xs text-gray-500">
-                            {row.userId?.email}
-                          </p>
                         </div>
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 text-sm text-gray-900 dark:text-white font-bold">
-                      {row.overallScore}
-                    </td>
-                    <td className="px-6 py-4 text-sm text-gray-500">
-                      {row.dimensionalScores?.speaking || 0}
-                    </td>
-                    <td className="px-6 py-4 text-sm text-gray-500">
-                      {row.dimensionalScores?.actionItems || 0}
-                    </td>
-                    <td className="px-6 py-4 text-sm text-gray-500">
-                      {row.dimensionalScores?.decisions || 0}
-                    </td>
-                  </tr>
-                ))}
+                      </td>
+                      <td className="px-6 py-4 text-sm text-gray-900 dark:text-white font-bold">
+                        {row.overallScore}
+                      </td>
+                      <td className="px-6 py-4 text-sm text-gray-500">
+                        {row.dimensionalScores?.speaking || 0}
+                      </td>
+                      <td className="px-6 py-4 text-sm text-gray-500">
+                        {row.dimensionalScores?.actionItems || 0}
+                      </td>
+                      <td className="px-6 py-4 text-sm text-gray-500">
+                        {row.dimensionalScores?.decisions || 0}
+                      </td>
+                    </tr>
+                  );
+                })}
                 {rankings.length === 0 && (
                   <tr>
                     <td
