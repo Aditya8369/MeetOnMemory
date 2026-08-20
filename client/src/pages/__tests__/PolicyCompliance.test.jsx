@@ -9,6 +9,8 @@ vi.mock("../../services", () => ({
   policyComplianceApi: {
     getFlags: vi.fn(),
     updateFlagStatus: vi.fn(),
+    getDecisionCompliance: vi.fn(),
+    getPolicyRelatedDecisions: vi.fn(),
   },
 
   savedFilterApi: {
@@ -22,25 +24,16 @@ vi.mock("../../components/Navbar.jsx", () => ({
   default: () => <div data-testid="navbar">Navbar</div>,
 }));
 
-describe("PolicyCompliance Component (Issue #911)", () => {
+describe("PolicyCompliance Component (Issue #1891 Integration)", () => {
   const mockFlags = [
     {
       _id: "flag-1",
       classification: "potential_conflict",
       status: "unresolved",
       similarityScore: 0.85,
-      decisionId: { text: "Use third-party encryption key" },
-      policyId: { name: "Data Security Policy", version: "1.2" },
+      decisionId: { _id: "dec-1", text: "Use third-party encryption key" },
+      policyId: { _id: "pol-1", name: "Data Security Policy", version: "1.2" },
       reasoning: "Conflicts with section 4: Internal Key Management",
-    },
-    {
-      _id: "flag-2",
-      classification: "aligned",
-      status: "unresolved",
-      similarityScore: 0.92,
-      decisionId: { text: "Enforce MFA for all admin logins" },
-      policyId: { name: "Access Control Policy", version: "2.0" },
-      reasoning: "Fully satisfies section 2: Authentication Controls",
     },
   ];
 
@@ -48,11 +41,25 @@ describe("PolicyCompliance Component (Issue #911)", () => {
     vi.clearAllMocks();
   });
 
-  it("fetches all compliance classifications by default and displays summary badges", async () => {
+  it("fetches compliance flags and integrates getDecisionCompliance modal", async () => {
     policyComplianceApi.getFlags.mockResolvedValue({
+      data: { success: true, flags: mockFlags },
+    });
+    policyComplianceApi.getDecisionCompliance.mockResolvedValue({
       data: {
         success: true,
-        flags: mockFlags,
+        data: {
+          decision: { id: "dec-1", text: "Use third-party encryption key" },
+          compliance: [
+            {
+              _id: "comp-1",
+              classification: "potential_conflict",
+              similarityScore: 0.85,
+              policyId: { name: "Data Security Policy", version: "1.2" },
+              reasoning: "Detailed conflict explanation",
+            },
+          ],
+        },
       },
     });
 
@@ -72,17 +79,42 @@ describe("PolicyCompliance Component (Issue #911)", () => {
     expect(
       await screen.findByText("Use third-party encryption key"),
     ).toBeInTheDocument();
+
+    const detailsBtn = screen.getByText("Details");
+    fireEvent.click(detailsBtn);
+
+    await waitFor(() => {
+      expect(policyComplianceApi.getDecisionCompliance).toHaveBeenCalledWith(
+        "dec-1",
+      );
+    });
+
     expect(
-      await screen.findByText("Enforce MFA for all admin logins"),
+      await screen.findByText("Decision Compliance Breakdown"),
     ).toBeInTheDocument();
-    expect(screen.getByText("Potential Conflict")).toBeInTheDocument();
   });
 
-  it("switches classification tab and fetches flags for selected classification", async () => {
+  it("integrates getPolicyRelatedDecisions reverse-lookup modal", async () => {
     policyComplianceApi.getFlags.mockResolvedValue({
+      data: { success: true, flags: mockFlags },
+    });
+    policyComplianceApi.getPolicyRelatedDecisions.mockResolvedValue({
       data: {
         success: true,
-        flags: mockFlags,
+        data: {
+          policy: { id: "pol-1", name: "Data Security Policy", version: "1.2" },
+          relatedDecisions: [
+            {
+              _id: "rel-1",
+              classification: "potential_conflict",
+              decisionId: { text: "Store keys on external cloud" },
+              sourceMeetingId: {
+                _id: "meet-1",
+                title: "Security Review Meeting",
+              },
+            },
+          ],
+        },
       },
     });
 
@@ -99,26 +131,20 @@ describe("PolicyCompliance Component (Issue #911)", () => {
       );
     });
 
-    policyComplianceApi.getFlags.mockResolvedValueOnce({
-      data: {
-        success: true,
-        flags: [mockFlags[1]],
-      },
-    });
-
-    const alignedButtons = screen.getAllByRole("button");
-    const alignedTab = alignedButtons.find((btn) =>
-      btn.textContent.includes("Aligned"),
-    );
-    expect(alignedTab).toBeTruthy();
-
-    fireEvent.click(alignedTab);
+    const relatedBtn = screen.getByText("Related Decisions");
+    fireEvent.click(relatedBtn);
 
     await waitFor(() => {
-      expect(policyComplianceApi.getFlags).toHaveBeenCalledWith(
-        "unresolved",
-        "aligned",
-      );
+      expect(
+        policyComplianceApi.getPolicyRelatedDecisions,
+      ).toHaveBeenCalledWith("pol-1");
     });
+
+    expect(
+      await screen.findByText("Policy Reverse-Lookup"),
+    ).toBeInTheDocument();
+    expect(
+      await screen.findByText("Store keys on external cloud"),
+    ).toBeInTheDocument();
   });
 });

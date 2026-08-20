@@ -238,4 +238,9 @@ router.use("/api/custom-fields", customFieldRoutes);
 import meetingNudgeRoutes from "./meetingNudgeRoutes.js";
 router.use("/api/nudges", meetingNudgeRoutes);
 
+import dataRetentionRoutes from "./dataRetentionRoutes.js";
+router.use("/api/data-retention", dataRetentionRoutes);
+import weeklyInsightRoutes from "./weeklyInsightRoutes.js";
+router.use("/api/weekly-insights", weeklyInsightRoutes);
+
 export default router;
