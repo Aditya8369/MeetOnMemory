@@ -82,8 +82,16 @@ describe("AdminPanel", () => {
       data: {
         success: true,
         members: [
-          { _id: "m1", user: { name: "Alice", email: "alice@test.com" }, role: "admin" },
-          { _id: "m2", user: { name: "Bob", email: "bob@test.com" }, role: "member" },
+          {
+            _id: "m1",
+            user: { name: "Alice", email: "alice@test.com" },
+            role: "admin",
+          },
+          {
+            _id: "m2",
+            user: { name: "Bob", email: "bob@test.com" },
+            role: "member",
+          },
         ],
       },
     });
@@ -99,14 +107,21 @@ describe("AdminPanel", () => {
       data: {
         success: true,
         meetings: [
-          { _id: "mtg-1", title: "Sprint Planning", date: "2026-08-20T10:00:00Z", status: "scheduled" },
+          {
+            _id: "mtg-1",
+            title: "Sprint Planning",
+            date: "2026-08-20T10:00:00Z",
+            status: "scheduled",
+          },
         ],
       },
     });
     membershipRequestApi.getOrganizationRequests.mockResolvedValue({
       data: {
         success: true,
-        requests: [{ _id: "req-1", user: { name: "Charlie" }, status: "pending" }],
+        requests: [
+          { _id: "req-1", user: { name: "Charlie" }, status: "pending" },
+        ],
       },
     });
     organizationApi.getAuditLogs.mockResolvedValue({
@@ -127,7 +142,13 @@ describe("AdminPanel", () => {
       data: {
         success: true,
         policies: [
-          { _id: "pol-1", title: "Security Policy", category: "Security", version: "1.0", status: "Active" },
+          {
+            _id: "pol-1",
+            title: "Security Policy",
+            category: "Security",
+            version: "1.0",
+            status: "Active",
+          },
         ],
       },
     });
@@ -138,7 +159,9 @@ describe("AdminPanel", () => {
 
     expect(screen.getByTestId("navbar")).toBeInTheDocument();
     expect(screen.getAllByText("adminPanel.title").length).toBeGreaterThan(0);
-    expect(screen.getAllByText("adminPanel.overview").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("adminPanel.overview").length).toBeGreaterThan(
+      0,
+    );
     expect(screen.getByText("adminPanel.recentActivity")).toBeInTheDocument();
 
     await waitFor(() => {
@@ -156,7 +179,9 @@ describe("AdminPanel", () => {
   it("renders live members table when switching to members module", async () => {
     renderAdminPanel();
 
-    const membersBtn = screen.getByRole("button", { name: /adminPanel\.members/i });
+    const membersBtn = screen.getByRole("button", {
+      name: /adminPanel\.members/i,
+    });
     fireEvent.click(membersBtn);
 
     await waitFor(() => {
@@ -171,7 +196,9 @@ describe("AdminPanel", () => {
   it("renders membership requests component when switching to joinRequests module", async () => {
     renderAdminPanel();
 
-    const joinBtn = screen.getByRole("button", { name: /adminPanel\.joinRequests/i });
+    const joinBtn = screen.getByRole("button", {
+      name: /adminPanel\.joinRequests/i,
+    });
     fireEvent.click(joinBtn);
 
     await waitFor(() => {
@@ -182,7 +209,9 @@ describe("AdminPanel", () => {
   it("renders meetings table when switching to meetings module", async () => {
     renderAdminPanel();
 
-    const meetingsBtn = screen.getByRole("button", { name: /adminPanel\.meetings/i });
+    const meetingsBtn = screen.getByRole("button", {
+      name: /adminPanel\.meetings/i,
+    });
     fireEvent.click(meetingsBtn);
 
     await waitFor(() => {
@@ -195,7 +224,9 @@ describe("AdminPanel", () => {
   it("renders policies table when switching to policies module", async () => {
     renderAdminPanel();
 
-    const policiesBtn = screen.getByRole("button", { name: /adminPanel\.policies/i });
+    const policiesBtn = screen.getByRole("button", {
+      name: /adminPanel\.policies/i,
+    });
     fireEvent.click(policiesBtn);
 
     await waitFor(() => {

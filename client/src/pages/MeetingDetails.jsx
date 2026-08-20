@@ -42,7 +42,24 @@ const MeetingDetails = () => {
   const [isPresentModeOpen, setIsPresentModeOpen] = useState(false);
   const [isAnalyticsExpanded, setIsAnalyticsExpanded] = useState(false);
   const [isStoryViewerOpen, setIsStoryViewerOpen] = useState(false);
-  const [briefingStatus, setBriefingStatus] = useState("none");
+  const [briefingStatus, setBriefingStatus] = useState("idle");
+
+  const handleGenerateBriefing = async () => {
+    setBriefingStatus("generating");
+    try {
+      const response = await fetch(`/api/meetings/${id}/briefing-generate`, {
+        method: "POST",
+      });
+      if (response.ok) {
+        setBriefingStatus("ready");
+      } else {
+        setBriefingStatus("failed");
+      }
+    } catch (err) {
+      console.error("Failed to generate briefing:", err);
+      setBriefingStatus("failed");
+    }
+  };
 
   useEffect(() => {
     const fetchMeetingDetails = async () => {
@@ -258,6 +275,55 @@ const MeetingDetails = () => {
           onShare={() => setShareModalOpen(true)}
           onPresent={() => setIsPresentModeOpen(true)}
         />
+
+        <div className="p-6 bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 shadow-sm mt-6 mb-6">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div>
+              <h3 className="text-base font-bold text-gray-900 dark:text-gray-100">
+                AI Intelligence Core
+              </h3>
+              <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+                Parse discussion timelines, profile histories, and open action
+                paths.
+              </p>
+            </div>
+
+            <div className="flex items-center gap-3">
+              {briefingStatus === "generating" && (
+                <div className="flex items-center gap-2 text-xs font-semibold text-amber-600 bg-amber-50 dark:bg-amber-950/30 px-3 py-1.5 rounded-xl border border-amber-200 dark:border-amber-900/40">
+                  <span className="w-3 h-3 border-2 border-amber-600/30 border-t-amber-600 rounded-full animate-spin" />
+                  Synthesizing Briefing...
+                </div>
+              )}
+
+              {briefingStatus === "failed" && (
+                <span className="text-xs font-semibold text-red-600 bg-red-50 dark:bg-red-950/30 px-3 py-1.5 rounded-xl border border-red-200 dark:border-red-900/40">
+                  ⚠️ Generation Failed
+                </span>
+              )}
+
+              {briefingStatus === "ready" && (
+                <button
+                  onClick={() => navigate(`/meeting/${id}/briefing`)}
+                  className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-black uppercase tracking-wider rounded-xl shadow transition"
+                >
+                  📖 Open Pre-Meeting Briefing
+                </button>
+              )}
+
+              {(briefingStatus === "idle" ||
+                briefingStatus === "none" ||
+                briefingStatus === "failed") && (
+                <button
+                  onClick={handleGenerateBriefing}
+                  className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-black uppercase tracking-wider rounded-xl shadow transition"
+                >
+                  ⚡ Generate Intelligent Brief
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
         <MeetingSummary meeting={meeting} />
         <MeetingCollaborativeNotes meeting={meeting} />
 

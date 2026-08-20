@@ -367,7 +367,7 @@ const ProtectedRoutes = (
       }
     />
     <Route
-      path="/meetings/:id/briefing"
+      path="/meeting/:id/briefing"
       element={
         <ProtectedRoute resource="meetings" action="view">
           <MeetingBriefing />
