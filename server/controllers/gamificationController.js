@@ -4,7 +4,7 @@ import { calculateLeaderboards } from "../jobs/leaderboardAggregationJob.js";
 
 export const getLeaderboard = async (req, res) => {
   try {
-    const orgId = req.user.organizationId;
+    const orgId = req.user.organization;
     if (!orgId) {
       return res.status(400).json({
         success: false,
@@ -46,7 +46,7 @@ export const getLeaderboard = async (req, res) => {
 export const getUserScore = async (req, res) => {
   try {
     const userId = req.user.id;
-    const orgId = req.user.organizationId;
+    const orgId = req.user.organization;
 
     const score = await GamificationScore.findOne({
       user: userId,
