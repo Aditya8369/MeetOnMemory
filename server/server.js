@@ -50,6 +50,10 @@ import {
   initAutoBriefingJob,
   stopAutoBriefingJob,
 } from "./jobs/autoBriefingJob.js";
+import {
+  initDataRetentionJob,
+  stopDataRetentionJob,
+} from "./jobs/dataRetentionJob.js";
 import { startEscalationJob, stopEscalationJob } from "./jobs/escalationJob.js";
 import { createClient } from "redis"; // eslint-disable-line no-unused-vars
 import {
@@ -153,6 +157,9 @@ if (process.env.NODE_ENV !== "test") {
   // Start auto pre-meeting briefing job
   initAutoBriefingJob();
 
+  // Start data retention sweep job
+  initDataRetentionJob();
+
   // Start automated escalation job
   startEscalationJob();
 }
@@ -167,6 +174,7 @@ const gracefulShutdown = createGracefulShutdown({
     stopActionItemReminderJob();
     stopRecapBatchJob();
     stopAutoBriefingJob();
+    stopDataRetentionJob();
     stopEscalationJob();
   },
   closeQueues: shutdownQueues,

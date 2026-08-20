@@ -235,4 +235,7 @@ import guestAccessRoutes from "./guestAccessRoutes.js";
 router.use("/api", guestAccessRoutes);
 router.use("/api/custom-fields", customFieldRoutes);
 
+import dataRetentionRoutes from "./dataRetentionRoutes.js";
+router.use("/api/data-retention", dataRetentionRoutes);
+
 export default router;
