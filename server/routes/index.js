@@ -165,7 +165,10 @@ router.use("/api/scheduler", schedulerRoutes);
 // Recap schedule + delivery history (GET /history/deliveries) — Issue #1401
 router.use("/api/recap-schedule", recapScheduleRoutes);
 router.use("/api/clips", meetingClipRoutes);
-router.use("/api/speaker-mappings", speakerMappingRoutes);
+router.use(
+  ["/api/speaker-mapping", "/api/speaker-mappings"],
+  speakerMappingRoutes,
+);
 router.use("/api/note-versions", noteVersionRoutes);
 router.use("/api/reports", reportRoutes);
 router.use("/api/agenda-suggestions", agendaSuggestionRoutes);
