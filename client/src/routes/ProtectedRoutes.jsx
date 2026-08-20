@@ -510,7 +510,6 @@ const ProtectedRoutes = (
         </ProtectedRoute>
       }
     />
-    <Route path="/meeting-templates" element={<MeetingTemplates />} />
     <Route
       path="/ai-summary-templates"
       element={
