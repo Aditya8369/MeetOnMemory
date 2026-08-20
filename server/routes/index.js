@@ -235,4 +235,7 @@ import guestAccessRoutes from "./guestAccessRoutes.js";
 router.use("/api", guestAccessRoutes);
 router.use("/api/custom-fields", customFieldRoutes);
 
+import meetingNudgeRoutes from "./meetingNudgeRoutes.js";
+router.use("/api/nudges", meetingNudgeRoutes);
+
 export default router;

@@ -30,6 +30,7 @@ import BriefingBanner from "../components/meeting-details/BriefingBanner";
 import AgendaBuilder from "../components/meetings/AgendaBuilder";
 import { getBriefing } from "../services/briefingApi";
 import GuestAccessManager from "../components/meetings/GuestAccessManager";
+import MeetingReadiness from "../components/MeetingReadiness";
 
 const MeetingDetails = () => {
   const { id } = useParams();
@@ -383,6 +384,9 @@ const MeetingDetails = () => {
         </div>
 
         <MeetingParticipants meeting={meeting} />
+        <div className="mt-6 mb-6">
+          <MeetingReadiness meetingId={meeting._id} />
+        </div>
         <RsvpPanel
           meetingId={meeting._id}
           isOrganizer={
