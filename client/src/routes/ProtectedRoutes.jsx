@@ -66,6 +66,7 @@ import ParticipantEngagement from "../pages/ParticipantEngagement.jsx";
 import MyDelegations from "../pages/MyDelegations.jsx";
 import MeetingPatterns from "../pages/MeetingPatterns.jsx";
 import FocusTime from "../pages/FocusTime.jsx";
+import DataRetentionSettings from "../pages/DataRetentionSettings.jsx";
 
 const ProtectedRoutes = (
   <React.Fragment>
@@ -234,6 +235,14 @@ const ProtectedRoutes = (
       element={
         <ProtectedRoute resource="organizations" action="view">
           <OrganizationSettings />
+        </ProtectedRoute>
+      }
+    />
+    <Route
+      path="/data-retention-settings"
+      element={
+        <ProtectedRoute resource="organizations" action="view">
+          <DataRetentionSettings />
         </ProtectedRoute>
       }
     />
