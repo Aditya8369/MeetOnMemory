@@ -1,62 +1,66 @@
 import rateLimit from "express-rate-limit";
-import { getRedisClient } from "../services/redisService.js";
+import { getClientIp } from "../utils/ipUtils.js";
+import { createRateLimitStore } from "./rateLimitStore.js";
 
-let RedisStore;
-try {
-  const mod = await import("rate-limit-redis");
-  RedisStore = mod.RedisStore || mod.default;
-} catch (e) {
-  // rate-limit-redis optional dependency fallback
-}
+/**
+ * Builds this limiter's store (Issue #1452).
+ *
+ * The previous `createStore` called `getRedisClient()` right here, at module
+ * scope. This module is evaluated during the import phase — `config/express.js`
+ * imports it, and `config/express.js` is in `server.js`'s static import graph —
+ * whereas `initRedis()` only runs later, inside `startWorkers()`. So the client
+ * was always `null`, `createStore` always returned `undefined`, and every
+ * limiter below silently used the in-process `MemoryStore`.
+ *
+ * `createRateLimitStore` returns a store that resolves its own backend on first
+ * use instead, so the limiters attach to Redis as soon as it is ready without
+ * anything about the bootstrap order having to change. See
+ * `middleware/rateLimitStore.js` for the details.
+ */
+const createStore = (prefix) => createRateLimitStore(prefix);
 
-// Create a shared store that uses Redis if available, otherwise falls back to in-memory
-const createStore = () => {
-  const redisClient = getRedisClient();
-  if (redisClient && RedisStore) {
-    return new RedisStore({
-      sendCommand: (...args) => redisClient.sendCommand(...args),
-    });
-  }
-  return undefined; // Falls back to default MemoryStore
+// Common options to ensure secure IP key generation across all limiters
+const baseOptions = {
+  standardHeaders: true, // Return rate limit info in `RateLimit-*` headers
+  legacyHeaders: false, // Disable legacy `X-RateLimit-*` headers
+  keyGenerator: (req) => getClientIp(req),
+  skip: () => process.env.NODE_ENV === "test",
 };
 
 // General rate limiter for API routes
 export const apiLimiter = rateLimit({
+  ...baseOptions,
   windowMs: 15 * 60 * 1000, // 15 minutes
   max: 100, // Limit each IP to 100 requests per windowMs
   message: {
     success: false,
     message: "Too many requests from this IP, please try again later.",
   },
-  standardHeaders: true, // Return rate limit info in the `RateLimit-*` headers
-  legacyHeaders: false, // Disable the `X-RateLimit-*` headers
-  store: createStore(),
+  store: createStore("rl:api:"),
 });
 
 // Stricter rate limiter for write operations (create, update, delete)
 export const writeLimiter = rateLimit({
+  ...baseOptions,
   windowMs: 15 * 60 * 1000, // 15 minutes
   max: 30, // Limit each IP to 30 write requests per windowMs
   message: {
     success: false,
     message: "Too many write requests from this IP, please try again later.",
   },
-  standardHeaders: true,
-  legacyHeaders: false,
-  store: createStore(),
+  store: createStore("rl:write:"),
 });
 
 // Rate limiter for file uploads (stricter due to resource usage)
 export const uploadLimiter = rateLimit({
+  ...baseOptions,
   windowMs: 15 * 60 * 1000, // 15 minutes
   max: 10, // Limit each IP to 10 upload requests per windowMs
   message: {
     success: false,
     message: "Too many upload requests from this IP, please try again later.",
   },
-  standardHeaders: true,
-  legacyHeaders: false,
-  store: createStore(),
+  store: createStore("rl:upload:"),
 });
 
 // ================================
@@ -65,45 +69,49 @@ export const uploadLimiter = rateLimit({
 
 // Rate limiter for login endpoint (protects against brute-force attacks)
 export const loginLimiter = rateLimit({
-  windowMs: parseInt(process.env.RATE_LIMIT_LOGIN_WINDOW_MS) || 15 * 60 * 1000, // 15 minutes default
-  max: parseInt(process.env.RATE_LIMIT_LOGIN_MAX) || 5, // 5 attempts per window default
+  ...baseOptions,
+  // 15 minutes default
+  windowMs: parseInt(process.env.RATE_LIMIT_LOGIN_WINDOW_MS) || 15 * 60 * 1000,
+  // 5 attempts per window default
+  max: parseInt(process.env.RATE_LIMIT_LOGIN_MAX) || 5,
   message: {
     success: false,
     message: "Too many login attempts, please try again later.",
   },
-  standardHeaders: true,
-  legacyHeaders: false,
   skipSuccessfulRequests: true, // Don't count successful requests
-  store: createStore(),
+  store: createStore("rl:login:"),
 });
 
-// Rate limiter for registration endpoint (protects against automated account creation)
+// Rate limiter for registration endpoint
+// (protects against automated account creation)
 export const registerLimiter = rateLimit({
+  ...baseOptions,
+  // 1 hour default
   windowMs:
-    parseInt(process.env.RATE_LIMIT_REGISTER_WINDOW_MS) || 60 * 60 * 1000, // 1 hour default
-  max: parseInt(process.env.RATE_LIMIT_REGISTER_MAX) || 3, // 3 registrations per hour default
+    parseInt(process.env.RATE_LIMIT_REGISTER_WINDOW_MS) || 60 * 60 * 1000,
+  // 3 registrations per hour default
+  max: parseInt(process.env.RATE_LIMIT_REGISTER_MAX) || 3,
   message: {
     success: false,
     message: "Too many registration attempts, please try again later.",
   },
-  standardHeaders: true,
-  legacyHeaders: false,
   skipSuccessfulRequests: true,
-  store: createStore(),
+  store: createStore("rl:register:"),
 });
 
 // Rate limiter for OTP endpoints (protects against OTP abuse and spam)
 export const otpLimiter = rateLimit({
-  windowMs: parseInt(process.env.RATE_LIMIT_OTP_WINDOW_MS) || 60 * 60 * 1000, // 1 hour default
-  max: parseInt(process.env.RATE_LIMIT_OTP_MAX) || 5, // 5 OTP requests per hour default
+  ...baseOptions,
+  // 1 hour default
+  windowMs: parseInt(process.env.RATE_LIMIT_OTP_WINDOW_MS) || 60 * 60 * 1000,
+  // 5 OTP requests per hour default
+  max: parseInt(process.env.RATE_LIMIT_OTP_MAX) || 5,
   message: {
     success: false,
     message: "Too many OTP requests, please try again later.",
   },
-  standardHeaders: true,
-  legacyHeaders: false,
   skipSuccessfulRequests: true,
-  store: createStore(),
+  store: createStore("rl:otp:"),
 });
 
 // ================================
@@ -112,6 +120,7 @@ export const otpLimiter = rateLimit({
 
 // Global limiter: 100 requests per 15 mins per IP
 export const globalLimiter = rateLimit({
+  ...baseOptions,
   windowMs: 15 * 60 * 1000,
   max: 100,
   message: {
@@ -119,20 +128,206 @@ export const globalLimiter = rateLimit({
     message:
       "Too many requests from this IP, please try again after 15 minutes",
   },
-  standardHeaders: true,
-  legacyHeaders: false,
-  store: createStore(),
+  store: createStore("rl:global:"),
 });
 
 // Rate limiter for data export requests (1 per 24 hours per IP)
 export const dataExportLimiter = rateLimit({
+  ...baseOptions,
   windowMs: 24 * 60 * 60 * 1000, // 24 hours
   max: 1, // 1 request per 24 hours
   message: {
     success: false,
     message: "You can only request a data export once every 24 hours.",
   },
-  standardHeaders: true,
-  legacyHeaders: false,
-  store: createStore(),
+  store: createStore("rl:data_export:"),
 });
+
+// ================================
+// ASSISTANT & POLICY RATE LIMITERS
+// ================================
+
+// Rate limiter for RAG assistant message sending
+export const assistantMessageLimiter = rateLimit({
+  ...baseOptions,
+  windowMs: 1 * 60 * 1000, // 1 minute
+  max: 10, // Limit each user to 10 messages per minute
+  message: {
+    error: "Too many messages sent. Please try again later.",
+  },
+  store: createStore("rl:assistant_message:"),
+});
+
+// General policy rate limiter (all policy routes)
+export const policyApiLimiter = rateLimit({
+  ...baseOptions,
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 100,
+  message: {
+    success: false,
+    message: "Too many requests, please try again after 15 minutes.",
+  },
+  store: createStore("rl:policy_api:"),
+});
+
+// Stricter policy upload rate limiter
+export const policyUploadLimiter = rateLimit({
+  ...baseOptions,
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 10,
+  message: {
+    success: false,
+    message: "Too many upload requests, please try again after 15 minutes.",
+  },
+  store: createStore("rl:policy_upload:"),
+});
+
+// Policy re-analysis rate limiter
+export const policyAnalyzeLimiter = rateLimit({
+  ...baseOptions,
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 20,
+  message: {
+    success: false,
+    message:
+      "Too many re-analysis requests, please try again after 15 minutes.",
+  },
+  store: createStore("rl:policy_analyze:"),
+});
+
+// Policy download rate limiter
+export const policyDownloadLimiter = rateLimit({
+  ...baseOptions,
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 60,
+  message: {
+    success: false,
+    message: "Too many download requests, please try again after 15 minutes.",
+  },
+  store: createStore("rl:policy_download:"),
+});
+
+// Policy delete rate limiter
+export const policyDeleteLimiter = rateLimit({
+  ...baseOptions,
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 10,
+  message: {
+    success: false,
+    message: "Too many delete requests, please try again after 15 minutes.",
+  },
+  store: createStore("rl:policy_delete:"),
+});
+
+// ================================
+// INVITATION RATE LIMITERS
+// ================================
+
+/**
+ * Resolve the organization id used to scope invitation creation limits.
+ * Prefer the target organization from the request body (POST /api/invitations).
+ * @param {import("express").Request} req
+ * @returns {string|null}
+ */
+export const resolveInvitationRateLimitOrgId = (req) => {
+  const raw =
+    req?.body?.organizationId ??
+    req?.params?.organizationId ??
+    req?.user?.organization ??
+    null;
+  if (raw == null || raw === "") return null;
+  return String(raw);
+};
+
+/**
+ * Organization-scoped limiter for invitation creation (Issue #1360).
+ * Each organization may create at most 10 invitations per hour.
+ * Uses Redis via the shared rate-limit store when available; otherwise MemoryStore.
+ *
+ * @param {object} [overrides] express-rate-limit options (e.g. `{ store }` in tests)
+ */
+export const createInvitationCreateLimiter = (overrides = {}) =>
+  rateLimit({
+    windowMs: 60 * 60 * 1000, // 1 hour
+    max: 10,
+    standardHeaders: true,
+    legacyHeaders: false,
+    // Org-scoped (not IP). Skipped when no organization id is present so the
+    // controller can still return a normal 400 validation error.
+    keyGenerator: (req) => `org:${resolveInvitationRateLimitOrgId(req)}`,
+    skip: (req) => !resolveInvitationRateLimitOrgId(req),
+    message: {
+      success: false,
+      message:
+        "Invitation rate limit exceeded. Your organization can create up to 10 invitations per hour. Please try again later.",
+    },
+    store: createStore("rl:invitation_create:"),
+    ...overrides,
+  });
+
+export const invitationCreateLimiter = createInvitationCreateLimiter();
+
+/**
+ * Per-user limiter for public product testimonial submissions (Issue #1572).
+ * Caps abuse while allowing legitimate create/update retries.
+ */
+export const createTestimonialSubmitLimiter = (overrides = {}) =>
+  rateLimit({
+    ...baseOptions,
+    windowMs: 60 * 60 * 1000, // 1 hour
+    max: 10,
+    keyGenerator: (req) => {
+      const userId = req.user?._id || req.user?.id;
+      return userId ? `user:${userId}` : `ip:${getClientIp(req)}`;
+    },
+    message: {
+      success: false,
+      message: "Too many testimonial submissions. Please try again later.",
+    },
+    store: createStore("rl:testimonial_submit:"),
+    ...overrides,
+  });
+
+export const testimonialSubmitLimiter = createTestimonialSubmitLimiter();
+
+/**
+ * Public careers application submissions (Issue #1790).
+ * Limits abuse by client IP while allowing legitimate retries.
+ */
+export const createCareersApplicationLimiter = (overrides = {}) =>
+  rateLimit({
+    ...baseOptions,
+    windowMs: 60 * 60 * 1000, // 1 hour
+    max: 5,
+    keyGenerator: (req) => `ip:${getClientIp(req)}`,
+    message: {
+      success: false,
+      message:
+        "Too many career applications from this address. Please try again later.",
+    },
+    store: createStore("rl:careers_application:"),
+    ...overrides,
+  });
+
+export const careersApplicationLimiter = createCareersApplicationLimiter();
+
+/**
+ * Public contact form submissions (Issue #1793).
+ * Limits abuse by client IP.
+ */
+export const createContactSubmitLimiter = (overrides = {}) =>
+  rateLimit({
+    ...baseOptions,
+    windowMs: 60 * 60 * 1000, // 1 hour
+    max: 10,
+    keyGenerator: (req) => `ip:${getClientIp(req)}`,
+    message: {
+      success: false,
+      message:
+        "Too many contact submissions from this address. Please try again later.",
+    },
+    store: createStore("rl:contact_submit:"),
+    ...overrides,
+  });
+
+export const contactSubmitLimiter = createContactSubmitLimiter();

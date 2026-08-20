@@ -4,7 +4,8 @@ import {
   getConsolidatedMemories,
   MODEL_REGISTRY,
 } from "../services/memoryConsolidationService.js";
-import { captureSnapshot } from "../services/graphSnapshotService.js";
+import { sendSuccess, sendError } from "../utils/responseHandler.js";
+import { parsePagination } from "../utils/pagination.js";
 
 const VALID_MODEL_TYPES = Object.keys(MODEL_REGISTRY);
 
@@ -37,10 +38,11 @@ export const runConsolidation = async (req, res) => {
     const modelTypes = parseModelsParam(models);
     const invalid = modelTypes.filter((m) => !VALID_MODEL_TYPES.includes(m));
     if (invalid.length || modelTypes.length === 0) {
-      return res.status(400).json({
-        success: false,
-        message: `Invalid memory type(s): ${invalid.join(", ") || "none provided"}. Expected one or more of: ${VALID_MODEL_TYPES.join(", ")}`,
-      });
+      return sendError(
+        res,
+        400,
+        `Invalid memory type(s): ${invalid.join(", ") || "none provided"}. Expected one or more of: ${VALID_MODEL_TYPES.join(", ")}`,
+      );
     }
 
     if (
@@ -49,10 +51,11 @@ export const runConsolidation = async (req, res) => {
         embeddingThreshold < 0 ||
         embeddingThreshold > 1)
     ) {
-      return res.status(400).json({
-        success: false,
-        message: "embeddingThreshold must be a number between 0 and 1",
-      });
+      return sendError(
+        res,
+        400,
+        "embeddingThreshold must be a number between 0 and 1",
+      );
     }
 
     if (
@@ -61,10 +64,11 @@ export const runConsolidation = async (req, res) => {
         textThreshold < 0 ||
         textThreshold > 1)
     ) {
-      return res.status(400).json({
-        success: false,
-        message: "textThreshold must be a number between 0 and 1",
-      });
+      return sendError(
+        res,
+        400,
+        "textThreshold must be a number between 0 and 1",
+      );
     }
 
     const report = await consolidateMemories({
@@ -90,30 +94,12 @@ export const runConsolidation = async (req, res) => {
           totalMerged: report.totalMerged,
         },
       });
-
-      try {
-        await captureSnapshot(organization, {
-          trigger: "consolidation",
-          triggeredBy: req.user._id,
-        });
-      } catch (snapshotErr) {
-        console.error(
-          "⚠️ Graph snapshot capture failed (non-fatal):",
-          snapshotErr.message,
-        );
-      }
     }
 
-    res.status(200).json({
-      success: true,
-      report,
-    });
+    sendSuccess(res, { report });
   } catch (error) {
     console.error("runConsolidation error:", error);
-    res.status(500).json({
-      success: false,
-      message: "Failed to run memory consolidation",
-    });
+    sendError(res, 500, "Failed to run memory consolidation");
   }
 };
 
@@ -125,35 +111,32 @@ export const runConsolidation = async (req, res) => {
 export const getConsolidationHistory = async (req, res) => {
   try {
     const organization = req.user.organization || null;
-    const { model = "decision", limit = 50 } = req.query;
+    const { model = "decision" } = req.query;
 
     if (!VALID_MODEL_TYPES.includes(model)) {
-      return res.status(400).json({
-        success: false,
-        message: `Invalid memory type "${model}". Expected one of: ${VALID_MODEL_TYPES.join(", ")}`,
-      });
+      return sendError(
+        res,
+        400,
+        `Invalid memory type "${model}". Expected one of: ${VALID_MODEL_TYPES.join(", ")}`,
+      );
     }
 
-    const parsedLimit = Number(limit);
-    const safeLimit =
-      Number.isFinite(parsedLimit) && parsedLimit > 0 ? parsedLimit : 50;
+    const { limit: safeLimit } = parsePagination(req.query, {
+      defaultLimit: 50,
+    });
 
     const memories = await getConsolidatedMemories(model, {
       organization,
       limit: safeLimit,
     });
 
-    res.status(200).json({
-      success: true,
+    sendSuccess(res, {
       model,
       count: memories.length,
       memories,
     });
   } catch (error) {
     console.error("getConsolidationHistory error:", error);
-    res.status(500).json({
-      success: false,
-      message: "Failed to fetch consolidation history",
-    });
+    sendError(res, 500, "Failed to fetch consolidation history");
   }
 };

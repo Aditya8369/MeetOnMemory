@@ -1,6 +1,7 @@
-import React, { useState, useEffect } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import React, { useState, useEffect, useContext, useCallback } from "react";
+import { useParams, useNavigate, Link } from "react-router-dom";
 import { organizationApi, membershipRequestApi } from "../services";
+import AppContent from "../context/AppContent";
 import { toast } from "react-toastify";
 import {
   Building2,
@@ -13,20 +14,71 @@ import {
   Loader2,
   AlertCircle,
   X,
-  Check,
   Clock,
+  ArrowLeft,
+  UserPlus,
+  UserCheck,
 } from "lucide-react";
+import OrganizationBanner from "../components/organization/OrganizationBanner.jsx";
+import OrganizationLogo from "../components/organization/OrganizationLogo.jsx";
 
 const PublicOrganizationProfile = () => {
   const { slug } = useParams();
   const navigate = useNavigate();
+  const { isLoggedin, getUserData, setUserData } = useContext(AppContent);
   const [organization, setOrganization] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [requestStatus, setRequestStatus] = useState(null);
-  const [requestLoading, setRequestLoading] = useState(false);
+  const [membershipStatus, setMembershipStatus] = useState("none");
+  const [actionLoading, setActionLoading] = useState(false);
   const [showRequestModal, setShowRequestModal] = useState(false);
   const [requestMessage, setRequestMessage] = useState("");
+
+  const resolveMembershipStatus = useCallback(
+    async (organizationId) => {
+      if (!isLoggedin) {
+        setMembershipStatus("none");
+        return;
+      }
+
+      try {
+        const [orgsResponse, requestsResponse] = await Promise.all([
+          organizationApi.getUserOrganizations(),
+          membershipRequestApi.getUserRequests(),
+        ]);
+
+        const joined =
+          orgsResponse.data.success &&
+          (orgsResponse.data.organizations || []).some(
+            (org) => org._id === organizationId,
+          );
+
+        if (joined) {
+          setMembershipStatus("member");
+          return;
+        }
+
+        const requests = requestsResponse.data.success
+          ? requestsResponse.data.requests || []
+          : [];
+        const orgRequest = requests.find(
+          (req) => req.organization._id === organizationId,
+        );
+
+        if (orgRequest?.status === "pending") {
+          setMembershipStatus("pending");
+        } else if (orgRequest?.status === "rejected") {
+          setMembershipStatus("rejected");
+        } else {
+          setMembershipStatus("none");
+        }
+      } catch (err) {
+        console.error("Error resolving membership status:", err);
+        setMembershipStatus("none");
+      }
+    },
+    [isLoggedin],
+  );
 
   useEffect(() => {
     const fetchOrganization = async () => {
@@ -38,8 +90,7 @@ const PublicOrganizationProfile = () => {
 
         if (data.success) {
           setOrganization(data.organization);
-          // Check for existing request
-          await checkExistingRequest(data.organization._id);
+          await resolveMembershipStatus(data.organization._id);
         } else {
           setError(data.message || "Failed to load organization");
         }
@@ -60,24 +111,7 @@ const PublicOrganizationProfile = () => {
     if (slug) {
       fetchOrganization();
     }
-  }, [slug]);
-
-  const checkExistingRequest = async (organizationId) => {
-    try {
-      const { data } = await membershipRequestApi.getUserRequests();
-      if (data.success && data.requests) {
-        const existingRequest = data.requests.find(
-          (req) =>
-            req.organization._id === organizationId && req.status === "pending",
-        );
-        if (existingRequest) {
-          setRequestStatus("pending");
-        }
-      }
-    } catch (err) {
-      console.error("Error checking existing request:", err);
-    }
-  };
+  }, [slug, resolveMembershipStatus]);
 
   const formatDate = (dateString) => {
     if (!dateString) return "N/A";
@@ -88,19 +122,66 @@ const PublicOrganizationProfile = () => {
     });
   };
 
+  const handleJoinOrganization = async () => {
+    if (!organization) return;
+
+    try {
+      setActionLoading(true);
+      const { data } = await organizationApi.joinOrganization({
+        organizationId: organization._id,
+      });
+
+      if (data.success) {
+        toast.success("Joined organization successfully!");
+        setMembershipStatus("member");
+        const updatedUser = await getUserData();
+        if (updatedUser) {
+          setUserData(updatedUser);
+          localStorage.setItem("userData", JSON.stringify(updatedUser));
+        }
+      } else {
+        toast.error(data.message || "Failed to join organization");
+      }
+    } catch (err) {
+      toast.error(err.response?.data?.message || "Failed to join organization");
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
   const handleRequestAccess = () => {
-    if (requestStatus === "pending") {
+    if (!isLoggedin) {
+      navigate("/login", { state: { from: `/organizations/${slug}` } });
+      return;
+    }
+
+    if (membershipStatus === "pending") {
       toast.info("You already have a pending request for this organization");
       return;
     }
+
     setShowRequestModal(true);
+  };
+
+  const handlePrimaryAction = () => {
+    if (!isLoggedin) {
+      navigate("/login", { state: { from: `/organizations/${slug}` } });
+      return;
+    }
+
+    if (organization?.joinPolicy === "open") {
+      handleJoinOrganization();
+      return;
+    }
+
+    handleRequestAccess();
   };
 
   const handleSubmitRequest = async () => {
     if (!organization) return;
 
     try {
-      setRequestLoading(true);
+      setActionLoading(true);
       const { data } = await membershipRequestApi.createRequest({
         organizationId: organization._id,
         message: requestMessage,
@@ -108,7 +189,7 @@ const PublicOrganizationProfile = () => {
 
       if (data.success) {
         toast.success("Membership request submitted successfully");
-        setRequestStatus("pending");
+        setMembershipStatus("pending");
         setShowRequestModal(false);
         setRequestMessage("");
       } else {
@@ -118,7 +199,7 @@ const PublicOrganizationProfile = () => {
       console.error("Error submitting request:", err);
       toast.error(err.response?.data?.message || "Failed to submit request");
     } finally {
-      setRequestLoading(false);
+      setActionLoading(false);
     }
   };
 
@@ -126,7 +207,7 @@ const PublicOrganizationProfile = () => {
     if (!organization) return;
 
     try {
-      setRequestLoading(true);
+      setActionLoading(true);
       const { data } = await membershipRequestApi.getUserRequests();
       if (data.success && data.requests) {
         const pendingRequest = data.requests.find(
@@ -137,18 +218,103 @@ const PublicOrganizationProfile = () => {
         if (pendingRequest) {
           await membershipRequestApi.cancelRequest(pendingRequest._id);
           toast.success("Request cancelled successfully");
-          setRequestStatus(null);
+          setMembershipStatus("none");
         }
       }
     } catch (err) {
       console.error("Error cancelling request:", err);
       toast.error(err.response?.data?.message || "Failed to cancel request");
     } finally {
-      setRequestLoading(false);
+      setActionLoading(false);
     }
   };
 
-  // Loading Skeleton
+  const renderMembershipAction = (fullWidth = false) => {
+    if (!isLoggedin) {
+      return (
+        <button
+          onClick={() =>
+            navigate("/login", { state: { from: `/organizations/${slug}` } })
+          }
+          className={`${fullWidth ? "w-full" : ""} px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-semibold transition-colors shadow-lg hover:shadow-xl`}
+        >
+          Sign in to Join
+        </button>
+      );
+    }
+
+    if (membershipStatus === "member") {
+      return (
+        <span
+          className={`inline-flex items-center gap-2 px-4 py-2 bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300 rounded-lg text-sm font-medium ${fullWidth ? "w-full justify-center" : ""}`}
+        >
+          <UserCheck className="w-4 h-4" />
+          Member
+        </span>
+      );
+    }
+
+    if (membershipStatus === "pending") {
+      return (
+        <div className={`flex items-center gap-2 ${fullWidth ? "w-full" : ""}`}>
+          <span className="px-4 py-2 bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-300 rounded-lg text-sm font-medium flex items-center gap-2">
+            <Clock className="w-4 h-4" />
+            Pending
+          </span>
+          <button
+            onClick={handleCancelRequest}
+            disabled={actionLoading}
+            className="px-4 py-2 bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300 rounded-lg font-medium transition-colors flex items-center gap-2"
+          >
+            {actionLoading ? (
+              <Loader2 className="w-4 h-4 animate-spin" />
+            ) : (
+              <X className="w-4 h-4" />
+            )}
+            Cancel
+          </button>
+        </div>
+      );
+    }
+
+    if (membershipStatus === "rejected") {
+      return (
+        <span className="px-4 py-2 bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300 rounded-lg text-sm font-medium">
+          Request Rejected
+        </span>
+      );
+    }
+
+    if (organization?.joinPolicy === "invite_only") {
+      return (
+        <span className="px-4 py-2 bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 rounded-lg text-sm font-medium">
+          Invite only — contact an admin for access
+        </span>
+      );
+    }
+
+    const isOpenJoin = organization?.joinPolicy === "open";
+    const label = isOpenJoin ? "Join Organization" : "Request Access";
+    const Icon = isOpenJoin ? UserPlus : UserPlus;
+
+    return (
+      <button
+        onClick={handlePrimaryAction}
+        disabled={actionLoading}
+        className={`${fullWidth ? "w-full" : ""} px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-semibold transition-colors shadow-lg hover:shadow-xl flex items-center justify-center gap-2 disabled:opacity-50`}
+      >
+        {actionLoading ? (
+          <Loader2 className="w-4 h-4 animate-spin" />
+        ) : (
+          <>
+            <Icon className="w-4 h-4" />
+            {label}
+          </>
+        )}
+      </button>
+    );
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900">
@@ -164,11 +330,6 @@ const PublicOrganizationProfile = () => {
                   <div className="h-4 w-48 bg-gray-200 dark:bg-gray-700 rounded" />
                 </div>
               </div>
-              <div className="space-y-4">
-                <div className="h-4 w-full bg-gray-200 dark:bg-gray-700 rounded" />
-                <div className="h-4 w-3/4 bg-gray-200 dark:bg-gray-700 rounded" />
-                <div className="h-4 w-1/2 bg-gray-200 dark:bg-gray-700 rounded" />
-              </div>
             </div>
           </div>
         </div>
@@ -176,7 +337,6 @@ const PublicOrganizationProfile = () => {
     );
   }
 
-  // Error State
   if (error) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 flex items-center justify-center">
@@ -195,81 +355,74 @@ const PublicOrganizationProfile = () => {
                 ? "The organization you're looking for doesn't exist or may have been removed."
                 : error}
             </p>
-            <button
-              onClick={() => navigate("/")}
-              className="px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-semibold transition-colors"
-            >
-              Go to Homepage
-            </button>
+            <div className="flex flex-col gap-2">
+              {isLoggedin && (
+                <button
+                  onClick={() => navigate("/browse-organizations")}
+                  className="px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-semibold transition-colors"
+                >
+                  Browse Organizations
+                </button>
+              )}
+              <button
+                onClick={() => navigate("/")}
+                className="px-6 py-3 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-900 dark:text-gray-100 rounded-xl font-semibold transition-colors"
+              >
+                Go to Homepage
+              </button>
+            </div>
           </div>
         </div>
       </div>
     );
   }
 
-  // Empty State
   if (!organization) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 flex items-center justify-center">
-        <div className="max-w-md w-full mx-4">
-          <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg p-8 text-center">
-            <div className="w-16 h-16 bg-gray-100 dark:bg-gray-700 rounded-full flex items-center justify-center mx-auto mb-4">
-              <Building2 className="w-8 h-8 text-gray-400" />
-            </div>
-            <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-2">
-              No Organization Data
-            </h2>
-            <p className="text-gray-600 dark:text-gray-400 mb-6">
-              Unable to load organization information.
-            </p>
-            <button
-              onClick={() => navigate("/")}
-              className="px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-semibold transition-colors"
-            >
-              Go to Homepage
-            </button>
-          </div>
-        </div>
-      </div>
-    );
+    return null;
   }
 
   const {
     name,
     description,
     logo,
+    logoUrl,
+    bannerUrl,
     memberCount,
     visibility,
+    joinPolicy,
     createdAt,
     website,
     socialLinks,
     tags,
   } = organization;
 
+  const resolvedLogo = logoUrl || logo || "";
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900">
-      {/* Hero Section */}
-      <div className="bg-gradient-to-r from-blue-600 to-purple-600 dark:from-blue-700 dark:to-purple-700 h-48" />
+      <OrganizationBanner src={bannerUrl || ""} name={name} />
 
       <div className="max-w-6xl mx-auto px-4 -mt-24 pb-12">
+        {isLoggedin && (
+          <Link
+            to="/browse-organizations"
+            className="inline-flex items-center gap-2 text-sm font-medium text-gray-600 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400 mb-4 transition-colors"
+          >
+            <ArrowLeft className="w-4 h-4" />
+            Back to Browse Organizations
+          </Link>
+        )}
+
         <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg overflow-hidden">
-          {/* Organization Header */}
           <div className="p-8 border-b border-gray-200 dark:border-gray-700">
             <div className="flex flex-col md:flex-row items-start gap-6">
-              {/* Logo */}
-              <div className="w-32 h-32 rounded-2xl bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white font-bold text-4xl shadow-xl flex-shrink-0">
-                {logo ? (
-                  <img
-                    src={logo}
-                    alt={name}
-                    className="w-full h-full rounded-2xl object-cover"
-                  />
-                ) : (
-                  name?.charAt(0)?.toUpperCase() || "O"
-                )}
-              </div>
+              <OrganizationLogo
+                src={resolvedLogo}
+                name={name}
+                size="xl"
+                className="shadow-xl"
+              />
 
-              {/* Organization Info */}
               <div className="flex-1">
                 <div className="flex items-center gap-3 mb-2">
                   <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100">
@@ -294,7 +447,6 @@ const PublicOrganizationProfile = () => {
                   </p>
                 )}
 
-                {/* Metadata */}
                 <div className="flex flex-wrap items-center gap-4 text-sm text-gray-500 dark:text-gray-400">
                   <div className="flex items-center gap-1.5">
                     <Users className="w-4 h-4" />
@@ -319,40 +471,10 @@ const PublicOrganizationProfile = () => {
                 </div>
               </div>
 
-              {/* Request Access Button */}
-              <div className="flex-shrink-0">
-                {requestStatus === "pending" ? (
-                  <div className="flex items-center gap-2">
-                    <span className="px-4 py-2 bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-300 rounded-lg text-sm font-medium flex items-center gap-2">
-                      <Clock className="w-4 h-4" />
-                      Pending
-                    </span>
-                    <button
-                      onClick={handleCancelRequest}
-                      disabled={requestLoading}
-                      className="px-4 py-2 bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300 rounded-lg font-medium transition-colors flex items-center gap-2"
-                    >
-                      {requestLoading ? (
-                        <Loader2 className="w-4 h-4 animate-spin" />
-                      ) : (
-                        <X className="w-4 h-4" />
-                      )}
-                      Cancel
-                    </button>
-                  </div>
-                ) : (
-                  <button
-                    onClick={handleRequestAccess}
-                    className="px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-semibold transition-colors shadow-lg hover:shadow-xl"
-                  >
-                    Request Access
-                  </button>
-                )}
-              </div>
+              <div className="flex-shrink-0">{renderMembershipAction()}</div>
             </div>
           </div>
 
-          {/* Tags Section */}
           {tags && tags.length > 0 && (
             <div className="p-8 border-b border-gray-200 dark:border-gray-700">
               <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4 flex items-center gap-2">
@@ -372,7 +494,6 @@ const PublicOrganizationProfile = () => {
             </div>
           )}
 
-          {/* Social Links Section */}
           {socialLinks && Object.keys(socialLinks).length > 0 && (
             <div className="p-8 border-b border-gray-200 dark:border-gray-700">
               <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">
@@ -395,7 +516,6 @@ const PublicOrganizationProfile = () => {
             </div>
           )}
 
-          {/* Additional Info Section */}
           <div className="p-8">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="bg-gray-50 dark:bg-gray-700/50 rounded-xl p-6">
@@ -411,6 +531,12 @@ const PublicOrganizationProfile = () => {
                     <span className="font-medium text-gray-900 dark:text-gray-100">
                       {visibility?.charAt(0)?.toUpperCase() +
                         visibility?.slice(1) || "Private"}
+                    </span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>Join Policy:</span>
+                    <span className="font-medium text-gray-900 dark:text-gray-100 capitalize">
+                      {(joinPolicy || "open").replace(/_/g, " ")}
                     </span>
                   </div>
                   <div className="flex justify-between">
@@ -436,43 +562,19 @@ const PublicOrganizationProfile = () => {
                   </h4>
                 </div>
                 <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
-                  Join this organization to collaborate with team members and
-                  access shared resources.
+                  {joinPolicy === "open"
+                    ? "This organization accepts open join requests from authenticated users."
+                    : joinPolicy === "invite_only"
+                      ? "Membership is limited to invited users."
+                      : "Submit a request and an admin will review your application."}
                 </p>
-                {requestStatus === "pending" ? (
-                  <div className="flex items-center gap-2">
-                    <span className="px-3 py-2 bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-300 rounded-lg text-sm font-medium flex items-center gap-2">
-                      <Clock className="w-4 h-4" />
-                      Pending
-                    </span>
-                    <button
-                      onClick={handleCancelRequest}
-                      disabled={requestLoading}
-                      className="flex-1 px-4 py-2 bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300 rounded-lg font-medium transition-colors flex items-center justify-center gap-2"
-                    >
-                      {requestLoading ? (
-                        <Loader2 className="w-4 h-4 animate-spin" />
-                      ) : (
-                        <X className="w-4 h-4" />
-                      )}
-                      Cancel
-                    </button>
-                  </div>
-                ) : (
-                  <button
-                    onClick={handleRequestAccess}
-                    className="w-full px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg font-medium transition-colors"
-                  >
-                    Request to Join
-                  </button>
-                )}
+                {renderMembershipAction(true)}
               </div>
             </div>
           </div>
         </div>
       </div>
 
-      {/* Request Access Modal */}
       {showRequestModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl max-w-md w-full p-6">
@@ -516,17 +618,17 @@ const PublicOrganizationProfile = () => {
                   setShowRequestModal(false);
                   setRequestMessage("");
                 }}
-                disabled={requestLoading}
+                disabled={actionLoading}
                 className="flex-1 px-4 py-3 bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300 rounded-xl font-medium transition-colors"
               >
                 Cancel
               </button>
               <button
                 onClick={handleSubmitRequest}
-                disabled={requestLoading}
+                disabled={actionLoading}
                 className="flex-1 px-4 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-medium transition-colors flex items-center justify-center gap-2"
               >
-                {requestLoading ? (
+                {actionLoading ? (
                   <>
                     <Loader2 className="w-4 h-4 animate-spin" />
                     Submitting...
