@@ -6,7 +6,7 @@ import IssueTrackerIntegration from "../models/issueTrackerIntegrationModel.js";
 export const getConfig = async (req, res) => {
   try {
     const { provider } = req.params;
-    const orgId = req.user.organizationId;
+    const orgId = req.user.organization;
 
     if (!["jira", "linear"].includes(provider)) {
       return res
@@ -40,7 +40,7 @@ export const getConfig = async (req, res) => {
 export const updateConfig = async (req, res) => {
   try {
     const { provider } = req.params;
-    const orgId = req.user.organizationId;
+    const orgId = req.user.organization;
     const userId = req.user.id;
     const { accessToken, config } = req.body;
 
@@ -99,7 +99,7 @@ export const updateConfig = async (req, res) => {
 export const disconnect = async (req, res) => {
   try {
     const { provider } = req.params;
-    const orgId = req.user.organizationId;
+    const orgId = req.user.organization;
 
     if (!["jira", "linear"].includes(provider)) {
       return res

@@ -23,6 +23,7 @@ import Policies from "../pages/Policies.jsx";
 import AiSummaryTemplates from "../pages/AiSummaryTemplates.jsx";
 import Summaries from "../pages/Summaries.jsx";
 import Reports from "../pages/Reports.jsx";
+import WeeklyInsights from "../pages/WeeklyInsights.jsx";
 import ReportBuilder from "../pages/ReportBuilder.jsx";
 import AiSearch from "../pages/AiSearch.jsx";
 import AiAssistant from "../pages/AiAssistant.jsx";
@@ -62,10 +63,13 @@ import ConflictResolution from "../pages/ConflictResolution.jsx";
 import SpeakingTimeTrends from "../pages/SpeakingTimeTrends.jsx";
 import Leaderboard from "../pages/Leaderboard.jsx";
 import ParticipantEngagement from "../pages/ParticipantEngagement.jsx";
+import ActionItemAnalytics from "../pages/ActionItemAnalytics.jsx";
 import MyDelegations from "../pages/MyDelegations.jsx";
 import MeetingPatterns from "../pages/MeetingPatterns.jsx";
 import FocusTime from "../pages/FocusTime.jsx";
 import SeriesRetrospective from "../pages/SeriesRetrospective.jsx";
+import DataRetentionSettings from "../pages/DataRetentionSettings.jsx";
+
 const ProtectedRoutes = (
   <React.Fragment>
     <Route
@@ -245,6 +249,14 @@ const ProtectedRoutes = (
       }
     />
     <Route
+      path="/data-retention-settings"
+      element={
+        <ProtectedRoute resource="organizations" action="view">
+          <DataRetentionSettings />
+        </ProtectedRoute>
+      }
+    />
+    <Route
       path="/dashboard"
       element={
         <ProtectedRoute>
@@ -331,6 +343,14 @@ const ProtectedRoutes = (
       element={
         <ProtectedRoute resource="reports" action="view">
           <Reports />
+        </ProtectedRoute>
+      }
+    />
+    <Route
+      path="/reports/weekly-insights"
+      element={
+        <ProtectedRoute resource="reports" action="view">
+          <WeeklyInsights />
         </ProtectedRoute>
       }
     />
@@ -495,6 +515,14 @@ const ProtectedRoutes = (
       }
     />
     <Route
+      path="/action-item-analytics"
+      element={
+        <ProtectedRoute resource="reports" action="view">
+          <ActionItemAnalytics />
+        </ProtectedRoute>
+      }
+    />
+    <Route
       path="/recap-schedule"
       element={
         <ProtectedRoute resource="settings" action="view">
@@ -518,7 +546,6 @@ const ProtectedRoutes = (
         </ProtectedRoute>
       }
     />
-    <Route path="/meeting-templates" element={<MeetingTemplates />} />
     <Route
       path="/ai-summary-templates"
       element={

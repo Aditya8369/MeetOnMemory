@@ -9,6 +9,7 @@ import searchRoutes from "./searchRoutes.js";
 import aiRoutes from "./aiRoutes.js";
 import policyRoutes from "./policyRoutes.js";
 import analyticsRoutes from "./analyticsRoutes.js";
+import actionItemAnalyticsRoutes from "./actionItemAnalyticsRoutes.js";
 import geminiRoutes from "./geminiRoutes.js";
 import notesRoutes from "./notes.routes.js";
 import userRoutes from "./userRoutes.js";
@@ -118,6 +119,7 @@ router.use("/api/search", searchRoutes);
 router.use("/api/ai", aiRoutes);
 router.use("/api/policies", policyRoutes);
 router.use("/api/analytics", analyticsRoutes);
+router.use("/api/action-item-analytics", actionItemAnalyticsRoutes);
 router.use("/api/gemini", geminiRoutes);
 router.use("/api/notes", notesRoutes);
 router.use("/api/favorites", favoriteRoutes);
@@ -234,5 +236,10 @@ router.use("/api/patterns", meetingPatternRoutes);
 import guestAccessRoutes from "./guestAccessRoutes.js";
 router.use("/api", guestAccessRoutes);
 router.use("/api/custom-fields", customFieldRoutes);
+
+import dataRetentionRoutes from "./dataRetentionRoutes.js";
+router.use("/api/data-retention", dataRetentionRoutes);
+import weeklyInsightRoutes from "./weeklyInsightRoutes.js";
+router.use("/api/weekly-insights", weeklyInsightRoutes);
 
 export default router;

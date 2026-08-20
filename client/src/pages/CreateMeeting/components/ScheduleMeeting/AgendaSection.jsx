@@ -49,7 +49,7 @@ const AgendaSection = ({
 
   return (
     <div className="mb-6">
-      <label className="block mb-3 font-semibold text-gray-700">
+      <label className="block mb-3 font-semibold text-gray-700 dark:text-gray-300">
         Meeting Agenda
       </label>
       <div className="flex gap-3 mb-3">
@@ -61,12 +61,12 @@ const AgendaSection = ({
             e.key === "Enter" && (e.preventDefault(), addAgendaItem())
           }
           placeholder="Add agenda item..."
-          className="flex-grow px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-400 outline-none"
+          className="flex-grow px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-400 outline-none bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500"
         />
         <button
           type="button"
           onClick={addAgendaItem}
-          className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+          className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 cursor-pointer"
           aria-label="Add agenda item"
         >
           <Plus size={18} />
@@ -74,7 +74,7 @@ const AgendaSection = ({
         <button
           type="button"
           onClick={() => setShowImportModal(true)}
-          className="px-4 py-2 bg-yellow-100 text-yellow-700 rounded-lg hover:bg-yellow-200 flex items-center gap-2 font-medium"
+          className="px-4 py-2 bg-yellow-100 dark:bg-yellow-950/40 text-yellow-700 dark:text-yellow-300 border border-yellow-200 dark:border-yellow-800/60 rounded-lg hover:bg-yellow-200 dark:hover:bg-yellow-900/40 flex items-center gap-2 font-medium cursor-pointer"
           aria-label="Import from Parking Lot"
         >
           <Lightbulb size={18} />
@@ -99,10 +99,10 @@ const AgendaSection = ({
                 setDraggedIndex(null);
               }}
               onDragEnd={() => setDraggedIndex(null)}
-              className="flex items-center gap-2 bg-gray-50 px-3 py-2 rounded-lg border border-transparent focus-within:border-blue-300"
+              className="flex items-center gap-2 bg-gray-50 dark:bg-gray-800 px-3 py-2 rounded-lg border border-gray-200 dark:border-gray-700 focus-within:border-blue-300 text-gray-900 dark:text-gray-100"
             >
               <span
-                className="text-gray-400 cursor-grab"
+                className="text-gray-400 dark:text-gray-500 cursor-grab"
                 aria-hidden="true"
                 title="Drag to reorder"
               >
@@ -114,12 +114,12 @@ const AgendaSection = ({
                   {index + 1}. {item.text || item.title}
                 </span>
                 {item.description && (
-                  <span className="text-xs text-gray-500 block truncate">
+                  <span className="text-xs text-gray-500 dark:text-gray-400 block truncate">
                     {item.description}
                   </span>
                 )}
                 {item.duration && (
-                  <span className="text-xs text-blue-600 block">
+                  <span className="text-xs text-blue-600 dark:text-blue-400 block">
                     {item.duration} min
                   </span>
                 )}
@@ -130,7 +130,7 @@ const AgendaSection = ({
                   type="button"
                   onClick={() => moveItem(index, index - 1)}
                   disabled={index === 0}
-                  className="p-1.5 rounded text-gray-600 hover:bg-white disabled:opacity-30 disabled:cursor-not-allowed"
+                  className="p-1.5 rounded text-gray-600 dark:text-gray-400 hover:bg-white dark:hover:bg-gray-700 disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer"
                   aria-label={`Move ${item.text || item.title} up`}
                 >
                   <ArrowUp size={17} />
@@ -139,7 +139,7 @@ const AgendaSection = ({
                   type="button"
                   onClick={() => moveItem(index, index + 1)}
                   disabled={index === agendaItems.length - 1}
-                  className="p-1.5 rounded text-gray-600 hover:bg-white disabled:opacity-30 disabled:cursor-not-allowed"
+                  className="p-1.5 rounded text-gray-600 dark:text-gray-400 hover:bg-white dark:hover:bg-gray-700 disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer"
                   aria-label={`Move ${item.text || item.title} down`}
                 >
                   <ArrowDown size={17} />
@@ -147,7 +147,7 @@ const AgendaSection = ({
                 <button
                   type="button"
                   onClick={() => removeAgendaItem(item.id || item._id)}
-                  className="p-1.5 rounded text-red-600 hover:bg-red-50"
+                  className="p-1.5 rounded text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/40 cursor-pointer"
                   aria-label={`Remove ${item.text || item.title}`}
                 >
                   <X size={18} />
