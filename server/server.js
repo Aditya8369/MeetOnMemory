@@ -56,6 +56,10 @@ import {
 } from "./jobs/dataRetentionJob.js";
 import { startEscalationJob, stopEscalationJob } from "./jobs/escalationJob.js";
 import {
+  startMeetingNudgeJob,
+  stopMeetingNudgeJob,
+} from "./jobs/meetingNudgeJob.js";
+import {
   startWeeklyInsightJob,
   stopWeeklyInsightJob,
 } from "./jobs/weeklyInsightJob.js";
@@ -182,6 +186,9 @@ if (process.env.NODE_ENV !== "test") {
   // Start automated escalation job
   startEscalationJob();
 
+  // Start meeting nudge job
+  startMeetingNudgeJob();
+
   // Start weekly insight job
   startWeeklyInsightJob();
 }
@@ -198,6 +205,7 @@ const gracefulShutdown = createGracefulShutdown({
     stopAutoBriefingJob();
     stopDataRetentionJob();
     stopEscalationJob();
+    stopMeetingNudgeJob();
     stopWeeklyInsightJob();
   },
   closeQueues: shutdownQueues,

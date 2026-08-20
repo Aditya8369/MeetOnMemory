@@ -31,6 +31,7 @@ import BriefingBanner from "../components/meeting-details/BriefingBanner";
 import AgendaBuilder from "../components/meetings/AgendaBuilder";
 import { getBriefing } from "../services/briefingApi";
 import GuestAccessManager from "../components/meetings/GuestAccessManager";
+import MeetingReadiness from "../components/MeetingReadiness";
 
 const MeetingDetails = () => {
   const { id } = useParams();
@@ -282,6 +283,9 @@ const MeetingDetails = () => {
 
           <DuplicateDetectionPanel meetingId={meeting._id} />
           <MeetingFollowUpBanner meeting={meeting} />
+          <div className="mt-6 mb-6">
+            <MeetingReadiness meetingId={meeting._id} />
+          </div>
           <MeetingHeader
             meeting={meeting}
             onShare={() => setShareModalOpen(true)}

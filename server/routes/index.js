@@ -240,6 +240,9 @@ import guestAccessRoutes from "./guestAccessRoutes.js";
 router.use("/api", guestAccessRoutes);
 router.use("/api/custom-fields", customFieldRoutes);
 
+import meetingNudgeRoutes from "./meetingNudgeRoutes.js";
+router.use("/api/nudges", meetingNudgeRoutes);
+
 import dataRetentionRoutes from "./dataRetentionRoutes.js";
 router.use("/api/data-retention", dataRetentionRoutes);
 import weeklyInsightRoutes from "./weeklyInsightRoutes.js";
