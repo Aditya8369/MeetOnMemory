@@ -51,6 +51,10 @@ import {
   stopAutoBriefingJob,
 } from "./jobs/autoBriefingJob.js";
 import { startEscalationJob, stopEscalationJob } from "./jobs/escalationJob.js";
+import {
+  startWeeklyInsightJob,
+  stopWeeklyInsightJob,
+} from "./jobs/weeklyInsightJob.js";
 import { createClient } from "redis"; // eslint-disable-line no-unused-vars
 import {
   initDataExportWorker, // eslint-disable-line no-unused-vars
@@ -155,6 +159,9 @@ if (process.env.NODE_ENV !== "test") {
 
   // Start automated escalation job
   startEscalationJob();
+
+  // Start weekly insight job
+  startWeeklyInsightJob();
 }
 
 // (AI, Data Export, and Webhook workers are initialized inside server.listen callback)
@@ -168,6 +175,7 @@ const gracefulShutdown = createGracefulShutdown({
     stopRecapBatchJob();
     stopAutoBriefingJob();
     stopEscalationJob();
+    stopWeeklyInsightJob();
   },
   closeQueues: shutdownQueues,
   closeDatabase: () => mongoose.connection.close(),

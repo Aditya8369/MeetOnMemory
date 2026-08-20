@@ -1,4 +1,10 @@
-import React, { useState, useEffect, useRef, useContext, useCallback } from "react";
+import React, {
+  useState,
+  useEffect,
+  useRef,
+  useContext,
+  useCallback,
+} from "react";
 import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
 import {
@@ -201,7 +207,8 @@ const AdminPanel = () => {
         totalUsers:
           membersRes.status === "fulfilled" && membersRes.value.data?.members
             ? membersRes.value.data.members.length
-            : membersRes.status === "fulfilled" && membersRes.value.data?.success
+            : membersRes.status === "fulfilled" &&
+                membersRes.value.data?.success
               ? 0
               : null,
         activeOrgs:
@@ -217,13 +224,15 @@ const AdminPanel = () => {
             ? (meetingsRes.value.data.meetings?.length ??
               meetingsRes.value.data.total ??
               0)
-            : meetingsRes.status === "fulfilled" && meetingsRes.value.data?.success
+            : meetingsRes.status === "fulfilled" &&
+                meetingsRes.value.data?.success
               ? 0
               : null,
         pendingRequests:
           requestsRes.status === "fulfilled" && requestsRes.value.data?.requests
             ? requestsRes.value.data.requests.length
-            : requestsRes.status === "fulfilled" && requestsRes.value.data?.success
+            : requestsRes.status === "fulfilled" &&
+                requestsRes.value.data?.success
               ? 0
               : null,
       });
@@ -281,7 +290,9 @@ const AdminPanel = () => {
           }
         } else if (activeModule === "activity") {
           if (orgId) {
-            const res = await organizationApi.getAuditLogs(orgId, { limit: 20 });
+            const res = await organizationApi.getAuditLogs(orgId, {
+              limit: 20,
+            });
             if (res.data?.logs) {
               setModuleData((prev) => ({ ...prev, auditLogs: res.data.logs }));
             }
@@ -506,7 +517,9 @@ const AdminPanel = () => {
                             </p>
                             <p className="text-xs text-slate-500 dark:text-slate-400 truncate">
                               {log.user?.name || log.user?.email || "System"} •{" "}
-                              {log.details || log.targetType || "Action recorded"}
+                              {log.details ||
+                                log.targetType ||
+                                "Action recorded"}
                             </p>
                           </div>
                         </div>
@@ -668,7 +681,9 @@ const AdminPanel = () => {
                         </h4>
                         <p className="text-xs text-slate-400 dark:text-slate-500 flex items-center gap-1 mt-0.5">
                           <Clock className="w-3 h-3" />
-                          {m.date ? new Date(m.date).toLocaleDateString() : "No date"}
+                          {m.date
+                            ? new Date(m.date).toLocaleDateString()
+                            : "No date"}
                         </p>
                       </div>
                       <span className="text-xs font-semibold px-2.5 py-0.5 rounded-full bg-rose-50 dark:bg-rose-900/30 text-rose-700 dark:text-rose-300">

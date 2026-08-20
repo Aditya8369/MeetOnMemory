@@ -23,6 +23,7 @@ import Policies from "../pages/Policies.jsx";
 import AiSummaryTemplates from "../pages/AiSummaryTemplates.jsx";
 import Summaries from "../pages/Summaries.jsx";
 import Reports from "../pages/Reports.jsx";
+import WeeklyInsights from "../pages/WeeklyInsights.jsx";
 import ReportBuilder from "../pages/ReportBuilder.jsx";
 import AiSearch from "../pages/AiSearch.jsx";
 import AiAssistant from "../pages/AiAssistant.jsx";
@@ -323,6 +324,14 @@ const ProtectedRoutes = (
       element={
         <ProtectedRoute resource="reports" action="view">
           <Reports />
+        </ProtectedRoute>
+      }
+    />
+    <Route
+      path="/reports/weekly-insights"
+      element={
+        <ProtectedRoute resource="reports" action="view">
+          <WeeklyInsights />
         </ProtectedRoute>
       }
     />
