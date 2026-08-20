@@ -1,18 +1,29 @@
-import React, { useState, useEffect, useRef, useCallback } from "react";
+import React, {
+  useState,
+  useEffect,
+  useRef,
+  useCallback,
+  useMemo,
+} from "react";
 import { personalNoteApi } from "../../services";
 import { Pin, Save, CheckCircle, Highlighter } from "lucide-react";
 import ReactMarkdown from "react-markdown";
+import { normalizeTranscript } from "../../utils/normalizeTranscript.js";
 
 const PersonalNotes = ({ meeting }) => {
   const [content, setContent] = useState("");
   const [isPinned, setIsPinned] = useState(false);
   const [saveStatus, setSaveStatus] = useState("saved"); // saving, saved, error
   const [annotations, setAnnotations] = useState([]);
+  const [isPinning, setIsPinning] = useState(false);
 
   const [tooltipVisible, setTooltipVisible] = useState(false);
   const [tooltipPosition, setTooltipPosition] = useState({ top: 0, left: 0 });
   const [selectedTextData, setSelectedTextData] = useState(null);
 
+  const normalizedSegments = useMemo(() => {
+    return normalizeTranscript(meeting?.transcript);
+  }, [meeting?.transcript]);
   const containerRef = useRef(null);
 
   const fetchNote = useCallback(async () => {
@@ -57,13 +68,28 @@ const PersonalNotes = ({ meeting }) => {
   }, [content, saveContent]);
 
   const togglePin = async () => {
+    if (isPinning) return;
+    setIsPinning(true);
     const newPinnedStatus = !isPinned;
+    // Optimistic update
     setIsPinned(newPinnedStatus);
     try {
-      await personalNoteApi.togglePin(meeting._id, newPinnedStatus);
+      const response = await personalNoteApi.togglePin(
+        meeting._id,
+        newPinnedStatus,
+      );
+      if (response.success) {
+        setIsPinned(response.isPinned);
+      } else {
+        // Revert on failure
+        setIsPinned(!newPinnedStatus);
+      }
     } catch (error) {
       console.error("Error toggling pin", error);
-      setIsPinned(!newPinnedStatus); // revert on error
+      // Revert on error
+      setIsPinned(!newPinnedStatus);
+    } finally {
+      setIsPinning(false);
     }
   };
 
@@ -147,13 +173,12 @@ const PersonalNotes = ({ meeting }) => {
         )}
 
         <div className="prose dark:prose-invert max-w-none text-sm text-slate-700 dark:text-gray-300">
-          {meeting.transcript && meeting.transcript.length > 0 ? (
-            meeting.transcript.map((t, idx) => (
+          {normalizedSegments && normalizedSegments.length > 0 ? (
+            normalizedSegments.map((t, idx) => (
               <p key={idx} className="mb-4">
                 <span className="font-semibold text-slate-900 dark:text-white mr-2">
                   {t.speaker || "Speaker"}:
                 </span>
-                {/* Basic rendering. For actual highlighted regions, more complex logic is needed to wrap text ranges */}
                 {t.text}
               </p>
             ))
@@ -193,7 +218,8 @@ const PersonalNotes = ({ meeting }) => {
           </div>
           <button
             onClick={togglePin}
-            className={`p-2 rounded-full transition-colors ${isPinned ? "bg-amber-100 text-amber-600 dark:bg-amber-900/30 dark:text-amber-400" : "bg-slate-100 text-slate-400 hover:text-amber-500 dark:bg-gray-700"}`}
+            disabled={isPinning}
+            className={`p-2 rounded-full transition-colors ${isPinning ? "opacity-50 cursor-not-allowed" : ""} ${isPinned ? "bg-amber-100 text-amber-600 dark:bg-amber-900/30 dark:text-amber-400" : "bg-slate-100 text-slate-400 hover:text-amber-500 dark:bg-gray-700"}`}
             title={isPinned ? "Unpin note" : "Pin note to dashboard"}
           >
             <Pin className="w-4 h-4" />

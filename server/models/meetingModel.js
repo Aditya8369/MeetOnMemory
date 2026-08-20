@@ -35,6 +35,21 @@ const meetingSchema = new mongoose.Schema(
       type: String, // Meeting time (e.g., "14:30")
       default: "",
     },
+
+    // Meeting reminder notification settings (Issue #1766)
+    reminderEnabled: {
+      type: Boolean,
+      default: false,
+    },
+    reminderMinutesBefore: {
+      type: Number,
+      enum: [10, 30, 60],
+      default: 30,
+    },
+    reminderSentAt: {
+      type: Date,
+      default: null,
+    },
     duration: {
       type: Number, // Duration in minutes
       default: null,
@@ -49,6 +64,10 @@ const meetingSchema = new mongoose.Schema(
     },
     participants: [
       {
+        user: {
+          type: mongoose.Schema.Types.ObjectId,
+          ref: "User",
+        },
         name: { type: String, required: true },
         email: { type: String, default: "" },
         role: { type: String, default: "" },
@@ -107,12 +126,32 @@ const meetingSchema = new mongoose.Schema(
       default: "",
     },
     transcript: {
-      type: String, // Raw transcript text from AssemblyAI
+      type: String, // Raw transcript text from AssemblyAI (legacy plaintext)
       default: "",
+    },
+    /**
+     * Issue #1335 — Client-side E2EE ciphertext envelope.
+     * When set, `transcript` is cleared and the server never holds plaintext.
+     */
+    encryptedTranscript: {
+      type: mongoose.Schema.Types.Mixed,
+      default: null,
+    },
+    isTranscriptEncrypted: {
+      type: Boolean,
+      default: false,
+    },
+    transcriptEncryptionVersion: {
+      type: Number,
+      default: null,
     },
     summary: {
       type: String, // Human-readable MoM text
       default: "",
+    },
+    recapStory: {
+      type: mongoose.Schema.Types.Mixed, // Cached JSON for the recap story slides
+      default: null,
     },
     structuredMoM: {
       type: mongoose.Schema.Types.Mixed, // Structured JSON (title, decisions[], action_items[], attendees[])

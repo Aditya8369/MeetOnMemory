@@ -3,7 +3,7 @@ import { FileText, X, Captions } from "lucide-react";
 
 export default function TranscriptPanel({
   showTranscript,
-  setShowTranscript,
+  onClose,
   transcriptSegments,
 }) {
   if (!showTranscript) return null;
@@ -15,15 +15,20 @@ export default function TranscriptPanel({
   };
 
   return (
-    <div className="w-full md:w-[420px] lg:w-[480px] shrink-0 p-4 bg-gray-950 border-l border-gray-800 overflow-hidden flex flex-col">
+    <div
+      data-testid="meeting-room-transcript-panel"
+      className="w-full md:w-[420px] lg:w-[480px] shrink-0 p-4 bg-gray-950 border-l border-gray-800 overflow-hidden flex flex-col transition-all duration-300"
+    >
       <div className="flex items-center justify-between mb-4">
         <h3 className="text-white font-semibold flex items-center gap-2">
           <FileText size={18} />
           Live Transcript
         </h3>
         <button
-          onClick={() => setShowTranscript(false)}
+          type="button"
+          onClick={onClose}
           className="text-gray-400 hover:text-white transition-colors"
+          aria-label="Close transcript panel"
         >
           <X size={20} />
         </button>

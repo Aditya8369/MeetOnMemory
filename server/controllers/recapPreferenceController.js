@@ -74,7 +74,10 @@ export const previewRecapEmail = async (req, res) => {
 
     // Find a recent completed meeting to use as preview data,
     // or fallback to a dummy object if none exists.
-    let meeting = await Meeting.findOne({ status: "completed" }).sort({
+    let meeting = await Meeting.findOne({
+      status: "completed",
+      organization: req.user.organization,
+    }).sort({
       date: -1,
     });
 

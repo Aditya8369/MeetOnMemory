@@ -6,6 +6,15 @@ import { Mic, MicOff, Loader2 } from "lucide-react";
 import { toast } from "react-toastify";
 import apiClient from "../../services/apiClient";
 import ConfirmModal from "../ConfirmModal.jsx";
+import { usePolling } from "../../hooks/usePolling.js";
+
+/**
+ * Deadline for the post-recording transcription poll (Issue #1455).
+ *
+ * The previous poll had none — it ran until the transcript reached a terminal
+ * status, which for a job that dies in the queue is never.
+ */
+const TRANSCRIPTION_POLL_TIMEOUT_MS = 10 * 60 * 1000;
 
 const MeetingActions = ({ meeting, onDelete, onRename }) => {
   const navigate = useNavigate();
@@ -22,9 +31,12 @@ const MeetingActions = ({ meeting, onDelete, onRename }) => {
   const chunksRef = useRef([]);
   const recordingIntervalRef = useRef(null);
 
+  // Owns the transcription poll below, including its teardown on unmount.
+  const { startPolling } = usePolling();
+
   const handleDownloadTranscript = () => {
     if (!meeting.transcript) {
-      alert("No transcript available to download.");
+      toast.error("No transcript available to download.");
       return;
     }
 
@@ -86,7 +98,15 @@ const MeetingActions = ({ meeting, onDelete, onRename }) => {
   };
 
   const handleBack = () => {
-    navigate("/summaries");
+    if (
+      window.history.state &&
+      typeof window.history.state.idx === "number" &&
+      window.history.state.idx > 0
+    ) {
+      navigate(-1);
+    } else {
+      navigate("/meetings");
+    }
   };
 
   // Recording handlers
@@ -184,33 +204,48 @@ const MeetingActions = ({ meeting, onDelete, onRename }) => {
       setIsProcessing(true);
       toast.success("Recording stopped, transcription started");
 
-      const pollInterval = setInterval(async () => {
-        try {
+      // The transcription poll used to keep its interval id in a `const` local
+      // to this handler, so it survived unmount and had no deadline at all —
+      // it only stopped if the transcript reached a terminal status. The
+      // sibling `recordingIntervalRef` was already torn down properly; this one
+      // was not (Issue #1455).
+      startPolling(
+        async ({ signal }) => {
           const { data: transcriptData } = await apiClient.get(
             `/api/meetings/${meeting._id}/transcript`,
-            { withCredentials: true },
+            { withCredentials: true, signal },
           );
 
-          if (
-            transcriptData.success &&
-            transcriptData.transcript.status === "completed"
-          ) {
-            clearInterval(pollInterval);
+          if (!transcriptData.success) return false;
+
+          if (transcriptData.transcript.status === "completed") {
             setIsProcessing(false);
             toast.success("Transcription completed!");
             window.location.reload();
-          } else if (
-            transcriptData.success &&
-            transcriptData.transcript.status === "failed"
-          ) {
-            clearInterval(pollInterval);
+            return true;
+          }
+
+          if (transcriptData.transcript.status === "failed") {
             setIsProcessing(false);
             toast.error("Transcription failed. Please try again.");
+            return true;
           }
-        } catch (error) {
-          console.error("Error polling transcript status:", error);
-        }
-      }, 5000);
+
+          return false;
+        },
+        {
+          intervalMs: 5000,
+          timeoutMs: TRANSCRIPTION_POLL_TIMEOUT_MS,
+          onTimeout: () => {
+            setIsProcessing(false);
+            toast.info(
+              "Transcription is taking longer than expected. Refresh the page to check on it.",
+            );
+          },
+          onError: (error) =>
+            console.error("Error polling transcript status:", error),
+        },
+      );
     } catch (error) {
       console.error("Error stopping recording:", error);
       toast.error(error.message || "Failed to stop recording");

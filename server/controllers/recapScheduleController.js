@@ -1,3 +1,4 @@
+import mongoose from "mongoose";
 import RecapSchedule from "../models/recapScheduleModel.js";
 import RecapDelivery from "../models/recapDeliveryModel.js";
 import { recapDeliveryQueue } from "../services/queueService.js";
@@ -6,14 +7,35 @@ import { z } from "zod";
 const scheduleSchema = z.object({
   scheduleType: z.enum(["immediate", "daily", "weekly"]),
   deliveryChannel: z.enum(["email", "webhook", "in_app"]).optional(),
-  preferredTime: z.string().optional(),
-  timezone: z.string().optional(),
+  preferredTime: z
+    .string()
+    .max(10, "Preferred time cannot exceed 10 characters")
+    .optional(),
+  timezone: z
+    .string()
+    .max(50, "Timezone cannot exceed 50 characters")
+    .optional(),
 });
+
+/**
+ * Server-resolved org from requireOrganizationParamMatch, with membership fallback.
+ * Never use req.params.organizationId for queries (Issue #1381).
+ */
+const resolveAuthorizedOrganizationId = (req) =>
+  req.authorizedOrganizationId ||
+  (req.user?.organization?._id || req.user?.organization)?.toString();
 
 export const upsertSchedule = async (req, res) => {
   try {
-    const { organizationId } = req.params;
+    const organizationId = resolveAuthorizedOrganizationId(req);
     const userId = req.user._id;
+
+    if (!organizationId) {
+      return res.status(403).json({
+        success: false,
+        message: "Forbidden: Organization membership required",
+      });
+    }
 
     const parsedData = scheduleSchema.parse(req.body);
 
@@ -35,8 +57,15 @@ export const upsertSchedule = async (req, res) => {
 
 export const getSchedule = async (req, res) => {
   try {
-    const { organizationId } = req.params;
+    const organizationId = resolveAuthorizedOrganizationId(req);
     const userId = req.user._id;
+
+    if (!organizationId) {
+      return res.status(403).json({
+        success: false,
+        message: "Forbidden: Organization membership required",
+      });
+    }
 
     const schedule = await RecapSchedule.findOne({ organizationId, userId });
     if (!schedule) {
@@ -53,13 +82,30 @@ export const getSchedule = async (req, res) => {
 export const getDeliveryHistory = async (req, res) => {
   try {
     const userId = req.user._id;
-    // Deliveries don't have organizationId explicitly, but we fetch by userId
+    // Membership org only — never trust a client-supplied organization id (#1401).
+    const organizationId = resolveAuthorizedOrganizationId(req);
+
+    if (!organizationId) {
+      return res.status(403).json({
+        success: false,
+        message: "Forbidden: Organization membership required",
+      });
+    }
+
     const deliveries = await RecapDelivery.find({ userId })
-      .populate("meetingId", "title date")
+      .populate({
+        path: "meetingId",
+        select: "title date organization",
+        // Drop meetings outside the caller's organization at populate time.
+        match: { organization: organizationId },
+      })
       .sort({ deliveredAt: -1 })
       .limit(50);
 
-    res.status(200).json(deliveries);
+    // Non-matching orgs leave meetingId null — omit those rows from the response.
+    const scoped = (deliveries || []).filter((d) => d.meetingId != null);
+
+    res.status(200).json(scoped);
   } catch (error) {
     console.error("[recapScheduleController.getDeliveryHistory] Error:", error);
     res.status(500).json({ error: "Internal server error" });
@@ -70,16 +116,43 @@ export const retryDelivery = async (req, res) => {
   try {
     const { deliveryId } = req.params;
     const userId = req.user._id;
+    const organizationId = resolveAuthorizedOrganizationId(req);
 
-    const delivery = await RecapDelivery.findOne({ _id: deliveryId, userId });
+    if (!mongoose.Types.ObjectId.isValid(deliveryId)) {
+      return res.status(400).json({ error: "Invalid delivery ID format" });
+    }
+
+    if (!organizationId) {
+      return res.status(403).json({
+        success: false,
+        message: "Forbidden: Organization membership required",
+      });
+    }
+
+    const delivery = await RecapDelivery.findOne({
+      _id: deliveryId,
+      userId,
+    }).populate("meetingId", "organization title");
+
     if (!delivery) {
       return res.status(404).json({ error: "Delivery not found" });
+    }
+
+    const meetingOrg = (
+      delivery.meetingId?.organization?._id || delivery.meetingId?.organization
+    )?.toString?.();
+
+    if (meetingOrg && meetingOrg !== organizationId.toString()) {
+      return res.status(403).json({
+        success: false,
+        message: "Forbidden: Cross-organization access denied",
+      });
     }
 
     if (recapDeliveryQueue.isActive) {
       await recapDeliveryQueue.add("retry-delivery", {
         deliveryId: delivery._id,
-        meetingId: delivery.meetingId,
+        meetingId: delivery.meetingId?._id || delivery.meetingId,
         userId: delivery.userId,
       });
     } else {

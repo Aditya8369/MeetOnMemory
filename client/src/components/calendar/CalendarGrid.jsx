@@ -16,7 +16,10 @@ const CalendarGrid = ({
   setSelectedMeeting,
 }) => {
   return (
-    <div className="flex-1 bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-2xl shadow-xs overflow-hidden">
+    <div
+      data-testid="calendar-grid-container"
+      className="flex-1 bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-2xl shadow-xs overflow-x-auto max-w-full"
+    >
       {/* MONTH VIEW */}
       {view === "month" && (
         <div className="flex flex-col h-full min-w-[700px]">
@@ -71,7 +74,7 @@ const CalendarGrid = ({
                         <button
                           key={event._id}
                           onClick={() => setSelectedMeeting(event)}
-                          className={`w-full text-left p-1.5 rounded-lg border text-[10px] font-semibold truncate flex items-center gap-1.5 transition-all cursor-pointer select-none ${style.bg}`}
+                          className={`w-full text-left p-1.5 rounded-lg border text-[10px] font-semibold truncate flex items-center gap-1.5 transition-all cursor-pointer ${style.bg}`}
                         >
                           <span
                             className={`w-1.5 h-1.5 rounded-full shrink-0 ${style.dot}`}
@@ -186,7 +189,7 @@ const CalendarGrid = ({
                         <button
                           key={event._id}
                           onClick={() => setSelectedMeeting(event)}
-                          className={`absolute left-1 right-1 p-2 rounded-xl border text-[10px] font-bold text-left overflow-hidden flex flex-col justify-between transition-all shadow-xs hover:z-10 cursor-pointer select-none ${style.bg}`}
+                          className={`absolute left-1 right-1 p-2 rounded-xl border text-[10px] font-bold text-left overflow-hidden flex flex-col justify-between transition-all shadow-xs hover:z-10 cursor-pointer ${style.bg}`}
                           style={{
                             top: `${top}px`,
                             height: `${height}px`,
@@ -269,7 +272,7 @@ const CalendarGrid = ({
                       <button
                         key={event._id}
                         onClick={() => setSelectedMeeting(event)}
-                        className={`absolute left-2 right-4 p-3 rounded-xl border text-left flex flex-col justify-between transition-all shadow-xs hover:z-10 cursor-pointer select-none ${style.bg}`}
+                        className={`absolute left-2 right-4 p-3 rounded-xl border text-left flex flex-col justify-between transition-all shadow-xs hover:z-10 cursor-pointer ${style.bg}`}
                         style={{
                           top: `${top}px`,
                           height: `${height}px`,

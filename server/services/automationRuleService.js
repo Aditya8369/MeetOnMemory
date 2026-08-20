@@ -1,6 +1,7 @@
 import eventBus from "./eventBus.js";
 import AutomationRule from "../models/automationRuleModel.js";
 import Organization from "../models/organizationModel.js";
+import Webhook from "../models/Webhook.js";
 import {
   postBlockMessage,
   buildMeetingCreatedBlocks,
@@ -87,7 +88,7 @@ export const evaluateRules = async (eventType, payload) => {
 
 const executeActions = async (rule, payload, meetingData) => {
   const org = await Organization.findById(rule.organization).select(
-    "+slackBotToken",
+    "+slackIntegration.botToken",
   );
 
   for (const action of rule.actions) {
@@ -122,6 +123,25 @@ const executeActions = async (rule, payload, meetingData) => {
         }
       } else if (action.type === "webhook") {
         if (action.config.webhookId) {
+          // Verify webhook exists and belongs to the same organization as the rule (#1674)
+          const webhook = await Webhook.findById(action.config.webhookId);
+          if (!webhook) {
+            console.warn(
+              `[AutomationRule] Webhook ${action.config.webhookId} not found for rule ${rule._id}. Skipping dispatch.`,
+            );
+            continue;
+          }
+
+          const webhookOrg = webhook.organizationId?.toString();
+          const ruleOrg = rule.organization?.toString();
+
+          if (webhookOrg !== ruleOrg) {
+            console.warn(
+              `[AutomationRule] Webhook ${action.config.webhookId} belongs to org ${webhookOrg}, but rule belongs to org ${ruleOrg}. Rejecting foreign webhook dispatch.`,
+            );
+            continue;
+          }
+
           if (webhookQueue.isActive) {
             await webhookQueue.add("dispatch-webhook", {
               webhookId: action.config.webhookId,

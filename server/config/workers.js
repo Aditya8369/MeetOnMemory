@@ -1,13 +1,17 @@
 import { initRedis } from "../services/redisService.js";
 import {
-  initAIWorker,
+  initAiResultsWorker,
+  initAiGenerationWorker,
   initDataExportWorker,
+  initExportCleanupWorker,
   initConflictScanWorker,
   initSentimentWorker,
   initRecalculateImportanceWorker,
   initMemoryLifecycleWorker,
+  initRecapDeliveryWorker,
 } from "../services/queueService.js";
 import { initWebhookWorker } from "../services/webhookDispatcherService.js";
+import { describeRateLimitBacking } from "../middleware/rateLimitStore.js";
 
 /**
  * Boots every background service.
@@ -49,8 +53,17 @@ export async function startWorkers(app) {
   };
 
   await safeInit("Redis", () => initRedis());
-  await safeInit("AI Worker", () => initAIWorker(app));
+
+  // Issue #1452: the rate limiters used to bind their store at import time,
+  // long before this point, so they always fell back to an in-process
+  // MemoryStore and nothing said so. They bind lazily now — this line makes
+  // the resulting configuration visible in the boot log either way.
+  console.log(describeRateLimitBacking().message);
+
+  await safeInit("AI Results Worker", () => initAiResultsWorker(app));
+  await safeInit("AI MoM Worker", () => initAiGenerationWorker(app));
   await safeInit("Data Export Worker", () => initDataExportWorker(app));
+  await safeInit("Export Cleanup Worker", () => initExportCleanupWorker());
   await safeInit("Conflict Scan Worker", () => initConflictScanWorker(app));
   await safeInit("Webhook Worker", () => initWebhookWorker());
   await safeInit("Sentiment Worker", () => initSentimentWorker(app));
@@ -60,6 +73,7 @@ export async function startWorkers(app) {
   await safeInit("Memory Lifecycle Worker", () =>
     initMemoryLifecycleWorker(app),
   );
+  await safeInit("Recap Delivery Worker", () => initRecapDeliveryWorker());
 
   // Pinecone pre-warm is best-effort and independent of the queue layer.
   try {

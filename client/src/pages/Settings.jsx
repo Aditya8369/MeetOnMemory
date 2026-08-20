@@ -1,4 +1,4 @@
-import React, { useState, useContext, useEffect } from "react";
+import React, { useState, useContext, useEffect, useRef } from "react";
 import Navbar from "../components/Navbar.jsx";
 import AppContent from "../context/AppContent";
 import { useNavigate } from "react-router-dom";
@@ -20,20 +20,70 @@ import {
   CheckCircle2,
   XCircle,
   RefreshCw,
-  Zap,
 } from "lucide-react";
 import CalendarIntegrations from "../components/CalendarIntegrations.jsx";
 import useTheme from "../context/useTheme.jsx";
+import usePreferences from "../context/usePreferences.jsx";
 import WebhooksManager from "../components/WebhooksManager.jsx";
+import { LANGUAGES } from "../constants/languages.js";
+import { DATE_FORMATS } from "../utils/dateFormat.js";
 import DigestPreferences from "../components/DigestPreferences.jsx";
 import RecapPreferences from "../components/RecapPreferences.jsx";
 import { ClerkManageAccountButton } from "../components/ClerkUserControls.jsx";
+import KeywordWatchlistPanel from "../components/notifications/KeywordWatchlistPanel.jsx";
 import apiClient from "../services/apiClient.js";
+import { notificationApi } from "../services/notificationApi.js";
+import { userApi } from "../services/userApi.js";
+import {
+  validateCalendarOAuthAuthUrl,
+  CALENDAR_OAUTH_FALLBACK_PATH,
+} from "../utils/validateCalendarOAuthRedirect.js";
+import { validateRedirect } from "../utils/validateRedirect.js";
+import { usePolling } from "../hooks/usePolling.js";
 
 const clerkPubKey = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY;
 
+/**
+ * How long to watch a calendar OAuth popup before giving up (Issue #1455).
+ *
+ * Generous, because the user is working through a consent screen — but not
+ * unbounded, so a popup left open and forgotten cannot poll for the lifetime
+ * of the tab. The previous code had no deadline at all.
+ */
+const CALENDAR_OAUTH_POLL_TIMEOUT_MS = 5 * 60 * 1000;
+
+/** Map NotificationPreference document fields → Settings toggle keys. */
+const prefsFromApi = (preferences, emailDigestEnabled) => ({
+  meetingNotifications: preferences?.pushMeetingReminders !== false,
+  organizationUpdates: preferences?.pushOrganizationUpdates !== false,
+  aiProcessingUpdates: preferences?.pushAiProcessingComplete !== false,
+  emailNotifications:
+    preferences?.emailMeetingReminders !== false &&
+    preferences?.emailTaskAssignments !== false,
+  emailDigestEnabled: emailDigestEnabled !== false,
+});
+
+/** Map a Settings toggle change → NotificationPreference allowlisted fields. */
+const apiPayloadForToggle = (key, value) => {
+  switch (key) {
+    case "meetingNotifications":
+      return { pushMeetingReminders: value };
+    case "organizationUpdates":
+      return { pushOrganizationUpdates: value };
+    case "aiProcessingUpdates":
+      return { pushAiProcessingComplete: value };
+    case "emailNotifications":
+      return {
+        emailMeetingReminders: value,
+        emailTaskAssignments: value,
+      };
+    default:
+      return null;
+  }
+};
+
 const Settings = () => {
-  const { userData, logoutUser } = useContext(AppContent);
+  const { userData, setUserData, logoutUser } = useContext(AppContent);
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
 
@@ -44,14 +94,20 @@ const Settings = () => {
   });
   const [calendarLoading, setCalendarLoading] = useState(false);
 
-  // Notification preferences state (UI only - no backend support except emailDigestEnabled)
+  // Owns the OAuth popup watcher, including its teardown on unmount (#1455).
+  const { startPolling } = usePolling();
+
   const [notificationPrefs, setNotificationPrefs] = useState({
     meetingNotifications: true,
     organizationUpdates: true,
     aiProcessingUpdates: true,
     emailNotifications: true,
-    emailDigestEnabled: userData?.emailDigestEnabled !== false,
+    emailDigestEnabled: true,
   });
+  const [prefsLoading, setPrefsLoading] = useState(true);
+  // Serialize preference writes so rapid toggles cannot race on the server.
+  const prefsSaveChainRef = useRef(Promise.resolve());
+  const latestIntentRef = useRef({});
 
   const { theme, toggleTheme } = useTheme();
 
@@ -73,6 +129,37 @@ const Settings = () => {
     }
   }, [userData]);
 
+  // Load persisted notification preferences (Issue #1137)
+  useEffect(() => {
+    if (!userData?.id) return;
+
+    let cancelled = false;
+
+    const loadPreferences = async () => {
+      setPrefsLoading(true);
+      try {
+        const response = await notificationApi.getPreferences();
+        if (cancelled) return;
+        setNotificationPrefs(
+          prefsFromApi(response.data.preferences, userData.emailDigestEnabled),
+        );
+      } catch (error) {
+        console.error("Error loading notification preferences:", error);
+        if (!cancelled) {
+          setNotificationPrefs(prefsFromApi(null, userData.emailDigestEnabled));
+          toast.error("Failed to load notification preferences");
+        }
+      } finally {
+        if (!cancelled) setPrefsLoading(false);
+      }
+    };
+
+    loadPreferences();
+    return () => {
+      cancelled = true;
+    };
+  }, [userData?.id, userData?.emailDigestEnabled]);
+
   // Appearance preferences state (UI only - no backend support)
   const [appearancePrefs, setAppearancePrefs] = useState({
     theme: theme,
@@ -82,12 +169,12 @@ const Settings = () => {
     setAppearancePrefs((prev) => ({ ...prev, theme }));
   }, [theme]);
 
-  // Preferences state (UI only - placeholders)
-  const [generalPrefs, setGeneralPrefs] = useState({
-    language: "en",
-    timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
-    dateFormat: "MM/DD/YYYY",
-  });
+  // Language + date format now come from the shared PreferencesContext,
+  // the same one the Navbar LanguageSwitcher reads from - so both stay
+  // in sync and the choice actually persists (localStorage) and applies
+  // (i18n.changeLanguage) instead of being a disconnected UI mock.
+  const { language, setLanguage, dateFormat, setDateFormat } = usePreferences();
+  const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
 
   if (!userData) {
     return (
@@ -120,29 +207,54 @@ const Settings = () => {
     }
   };
 
-  const handleNotificationChange = async (key) => {
-    const newValue = !notificationPrefs[key];
+  const handleNotificationChange = (key) => {
+    const previousValue = notificationPrefs[key];
+    const newValue = !previousValue;
+
+    latestIntentRef.current[key] = newValue;
     setNotificationPrefs((prev) => ({
       ...prev,
       [key]: newValue,
     }));
 
-    if (key === "emailDigestEnabled") {
-      try {
-        await apiClient.put("/api/user/update", {
-          emailDigestEnabled: newValue,
-        });
-        toast.success("Email digest preference updated");
-      } catch (error) {
-        console.error("Error updating preference:", error);
-        toast.error("Failed to update preference");
-        // Revert on error
-        setNotificationPrefs((prev) => ({
-          ...prev,
-          [key]: !newValue,
-        }));
-      }
-    }
+    prefsSaveChainRef.current = prefsSaveChainRef.current
+      .catch(() => {})
+      .then(async () => {
+        try {
+          if (key === "emailDigestEnabled") {
+            const response = await userApi.updateProfile({
+              name: userData.name,
+              profilePic: userData.profilePic || "",
+              bio: userData.bio || "",
+              emailDigestEnabled: newValue,
+            });
+            if (latestIntentRef.current[key] !== newValue) return;
+            if (response.data?.user && setUserData) {
+              setUserData(response.data.user);
+            }
+            toast.success("Email digest preference updated");
+            return;
+          }
+
+          const payload = apiPayloadForToggle(key, newValue);
+          if (!payload) return;
+
+          await notificationApi.updatePreferences(payload);
+          if (latestIntentRef.current[key] !== newValue) return;
+          toast.success("Notification preference updated");
+        } catch (error) {
+          console.error("Error updating preference:", error);
+          if (latestIntentRef.current[key] !== newValue) return;
+          toast.error(
+            error.response?.data?.message || "Failed to update preference",
+          );
+          setNotificationPrefs((prev) => ({
+            ...prev,
+            [key]: previousValue,
+          }));
+          latestIntentRef.current[key] = previousValue;
+        }
+      });
   };
 
   const handleThemeChange = (newTheme) => {
@@ -151,62 +263,90 @@ const Settings = () => {
     }
   };
 
+  /**
+   * Opens a provider's OAuth popup and waits for the user to finish with it.
+   *
+   * The Google and Microsoft handlers were identical apart from three strings,
+   * and both carried the same two defects (Issue #1455):
+   *
+   *   - `window.open` returns `null` when a popup blocker intervenes, which is
+   *     the common case here because the popup is opened *after* an `await` and
+   *     the user-gesture token has already been spent on the auth-url request.
+   *     `authWindow.closed` then threw a TypeError — and the only
+   *     `clearInterval` sat inside the branch that had just thrown, so it threw
+   *     again every 500 ms for the rest of the session, with the spinner stuck
+   *     on because `setCalendarLoading(false)` was in that same branch.
+   *
+   *   - There was no deadline and no unmount teardown, so even a successful
+   *     flow left a timer running if the user navigated away first.
+   *
+   * The blocked-popup case is now detected before any timer exists, and
+   * `usePolling` owns the rest.
+   *
+   * @param {"google"|"microsoft"} provider
+   * @param {string} label human-readable name used in messages
+   */
+  const connectCalendarProvider = async (provider, label) => {
+    try {
+      setCalendarLoading(true);
+      const response = await apiClient.get(
+        `/api/calendar/${provider}/auth-url`,
+      );
+      const safeAuthUrl = validateCalendarOAuthAuthUrl(response.data.authUrl);
+
+      if (!safeAuthUrl) {
+        toast.error(`Invalid ${label} Calendar authorization URL`);
+        setCalendarLoading(false);
+        window.location.assign(
+          validateRedirect(CALENDAR_OAUTH_FALLBACK_PATH, "/settings"),
+        );
+        return;
+      }
+
+      // Open OAuth popup
+      const authWindow = window.open(
+        safeAuthUrl,
+        "_blank",
+        "width=500,height=600",
+      );
+
+      if (!authWindow) {
+        toast.error(
+          `Could not open the ${label} sign-in window. Please allow pop-ups for this site and try again.`,
+        );
+        setCalendarLoading(false);
+        return;
+      }
+
+      // Poll until the user closes the popup. The deadline is long because the
+      // user is filling in a consent screen, but it exists so a popup left open
+      // and forgotten does not poll for the lifetime of the tab.
+      startPolling(
+        () => {
+          if (!authWindow.closed) return false;
+
+          setCalendarLoading(false);
+          fetchCalendarStatus();
+          return true;
+        },
+        {
+          intervalMs: 500,
+          timeoutMs: CALENDAR_OAUTH_POLL_TIMEOUT_MS,
+          onTimeout: () => setCalendarLoading(false),
+        },
+      );
+    } catch (error) {
+      console.error(`Error connecting ${label} Calendar:`, error);
+      toast.error(`Failed to connect ${label} Calendar`);
+      setCalendarLoading(false);
+    }
+  };
+
   // Calendar connection handlers
-  const handleConnectGoogle = async () => {
-    try {
-      setCalendarLoading(true);
-      const response = await apiClient.get("/api/calendar/google/auth-url");
+  const handleConnectGoogle = () => connectCalendarProvider("google", "Google");
 
-      // Open OAuth popup
-      const authWindow = window.open(
-        response.data.authUrl,
-        "_blank",
-        "width=500,height=600",
-      );
-
-      // Poll for callback (in production, use a proper OAuth flow with redirect)
-      const pollForCallback = setInterval(() => {
-        if (authWindow.closed) {
-          clearInterval(pollForCallback);
-          setCalendarLoading(false);
-          // Refresh status
-          fetchCalendarStatus();
-        }
-      }, 500);
-    } catch (error) {
-      console.error("Error connecting Google Calendar:", error);
-      toast.error("Failed to connect Google Calendar");
-      setCalendarLoading(false);
-    }
-  };
-
-  const handleConnectMicrosoft = async () => {
-    try {
-      setCalendarLoading(true);
-      const response = await apiClient.get("/api/calendar/microsoft/auth-url");
-
-      // Open OAuth popup
-      const authWindow = window.open(
-        response.data.authUrl,
-        "_blank",
-        "width=500,height=600",
-      );
-
-      // Poll for callback
-      const pollForCallback = setInterval(() => {
-        if (authWindow.closed) {
-          clearInterval(pollForCallback);
-          setCalendarLoading(false);
-          // Refresh status
-          fetchCalendarStatus();
-        }
-      }, 500);
-    } catch (error) {
-      console.error("Error connecting Microsoft Calendar:", error);
-      toast.error("Failed to connect Microsoft Calendar");
-      setCalendarLoading(false);
-    }
-  };
+  const handleConnectMicrosoft = () =>
+    connectCalendarProvider("microsoft", "Microsoft");
 
   const handleDisconnect = async (provider) => {
     try {
@@ -279,7 +419,7 @@ const Settings = () => {
     <div className="min-h-screen bg-linear-to-b from-slate-50 via-white to-slate-50 dark:from-slate-950 dark:via-slate-900 dark:to-slate-950 text-slate-800 dark:text-slate-200 flex flex-col font-sans select-none">
       <Navbar />
 
-      <main className="flex-1 w-full max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 pt-28 pb-16">
+      <div className="flex-1 w-full max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 pt-28 pb-16">
         {/* Page title header */}
         <div className="text-center mb-8 fade-in-up stagger-1">
           <h1 className="text-3xl font-extrabold tracking-tight text-slate-900 dark:text-white sm:text-4xl">
@@ -452,152 +592,175 @@ const Settings = () => {
             </div>
 
             <div className="space-y-4">
-              <div className="flex items-center justify-between py-3 border-b border-slate-100 dark:border-slate-800">
-                <div>
-                  <p className="text-sm font-semibold text-slate-900 dark:text-slate-200">
-                    Meeting Notifications
-                  </p>
-                  <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-                    Get notified about meeting updates
-                  </p>
+              {prefsLoading ? (
+                <div className="flex items-center justify-center py-8 text-slate-500 dark:text-slate-400">
+                  <Loader2 className="animate-spin w-5 h-5 mr-2" />
+                  <span className="text-sm">Loading preferences...</span>
                 </div>
-                <button
-                  onClick={() =>
-                    handleNotificationChange("meetingNotifications")
-                  }
-                  className={`relative w-11 h-6 rounded-full transition-colors cursor-pointer ${
-                    notificationPrefs.meetingNotifications
-                      ? "bg-blue-600"
-                      : "bg-slate-200 dark:bg-slate-700"
-                  }`}
-                  aria-pressed={notificationPrefs.meetingNotifications}
-                >
-                  <span
-                    className={`absolute top-1 left-1 w-4 h-4 bg-white rounded-full shadow-sm transition-transform ${
-                      notificationPrefs.meetingNotifications
-                        ? "translate-x-5"
-                        : "translate-x-0"
-                    }`}
-                  />
-                </button>
-              </div>
+              ) : (
+                <>
+                  <div className="flex items-center justify-between py-3 border-b border-slate-100 dark:border-slate-800">
+                    <div>
+                      <p className="text-sm font-semibold text-slate-900 dark:text-slate-200">
+                        Meeting Notifications
+                      </p>
+                      <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                        Get notified about meeting updates
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() =>
+                        handleNotificationChange("meetingNotifications")
+                      }
+                      className={`relative w-11 h-6 rounded-full transition-colors cursor-pointer ${
+                        notificationPrefs.meetingNotifications
+                          ? "bg-blue-600"
+                          : "bg-slate-200 dark:bg-slate-700"
+                      }`}
+                      aria-pressed={notificationPrefs.meetingNotifications}
+                    >
+                      <span
+                        className={`absolute top-1 left-1 w-4 h-4 bg-white rounded-full shadow-sm transition-transform ${
+                          notificationPrefs.meetingNotifications
+                            ? "translate-x-5"
+                            : "translate-x-0"
+                        }`}
+                      />
+                    </button>
+                  </div>
 
-              <div className="flex items-center justify-between py-3 border-b border-slate-100 dark:border-slate-800">
-                <div>
-                  <p className="text-sm font-semibold text-slate-900 dark:text-slate-200">
-                    Organization Updates
-                  </p>
-                  <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-                    Updates about your organization
-                  </p>
-                </div>
-                <button
-                  onClick={() =>
-                    handleNotificationChange("organizationUpdates")
-                  }
-                  className={`relative w-11 h-6 rounded-full transition-colors cursor-pointer ${
-                    notificationPrefs.organizationUpdates
-                      ? "bg-blue-600"
-                      : "bg-slate-200 dark:bg-slate-700"
-                  }`}
-                  aria-pressed={notificationPrefs.organizationUpdates}
-                >
-                  <span
-                    className={`absolute top-1 left-1 w-4 h-4 bg-white rounded-full shadow-sm transition-transform ${
-                      notificationPrefs.organizationUpdates
-                        ? "translate-x-5"
-                        : "translate-x-0"
-                    }`}
-                  />
-                </button>
-              </div>
+                  <div className="flex items-center justify-between py-3 border-b border-slate-100 dark:border-slate-800">
+                    <div>
+                      <p className="text-sm font-semibold text-slate-900 dark:text-slate-200">
+                        Organization Updates
+                      </p>
+                      <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                        Updates about your organization
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() =>
+                        handleNotificationChange("organizationUpdates")
+                      }
+                      className={`relative w-11 h-6 rounded-full transition-colors cursor-pointer ${
+                        notificationPrefs.organizationUpdates
+                          ? "bg-blue-600"
+                          : "bg-slate-200 dark:bg-slate-700"
+                      }`}
+                      aria-pressed={notificationPrefs.organizationUpdates}
+                    >
+                      <span
+                        className={`absolute top-1 left-1 w-4 h-4 bg-white rounded-full shadow-sm transition-transform ${
+                          notificationPrefs.organizationUpdates
+                            ? "translate-x-5"
+                            : "translate-x-0"
+                        }`}
+                      />
+                    </button>
+                  </div>
 
-              <div className="flex items-center justify-between py-3 border-b border-slate-100 dark:border-slate-800">
-                <div>
-                  <p className="text-sm font-semibold text-slate-900 dark:text-slate-200">
-                    AI Processing Updates
-                  </p>
-                  <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-                    Notifications when AI processing completes
-                  </p>
-                </div>
-                <button
-                  onClick={() =>
-                    handleNotificationChange("aiProcessingUpdates")
-                  }
-                  className={`relative w-11 h-6 rounded-full transition-colors cursor-pointer ${
-                    notificationPrefs.aiProcessingUpdates
-                      ? "bg-blue-600"
-                      : "bg-slate-200 dark:bg-slate-700"
-                  }`}
-                  aria-pressed={notificationPrefs.aiProcessingUpdates}
-                >
-                  <span
-                    className={`absolute top-1 left-1 w-4 h-4 bg-white rounded-full shadow-sm transition-transform ${
-                      notificationPrefs.aiProcessingUpdates
-                        ? "translate-x-5"
-                        : "translate-x-0"
-                    }`}
-                  />
-                </button>
-              </div>
+                  <div className="flex items-center justify-between py-3 border-b border-slate-100 dark:border-slate-800">
+                    <div>
+                      <p className="text-sm font-semibold text-slate-900 dark:text-slate-200">
+                        AI Processing Updates
+                      </p>
+                      <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                        Notifications when AI processing completes
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() =>
+                        handleNotificationChange("aiProcessingUpdates")
+                      }
+                      className={`relative w-11 h-6 rounded-full transition-colors cursor-pointer ${
+                        notificationPrefs.aiProcessingUpdates
+                          ? "bg-blue-600"
+                          : "bg-slate-200 dark:bg-slate-700"
+                      }`}
+                      aria-pressed={notificationPrefs.aiProcessingUpdates}
+                    >
+                      <span
+                        className={`absolute top-1 left-1 w-4 h-4 bg-white rounded-full shadow-sm transition-transform ${
+                          notificationPrefs.aiProcessingUpdates
+                            ? "translate-x-5"
+                            : "translate-x-0"
+                        }`}
+                      />
+                    </button>
+                  </div>
 
-              <div className="flex items-center justify-between py-3">
-                <div>
-                  <p className="text-sm font-semibold text-slate-900 dark:text-slate-200">
-                    Email Notifications
-                  </p>
-                  <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-                    Receive notifications via email
-                  </p>
-                </div>
-                <button
-                  onClick={() => handleNotificationChange("emailNotifications")}
-                  className={`relative w-11 h-6 rounded-full transition-colors cursor-pointer ${
-                    notificationPrefs.emailNotifications
-                      ? "bg-blue-600"
-                      : "bg-slate-200 dark:bg-slate-700"
-                  }`}
-                  aria-pressed={notificationPrefs.emailNotifications}
-                >
-                  <span
-                    className={`absolute top-1 left-1 w-4 h-4 bg-white rounded-full shadow-sm transition-transform ${
-                      notificationPrefs.emailNotifications
-                        ? "translate-x-5"
-                        : "translate-x-0"
-                    }`}
-                  />
-                </button>
-              </div>
+                  <div className="flex items-center justify-between py-3">
+                    <div>
+                      <p className="text-sm font-semibold text-slate-900 dark:text-slate-200">
+                        Email Notifications
+                      </p>
+                      <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                        Receive notifications via email
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() =>
+                        handleNotificationChange("emailNotifications")
+                      }
+                      className={`relative w-11 h-6 rounded-full transition-colors cursor-pointer ${
+                        notificationPrefs.emailNotifications
+                          ? "bg-blue-600"
+                          : "bg-slate-200 dark:bg-slate-700"
+                      }`}
+                      aria-pressed={notificationPrefs.emailNotifications}
+                    >
+                      <span
+                        className={`absolute top-1 left-1 w-4 h-4 bg-white rounded-full shadow-sm transition-transform ${
+                          notificationPrefs.emailNotifications
+                            ? "translate-x-5"
+                            : "translate-x-0"
+                        }`}
+                      />
+                    </button>
+                  </div>
 
-              <div className="flex items-center justify-between py-3">
-                <div>
-                  <p className="text-sm font-semibold text-slate-900 dark:text-slate-200">
-                    Receive email digest after meetings
-                  </p>
-                  <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-                    Get an automated summary of completed meetings
-                  </p>
-                </div>
-                <button
-                  onClick={() => handleNotificationChange("emailDigestEnabled")}
-                  className={`relative w-11 h-6 rounded-full transition-colors cursor-pointer ${
-                    notificationPrefs.emailDigestEnabled
-                      ? "bg-blue-600"
-                      : "bg-slate-200 dark:bg-slate-700"
-                  }`}
-                  aria-pressed={notificationPrefs.emailDigestEnabled}
-                >
-                  <span
-                    className={`absolute top-1 left-1 w-4 h-4 bg-white rounded-full shadow-sm transition-transform ${
-                      notificationPrefs.emailDigestEnabled
-                        ? "translate-x-5"
-                        : "translate-x-0"
-                    }`}
-                  />
-                </button>
-              </div>
+                  <div className="flex items-center justify-between py-3">
+                    <div>
+                      <p className="text-sm font-semibold text-slate-900 dark:text-slate-200">
+                        Receive email digest after meetings
+                      </p>
+                      <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                        Get an automated summary of completed meetings
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() =>
+                        handleNotificationChange("emailDigestEnabled")
+                      }
+                      className={`relative w-11 h-6 rounded-full transition-colors cursor-pointer ${
+                        notificationPrefs.emailDigestEnabled
+                          ? "bg-blue-600"
+                          : "bg-slate-200 dark:bg-slate-700"
+                      }`}
+                      aria-pressed={notificationPrefs.emailDigestEnabled}
+                    >
+                      <span
+                        className={`absolute top-1 left-1 w-4 h-4 bg-white rounded-full shadow-sm transition-transform ${
+                          notificationPrefs.emailDigestEnabled
+                            ? "translate-x-5"
+                            : "translate-x-0"
+                        }`}
+                      />
+                    </button>
+                  </div>
+                </>
+              )}
             </div>
+          </div>
+
+          {/* Keyword Watchlist Section */}
+          <div className="fade-in-up stagger-4">
+            <KeywordWatchlistPanel />
           </div>
 
           {/* Email Digest Section */}
@@ -884,20 +1047,15 @@ const Settings = () => {
                   </p>
                 </div>
                 <select
-                  value={generalPrefs.language}
-                  onChange={(e) =>
-                    setGeneralPrefs((prev) => ({
-                      ...prev,
-                      language: e.target.value,
-                    }))
-                  }
+                  value={language}
+                  onChange={(e) => setLanguage(e.target.value)}
                   className="px-3 py-1.5 text-xs font-semibold bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-slate-200 border border-slate-200 dark:border-slate-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer"
                 >
-                  <option value="en">English</option>
-                  <option value="es">Spanish</option>
-                  <option value="fr">French</option>
-                  <option value="de">German</option>
-                  <option value="zh">Chinese</option>
+                  {LANGUAGES.map((lang) => (
+                    <option key={lang.code} value={lang.code}>
+                      {lang.name}
+                    </option>
+                  ))}
                 </select>
               </div>
 
@@ -913,7 +1071,7 @@ const Settings = () => {
                 <div className="flex items-center gap-2">
                   <Clock className="w-4 h-4 text-slate-400" />
                   <span className="text-xs font-semibold text-slate-600 dark:text-slate-400">
-                    {generalPrefs.timeZone}
+                    {timeZone}
                   </span>
                 </div>
               </div>
@@ -928,18 +1086,15 @@ const Settings = () => {
                   </p>
                 </div>
                 <select
-                  value={generalPrefs.dateFormat}
-                  onChange={(e) =>
-                    setGeneralPrefs((prev) => ({
-                      ...prev,
-                      dateFormat: e.target.value,
-                    }))
-                  }
+                  value={dateFormat}
+                  onChange={(e) => setDateFormat(e.target.value)}
                   className="px-3 py-1.5 text-xs font-semibold bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-slate-200 border border-slate-200 dark:border-slate-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer"
                 >
-                  <option value="MM/DD/YYYY">MM/DD/YYYY</option>
-                  <option value="DD/MM/YYYY">DD/MM/YYYY</option>
-                  <option value="YYYY-MM-DD">YYYY-MM-DD</option>
+                  {DATE_FORMATS.map((fmt) => (
+                    <option key={fmt} value={fmt}>
+                      {fmt}
+                    </option>
+                  ))}
                 </select>
               </div>
             </div>
@@ -958,7 +1113,7 @@ const Settings = () => {
             </div>
           )}
         </div>
-      </main>
+      </div>
     </div>
   );
 };

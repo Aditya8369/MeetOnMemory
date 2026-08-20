@@ -10,11 +10,32 @@ import {
   RefreshCw,
 } from "lucide-react";
 
+/**
+ * Client-side HTML sanitization helper for live email previews (#1339)
+ */
+const sanitizeHtml = (html) => {
+  if (typeof html !== "string") return "";
+  return html
+    .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, "")
+    .replace(/on\w+="[^"]*"/gi, "")
+    .replace(/on\w+='[^']*'/gi, "")
+    .replace(/javascript:/gi, "");
+};
+
+const getLocalTimezone = () => {
+  try {
+    return Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC";
+  } catch {
+    return "UTC";
+  }
+};
+
 const DigestPreferences = () => {
   const [preferences, setPreferences] = useState({
     frequency: "weekly",
     deliveryDay: "Monday",
     deliveryHour: 9,
+    timezone: getLocalTimezone(),
     includeSections: ["action_items", "decisions", "summaries"],
   });
   const [loading, setLoading] = useState(true);
@@ -57,11 +78,14 @@ const DigestPreferences = () => {
   const fetchPreferences = async () => {
     try {
       const { data } = await apiClient.get("/api/digest-preferences");
+      const prefData = data.data || data;
       setPreferences({
-        frequency: data.frequency || "weekly",
-        deliveryDay: data.deliveryDay || "Monday",
-        deliveryHour: data.deliveryHour !== undefined ? data.deliveryHour : 9,
-        includeSections: data.includeSections || [
+        frequency: prefData.frequency || "weekly",
+        deliveryDay: prefData.deliveryDay || "Monday",
+        deliveryHour:
+          prefData.deliveryHour !== undefined ? prefData.deliveryHour : 9,
+        timezone: prefData.timezone || getLocalTimezone(),
+        includeSections: prefData.includeSections || [
           "action_items",
           "decisions",
           "summaries",
@@ -82,7 +106,7 @@ const DigestPreferences = () => {
         "/api/digest-preferences/preview",
         preferences,
       );
-      setPreviewHtml(data.html);
+      setPreviewHtml(sanitizeHtml(data.html || ""));
     } catch (error) {
       console.error("Failed to fetch preview:", error);
       // fallback preview if error
@@ -224,6 +248,43 @@ const DigestPreferences = () => {
                 ))}
               </select>
             </div>
+
+            <div>
+              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
+                Timezone
+              </label>
+              <div className="flex items-center gap-2">
+                <input
+                  type="text"
+                  aria-label="Delivery Timezone"
+                  value={preferences.timezone || "UTC"}
+                  onChange={(e) =>
+                    setPreferences({
+                      ...preferences,
+                      timezone: e.target.value,
+                    })
+                  }
+                  className="w-full bg-slate-50 dark:bg-slate-700/50 border border-slate-200 dark:border-slate-600 rounded-lg px-3 py-2 text-sm text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  placeholder="e.g. UTC, America/New_York"
+                />
+                <button
+                  type="button"
+                  onClick={() =>
+                    setPreferences({
+                      ...preferences,
+                      timezone: getLocalTimezone(),
+                    })
+                  }
+                  className="px-3 py-2 text-xs font-medium text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/30 rounded-lg border border-blue-200 dark:border-blue-800 hover:bg-blue-100 dark:hover:bg-blue-900/50 whitespace-nowrap transition-colors"
+                >
+                  Detect Local
+                </button>
+              </div>
+              <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                Digest deliveries are scheduled and sent according to this
+                timezone ({preferences.timezone || "UTC"}).
+              </p>
+            </div>
           </div>
         </div>
 
@@ -254,9 +315,10 @@ const DigestPreferences = () => {
 
         <div className="flex gap-4">
           <button
+            type="button"
             onClick={handleSave}
             disabled={saving}
-            className="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-lg flex justify-center items-center gap-2 transition-colors disabled:opacity-50"
+            className="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-lg flex justify-center items-center gap-2 transition-colors disabled:opacity-50 cursor-pointer"
           >
             {saving ? (
               <Loader2 className="w-4 h-4 animate-spin" />
@@ -265,8 +327,9 @@ const DigestPreferences = () => {
             )}
           </button>
           <button
+            type="button"
             onClick={handleSendTest}
-            className="flex-1 bg-slate-100 hover:bg-slate-200 dark:bg-slate-700 dark:hover:bg-slate-600 text-slate-800 dark:text-slate-200 font-medium py-2 px-4 rounded-lg flex justify-center items-center gap-2 transition-colors"
+            className="flex-1 bg-slate-100 hover:bg-slate-200 dark:bg-slate-700 dark:hover:bg-slate-600 text-slate-800 dark:text-slate-200 font-medium py-2 px-4 rounded-lg flex justify-center items-center gap-2 transition-colors cursor-pointer"
           >
             <Mail className="w-4 h-4" /> Send Test
           </button>

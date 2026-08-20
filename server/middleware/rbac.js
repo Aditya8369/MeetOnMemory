@@ -43,7 +43,14 @@ export const requireRole = (roles) => {
       return res.status(401).json({ success: false, message: "Unauthorized" });
     }
 
-    const userRole = req.user.role || "guest";
+    if (!req.user.role) {
+      return res.status(403).json({
+        success: false,
+        message: "Forbidden: No role assigned",
+      });
+    }
+
+    const userRole = req.user.role;
     const allowedRoles = Array.isArray(roles) ? roles : [roles];
 
     if (!allowedRoles.includes(userRole)) {
@@ -92,7 +99,14 @@ export const requirePermission = (resource, action) => {
       return res.status(401).json({ success: false, message: "Unauthorized" });
     }
 
-    const userRole = req.user.role || "guest";
+    if (!req.user.role) {
+      return res.status(403).json({
+        success: false,
+        message: "Forbidden: No role assigned",
+      });
+    }
+
+    const userRole = req.user.role;
 
     if (!hasPermission(userRole, resource, action)) {
       return res.status(403).json({
@@ -111,7 +125,14 @@ export const requireAnyPermission = (resource, actions) => {
       return res.status(401).json({ success: false, message: "Unauthorized" });
     }
 
-    const userRole = req.user.role || "guest";
+    if (!req.user.role) {
+      return res.status(403).json({
+        success: false,
+        message: "Forbidden: No role assigned",
+      });
+    }
+
+    const userRole = req.user.role;
 
     const hasAny = actions.some((action) =>
       hasPermission(userRole, resource, action),
@@ -323,6 +344,62 @@ export const requireMinimumRole = (minimumRole) => {
       });
     }
 
+    next();
+  };
+};
+
+/**
+ * Ensures a client-supplied organization path/query param matches the
+ * authenticated user's membership organization (Issue #1380).
+ *
+ * Cross-tenant IDOR pattern this closes: authorize the user, then still query
+ * with an untrusted `:organizationId` from the URL. After this middleware runs,
+ * handlers MUST scope queries with `req.authorizedOrganizationId` (the
+ * server-resolved membership org), never the raw path parameter.
+ *
+ * @param {string} [paramName="organizationId"]
+ */
+export const requireOrganizationParamMatch = (paramName = "organizationId") => {
+  return (req, res, next) => {
+    if (!req.user) {
+      return res.status(401).json({ success: false, message: "Unauthorized" });
+    }
+
+    if (!req.user.organization) {
+      return res.status(403).json({
+        success: false,
+        message: "Forbidden: Organization membership required",
+      });
+    }
+
+    const requestedId = req.params?.[paramName] ?? req.query?.[paramName];
+    if (!requestedId) {
+      return res.status(400).json({
+        success: false,
+        message: "Organization ID required",
+      });
+    }
+
+    if (!mongoose.Types.ObjectId.isValid(requestedId)) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid organization ID",
+      });
+    }
+
+    // Support populated organization refs and raw ObjectIds.
+    const userOrgId = (
+      req.user.organization._id || req.user.organization
+    ).toString();
+
+    if (userOrgId !== String(requestedId)) {
+      return res.status(403).json({
+        success: false,
+        message: "Forbidden: You don't have access to this resource",
+      });
+    }
+
+    req.authorizedOrganizationId = userOrgId;
     next();
   };
 };

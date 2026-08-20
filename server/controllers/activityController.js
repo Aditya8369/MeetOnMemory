@@ -1,4 +1,6 @@
+import mongoose from "mongoose";
 import * as activityService from "../services/activityService.js";
+import { parsePagination } from "../utils/pagination.js";
 
 /**
  * Get activities for the user's current organization
@@ -6,19 +8,34 @@ import * as activityService from "../services/activityService.js";
  */
 export const getActivities = async (req, res) => {
   try {
-    const orgId = req.user.organization;
+    const orgId = (
+      req.user?.organization?._id || req.user?.organization
+    )?.toString();
 
-    if (!orgId) {
-      return res.status(400).json({ error: "No organization selected." });
+    if (!orgId || !mongoose.Types.ObjectId.isValid(orgId)) {
+      return res
+        .status(400)
+        .json({ error: "Valid organization ID is required." });
     }
 
-    const { page, limit, action, actor } = req.query;
+    const { action, actor } = req.query;
+
+    // Use shared pagination helper to enforce hard limit upper bound (Issue #1668)
+    const { page, limit } = parsePagination(req.query, {
+      defaultLimit: 20,
+      maxLimit: 100,
+    });
+
+    const sanitizedAction =
+      typeof action === "string" ? action.trim().slice(0, 100) : undefined;
+    const sanitizedActor =
+      typeof actor === "string" ? actor.trim().slice(0, 100) : undefined;
 
     const result = await activityService.getOrgActivities(orgId, {
-      page: parseInt(page, 10) || 1,
-      limit: parseInt(limit, 10) || 20,
-      action,
-      actor,
+      page,
+      limit,
+      action: sanitizedAction,
+      actor: sanitizedActor,
     });
 
     res.status(200).json(result);
@@ -34,10 +51,14 @@ export const getActivities = async (req, res) => {
  */
 export const getActivityStats = async (req, res) => {
   try {
-    const orgId = req.user.organization;
+    const orgId = (
+      req.user?.organization?._id || req.user?.organization
+    )?.toString();
 
-    if (!orgId) {
-      return res.status(400).json({ error: "No organization selected." });
+    if (!orgId || !mongoose.Types.ObjectId.isValid(orgId)) {
+      return res
+        .status(400)
+        .json({ error: "Valid organization ID is required." });
     }
 
     const stats = await activityService.getActivityStats(orgId);

@@ -37,6 +37,12 @@ vi.mock("../../services", () => ({
     getAllMeetings: (...args) => getAllMeetings(...args),
     deleteMeeting: (...args) => deleteMeeting(...args),
   },
+
+  savedFilterApi: {
+    getSavedFilters: vi.fn().mockResolvedValue({ data: [] }),
+    createSavedFilter: vi.fn(),
+    deleteSavedFilter: vi.fn(),
+  },
 }));
 
 const meetingPage = (page, total = 20) => ({

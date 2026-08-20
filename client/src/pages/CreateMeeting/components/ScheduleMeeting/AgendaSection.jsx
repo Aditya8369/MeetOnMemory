@@ -1,8 +1,17 @@
 import { useState } from "react";
-import { ArrowDown, ArrowUp, GripVertical, Plus, X } from "lucide-react";
+import {
+  ArrowDown,
+  ArrowUp,
+  GripVertical,
+  Plus,
+  X,
+  Lightbulb,
+} from "lucide-react";
+import ParkingLotImportModal from "../../../../components/meetings/ParkingLotImportModal";
 
 const AgendaSection = ({
   agendaItems,
+  setAgendaItems,
   newAgenda,
   setNewAgenda,
   addAgendaItem,
@@ -11,6 +20,22 @@ const AgendaSection = ({
 }) => {
   const [announcement, setAnnouncement] = useState("");
   const [draggedIndex, setDraggedIndex] = useState(null);
+  const [showImportModal, setShowImportModal] = useState(false);
+
+  const handleImport = (selectedItems) => {
+    if (!setAgendaItems) return;
+
+    // Convert parking lot items to agenda format
+    const newItems = selectedItems.map((item) => ({
+      text: item.topic,
+      id:
+        item._id || crypto.randomUUID?.() || String(Date.now() + Math.random()),
+    }));
+
+    // Add to existing agenda items
+    setAgendaItems((current) => [...current, ...newItems]);
+    setAnnouncement(`Imported ${newItems.length} items from parking lot.`);
+  };
 
   const moveItem = (fromIndex, toIndex) => {
     const item = agendaItems[fromIndex];
@@ -45,6 +70,15 @@ const AgendaSection = ({
           aria-label="Add agenda item"
         >
           <Plus size={18} />
+        </button>
+        <button
+          type="button"
+          onClick={() => setShowImportModal(true)}
+          className="px-4 py-2 bg-yellow-100 text-yellow-700 rounded-lg hover:bg-yellow-200 flex items-center gap-2 font-medium"
+          aria-label="Import from Parking Lot"
+        >
+          <Lightbulb size={18} />
+          <span className="hidden sm:inline">Import</span>
         </button>
       </div>
 
@@ -123,6 +157,12 @@ const AgendaSection = ({
           ))}
         </ul>
       )}
+
+      <ParkingLotImportModal
+        isOpen={showImportModal}
+        onClose={() => setShowImportModal(false)}
+        onImport={handleImport}
+      />
     </div>
   );
 };

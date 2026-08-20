@@ -2,76 +2,108 @@ import React, { useState, useEffect, useContext } from "react";
 import { format } from "date-fns";
 import AppContent from "../context/AppContent";
 import Navbar from "../components/Navbar.jsx";
+import ConfirmModal from "../components/ConfirmModal.jsx";
 import { recapScheduleApi } from "../services/recapScheduleApi";
 import {
   Clock,
   Mail,
   CheckCircle2,
-  XCircle,
   RefreshCw,
   Save,
   AlertCircle,
+  Calendar,
 } from "lucide-react";
+
+const RETRY_FEEDBACK_TIMEOUT = 3000;
 
 const RecapScheduleDashboard = () => {
   const { userData } = useContext(AppContent);
   const organizationId = userData?.organization?._id || userData?.organization;
-
   const [schedule, setSchedule] = useState({
     scheduleType: "immediate",
     deliveryChannel: "email",
     preferredTime: "09:00",
     timezone: "UTC",
+    startDate: "",
+    endDate: "",
   });
   const [history, setHistory] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
+  const [retryingDeliveryId, setRetryingDeliveryId] = useState(null);
+  const [retryTarget, setRetryTarget] = useState(null);
+  const [retryLoading, setRetryLoading] = useState(false);
   const [saveMessage, setSaveMessage] = useState({ type: "", text: "" });
+  const [retryMessage, setRetryMessage] = useState({ type: "", text: "" });
 
   useEffect(() => {
+    if (!organizationId) {
+      setIsLoading(false);
+      return;
+    }
     const fetchData = async () => {
       setIsLoading(true);
       try {
-        // Use Promise.allSettled to handle cases where one endpoint might fail
         const [scheduleRes, historyRes] = await Promise.allSettled([
           recapScheduleApi.getSchedule(organizationId),
           recapScheduleApi.getDeliveryHistory(),
         ]);
-
         if (scheduleRes.status === "fulfilled" && scheduleRes.value.data) {
+          const data = scheduleRes.value.data;
           setSchedule({
-            scheduleType: scheduleRes.value.data.scheduleType || "immediate",
-            deliveryChannel: scheduleRes.value.data.deliveryChannel || "email",
-            preferredTime: scheduleRes.value.data.preferredTime || "09:00",
-            timezone: scheduleRes.value.data.timezone || "UTC",
+            scheduleType: data.scheduleType || "immediate",
+            deliveryChannel: data.deliveryChannel || "email",
+            preferredTime: data.preferredTime || "09:00",
+            timezone: data.timezone || "UTC",
+            startDate: data.startDate
+              ? new Date(data.startDate).toISOString().slice(0, 10)
+              : "",
+            endDate: data.endDate
+              ? new Date(data.endDate).toISOString().slice(0, 10)
+              : "",
           });
         }
-
-        if (historyRes.status === "fulfilled" && historyRes.value.data) {
+        if (historyRes.status === "fulfilled" && historyRes.value.data)
           setHistory(historyRes.value.data);
-        }
       } catch (error) {
         console.error("Failed to fetch dashboard data:", error);
       } finally {
         setIsLoading(false);
       }
     };
-
-    if (organizationId) {
-      fetchData();
-    }
+    fetchData();
   }, [organizationId]);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
     setSchedule((prev) => ({ ...prev, [name]: value }));
+    if (saveMessage.type === "error") setSaveMessage({ type: "", text: "" });
+  };
+
+  const validateSchedule = () => {
+    if (!schedule.timezone || !schedule.timezone.trim())
+      return "Timezone cannot be empty.";
+    const todayStr = new Date().toISOString().slice(0, 10);
+    if (schedule.startDate && schedule.startDate < todayStr)
+      return "Start date cannot be in the past.";
+    if (
+      schedule.startDate &&
+      schedule.endDate &&
+      schedule.endDate < schedule.startDate
+    )
+      return "End date must be on or after start date.";
+    return null;
   };
 
   const handleSave = async (e) => {
     e.preventDefault();
+    const validationError = validateSchedule();
+    if (validationError) {
+      setSaveMessage({ type: "error", text: validationError });
+      return;
+    }
     setIsSaving(true);
     setSaveMessage({ type: "", text: "" });
-
     try {
       await recapScheduleApi.upsertSchedule(organizationId, schedule);
       setSaveMessage({
@@ -87,22 +119,39 @@ const RecapScheduleDashboard = () => {
     }
   };
 
-  const handleRetry = async (deliveryId) => {
+  const handleRetryConfirm = async () => {
+    if (!retryTarget) return;
+    const deliveryId = retryTarget._id;
+    setRetryingDeliveryId(deliveryId);
+    setRetryLoading(true);
+    setRetryMessage({ type: "", text: "" });
     try {
       await recapScheduleApi.retryDelivery(deliveryId);
-      // Optimistically update the UI or show a toast
-      alert("Retry enqueued successfully!");
-      // Optionally re-fetch history
+      setRetryTarget(null);
+      setRetryMessage({
+        type: "success",
+        text: "Retry enqueued successfully.",
+      });
+      setTimeout(
+        () => setRetryMessage({ type: "", text: "" }),
+        RETRY_FEEDBACK_TIMEOUT,
+      );
     } catch (error) {
       console.error("Retry failed:", error);
-      alert("Failed to enqueue retry.");
+      setRetryMessage({
+        type: "error",
+        text: "We couldn't enqueue the retry. Please try again.",
+      });
+    } finally {
+      setRetryingDeliveryId(null);
+      setRetryLoading(false);
     }
   };
 
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-gray-900">
       <Navbar />
-      <main className="max-w-5xl mx-auto px-4 py-28 sm:px-6 lg:px-8">
+      <div className="max-w-5xl mx-auto px-4 py-28 sm:px-6 lg:px-8">
         <div className="mb-8">
           <h1 className="text-3xl font-bold text-slate-900 dark:text-white">
             Recap Scheduling & Delivery
@@ -112,22 +161,38 @@ const RecapScheduleDashboard = () => {
             history.
           </p>
         </div>
-
         {isLoading ? (
           <div className="flex justify-center items-center py-20">
             <RefreshCw className="h-8 w-8 text-blue-600 animate-spin" />
           </div>
+        ) : !organizationId ? (
+          <div className="flex flex-col items-center justify-center py-20 bg-white dark:bg-gray-800 shadow rounded-xl border border-slate-200 dark:border-gray-700">
+            <div className="bg-blue-50 dark:bg-blue-900/20 p-4 rounded-full mb-4">
+              <Clock className="w-12 h-12 text-blue-600 dark:text-blue-400" />
+            </div>
+            <h2 className="text-xl font-bold text-slate-900 dark:text-white mb-2">
+              No Organization Found
+            </h2>
+            <p className="text-slate-600 dark:text-gray-400 text-center max-w-md mb-6">
+              You need to be part of an organization to manage recap delivery
+              schedules.
+            </p>
+            <a
+              href="/organizations"
+              className="inline-flex items-center gap-2 px-6 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-colors"
+            >
+              Join or Create an Organization
+            </a>
+          </div>
         ) : (
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-            {/* Configuration Form */}
             <div className="lg:col-span-1">
               <div className="bg-white dark:bg-gray-800 shadow rounded-xl p-6 border border-slate-200 dark:border-gray-700">
                 <h2 className="text-lg font-semibold text-slate-900 dark:text-white flex items-center gap-2 mb-4">
                   <Clock className="w-5 h-5 text-blue-600" />
                   Schedule Settings
                 </h2>
-
-                <form onSubmit={handleSave} className="space-y-4">
+                <form noValidate onSubmit={handleSave} className="space-y-4">
                   <div>
                     <label className="block text-sm font-medium text-slate-700 dark:text-gray-300 mb-1">
                       Delivery Frequency
@@ -143,7 +208,6 @@ const RecapScheduleDashboard = () => {
                       <option value="weekly">Weekly</option>
                     </select>
                   </div>
-
                   <div>
                     <label className="block text-sm font-medium text-slate-700 dark:text-gray-300 mb-1">
                       Delivery Channel
@@ -159,7 +223,6 @@ const RecapScheduleDashboard = () => {
                       <option value="webhook">Webhook</option>
                     </select>
                   </div>
-
                   {schedule.scheduleType !== "immediate" && (
                     <div>
                       <label className="block text-sm font-medium text-slate-700 dark:text-gray-300 mb-1">
@@ -174,7 +237,6 @@ const RecapScheduleDashboard = () => {
                       />
                     </div>
                   )}
-
                   <div>
                     <label className="block text-sm font-medium text-slate-700 dark:text-gray-300 mb-1">
                       Timezone
@@ -188,11 +250,44 @@ const RecapScheduleDashboard = () => {
                       className="w-full rounded-lg border-slate-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white shadow-sm focus:border-blue-500 focus:ring-blue-500"
                     />
                   </div>
-
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <label
+                        htmlFor="schedule-start-date"
+                        className="block text-xs font-medium text-slate-700 dark:text-gray-300 mb-1 flex items-center gap-1"
+                      >
+                        <Calendar className="w-3.5 h-3.5" /> Start Date
+                      </label>
+                      <input
+                        id="schedule-start-date"
+                        type="date"
+                        name="startDate"
+                        value={schedule.startDate}
+                        onChange={handleChange}
+                        className="w-full rounded-lg border-slate-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white text-xs shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                      />
+                    </div>
+                    <div>
+                      <label
+                        htmlFor="schedule-end-date"
+                        className="block text-xs font-medium text-slate-700 dark:text-gray-300 mb-1 flex items-center gap-1"
+                      >
+                        <Calendar className="w-3.5 h-3.5" /> End Date
+                      </label>
+                      <input
+                        id="schedule-end-date"
+                        type="date"
+                        name="endDate"
+                        value={schedule.endDate}
+                        onChange={handleChange}
+                        className="w-full rounded-lg border-slate-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white text-xs shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                      />
+                    </div>
+                  </div>
                   <button
                     type="submit"
                     disabled={isSaving}
-                    className="w-full flex justify-center items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-70"
+                    className="w-full flex justify-center items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-70 cursor-pointer"
                   >
                     {isSaving ? (
                       <RefreshCw className="w-4 h-4 animate-spin" />
@@ -201,14 +296,10 @@ const RecapScheduleDashboard = () => {
                     )}
                     {isSaving ? "Saving..." : "Save Preferences"}
                   </button>
-
                   {saveMessage.text && (
                     <div
-                      className={`p-3 rounded-md flex items-center gap-2 text-sm ${
-                        saveMessage.type === "success"
-                          ? "bg-green-50 text-green-700 dark:bg-green-900/30 dark:text-green-400"
-                          : "bg-red-50 text-red-700 dark:bg-red-900/30 dark:text-red-400"
-                      }`}
+                      role="alert"
+                      className={`p-3 rounded-md flex items-center gap-2 text-sm ${saveMessage.type === "success" ? "bg-green-50 text-green-700 dark:bg-green-900/30 dark:text-green-400" : "bg-red-50 text-red-700 dark:bg-red-900/30 dark:text-red-400"}`}
                     >
                       {saveMessage.type === "success" ? (
                         <CheckCircle2 className="w-4 h-4" />
@@ -221,8 +312,6 @@ const RecapScheduleDashboard = () => {
                 </form>
               </div>
             </div>
-
-            {/* Delivery History */}
             <div className="lg:col-span-2">
               <div className="bg-white dark:bg-gray-800 shadow rounded-xl border border-slate-200 dark:border-gray-700 flex flex-col h-full">
                 <div className="p-6 border-b border-slate-200 dark:border-gray-700">
@@ -231,8 +320,21 @@ const RecapScheduleDashboard = () => {
                     Delivery History
                   </h2>
                 </div>
-
                 <div className="p-0 overflow-x-auto">
+                  {retryMessage.text && (
+                    <div
+                      role="alert"
+                      aria-live="polite"
+                      className={`m-4 p-3 rounded-md flex items-center gap-2 text-sm ${retryMessage.type === "success" ? "bg-green-50 text-green-700 dark:bg-green-900/30 dark:text-green-400" : "bg-red-50 text-red-700 dark:bg-red-900/30 dark:text-red-400"}`}
+                    >
+                      {retryMessage.type === "success" ? (
+                        <CheckCircle2 className="w-4 h-4" aria-hidden="true" />
+                      ) : (
+                        <AlertCircle className="w-4 h-4" aria-hidden="true" />
+                      )}
+                      <span>{retryMessage.text}</span>
+                    </div>
+                  )}
                   <table className="w-full text-left border-collapse">
                     <thead>
                       <tr className="bg-slate-50 dark:bg-gray-900/50 text-slate-500 dark:text-gray-400 text-sm">
@@ -267,10 +369,30 @@ const RecapScheduleDashboard = () => {
                             </td>
                             <td className="px-6 py-4 text-right">
                               <button
-                                onClick={() => handleRetry(delivery._id)}
-                                className="text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 font-medium"
+                                type="button"
+                                onClick={() =>
+                                  setRetryTarget({
+                                    _id: delivery._id,
+                                    meetingTitle:
+                                      delivery.meetingId?.title ||
+                                      "Unknown Meeting",
+                                  })
+                                }
+                                disabled={retryingDeliveryId === delivery._id}
+                                aria-label={`Retry delivery for ${delivery.meetingId?.title || "Unknown Meeting"}`}
+                                className="text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 font-medium cursor-pointer disabled:opacity-60 disabled:cursor-wait"
                               >
-                                Retry
+                                {retryingDeliveryId === delivery._id ? (
+                                  <span className="inline-flex items-center gap-1">
+                                    <RefreshCw
+                                      className="w-3.5 h-3.5 animate-spin"
+                                      aria-hidden="true"
+                                    />
+                                    Retrying...
+                                  </span>
+                                ) : (
+                                  "Retry"
+                                )}
                               </button>
                             </td>
                           </tr>
@@ -292,7 +414,19 @@ const RecapScheduleDashboard = () => {
             </div>
           </div>
         )}
-      </main>
+      </div>
+
+      {/* Confirmation Modal prior to retrying recap delivery (#1612) */}
+      <ConfirmModal
+        isOpen={Boolean(retryTarget)}
+        onClose={() => setRetryTarget(null)}
+        onConfirm={handleRetryConfirm}
+        title="Retry Recap Delivery"
+        message={`Are you sure you want to retry the recap delivery for "${retryTarget?.meetingTitle || "this meeting"}"?`}
+        confirmText="Retry Delivery"
+        variant="primary"
+        isLoading={retryLoading}
+      />
     </div>
   );
 };

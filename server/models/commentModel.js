@@ -20,7 +20,12 @@ const commentSchema = new mongoose.Schema(
     author: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",
-      required: true,
+      // Made optional for guest comments
+    },
+    guestEmail: {
+      type: String,
+      trim: true,
+      lowercase: true,
     },
     organization: {
       type: mongoose.Schema.Types.ObjectId,

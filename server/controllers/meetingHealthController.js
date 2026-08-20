@@ -3,7 +3,7 @@ import { calculateMeetingHealth } from "../services/meetingHealthService.js";
 
 // @desc    Get health score for a meeting
 // @route   GET /api/meeting-health/:meetingId
-// @access  Private
+// @access  Private (org membership + meetings.view — enforced in routes)
 export const getMeetingHealth = async (req, res, next) => {
   try {
     const { meetingId } = req.params;
@@ -11,7 +11,7 @@ export const getMeetingHealth = async (req, res, next) => {
     // First try to find existing record
     let healthRecord = await MeetingHealth.findOne({ meetingId });
 
-    // If not found, compute it on the fly
+    // If not found, compute it on the fly (meeting already authorized via middleware)
     if (!healthRecord) {
       healthRecord = await calculateMeetingHealth(meetingId);
     }
@@ -27,12 +27,24 @@ export const getMeetingHealth = async (req, res, next) => {
 
 // @desc    Get organization health trends
 // @route   GET /api/meeting-health/trends/:organizationId
-// @access  Private
+// @access  Private (membership + role + org match — enforced in routes)
 export const getOrganizationHealthTrends = async (req, res, next) => {
   try {
-    const { organizationId } = req.params;
+    // Issue #1380: never query with the client-supplied path param.
+    // requireOrganizationParamMatch sets the server-trusted membership org.
+    // Upstream #1379 org checks are enforced in middleware; queries use that id only.
+    const organizationId =
+      req.authorizedOrganizationId ||
+      (req.user?.organization?._id || req.user?.organization)?.toString();
 
-    // Get last 30 meetings health for trends
+    if (!organizationId) {
+      return res.status(403).json({
+        success: false,
+        message: "Forbidden: Organization membership required",
+      });
+    }
+
+    // Get last 30 meetings health for trends — scoped to authorized org only
     const trends = await MeetingHealth.find({ organization: organizationId })
       .sort({ createdAt: 1 }) // Chronological order
       .limit(30)

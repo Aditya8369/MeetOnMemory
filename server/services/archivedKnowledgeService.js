@@ -2,6 +2,7 @@ import mongoose from "mongoose";
 import ActionItem from "../models/actionItemModel.js";
 import Decision from "../models/decisionModel.js";
 import { buildPaginationMeta, parsePagination } from "../utils/pagination.js";
+import { literalContainsFilter } from "../utils/regexUtils.js";
 
 const ALLOWED_ARCHIVE_TYPES = ["all", "decision", "action-item"];
 
@@ -17,6 +18,12 @@ const toObjectId = (value) => {
 /**
  * Builds the $match filter shared by both memory collections for the
  * Knowledge Archive browser.
+ *
+ * `search` is escaped and length-capped by `literalContainsFilter`
+ * (Issue #1451). This match is not evaluated once but three times per request
+ * — the decision branch, the `$unionWith` action-item branch, and the `$count`
+ * inside `$facet` — so an unescaped pattern ran across both collections on
+ * every archive page load.
  */
 export const buildArchiveMatch = ({ organization, search }) => {
   const match = {
@@ -24,8 +31,9 @@ export const buildArchiveMatch = ({ organization, search }) => {
     lifecycleState: "archived",
   };
 
-  if (typeof search === "string" && search.trim()) {
-    match.text = { $regex: search.trim(), $options: "i" };
+  const searchFilter = literalContainsFilter(search);
+  if (searchFilter) {
+    match.text = searchFilter;
   }
 
   return match;

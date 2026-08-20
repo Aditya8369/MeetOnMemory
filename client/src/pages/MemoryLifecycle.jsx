@@ -18,7 +18,8 @@ import {
   AlertCircle,
   Calendar,
   X,
-  ChevronDown,
+  ChevronLeft,
+  ChevronRight,
 } from "lucide-react";
 
 const LIFECYCLE_STATES = [
@@ -35,19 +36,21 @@ const MEMORY_TYPES = [
   { value: "action-item", label: "Action Items" },
 ];
 
-const ITEMS_PER_PAGE = 20; // Server-side pagination limit
-
 const MemoryLifecycle = () => {
   const navigate = useNavigate();
   const [selectedState, setSelectedState] = useState("all");
   const [selectedType, setSelectedType] = useState("all");
   const [searchQuery, setSearchQuery] = useState("");
 
-  // Pagination State
+  // Server-side pagination (#1552)
   const [page, setPage] = useState(1);
-  const [hasMore, setHasMore] = useState(true);
+  const [limit, setLimit] = useState(20);
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalCount, setTotalCount] = useState(0);
+  const [hasMore, setHasMore] = useState(false);
 
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
   const [sweeping, setSweeping] = useState(false);
   const [updatingId, setUpdatingId] = useState(null);
   const [memories, setMemories] = useState([]);
@@ -66,83 +69,60 @@ const MemoryLifecycle = () => {
     memory: null,
   });
 
-  const loadMemories = useCallback(
-    async (reset = false) => {
-      const currentPage = reset ? 1 : page;
+  const loadMemories = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const res = await knowledgeApi.getLifecycleMemories({
+        type: selectedType,
+        page,
+        limit,
+        ...(selectedState !== "all" ? { lifecycleState: selectedState } : {}),
+        ...(searchQuery ? { search: searchQuery } : {}),
+      });
 
-      if (reset) {
-        setLoading(true);
-        setMemories([]);
-        setPage(1);
+      if (res.data?.success) {
+        setMemories(res.data.memories || []);
+        const pagination = res.data.pagination || {};
+        setTotalCount(pagination.total || 0);
+        setTotalPages(Math.max(1, pagination.totalPages || 1));
+        setHasMore(Boolean(pagination.hasMore));
       } else {
-        setLoading(false); // Keep existing data visible while fetching more
-      }
-
-      try {
-        let decisionList = [];
-        let actionList = [];
-
-        const opts = {
-          includeArchived: true,
-          page: currentPage,
-          limit: ITEMS_PER_PAGE,
-          ...(selectedState !== "all" ? { lifecycleState: selectedState } : {}),
-          ...(searchQuery ? { search: searchQuery } : {}),
-        };
-
-        if (selectedType === "all" || selectedType === "decision") {
-          const dRes = await knowledgeApi.getDecisions("createdAt", null, opts);
-          if (dRes.data?.success) {
-            decisionList = (dRes.data.decisions || []).map((d) => ({
-              ...d,
-              type: "decision",
-            }));
-          }
-        }
-
-        if (selectedType === "all" || selectedType === "action-item") {
-          const aRes = await knowledgeApi.getActionItems(
-            "all",
-            "createdAt",
-            opts,
-          );
-          if (aRes.data?.success) {
-            actionList = (aRes.data.actionItems || []).map((a) => ({
-              ...a,
-              type: "action-item",
-            }));
-          }
-        }
-
-        const combined = [...decisionList, ...actionList].sort(
-          (a, b) => new Date(b.createdAt) - new Date(a.createdAt),
+        setMemories([]);
+        setTotalCount(0);
+        setTotalPages(1);
+        setHasMore(false);
+        setError(
+          res.data?.message || "Failed to load knowledge lifecycle items.",
         );
-
-        // Check if we received fewer items than the limit, indicating no more pages
-        if (combined.length < ITEMS_PER_PAGE) {
-          setHasMore(false);
-        } else {
-          setHasMore(true);
-        }
-
-        setMemories((prev) => (reset ? combined : [...prev, ...combined]));
-      } catch (err) {
-        console.error("Failed to load memories:", err);
-        toast.error("Failed to load knowledge lifecycle items.");
-      } finally {
-        setLoading(false);
+        toast.error(
+          res.data?.message || "Failed to load knowledge lifecycle items.",
+        );
       }
-    },
-    [selectedState, selectedType, searchQuery, page],
-  );
+    } catch (err) {
+      console.error("Failed to load memories:", err);
+      setMemories([]);
+      setTotalCount(0);
+      setTotalPages(1);
+      setHasMore(false);
+      setError("Failed to load knowledge lifecycle items.");
+      toast.error("Failed to load knowledge lifecycle items.");
+    } finally {
+      setLoading(false);
+    }
+  }, [selectedState, selectedType, searchQuery, page, limit]);
 
-  // Debounced effect for filter changes (resets pagination)
+  // Debounced fetch when filters / page / limit change
   useEffect(() => {
     const timer = setTimeout(() => {
-      loadMemories(true);
+      loadMemories();
     }, 300);
     return () => clearTimeout(timer);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [loadMemories]);
+
+  // Reset to first page when filters change
+  useEffect(() => {
+    setPage(1);
   }, [selectedState, selectedType, searchQuery]);
 
   // Keyboard accessibility for modals
@@ -157,18 +137,6 @@ const MemoryLifecycle = () => {
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, []);
 
-  const handleLoadMore = () => {
-    setPage((prev) => prev + 1);
-  };
-
-  // Fetch next page when `page` state increments
-  useEffect(() => {
-    if (page > 1) {
-      loadMemories(false);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [page]);
-
   const handleRunSweep = async () => {
     setSweeping(true);
     try {
@@ -177,7 +145,11 @@ const MemoryLifecycle = () => {
         toast.success(
           res.data.message || "Lifecycle sweep completed successfully.",
         );
-        await loadMemories(true);
+        if (page === 1) {
+          await loadMemories();
+        } else {
+          setPage(1);
+        }
       } else {
         toast.error(res.data?.message || "Failed to run lifecycle sweep.");
       }
@@ -222,7 +194,7 @@ const MemoryLifecycle = () => {
 
       if (res.data?.success) {
         toast.success(`Memory transitioned to ${targetState}.`);
-        await loadMemories(true); // Reset pagination on state change
+        await loadMemories();
       } else {
         toast.error(res.data?.message || "Failed to update lifecycle state.");
       }
@@ -308,7 +280,7 @@ const MemoryLifecycle = () => {
               Run Lifecycle Sweep
             </button>
             <button
-              onClick={() => loadMemories(true)}
+              onClick={() => loadMemories()}
               className="inline-flex items-center gap-2 px-4 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-sm font-medium hover:bg-slate-50 dark:hover:bg-slate-800 shadow-sm cursor-pointer"
             >
               <RefreshCw className="w-4 h-4" />
@@ -366,14 +338,33 @@ const MemoryLifecycle = () => {
 
         {/* Content List */}
         <div>
-          {loading && page === 1 && (
+          {loading && (
             <div className="flex items-center justify-center py-12 text-slate-500 gap-2">
               <Loader2 className="w-5 h-5 animate-spin text-indigo-600" />
               <span className="text-sm font-medium">Loading memories...</span>
             </div>
           )}
 
-          {!loading && memories.length === 0 && (
+          {!loading && error && memories.length === 0 && (
+            <div className="bg-white dark:bg-slate-900 border border-rose-200 dark:border-rose-800 rounded-2xl p-12 text-center">
+              <AlertCircle className="w-10 h-10 text-rose-400 mx-auto mb-3" />
+              <p className="text-base font-semibold text-slate-800 dark:text-slate-200">
+                Unable to load memories
+              </p>
+              <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 max-w-md mx-auto">
+                {error}
+              </p>
+              <button
+                type="button"
+                onClick={loadMemories}
+                className="mt-4 inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-indigo-600 text-white text-xs font-semibold hover:bg-indigo-700 cursor-pointer"
+              >
+                <RefreshCw className="w-3.5 h-3.5" /> Retry
+              </button>
+            </div>
+          )}
+
+          {!loading && !error && memories.length === 0 && (
             <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-12 text-center">
               <History className="w-10 h-10 text-slate-300 dark:text-slate-600 mx-auto mb-3" />
               <p className="text-base font-semibold text-slate-800 dark:text-slate-200">
@@ -394,7 +385,7 @@ const MemoryLifecycle = () => {
                   const currentState = mem.lifecycleState || "active";
                   return (
                     <div
-                      key={mem._id}
+                      key={`${mem.type}-${mem._id}`}
                       className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-5 shadow-xs hover:border-slate-300 dark:hover:border-slate-700 transition-all flex flex-col md:flex-row md:items-center justify-between gap-4"
                     >
                       <div className="space-y-2 flex-1">
@@ -482,29 +473,86 @@ const MemoryLifecycle = () => {
                 })}
               </div>
 
-              {/* Load More Button for Pagination */}
-              {!loading && hasMore && (
-                <div className="flex justify-center pt-6">
-                  <button
-                    onClick={handleLoadMore}
-                    className="inline-flex items-center gap-2 px-6 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 text-sm font-semibold hover:bg-slate-50 dark:hover:bg-slate-800 cursor-pointer transition-colors shadow-sm"
-                  >
-                    <ChevronDown className="w-4 h-4" />
-                    Load More Memories
-                  </button>
+              {/* Server-side pagination controls (#1552) */}
+              <div className="flex flex-wrap items-center justify-between gap-4 pt-6 border-t border-slate-200 dark:border-slate-800 text-xs">
+                <div className="text-slate-500 dark:text-slate-400 font-medium">
+                  Showing page{" "}
+                  <strong className="text-slate-800 dark:text-slate-200">
+                    {page}
+                  </strong>{" "}
+                  of{" "}
+                  <strong className="text-slate-800 dark:text-slate-200">
+                    {totalPages}
+                  </strong>{" "}
+                  ({totalCount} total
+                  {hasMore ? ", more available" : ""})
                 </div>
-              )}
+
+                <div className="flex items-center gap-3">
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-slate-500 dark:text-slate-400">
+                      Per page:
+                    </span>
+                    <select
+                      value={limit}
+                      onChange={(e) => {
+                        setLimit(Number(e.target.value));
+                        setPage(1);
+                      }}
+                      className="rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-2 py-1 font-medium cursor-pointer"
+                      aria-label="Results per page"
+                    >
+                      <option value={10}>10</option>
+                      <option value={20}>20</option>
+                      <option value={50}>50</option>
+                    </select>
+                  </div>
+
+                  <div className="flex items-center gap-1">
+                    <button
+                      type="button"
+                      onClick={() => setPage((prev) => Math.max(prev - 1, 1))}
+                      disabled={page <= 1 || loading}
+                      className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 font-medium hover:bg-slate-50 dark:hover:bg-slate-800 disabled:opacity-40 cursor-pointer"
+                      aria-label="Previous page"
+                    >
+                      <ChevronLeft className="w-3.5 h-3.5" />
+                      Previous
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setPage((prev) => Math.min(prev + 1, totalPages))
+                      }
+                      disabled={page >= totalPages || loading}
+                      className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 font-medium hover:bg-slate-50 dark:hover:bg-slate-800 disabled:opacity-40 cursor-pointer"
+                      aria-label="Next page"
+                    >
+                      Next
+                      <ChevronRight className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                </div>
+              </div>
             </>
           )}
         </div>
       </div>
 
-      {/* Transition Confirmation Modal */}
+      {/* State Transition Confirmation Modal (#1368) */}
       {transitionModal.isOpen && (
-        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
+        <div
+          className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="transition-modal-title"
+        >
           <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 max-w-md w-full shadow-2xl space-y-4">
             <div className="flex items-center justify-between">
-              <h3 className="text-lg font-bold text-slate-900 dark:text-white capitalize">
+              <h3
+                id="transition-modal-title"
+                className="text-lg font-bold text-slate-900 dark:text-white capitalize"
+              >
                 {transitionModal.targetState === "active"
                   ? "Restore Memory"
                   : `Change State to ${transitionModal.targetState}`}
@@ -575,12 +623,20 @@ const MemoryLifecycle = () => {
         </div>
       )}
 
-      {/* History Timeline Modal */}
+      {/* History Timeline Modal (#1368) */}
       {historyModal.isOpen && (
-        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
+        <div
+          className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="history-modal-title"
+        >
           <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 max-w-lg w-full shadow-2xl space-y-4">
             <div className="flex items-center justify-between">
-              <h3 className="text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2">
+              <h3
+                id="history-modal-title"
+                className="text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2"
+              >
                 <History className="w-5 h-5 text-indigo-600" />
                 Lifecycle Audit History
               </h3>

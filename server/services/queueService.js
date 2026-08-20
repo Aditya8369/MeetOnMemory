@@ -1,11 +1,14 @@
 import { Queue, Worker } from "bullmq";
 import Redis from "ioredis";
+import processAiResultJob from "../jobs/processAiResultJob.js";
 import processAudioJob from "../jobs/processAudioJob.js";
 import exportDataJob from "../jobs/exportDataJob.js";
+import cleanupExpiredExportsJob from "../jobs/cleanupExpiredExportsJob.js";
 import conflictScanJob from "./conflictDetection/conflictScanJob.js";
 import sentimentAnalysisJob from "../jobs/sentimentAnalysisJob.js";
 import recalculateImportanceJob from "../jobs/recalculateImportanceJob.js";
 import memoryLifecycleJob from "../jobs/memoryLifecycleJob.js";
+import RecapEmailService from "./recapEmailService.js";
 import queueRegistry, {
   readPositiveIntEnv,
   resolveJobOptions,
@@ -139,7 +142,12 @@ const createQueueFacade = (name) => ({
 });
 
 export const aiQueue = createQueueFacade("ai-mom-generation");
+export const aiResultsQueue = createQueueFacade("ai-mom-results");
+
 export const dataExportQueue = createQueueFacade("data-export-queue");
+
+export const exportCleanupQueue = createQueueFacade("export-cleanup-queue");
+
 export const conflictScanQueue = createQueueFacade("conflict-scan-queue");
 export const sentimentAnalysisQueue = createQueueFacade(
   "sentiment-analysis-queue",
@@ -215,17 +223,18 @@ function createWorker({ name, label, processor, workerOptions = {} }) {
   return worker;
 }
 
-export const initAIWorker = (app) =>
+export const initAiResultsWorker = (app) =>
+  createWorker({
+    name: "ai-mom-results",
+    label: "AI Results Worker",
+    processor: async (job) => await processAiResultJob(job, app),
+  });
+
+export const initAiGenerationWorker = (app) =>
   createWorker({
     name: "ai-mom-generation",
-    label: "AI Worker",
+    label: "AI Generation Worker",
     processor: async (job) => await processAudioJob(job, app),
-    workerOptions: {
-      limiter: {
-        max: 5, // Process max 5 jobs
-        duration: 60000, // per 60 seconds to match Gemini free tier limits
-      },
-    },
   });
 
 export const initDataExportWorker = (app) =>
@@ -234,6 +243,39 @@ export const initDataExportWorker = (app) =>
     label: "Data Export Worker",
     processor: async (job) => await exportDataJob(job, app),
   });
+
+export const initExportCleanupWorker = async () => {
+  const worker = createWorker({
+    name: "export-cleanup-queue",
+    label: "Export Cleanup Worker",
+    processor: cleanupExpiredExportsJob,
+  });
+
+  if (!worker) return null;
+
+  const intervalMs = readPositiveIntEnv(
+    "EXPORT_CLEANUP_INTERVAL_MS",
+    60 * 60 * 1000,
+  );
+
+  try {
+    await exportCleanupQueue.add(
+      "scheduled-export-cleanup",
+      {},
+      {
+        repeat: { every: intervalMs },
+        jobId: "scheduled-export-cleanup",
+      },
+    );
+  } catch (err) {
+    console.error(
+      "⚠️ Failed to schedule recurring export cleanup:",
+      err.message,
+    );
+  }
+
+  return worker;
+};
 
 export const initConflictScanWorker = (app) =>
   createWorker({
@@ -292,6 +334,28 @@ export const initMemoryLifecycleWorker = async (app) => {
 
   return worker;
 };
+
+/**
+ * Processes queued meeting recap deliveries (Issue #1248).
+ * Jobs are enqueued by recapScheduleController.retryDelivery as "retry-delivery".
+ */
+export const initRecapDeliveryWorker = () =>
+  createWorker({
+    name: "recap-delivery-queue",
+    label: "Recap Delivery Worker",
+    processor: async (job) => {
+      if (job.name !== "retry-delivery") {
+        throw new Error(`Unsupported recap delivery job: ${job.name}`);
+      }
+
+      const meetingId = job.data?.meetingId;
+      if (!meetingId) {
+        throw new Error("Recap delivery job missing meetingId");
+      }
+
+      await RecapEmailService.sendImmediateRecap(meetingId);
+    },
+  });
 
 /**
  * Drains every registered worker, then closes queues and shared Redis

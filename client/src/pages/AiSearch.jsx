@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef, useId } from "react";
 import { useTranslation } from "react-i18next";
 import { X } from "lucide-react";
 import Navbar from "../components/Navbar.jsx";
@@ -10,37 +10,90 @@ import HybridSearchToggle from "../components/ai-search/HybridSearchToggle.jsx";
 import SearchSkeleton from "../components/ai-search/SearchSkeleton.jsx";
 import SearchEmptyState from "../components/ai-search/SearchEmptyState.jsx";
 import { apiClient } from "../services";
+import { sanitizeHtml } from "../utils/sanitizeHtml";
+import { toast } from "react-toastify";
+
+const FOCUSABLE_SELECTOR =
+  'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
 
 // Modal Component for showing full details
 const ResultModal = ({ result, onClose }) => {
   const { t } = useTranslation();
+  const titleId = useId();
+  const dialogRef = useRef(null);
+  const closeButtonRef = useRef(null);
+  const previouslyFocusedRef = useRef(null);
 
   useEffect(() => {
     if (!result) return;
 
+    previouslyFocusedRef.current = document.activeElement;
+    const animationFrame = window.requestAnimationFrame(() => {
+      closeButtonRef.current?.focus();
+    });
+
     const handleKeyDown = (e) => {
       if (e.key === "Escape") {
+        e.preventDefault();
         onClose();
+        return;
+      }
+
+      if (e.key !== "Tab" || !dialogRef.current) return;
+
+      const focusables = [
+        ...dialogRef.current.querySelectorAll(FOCUSABLE_SELECTOR),
+      ];
+      if (!focusables.length) return;
+
+      const firstElement = focusables[0];
+      const lastElement = focusables[focusables.length - 1];
+
+      if (e.shiftKey && document.activeElement === firstElement) {
+        e.preventDefault();
+        lastElement.focus();
+      } else if (!e.shiftKey && document.activeElement === lastElement) {
+        e.preventDefault();
+        firstElement.focus();
       }
     };
 
     document.addEventListener("keydown", handleKeyDown);
-    return () => document.removeEventListener("keydown", handleKeyDown);
+    return () => {
+      window.cancelAnimationFrame(animationFrame);
+      document.removeEventListener("keydown", handleKeyDown);
+      previouslyFocusedRef.current?.focus?.();
+    };
   }, [result, onClose]);
 
   if (!result) return null;
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white dark:bg-gray-800 rounded-2xl max-w-2xl w-full max-h-[80vh] overflow-y-auto p-6 shadow-2xl">
+    <div
+      className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4"
+      role="presentation"
+      onClick={onClose}
+    >
+      <div
+        ref={dialogRef}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby={titleId}
+        className="bg-white dark:bg-gray-800 rounded-2xl max-w-2xl w-full max-h-[80vh] overflow-y-auto p-6 shadow-2xl"
+        onClick={(e) => e.stopPropagation()}
+      >
         <div className="flex justify-between items-start mb-4">
-          <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100">
+          <h2
+            id={titleId}
+            className="text-2xl font-bold text-gray-900 dark:text-gray-100"
+          >
             {result.title || t("aiSearch.untitledMeeting")}
           </h2>
           <button
+            ref={closeButtonRef}
             type="button"
             onClick={onClose}
-            aria-label="Close"
+            aria-label="Close modal"
             className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 text-2xl"
           >
             <X className="w-6 h-6" aria-hidden="true" />
@@ -218,7 +271,7 @@ const AiSearch = () => {
     if (textToCopy) {
       try {
         await navigator.clipboard.writeText(textToCopy);
-        alert(t("aiSearch.copiedToClipboard"));
+        toast.success(t("aiSearch.copiedToClipboard"));
       } catch (err) {
         console.error("Failed to copy:", err);
       }
@@ -236,7 +289,9 @@ const AiSearch = () => {
         </h1>
         <p
           className="text-gray-600 dark:text-gray-400 mb-8 text-sm md:text-base max-w-2xl"
-          dangerouslySetInnerHTML={{ __html: t("aiSearch.subtitle") }}
+          dangerouslySetInnerHTML={{
+            __html: sanitizeHtml(t("aiSearch.subtitle")),
+          }}
         />
 
         {/* Search Input */}

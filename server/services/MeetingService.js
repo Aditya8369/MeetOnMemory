@@ -30,6 +30,7 @@ import {
   deletedMeetingsFilter,
   escapeRegExp,
 } from "../utils/meetingSoftDelete.js";
+import { meetingSupportsServerAi } from "../utils/transcriptEncryption.js";
 
 // AI / calendar / queue / transcription stacks are loaded on demand. Static
 // imports pull @xenova/transformers, axios diamonds, and related graphs into
@@ -42,6 +43,11 @@ const loadGenerativeAI = () => import("./GenerativeAIService.js");
 const loadCalendarService = () => import("./calendarService.js");
 const loadQueueService = () => import("./queueService.js");
 const loadTranscriptionService = () => import("./TranscriptionService.js");
+const loadKeywordAlertService = () => import("./keywordAlertService.js");
+const loadNotionSync = () => import("./notionSyncService.js");
+const loadNotionIntegration = () =>
+  import("../models/notionIntegrationModel.js");
+
 const scheduleIndexMeeting = (meeting) => {
   loadEmbeddingUtils()
     .then(({ indexMeeting }) => indexMeeting(meeting))
@@ -59,6 +65,37 @@ const scheduleDeleteFromPinecone = (meetingId) => {
       console.error("⚠️ Pinecone deletion error (continuing):", err.message),
     );
 };
+
+const scheduleKeywordScan = (meeting, transcript) => {
+  if (!transcript) return;
+  loadKeywordAlertService()
+    .then(({ scanTranscriptForKeywords }) =>
+      scanTranscriptForKeywords(meeting, transcript),
+    )
+    .catch((err) =>
+      console.error("⚠️ Keyword scan error (continuing):", err.message),
+    );
+};
+
+const scheduleNotionSync = (meeting) => {
+  if (!meeting || !meeting.organization) return;
+  (async () => {
+    try {
+      const NotionIntegration = (await loadNotionIntegration()).default;
+      const integration = await NotionIntegration.findOne({
+        organization: meeting.organization,
+      });
+      if (integration && integration.targetDatabaseId) {
+        const { createMeetingPage } = await loadNotionSync();
+        await createMeetingPage(meeting, integration);
+        console.log(`✅ Synced meeting ${meeting._id} to Notion`);
+      }
+    } catch (err) {
+      console.error("⚠️ Notion sync error (continuing):", err.message);
+    }
+  })();
+};
+
 export const isValidObjectId = (id) =>
   typeof id === "string" && mongoose.Types.ObjectId.isValid(id);
 
@@ -269,6 +306,7 @@ export const uploadAndTranscribeMeeting = async (
   });
 
   scheduleIndexMeeting(meeting);
+  scheduleKeywordScan(meeting, transcriptText);
 
   try {
     await fs.promises.unlink(validatePath(filePath));
@@ -310,6 +348,7 @@ export const uploadAudioForExistingMeeting = async (
   await meeting.save();
 
   scheduleIndexMeeting(meeting);
+  scheduleKeywordScan(meeting, transcriptText);
 
   try {
     await fs.promises.unlink(validatePath(filePath));
@@ -356,6 +395,13 @@ export const generateMeetingMoM = async (
       );
     }
 
+    // Issue #1335 — encrypted meetings have no server-readable plaintext for AI
+    if (!meetingSupportsServerAi(meeting)) {
+      throw new ValidationError(
+        "This meeting uses end-to-end encryption. Server-side AI summarization is unavailable. Decrypt the transcript locally instead.",
+      );
+    }
+
     if (!textToSummarize) {
       textToSummarize = (meeting.transcript || "").trim();
     }
@@ -364,33 +410,6 @@ export const generateMeetingMoM = async (
   if (!textToSummarize) {
     throw new ValidationError("No transcript provided.");
   }
-
-  const { aiQueue } = await loadQueueService();
-  if (aiQueue && aiQueue.isActive) {
-    console.log(
-      `🚀 Queueing MoM generation job for ${meetingId || "transcript-only"}...`,
-    );
-    await aiQueue.add(
-      "generate-mom",
-      {
-        meetingId,
-        transcript: textToSummarize,
-        date,
-        title,
-        userId,
-      },
-      {
-        attempts: 3,
-        backoff: {
-          type: "exponential",
-          delay: 5000, // Wait 5s, then 10s on retries
-        },
-      },
-    );
-    return { queued: true };
-  }
-
-  console.log(`🧠 Generating MoM for ${meetingId || "transcript-only"}...`);
 
   let customInstructions = null;
   try {
@@ -422,6 +441,41 @@ export const generateMeetingMoM = async (
       err.message,
     );
   }
+
+  const { aiQueue } = await loadQueueService();
+  if (aiQueue && aiQueue.isActive) {
+    console.log(
+      `🚀 Queueing MoM generation job for ${meetingId || "transcript-only"}...`,
+    );
+
+    if (meeting) {
+      meeting.status = "processing";
+      await meeting.save();
+      eventBus.emit("meeting.updated", meeting);
+    }
+
+    await aiQueue.add(
+      "generate-mom",
+      {
+        meetingId,
+        transcript: textToSummarize,
+        date,
+        title,
+        userId,
+        customInstructions,
+      },
+      {
+        attempts: 3,
+        backoff: {
+          type: "exponential",
+          delay: 5000, // Wait 5s, then 10s on retries
+        },
+      },
+    );
+    return { queued: true };
+  }
+
+  console.log(`🧠 Generating MoM for ${meetingId || "transcript-only"}...`);
 
   const { generateMoMWithAI, normalizeMoM, buildHumanReadableMoM } =
     await loadGenerativeAI();
@@ -477,6 +531,7 @@ export const generateMeetingMoM = async (
   }
 
   _runKnowledgeGraph(meetingToUpdate, mom);
+  scheduleNotionSync(meetingToUpdate);
 
   return {
     queued: false,

@@ -5,9 +5,8 @@ import {
   loadDocumentState,
   saveDocumentState,
 } from "../services/documentService.js";
-import Meeting from "../models/meetingModel.js";
-import User from "../models/userModel.js";
 import authenticateSocket from "../middleware/socketAuth.js";
+import { authorizeCollaborativeDocAccess } from "../utils/collaborativeDocAccess.js";
 
 // In-memory registry
 //     docRegistry[meetingId] = {
@@ -15,6 +14,9 @@ import authenticateSocket from "../middleware/socketAuth.js";
 //       saveTimer : NodeJS.Timeout, — debounce handle
 //     }
 const docRegistry = new Map();
+
+// Per-room presence registry: roomName -> Map<socketId, { userId, name, email }>
+const presenceRegistry = new Map();
 
 // Debounce window in milliseconds before a DB write is triggered
 const SAVE_DEBOUNCE_MS = 5000;
@@ -79,6 +81,75 @@ if (redisUri) {
     redisSub = null;
   }
 }
+
+// ── Real-time presence (Issue #1236) ──────────────────────────────────────────
+
+/**
+ * Broadcast the current presence list for a document room to all members.
+ * @param {string} roomName - Socket.IO room for the document
+ * @param {string} meetingId - Meeting id (included in the payload)
+ */
+function broadcastPresence(roomName, meetingId) {
+  if (!syncNamespace) return;
+  const members = presenceRegistry.get(roomName) || new Map();
+  const collaborators = Array.from(members.values());
+  syncNamespace
+    .to(roomName)
+    .emit("presence-update", { meetingId, collaborators });
+}
+
+/**
+ * Register a newly joined socket in the room's presence list and notify the
+ * other members. Falls back to the socket's authenticated identity when the
+ * User document is unavailable.
+ */
+function registerPresence(socket, roomName, meetingId) {
+  const name =
+    socket.user?.name ||
+    socket.user?.firstName ||
+    socket.user?.username ||
+    (socket.userId ? `User ${socket.userId.slice(0, 6)}` : "Anonymous");
+  const email = socket.user?.email || "";
+
+  let members = presenceRegistry.get(roomName);
+  if (!members) {
+    members = new Map();
+    presenceRegistry.set(roomName, members);
+  }
+  members.set(socket.id, {
+    socketId: socket.id,
+    userId: socket.userId || socket.id,
+    name,
+    email,
+  });
+
+  socket.to(roomName).emit("presence-joined", {
+    meetingId,
+    collaborator: members.get(socket.id),
+  });
+  broadcastPresence(roomName, meetingId);
+}
+
+/**
+ * Remove a socket from the room's presence list and notify remaining members.
+ */
+function unregisterPresence(socket, roomName, meetingId) {
+  const members = presenceRegistry.get(roomName);
+  if (!members) return;
+  const removed = members.delete(socket.id);
+  if (removed) {
+    socket
+      .to(roomName)
+      .emit("presence-left", { meetingId, socketId: socket.id });
+  }
+  if (members.size === 0) {
+    presenceRegistry.delete(roomName);
+  } else {
+    broadcastPresence(roomName, meetingId);
+  }
+}
+
+// ── Real-time presence (Issue #1236) ──────────────────────────────────────────
 
 // Debounced save — resets the timer on every new update
 const scheduleSave = (meetingId, ydoc) => {
@@ -277,51 +348,10 @@ export default (io) => {
         return;
       }
 
-      // Authorization Check: Must be the creator, belong to the same organization, or be a listed participant.
+      // Fresh meeting/org access check — do not trust prior socket state.
+      let access;
       try {
-        const meeting = await Meeting.findById(meetingId);
-        if (!meeting) {
-          socket.emit("doc-error", { message: "Meeting not found" });
-          return;
-        }
-
-        let isAuthorized = meeting.uploadedBy.toString() === socket.userId;
-
-        if (!isAuthorized) {
-          const user = await User.findById(socket.userId);
-          if (user) {
-            // Check organization match
-            if (
-              meeting.organization &&
-              user.organization &&
-              meeting.organization.toString() === user.organization.toString()
-            ) {
-              isAuthorized = true;
-            }
-            // Check participants list (by email or name)
-            if (
-              !isAuthorized &&
-              meeting.participants &&
-              meeting.participants.length > 0
-            ) {
-              const matchedParticipant = meeting.participants.find(
-                (p) =>
-                  p.email && p.email.toLowerCase() === user.email.toLowerCase(),
-              );
-              if (matchedParticipant) {
-                isAuthorized = true;
-              }
-            }
-          }
-        }
-
-        if (!isAuthorized) {
-          socket.emit("doc-error", {
-            message:
-              "Unauthorized: You do not have access to this meeting's collaborative notes",
-          });
-          return;
-        }
+        access = await authorizeCollaborativeDocAccess(socket, meetingId);
       } catch (authErr) {
         console.error(
           "[documentSync] Auth verification failed:",
@@ -331,23 +361,32 @@ export default (io) => {
         return;
       }
 
-      currentMeetingId = meetingId;
-      const roomName = `doc:${meetingId}`;
+      if (!access.ok) {
+        socket.emit("doc-error", { message: access.message });
+        return;
+      }
+
+      const authorizedMeetingId = String(meetingId);
+      currentMeetingId = authorizedMeetingId;
+      const roomName = `doc:${authorizedMeetingId}`;
 
       socket.join(roomName);
       console.log(
         `[documentSync] Socket ${socket.id} joined doc room: ${roomName}`,
       );
 
+      // Broadcast real-time presence (Issue #1236)
+      registerPresence(socket, roomName, authorizedMeetingId);
+
       try {
-        const ydoc = await getOrCreateDoc(meetingId);
+        const ydoc = await getOrCreateDoc(authorizedMeetingId);
 
         // Send the full current document state to the newly joined client
         const currentState = Y.encodeStateAsUpdate(ydoc);
         socket.emit("sync-full", { update: currentState });
       } catch (err) {
         console.error(
-          `[documentSync] Error joining doc ${meetingId}:`,
+          `[documentSync] Error joining doc ${authorizedMeetingId}:`,
           err.message,
         );
         socket.emit("doc-error", { message: "Failed to load document state" });
@@ -356,18 +395,38 @@ export default (io) => {
 
     // sync-update
     // Client sends: { meetingId: string, update: Uint8Array }
+    // Issue #1388: re-authorize on EVERY mutation — join-time access is not enough.
     // Server:
-    //       1. Applies update to the server-side Yjs doc (conflict-free)
-    //       2. Broadcasts the update to all OTHER clients in the room on this server
-    //       3. Publishes update to Redis to sync other servers
-    //       4. Schedules a debounced DB save
-    socket.on("sync-update", ({ meetingId, update } = {}) => {
+    //       1. Verifies current meeting access for the authenticated user
+    //       2. Applies update to the server-side Yjs doc (conflict-free)
+    //       3. Broadcasts the update to all OTHER clients in the room on this server
+    //       4. Publishes update to Redis to sync other servers
+    //       5. Schedules a debounced DB save
+    socket.on("sync-update", async ({ meetingId, update } = {}) => {
       if (!meetingId || !update) return;
 
-      const entry = docRegistry.get(meetingId);
+      let access;
+      try {
+        access = await authorizeCollaborativeDocAccess(socket, meetingId);
+      } catch (authErr) {
+        console.error(
+          "[documentSync] sync-update auth failed:",
+          authErr.message,
+        );
+        socket.emit("doc-error", { message: "Internal authentication error" });
+        return;
+      }
+
+      if (!access.ok) {
+        socket.emit("doc-error", { message: access.message });
+        return;
+      }
+
+      const authorizedMeetingId = String(meetingId);
+      const entry = docRegistry.get(authorizedMeetingId);
       if (!entry) {
         console.warn(
-          `[documentSync] Received update for unknown doc: ${meetingId}`,
+          `[documentSync] Received update for unknown doc: ${authorizedMeetingId}`,
         );
         return;
       }
@@ -377,8 +436,11 @@ export default (io) => {
         Y.applyUpdate(entry.ydoc, new Uint8Array(update));
 
         // Broadcast to everyone else in the same document room on this server
-        const roomName = `doc:${meetingId}`;
-        socket.to(roomName).emit("sync-update", { meetingId, update });
+        const roomName = `doc:${authorizedMeetingId}`;
+        socket.to(roomName).emit("sync-update", {
+          meetingId: authorizedMeetingId,
+          update,
+        });
 
         // Push to Redis Pub/Sub for horizontal scaling/multi-server sync
         if (redisPub) {
@@ -386,7 +448,7 @@ export default (io) => {
             .publish(
               "yjs-document-sync-updates",
               JSON.stringify({
-                meetingId,
+                meetingId: authorizedMeetingId,
                 update: Array.from(update),
                 sender: serverId,
               }),
@@ -397,10 +459,10 @@ export default (io) => {
         }
 
         // Schedule a debounced save to MongoDB
-        scheduleSave(meetingId, entry.ydoc);
+        scheduleSave(authorizedMeetingId, entry.ydoc);
       } catch (err) {
         console.error(
-          `[documentSync] Failed to apply update for ${meetingId}:`,
+          `[documentSync] Failed to apply update for ${authorizedMeetingId}:`,
           err.message,
         );
       }
@@ -408,8 +470,15 @@ export default (io) => {
 
     // cursor-update (optional — real-time cursor presence)
     // Client sends: { meetingId, cursor: { anchor, head, user } }
-    socket.on("cursor-update", ({ meetingId, cursor } = {}) => {
+    socket.on("cursor-update", async ({ meetingId, cursor } = {}) => {
       if (!meetingId || !cursor) return;
+
+      const access = await authorizeCollaborativeDocAccess(socket, meetingId);
+      if (!access.ok) {
+        socket.emit("doc-error", { message: access.message });
+        return;
+      }
+
       const roomName = `doc:${meetingId}`;
       socket.to(roomName).emit("cursor-update", {
         socketId: socket.id,
@@ -418,10 +487,12 @@ export default (io) => {
       });
     });
 
-    // Disconnect — clean up if no one is left in the room
+    // Disconnect — clean up presence and release the doc if no one is left
     socket.on("disconnect", async () => {
       console.log(`[documentSync] Client disconnected: ${socket.id}`);
       if (currentMeetingId) {
+        // Notify remaining members and clean up presence (Issue #1236)
+        unregisterPresence(socket, `doc:${currentMeetingId}`, currentMeetingId);
         // Small delay to allow the socket to fully leave the room
         setTimeout(() => cleanupDoc(currentMeetingId, syncNamespace), 500);
       }

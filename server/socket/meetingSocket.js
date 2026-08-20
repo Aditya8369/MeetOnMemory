@@ -1,7 +1,6 @@
 import Meeting from "../models/meetingModel.js";
 import { hasPermission } from "../utils/rbacPermissions.js";
 import streamingTranscriptionService from "../services/StreamingTranscriptionService.js";
-import authenticateSocket from "../middleware/socketAuth.js";
 import { getRedisClient } from "../services/redisService.js";
 
 /**
@@ -119,9 +118,6 @@ export default (io) => {
   const localSocketToRoom = new Map(); // socketId -> roomId
   const roomTimers = {}; // roomId -> timer state (still local as timers are instance-specific)
 
-  // Authentication Middleware with Clerk & Dual Auth support
-  io.use(authenticateSocket);
-
   io.on("connection", (socket) => {
     /**
      * Check if user has access to a specific meeting
@@ -164,7 +160,7 @@ export default (io) => {
      * Join a meeting room
      * Handles distributed presence tracking across multiple server instances
      */
-    socket.on("join-meeting", async ({ roomId, userInfo }) => {
+    socket.on("join-meeting", async ({ roomId }) => {
       try {
         // RBAC: Check if user has permission to view meetings
         if (
@@ -199,8 +195,17 @@ export default (io) => {
           return;
         }
 
-        // Create user object with socket ID
-        const user = { socketId: socket.id, ...userInfo };
+        // Create user object with socket ID using server-side
+        // authenticated data to prevent spoofing
+        const user = {
+          socketId: socket.id,
+          id: socket.userId,
+          userId: socket.userId,
+          name: socket.user?.name || "Anonymous",
+          email: socket.user?.email || "",
+          profilePic: socket.user?.profilePic || "",
+          role: socket.userRole || "member",
+        };
 
         // Add user to room presence (distributed via Redis)
         const allUsersInRoom = await addUserToRoom(
@@ -259,20 +264,61 @@ export default (io) => {
      * Socket.IO adapter ensures signals reach users on any instance
      */
     socket.on("sending-signal", (payload) => {
-      // payload: { userToSignal, callerID, signal }
-      io.to(payload.userToSignal).emit("user-joined-signal", {
-        signal: payload.signal,
-        callerID: payload.callerID,
-        userInfo: payload.userInfo,
-      });
+      try {
+        if (
+          !payload ||
+          !payload.userToSignal ||
+          !payload.callerID ||
+          !payload.signal
+        ) {
+          console.warn(
+            `[WebRTC] Invalid sending-signal payload from ${socket.id}`,
+          );
+          return;
+        }
+
+        // payload: { userToSignal, callerID, signal }
+        io.to(payload.userToSignal).emit("user-joined-signal", {
+          signal: payload.signal,
+          callerID: payload.callerID,
+          userInfo: {
+            socketId: socket.id,
+            id: socket.userId,
+            userId: socket.userId,
+            name: socket.user?.name || "Anonymous",
+            email: socket.user?.email || "",
+            profilePic: socket.user?.profilePic || "",
+            role: socket.userRole || "member",
+          },
+        });
+      } catch (error) {
+        console.error(
+          `[WebRTC] Error in sending-signal from ${socket.id}:`,
+          error,
+        );
+      }
     });
 
     socket.on("returning-signal", (payload) => {
-      // payload: { signal, callerID }
-      io.to(payload.callerID).emit("receiving-returned-signal", {
-        signal: payload.signal,
-        id: socket.id,
-      });
+      try {
+        if (!payload || !payload.signal || !payload.callerID) {
+          console.warn(
+            `[WebRTC] Invalid returning-signal payload from ${socket.id}`,
+          );
+          return;
+        }
+
+        // payload: { signal, callerID }
+        io.to(payload.callerID).emit("receiving-returned-signal", {
+          signal: payload.signal,
+          id: socket.id,
+        });
+      } catch (error) {
+        console.error(
+          `[WebRTC] Error in returning-signal from ${socket.id}:`,
+          error,
+        );
+      }
     });
 
     /**
@@ -375,6 +421,36 @@ export default (io) => {
       } catch (error) {
         console.error("Error processing audio data:", error);
       }
+    });
+
+    /**
+     * Breakout Rooms
+     */
+    socket.on("breakout:join", ({ roomId, breakoutRoomId }) => {
+      // Join the specific breakout room socket channel
+      socket.join(`breakout-${breakoutRoomId}`);
+      // Notify others in the main room that user joined a breakout room
+      socket.to(roomId).emit("breakout:user-joined", {
+        userId: socket.userId,
+        breakoutRoomId,
+      });
+    });
+
+    socket.on("breakout:leave", ({ roomId, breakoutRoomId }) => {
+      socket.leave(`breakout-${breakoutRoomId}`);
+      socket
+        .to(roomId)
+        .emit("breakout:user-left", { userId: socket.userId, breakoutRoomId });
+    });
+
+    socket.on("breakout:started", ({ roomId, breakoutRoomId }) => {
+      // Notify main room that a breakout room was started
+      socket.to(roomId).emit("breakout:started", { breakoutRoomId });
+    });
+
+    socket.on("breakout:closed", ({ roomId, breakoutRoomId }) => {
+      // Notify main room that a breakout room was closed
+      socket.to(roomId).emit("breakout:closed", { breakoutRoomId });
     });
 
     /**

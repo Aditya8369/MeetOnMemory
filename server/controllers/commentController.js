@@ -189,10 +189,13 @@ export const createComment = async (req, res) => {
     const savedComment = await comment.save();
     await savedComment.populate("author", "name email profilePicture");
 
+    const savedCommentObj = savedComment.toObject();
+    savedCommentObj.reactions = [];
+
     // Emit Socket.IO event for real-time updates to all meeting participants
     const io = req.app.get("io");
     if (io) {
-      io.to(meetingId).emit("comment:new", savedComment);
+      io.to(meetingId).emit("comment:new", savedCommentObj);
 
       // Store io reference for notification function
       savedComment.$locals = { io };
@@ -201,10 +204,15 @@ export const createComment = async (req, res) => {
     // Create notification for meeting owner
     await createCommentNotification(savedComment, meeting, req.user);
 
-    res.status(201).json(savedComment);
+    res.status(201).json(savedCommentObj);
   } catch (error) {
     console.error("Error creating comment:", error);
-    res.status(500).json({ message: "Server Error", error: error.message });
+    res.status(500).json({
+      error: {
+        code: "INTERNAL_SERVER_ERROR",
+        message: "An unexpected error occurred. Please try again later.",
+      },
+    });
   }
 };
 
@@ -265,12 +273,21 @@ export const getCommentsByMeeting = async (req, res) => {
     replies.forEach((reply) => {
       const parentId = reply.parentComment.toString();
       if (!repliesMap[parentId]) repliesMap[parentId] = [];
-      repliesMap[parentId].push(reply);
+      const replyObj = reply.toObject();
+      if (replyObj.reactions) {
+        replyObj.reactions = replyObj.reactions.filter(
+          (r) => r && r.emoji && r.user,
+        );
+      }
+      repliesMap[parentId].push(replyObj);
     });
 
     // Attach replies to their parent comments
     const commentsWithReplies = topLevelComments.map((c) => {
       const doc = c.toObject();
+      if (doc.reactions) {
+        doc.reactions = doc.reactions.filter((r) => r && r.emoji && r.user);
+      }
       doc.replies = repliesMap[doc._id.toString()] || [];
       return doc;
     });
@@ -292,7 +309,12 @@ export const getCommentsByMeeting = async (req, res) => {
     });
   } catch (error) {
     console.error("Error fetching comments:", error);
-    res.status(500).json({ message: "Server Error", error: error.message });
+    res.status(500).json({
+      error: {
+        code: "INTERNAL_SERVER_ERROR",
+        message: "An unexpected error occurred. Please try again later.",
+      },
+    });
   }
 };
 
@@ -341,16 +363,31 @@ export const updateComment = async (req, res) => {
     const updatedComment = await comment.save();
     await updatedComment.populate("author", "name email profilePicture");
 
+    const updatedCommentObj = updatedComment.toObject();
+    if (updatedCommentObj.reactions) {
+      updatedCommentObj.reactions = updatedCommentObj.reactions.filter(
+        (r) => r && r.emoji && r.user,
+      );
+    }
+
     // Emit Socket.IO event for real-time updates
     const io = req.app.get("io");
     if (io) {
-      io.to(comment.meeting.toString()).emit("comment:update", updatedComment);
+      io.to(comment.meeting.toString()).emit(
+        "comment:update",
+        updatedCommentObj,
+      );
     }
 
-    res.status(200).json(updatedComment);
+    res.status(200).json(updatedCommentObj);
   } catch (error) {
     console.error("Error updating comment:", error);
-    res.status(500).json({ message: "Server Error", error: error.message });
+    res.status(500).json({
+      error: {
+        code: "INTERNAL_SERVER_ERROR",
+        message: "An unexpected error occurred. Please try again later.",
+      },
+    });
   }
 };
 
@@ -400,7 +437,12 @@ export const deleteComment = async (req, res) => {
     res.status(200).json({ message: "Comment deleted successfully", id });
   } catch (error) {
     console.error("Error deleting comment:", error);
-    res.status(500).json({ message: "Server Error", error: error.message });
+    res.status(500).json({
+      error: {
+        code: "INTERNAL_SERVER_ERROR",
+        message: "An unexpected error occurred. Please try again later.",
+      },
+    });
   }
 };
 
@@ -411,7 +453,16 @@ export const toggleReaction = async (req, res) => {
   try {
     const { id } = req.params;
     const { emoji } = req.body;
-    const userId = req.user.id;
+    const userId = req.user?.id;
+
+    if (!userId) {
+      return res.status(401).json({ message: "Unauthorized" });
+    }
+
+    // Validate emoji parameter
+    if (!emoji || typeof emoji !== "string" || !emoji.trim()) {
+      return res.status(400).json({ message: "Reaction emoji is required" });
+    }
 
     // Validate comment ID format
     if (!mongoose.isValidObjectId(id)) {
@@ -424,9 +475,21 @@ export const toggleReaction = async (req, res) => {
       return res.status(404).json({ message: "Comment not found" });
     }
 
+    // Defensive check and cleanup for reactions array
+    if (!comment.reactions) {
+      comment.reactions = [];
+    }
+
+    // Clean invalid reactions from the document array before checking
+    comment.reactions = comment.reactions.filter((r) => r && r.emoji && r.user);
+
     // Check if reaction already exists
     const existingReactionIndex = comment.reactions.findIndex(
-      (r) => r.emoji === emoji && r.user.toString() === userId.toString(),
+      (r) =>
+        r &&
+        r.emoji === emoji &&
+        r.user &&
+        r.user.toString() === userId.toString(),
     );
 
     if (existingReactionIndex !== -1) {
@@ -441,18 +504,31 @@ export const toggleReaction = async (req, res) => {
     await updatedComment.populate("reactions.user", "name");
     await updatedComment.populate("author", "name email profilePicture");
 
+    // Clean up reactions array after populate in case any user was deleted
+    const updatedCommentObj = updatedComment.toObject();
+    if (updatedCommentObj.reactions) {
+      updatedCommentObj.reactions = updatedCommentObj.reactions.filter(
+        (r) => r && r.emoji && r.user,
+      );
+    }
+
     // Emit Socket.IO event for real-time updates
     const io = req.app.get("io");
     if (io) {
       io.to(comment.meeting.toString()).emit(
         "comment:reaction",
-        updatedComment,
+        updatedCommentObj,
       );
     }
 
-    res.status(200).json(updatedComment);
+    res.status(200).json(updatedCommentObj);
   } catch (error) {
     console.error("Error toggling reaction:", error);
-    res.status(500).json({ message: "Server Error", error: error.message });
+    res.status(500).json({
+      error: {
+        code: "INTERNAL_SERVER_ERROR",
+        message: "An unexpected error occurred. Please try again later.",
+      },
+    });
   }
 };

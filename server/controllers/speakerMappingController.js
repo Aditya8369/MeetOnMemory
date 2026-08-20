@@ -1,5 +1,31 @@
+import mongoose from "mongoose";
 import SpeakerMapping from "../models/speakerMappingModel.js";
+import Meeting from "../models/meetingModel.js";
 import speakerIdentificationService from "../services/speakerIdentificationService.js";
+import { canAccessMeetingDoc } from "../middleware/rbac.js";
+
+/**
+ * Verify meeting existence and organization access
+ */
+const verifyMeetingAccess = async (meetingId, user) => {
+  if (!meetingId || !mongoose.Types.ObjectId.isValid(meetingId)) {
+    return { status: 400, message: "Invalid meeting ID format" };
+  }
+
+  const meeting = await Meeting.findById(meetingId);
+  if (!meeting) {
+    return { status: 404, message: "Meeting not found" };
+  }
+
+  if (!canAccessMeetingDoc(meeting, user)) {
+    return {
+      status: 403,
+      message: "Forbidden: You don't have access to this meeting",
+    };
+  }
+
+  return { meeting };
+};
 
 /**
  * Get mappings for a meeting
@@ -7,6 +33,14 @@ import speakerIdentificationService from "../services/speakerIdentificationServi
 export const getMappings = async (req, res) => {
   try {
     const { meetingId } = req.params;
+
+    const access = await verifyMeetingAccess(meetingId, req.user);
+    if (access.status) {
+      return res
+        .status(access.status)
+        .json({ success: false, message: access.message });
+    }
+
     const mappings = await SpeakerMapping.find({ meeting: meetingId });
     res.status(200).json({ success: true, data: mappings });
   } catch (error) {
@@ -21,6 +55,14 @@ export const getMappings = async (req, res) => {
 export const suggestMappings = async (req, res) => {
   try {
     const { meetingId } = req.params;
+
+    const access = await verifyMeetingAccess(meetingId, req.user);
+    if (access.status) {
+      return res
+        .status(access.status)
+        .json({ success: false, message: access.message });
+    }
+
     const suggestions =
       await speakerIdentificationService.suggestMappings(meetingId);
     res.status(200).json({ success: true, data: suggestions });
@@ -39,12 +81,19 @@ export const saveAndApplyMapping = async (req, res) => {
   try {
     const { meetingId } = req.params;
     const { originalLabel, mappedName } = req.body;
-    const userId = req.user._id;
+    const userId = req.user?._id;
 
     if (!originalLabel || !mappedName) {
       return res
         .status(400)
         .json({ success: false, message: "Missing required fields" });
+    }
+
+    const access = await verifyMeetingAccess(meetingId, req.user);
+    if (access.status) {
+      return res
+        .status(access.status)
+        .json({ success: false, message: access.message });
     }
 
     // Upsert the mapping record
@@ -73,12 +122,24 @@ export const saveAndApplyMapping = async (req, res) => {
 };
 
 /**
- * Revert a mapping (sets transcript back to original label, though practically it's hard to revert summaries without saving history.
- * For this task, we will just apply a reverse mapping).
+ * Revert a mapping
  */
 export const revertMapping = async (req, res) => {
   try {
     const { meetingId, mappingId } = req.params;
+
+    if (!mappingId || !mongoose.Types.ObjectId.isValid(mappingId)) {
+      return res
+        .status(400)
+        .json({ success: false, message: "Invalid mapping ID format" });
+    }
+
+    const access = await verifyMeetingAccess(meetingId, req.user);
+    if (access.status) {
+      return res
+        .status(access.status)
+        .json({ success: false, message: access.message });
+    }
 
     const mapping = await SpeakerMapping.findOne({
       _id: mappingId,

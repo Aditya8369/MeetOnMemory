@@ -1,7 +1,15 @@
-import React, { useState, useMemo, useEffect } from "react";
+import React, {
+  useState,
+  useMemo,
+  useEffect,
+  useRef,
+  useId,
+  useCallback,
+} from "react";
 import { Link } from "react-router-dom";
 import { toast } from "react-toastify";
 import Navbar from "../components/Navbar.jsx";
+import { submitCareerApplication } from "../services/careersApi.js";
 import {
   Briefcase,
   MapPin,
@@ -23,6 +31,9 @@ import {
   Globe,
   HelpCircle,
 } from "lucide-react";
+
+const FOCUSABLE_SELECTOR =
+  'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
 
 // Curated Mock Job Listings
 const initialJobs = [
@@ -272,34 +283,75 @@ const Careers = () => {
     name: "",
     email: "",
     portfolio: "",
-    resume: "",
     coverLetter: "",
   });
+  const [resumeFile, setResumeFile] = useState(null);
+  const [submitError, setSubmitError] = useState("");
+  const resumeInputRef = useRef(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Accessibility Enhancement: Close modal on Escape key press
+  // Modal accessibility refs and IDs
+  const modalDialogRef = useRef(null);
+  const modalCloseButtonRef = useRef(null);
+  const modalTriggerRef = useRef(null);
+  const modalTitleId = useId();
+
+  const resetApplicationForm = useCallback(() => {
+    setFormData({
+      name: "",
+      email: "",
+      portfolio: "",
+      coverLetter: "",
+    });
+    setResumeFile(null);
+    setSubmitError("");
+    if (resumeInputRef.current) {
+      resumeInputRef.current.value = "";
+    }
+  }, []);
+
+  // Focus management: trap focus, handle Escape, restore focus on close
   useEffect(() => {
     if (!isModalOpen) return;
 
+    const animationFrame = window.requestAnimationFrame(() => {
+      modalCloseButtonRef.current?.focus();
+    });
+
     const handleKeyDown = (e) => {
       if (e.key === "Escape") {
-        setIsModalOpen(false);
-        setActiveJobForModal(null);
-        setFormData({
-          name: "",
-          email: "",
-          portfolio: "",
-          resume: "",
-          coverLetter: "",
-        });
+        e.preventDefault();
+        closeModal();
+        return;
+      }
+
+      if (e.key !== "Tab" || !modalDialogRef.current) return;
+
+      const focusables = [
+        ...modalDialogRef.current.querySelectorAll(FOCUSABLE_SELECTOR),
+      ];
+      if (!focusables.length) return;
+
+      const firstElement = focusables[0];
+      const lastElement = focusables[focusables.length - 1];
+
+      if (e.shiftKey && document.activeElement === firstElement) {
+        e.preventDefault();
+        lastElement.focus();
+      } else if (!e.shiftKey && document.activeElement === lastElement) {
+        e.preventDefault();
+        firstElement.focus();
       }
     };
 
     document.addEventListener("keydown", handleKeyDown);
+
     return () => {
+      window.cancelAnimationFrame(animationFrame);
       document.removeEventListener("keydown", handleKeyDown);
+      modalTriggerRef.current?.focus?.();
     };
-  }, [isModalOpen]);
+  }, [isModalOpen, closeModal]);
 
   // Dynamic filter collections
   const departments = useMemo(() => {
@@ -334,6 +386,13 @@ const Careers = () => {
     setExpandedJob(expandedJob === id ? null : id);
   };
 
+  const handleJobHeaderKeyDown = (event, jobId) => {
+    if (event.key === "Enter" || event.key === " ") {
+      event.preventDefault();
+      toggleJob(jobId);
+    }
+  };
+
   // Expand FAQ accordion
   const toggleFaq = (index) => {
     setExpandedFaq(expandedFaq === index ? null : index);
@@ -341,48 +400,91 @@ const Careers = () => {
 
   // Open modal
   const openApplication = (job) => {
+    modalTriggerRef.current = document.activeElement;
     setActiveJobForModal(job);
     setIsModalOpen(true);
   };
 
   // Close modal
-  const closeModal = () => {
+  const closeModal = useCallback(() => {
     setIsModalOpen(false);
     setActiveJobForModal(null);
-    setFormData({
-      name: "",
-      email: "",
-      portfolio: "",
-      resume: "",
-      coverLetter: "",
-    });
-  };
+    resetApplicationForm();
+  }, [resetApplicationForm]);
 
   // Handle Form Change
   const handleChange = (e) => {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
+    if (submitError) setSubmitError("");
   };
 
-  // Submit application
-  const handleSubmit = (e) => {
+  const handleResumeChange = (e) => {
+    const file = e.target.files?.[0] || null;
+    setResumeFile(file);
+    if (submitError) setSubmitError("");
+  };
+
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!formData.name || !formData.email || !formData.resume) {
+    if (isSubmitting) return;
+
+    if (!formData.name.trim() || !formData.email.trim() || !resumeFile) {
       toast.error("Please fill in all required fields (Name, Email, Resume).");
       return;
     }
+
+    if (!activeJobForModal?.id) {
+      toast.error("Please select a valid job opening.");
+      return;
+    }
+
+    const allowedExtensions = [".pdf", ".docx"];
+    const resumeExt = resumeFile.name
+      .slice(resumeFile.name.lastIndexOf("."))
+      .toLowerCase();
+    if (!allowedExtensions.includes(resumeExt)) {
+      const message = "Resume must be a PDF or DOCX file.";
+      setSubmitError(message);
+      toast.error(message);
+      return;
+    }
+
     setIsSubmitting(true);
-    setTimeout(() => {
-      setIsSubmitting(false);
+    setSubmitError("");
+
+    try {
+      const response = await submitCareerApplication({
+        name: formData.name,
+        email: formData.email,
+        jobId: activeJobForModal.id,
+        portfolio: formData.portfolio,
+        coverLetter: formData.coverLetter,
+        resumeFile,
+      });
+
+      if (response.status !== 200 && response.status !== 201) {
+        throw new Error("Application submission failed.");
+      }
+
       toast.success(
         "✨ Application submitted successfully! We will contact you soon.",
       );
       closeModal();
-    }, 1200);
+    } catch (error) {
+      const message =
+        error?.response?.data?.message ||
+        error?.message ||
+        "Unable to submit your application. Please try again.";
+      setSubmitError(message);
+      toast.error(message);
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
-    <div className="min-h-screen bg-linear-to-b from-slate-50 via-white to-slate-50 dark:from-slate-950 dark:via-slate-900 dark:to-slate-950 text-slate-800 dark:text-slate-200 transition-colors duration-300 flex flex-col font-sans select-none">
+    <div className="min-h-screen bg-linear-to-b from-slate-50 via-white to-slate-50 dark:from-slate-950 dark:via-slate-900 dark:to-slate-950 text-slate-800 dark:text-slate-200 transition-colors duration-300 flex flex-col font-sans">
       <Navbar />
 
       {/* Hero Section */}
@@ -542,8 +644,16 @@ const Careers = () => {
                   >
                     {/* Header Card */}
                     <div
+                      role="button"
+                      tabIndex={0}
+                      aria-expanded={isOpen}
+                      aria-controls={`job-panel-${job.id}`}
+                      aria-label={`Toggle details for ${job.title}`}
                       onClick={() => toggleJob(job.id)}
-                      className="p-6 flex flex-col md:flex-row md:items-center justify-between gap-4 cursor-pointer hover:bg-slate-50/50 dark:hover:bg-slate-800/10 transition-colors"
+                      onKeyDown={(event) =>
+                        handleJobHeaderKeyDown(event, job.id)
+                      }
+                      className="p-6 flex flex-col md:flex-row md:items-center justify-between gap-4 cursor-pointer hover:bg-slate-50/50 dark:hover:bg-slate-800/10 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-slate-900"
                     >
                       <div className="space-y-1.5">
                         <div className="flex flex-wrap items-center gap-2">
@@ -597,6 +707,8 @@ const Careers = () => {
 
                     {/* Expandable Panel */}
                     <div
+                      id={`job-panel-${job.id}`}
+                      aria-hidden={!isOpen}
                       className={`transition-all duration-300 ease-in-out overflow-hidden ${
                         isOpen
                           ? "max-h-[800px] border-t border-slate-100 dark:border-slate-800/60"
@@ -811,10 +923,22 @@ const Careers = () => {
 
       {/* Application Form Modal */}
       {isModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/60 backdrop-blur-xs transition-opacity duration-300">
-          <div className="relative w-full max-w-xl bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-2xl p-6 sm:p-8 animate-in fade-in zoom-in-95 duration-200">
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/60 backdrop-blur-xs transition-opacity duration-300"
+          role="presentation"
+          onClick={closeModal}
+        >
+          <div
+            ref={modalDialogRef}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby={modalTitleId}
+            className="relative w-full max-w-xl bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-2xl p-6 sm:p-8 animate-in fade-in zoom-in-95 duration-200"
+            onClick={(e) => e.stopPropagation()}
+          >
             {/* Modal Close */}
             <button
+              ref={modalCloseButtonRef}
               onClick={closeModal}
               className="absolute top-4 right-4 p-2 rounded-full text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800/80 transition-colors cursor-pointer"
               aria-label="Close modal"
@@ -827,7 +951,10 @@ const Careers = () => {
               <span className="text-[10px] font-extrabold tracking-wider text-blue-600 dark:text-blue-400 uppercase bg-blue-50 dark:bg-blue-900/30 border border-blue-100 dark:border-blue-800/30 px-2 py-0.5 rounded-md">
                 Application Form
               </span>
-              <h3 className="text-2xl font-extrabold text-slate-900 dark:text-white mt-2">
+              <h3
+                id={modalTitleId}
+                className="text-2xl font-extrabold text-slate-900 dark:text-white mt-2"
+              >
                 Apply for {activeJobForModal?.title}
               </h3>
               <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
@@ -837,7 +964,7 @@ const Careers = () => {
             </div>
 
             {/* Application Form */}
-            <form onSubmit={handleSubmit} className="space-y-4">
+            <form onSubmit={handleSubmit} noValidate className="space-y-4">
               {/* Full Name */}
               <div>
                 <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1.5">
@@ -885,21 +1012,29 @@ const Careers = () => {
                 />
               </div>
 
-              {/* Resume Link */}
+              {/* Resume Upload */}
               <div>
-                <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1.5">
-                  Resume Link (PDF/Drive){" "}
-                  <span className="text-red-500">*</span>
+                <label
+                  htmlFor="careers-resume"
+                  className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1.5"
+                >
+                  Resume (PDF or DOCX) <span className="text-red-500">*</span>
                 </label>
                 <input
-                  type="url"
+                  id="careers-resume"
+                  ref={resumeInputRef}
+                  type="file"
                   name="resume"
                   required
-                  value={formData.resume}
-                  onChange={handleChange}
-                  placeholder="https://drive.google.com/..."
-                  className="w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-950/60 text-slate-900 dark:text-white border border-slate-200 dark:border-slate-800/80 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-sm"
+                  accept=".pdf,.docx,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+                  onChange={handleResumeChange}
+                  className="w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-950/60 text-slate-900 dark:text-white border border-slate-200 dark:border-slate-800/80 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-sm file:mr-3 file:py-1 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-blue-50 file:text-blue-700 dark:file:bg-blue-900/30 dark:file:text-blue-300"
                 />
+                {resumeFile ? (
+                  <p className="mt-1.5 text-xs text-slate-500 dark:text-slate-400">
+                    Selected: {resumeFile.name}
+                  </p>
+                ) : null}
               </div>
 
               {/* Cover Letter */}
@@ -917,12 +1052,22 @@ const Careers = () => {
                 />
               </div>
 
+              {submitError ? (
+                <p
+                  role="alert"
+                  className="text-sm text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-950/30 border border-red-100 dark:border-red-900/40 rounded-xl px-4 py-3"
+                >
+                  {submitError}
+                </p>
+              ) : null}
+
               {/* Action Buttons */}
               <div className="pt-2 flex items-center justify-end gap-3">
                 <button
                   type="button"
                   onClick={closeModal}
-                  className="px-4 py-2 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700/80 text-slate-700 dark:text-slate-300 rounded-xl text-sm font-semibold transition-colors cursor-pointer"
+                  disabled={isSubmitting}
+                  className="px-4 py-2 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700/80 text-slate-700 dark:text-slate-300 rounded-xl text-sm font-semibold transition-colors cursor-pointer disabled:opacity-50"
                 >
                   Cancel
                 </button>

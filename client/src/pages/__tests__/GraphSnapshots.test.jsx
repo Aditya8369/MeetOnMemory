@@ -12,6 +12,12 @@ vi.mock("../../services", () => ({
     createGraphSnapshot: vi.fn(),
     exportGraphSnapshot: vi.fn(),
   },
+
+  savedFilterApi: {
+    getSavedFilters: vi.fn().mockResolvedValue({ data: [] }),
+    createSavedFilter: vi.fn(),
+    deleteSavedFilter: vi.fn(),
+  },
 }));
 
 vi.mock("../../components/Navbar.jsx", () => ({

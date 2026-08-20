@@ -5,8 +5,9 @@ import {
   findCommentByMarker,
   getIssue,
   isExpectedRepository,
+  listOpenPullRequests,
+  listReviews,
   safeCall,
-  summarizeCheckStates,
   summarizeRequiredCheckStates,
 } from "./helpers.js";
 import { processPrActivityRefresh } from "./activity.js";
@@ -15,7 +16,9 @@ import {
   AUTOMATION,
   ALLOWED_BRANCH_PREFIXES,
   REQUIRED_CHECK_NAMES,
+  TIMERS,
 } from "./constants.js";
+import { hoursSince, isIgnoredBotUser } from "./utils.js";
 
 function isMeaningfulDescription(text) {
   const value = String(text || "").trim();
@@ -289,4 +292,142 @@ export async function processFirstContributorWelcome({
     pr.number,
     comments.firstContributorWelcome({ user: pr.user.login }),
   );
+}
+
+function getLatestHumanReview(reviews) {
+  return (
+    (reviews || [])
+      .filter(
+        (review) =>
+          !isIgnoredBotUser(review.user) &&
+          !hasMarker(review.body, AUTOMATION.ciValidationMarker),
+      )
+      .sort((a, b) => new Date(b.submitted_at) - new Date(a.submitted_at))[0] ||
+    null
+  );
+}
+
+async function closeStalePullRequest({ github, context, core, pr }) {
+  const prAuthor = pr.user?.login;
+  if (!prAuthor) return;
+
+  const existingCloseComment = await findCommentByMarker(
+    github,
+    context,
+    core,
+    pr.number,
+    AUTOMATION.prAutoClosedMarker,
+  );
+
+  const closeResult = await safeCall(core, "pulls.update(close stale PR)", () =>
+    github.rest.pulls.update({
+      owner: context.repo.owner,
+      repo: context.repo.repo,
+      pull_number: pr.number,
+      state: "closed",
+    }),
+  );
+
+  // Never leave a marker when close fails — the next hourly run must retry.
+  if (!closeResult) return;
+
+  if (existingCloseComment) return;
+
+  await createComment(
+    github,
+    context,
+    core,
+    pr.number,
+    comments.prAutoClosed({
+      user: prAuthor,
+      prNumber: pr.number,
+      hoursOpen: TIMERS.prAutoCloseHours,
+    }),
+  );
+}
+
+async function remindChangesRequested({ github, context, core, pr }) {
+  const prAuthor = pr.user?.login;
+  if (!prAuthor || pr.draft) return;
+
+  const reviews = await listReviews(github, context, core, pr.number);
+  const latestReview = getLatestHumanReview(reviews);
+  if (!latestReview || latestReview.state !== "CHANGES_REQUESTED") return;
+
+  const existingReminder = await findCommentByMarker(
+    github,
+    context,
+    core,
+    pr.number,
+    AUTOMATION.prChangesRequestedReminderMarker,
+  );
+  if (
+    existingReminder &&
+    new Date(latestReview.submitted_at) <=
+      new Date(existingReminder.created_at || existingReminder.updated_at || 0)
+  ) {
+    return;
+  }
+
+  await createOrUpdateMarkerComment(
+    github,
+    context,
+    core,
+    pr.number,
+    AUTOMATION.prChangesRequestedReminderMarker,
+    comments.prChangesRequestedReminder({ user: prAuthor }),
+  );
+}
+
+async function remindFailedChecks({ github, context, core, pr }) {
+  const prAuthor = pr.user?.login;
+  if (!prAuthor || pr.draft) return;
+
+  const checkRunsResponse = await safeCall(
+    core,
+    "checks.listForRef(PR reminders)",
+    () =>
+      github.rest.checks.listForRef({
+        owner: context.repo.owner,
+        repo: context.repo.repo,
+        ref: pr.head?.sha,
+        per_page: 100,
+      }),
+    { data: { check_runs: [] } },
+  );
+  const summary = summarizeRequiredCheckStates(
+    checkRunsResponse?.data?.check_runs || [],
+    REQUIRED_CHECK_NAMES,
+  );
+
+  if (!summary.allCompleted || summary.failedCount === 0) return;
+
+  await createOrUpdateMarkerComment(
+    github,
+    context,
+    core,
+    pr.number,
+    AUTOMATION.prFailedChecksReminderMarker,
+    comments.prFailedChecksReminder({
+      user: prAuthor,
+      failedRuns: summary.failedRuns,
+    }),
+  );
+}
+
+export async function processPrAutomation({ github, context, core }) {
+  if (!isExpectedRepository(context)) return;
+
+  const openPullRequests = await listOpenPullRequests(github, context, core);
+
+  for (const pr of openPullRequests) {
+    const openHours = hoursSince(pr.created_at);
+    if (openHours > TIMERS.prAutoCloseHours) {
+      await closeStalePullRequest({ github, context, core, pr });
+      continue;
+    }
+
+    await remindChangesRequested({ github, context, core, pr });
+    await remindFailedChecks({ github, context, core, pr });
+  }
 }

@@ -77,6 +77,12 @@ export const PERMISSIONS = {
     view: ["owner", "admin", "moderator", "member"],
     export: ["owner", "admin", "moderator"],
   },
+  // Analytics permissions (including attendance analytics)
+  analytics: {
+    view: ["owner", "admin", "moderator"],
+    export: ["owner", "admin"],
+    manage: ["owner", "admin"],
+  },
   // Admin Panel permissions
   admin_panel: {
     view: ["owner", "admin"],
@@ -101,6 +107,57 @@ export const PERMISSIONS = {
   // Audit Logs permissions
   audit_logs: {
     view: ["owner", "admin"],
+  },
+  // Automation Rules permissions (org admins / owners only)
+  automation_rules: {
+    view: ["owner", "admin"],
+    create: ["owner", "admin"],
+    edit: ["owner", "admin"],
+    delete: ["owner", "admin"],
+  },
+  // Digest Preferences permissions
+  digest_preferences: {
+    view: ["owner", "admin", "moderator", "member", "viewer", "guest"],
+    edit: ["owner", "admin", "moderator", "member", "viewer", "guest"],
+  },
+  // Comments permissions
+  comments: {
+    view: ["owner", "admin", "moderator", "member", "viewer", "guest"],
+    create: ["owner", "admin", "moderator", "member"],
+    edit: ["owner", "admin", "moderator", "member"],
+    delete: ["owner", "admin", "moderator"],
+    react: ["owner", "admin", "moderator", "member", "viewer"],
+  },
+  // Attachments permissions
+  attachments: {
+    view: ["owner", "admin", "moderator", "member", "viewer", "guest"],
+    upload: ["owner", "admin", "moderator", "member"],
+    edit: ["owner", "admin", "moderator", "member"],
+    delete: ["owner", "admin", "moderator"],
+    download: ["owner", "admin", "moderator", "member", "viewer"],
+  },
+  // Bookmarks permissions
+  bookmarks: {
+    view: ["owner", "admin", "moderator", "member", "viewer", "guest"],
+    create: ["owner", "admin", "moderator", "member", "viewer"],
+    edit: ["owner", "admin", "moderator", "member", "viewer"],
+    delete: ["owner", "admin", "moderator", "member", "viewer"],
+  },
+  // Personal Notes permissions
+  personal_notes: {
+    view: ["owner", "admin", "moderator", "member", "viewer", "guest"],
+    create: ["owner", "admin", "moderator", "member", "viewer"],
+    edit: ["owner", "admin", "moderator", "member", "viewer"],
+    delete: ["owner", "admin", "moderator", "member", "viewer"],
+    pin: ["owner", "admin", "moderator", "member", "viewer"],
+  },
+  // Shared Links permissions
+  shared_links: {
+    view: ["owner", "admin", "moderator", "member", "viewer", "guest"],
+    create: ["owner", "admin", "moderator", "member"],
+    edit: ["owner", "admin", "moderator", "member"],
+    delete: ["owner", "admin", "moderator"],
+    revoke: ["owner", "admin", "moderator"],
   },
 };
 

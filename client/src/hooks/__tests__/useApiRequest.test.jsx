@@ -7,7 +7,7 @@
  */
 
 import { describe, it, expect, vi } from "vitest";
-import { act, renderHook, waitFor } from "@testing-library/react";
+import { act, renderHook } from "@testing-library/react";
 import { useApiRequest } from "../useApiRequest.js";
 
 /** An axios-style cancellation. */
@@ -123,26 +123,32 @@ describe("useApiRequest", () => {
   });
 
   it("keeps loading true while a replacement request is still running", async () => {
-    const requestFn = vi.fn((signal, value) =>
-      delayed(value, value === "slow" ? 20 : 80, signal),
-    );
+    let resolveLong;
+    const requestFn = vi.fn((signal, value) => {
+      return new Promise((resolve, reject) => {
+        if (value === "long") resolveLong = () => resolve(value);
+        signal?.addEventListener("abort", () => reject(cancelError()));
+      });
+    });
 
     const { result } = renderHook(() => useApiRequest(requestFn));
 
     await act(async () => {
       result.current.execute("slow");
-      await new Promise((r) => setTimeout(r, 5));
-      result.current.execute("long");
-      await new Promise((r) => setTimeout(r, 40));
     });
 
-    // A superseded request finishing first must not clear the spinner while its
-    // replacement is still in flight.
+    await act(async () => {
+      result.current.execute("long");
+    });
+
+    // The slow request was aborted. The long request is still running.
     expect(result.current.loading).toBe(true);
 
-    await waitFor(() => expect(result.current.loading).toBe(false), {
-      timeout: 500,
+    await act(async () => {
+      resolveLong();
     });
+
+    expect(result.current.loading).toBe(false);
     expect(result.current.data).toBe("long");
   });
 

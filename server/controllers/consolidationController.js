@@ -5,6 +5,7 @@ import {
   MODEL_REGISTRY,
 } from "../services/memoryConsolidationService.js";
 import { sendSuccess, sendError } from "../utils/responseHandler.js";
+import { parsePagination } from "../utils/pagination.js";
 
 const VALID_MODEL_TYPES = Object.keys(MODEL_REGISTRY);
 
@@ -110,7 +111,7 @@ export const runConsolidation = async (req, res) => {
 export const getConsolidationHistory = async (req, res) => {
   try {
     const organization = req.user.organization || null;
-    const { model = "decision", limit = 50 } = req.query;
+    const { model = "decision" } = req.query;
 
     if (!VALID_MODEL_TYPES.includes(model)) {
       return sendError(
@@ -120,9 +121,9 @@ export const getConsolidationHistory = async (req, res) => {
       );
     }
 
-    const parsedLimit = Number(limit);
-    const safeLimit =
-      Number.isFinite(parsedLimit) && parsedLimit > 0 ? parsedLimit : 50;
+    const { limit: safeLimit } = parsePagination(req.query, {
+      defaultLimit: 50,
+    });
 
     const memories = await getConsolidatedMemories(model, {
       organization,

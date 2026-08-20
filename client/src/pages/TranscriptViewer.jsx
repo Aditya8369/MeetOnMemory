@@ -16,6 +16,7 @@ import {
   Check,
 } from "lucide-react";
 import { toast } from "react-toastify";
+import { sanitizeHtml } from "../utils/sanitizeHtml";
 import MeetingSentimentChart from "../components/MeetingSentimentChart";
 import AppContent from "../context/AppContent.js";
 
@@ -56,7 +57,53 @@ const TranscriptViewer = () => {
       setLoading(true);
       const response = await api.get(`/transcripts/meeting/${meetingId}`);
 
-      setTranscript(response.data);
+      const data = response.data?.data || response.data;
+      if (data && data.segments) {
+        data.segments = data.segments.filter(
+          (segment, index, self) =>
+            index ===
+            self.findIndex(
+              (s) =>
+                s.startTime === segment.startTime &&
+                s.text === segment.text &&
+                s.speaker === segment.speaker,
+            ),
+        );
+      }
+
+      // Issue #1335 — decrypt ciphertext locally when E2EE payload is present
+      if (data?.encryption?.enabled && data.encryption.encryptedTranscript) {
+        try {
+          const { loadMeetingKey, importKey, decryptTranscript } =
+            await import("../utils/encryption/index.js");
+          const stored = loadMeetingKey(meetingId);
+          if (!stored) {
+            toast.error("Meeting encryption key not found in this browser");
+          } else {
+            const key = await importKey(stored);
+            const plaintext = await decryptTranscript(
+              data.encryption.encryptedTranscript,
+              key,
+            );
+            data.fullText = plaintext;
+            if (!data.segments?.length) {
+              data.segments = [
+                {
+                  text: plaintext,
+                  speaker: "Transcript",
+                  startTime: 0,
+                  endTime: 0,
+                },
+              ];
+            }
+          }
+        } catch (decryptErr) {
+          console.error("E2EE decrypt failed:", decryptErr);
+          toast.error("Failed to decrypt transcript");
+        }
+      }
+
+      setTranscript(data);
     } catch (error) {
       console.error("Error fetching transcript:", error);
       toast.error("Failed to load transcript");
@@ -160,6 +207,15 @@ const TranscriptViewer = () => {
     const mins = Math.floor(seconds / 60);
     const secs = Math.floor(seconds % 60);
     return `${mins.toString().padStart(2, "0")}:${secs.toString().padStart(2, "0")}`;
+  };
+
+  const highlightText = (text, query) => {
+    if (!query) return text;
+    const regex = new RegExp(`(${query})`, "gi");
+    return text.replace(
+      regex,
+      '<mark class="bg-yellow-300 text-black">$1</mark>',
+    );
   };
 
   const scrollToSegment = (index) => {
@@ -413,6 +469,14 @@ const TranscriptViewer = () => {
                       </span>
                     </div>
                   </div>
+                  <p
+                    className="text-gray-700 dark:text-gray-300 text-sm leading-relaxed"
+                    dangerouslySetInnerHTML={{
+                      __html: sanitizeHtml(
+                        highlightText(segment.text, searchQuery),
+                      ),
+                    }}
+                  />
                   <p className="text-gray-700 dark:text-gray-300 text-sm leading-relaxed">
                     <HighlightedText text={segment.text} query={searchQuery} />
                   </p>

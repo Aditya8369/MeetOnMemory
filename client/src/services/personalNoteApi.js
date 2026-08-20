@@ -1,19 +1,58 @@
 import apiClient from "./apiClient";
 
+const wrap = async (promise) => {
+  const res = await promise;
+  const result = res.data;
+  if (result && typeof result === "object") {
+    Object.defineProperty(result, "data", {
+      get() {
+        return result;
+      },
+      configurable: true,
+      enumerable: false,
+    });
+  }
+  return result;
+};
+
 export const personalNoteApi = {
   getNoteByMeetingId: (meetingId) =>
-    apiClient.get(`/personal-notes/${meetingId}`),
-  upsertNote: (meetingId, content) =>
-    apiClient.post(`/personal-notes/${meetingId}`, { content }),
+    wrap(apiClient.get(`/api/personal-notes/${meetingId}`)),
+
+  getByMeetingId: (meetingId) =>
+    wrap(apiClient.get(`/api/personal-notes/${meetingId}`)),
+
+  upsertNote: (meetingId, data) => {
+    const payload = typeof data === "string" ? { content: data } : data;
+    return wrap(apiClient.post(`/api/personal-notes/${meetingId}`, payload));
+  },
+
   addAnnotation: (meetingId, annotationData) =>
-    apiClient.post(`/personal-notes/${meetingId}/annotations`, annotationData),
-  removeAnnotation: (meetingId, annotationId) =>
-    apiClient.delete(
-      `/personal-notes/${meetingId}/annotations/${annotationId}`,
+    wrap(
+      apiClient.post(
+        `/api/personal-notes/${meetingId}/annotations`,
+        annotationData,
+      ),
     ),
+
+  removeAnnotation: (meetingId, annotationId) =>
+    wrap(
+      apiClient.delete(
+        `/api/personal-notes/${meetingId}/annotations/${annotationId}`,
+      ),
+    ),
+
   togglePin: (meetingId, isPinned) =>
-    apiClient.patch(`/personal-notes/${meetingId}/pin`, { isPinned }),
-  getPinnedNotes: () => apiClient.get(`/personal-notes/pinned`),
+    wrap(apiClient.patch(`/api/personal-notes/${meetingId}/pin`, { isPinned })),
+
+  getPinnedNotes: () => wrap(apiClient.get(`/api/personal-notes/pinned`)),
+
   searchNotes: (query) =>
-    apiClient.get(`/personal-notes/search`, { params: { q: query } }),
+    wrap(apiClient.get(`/api/personal-notes/search`, { params: { q: query } })),
+
+  clearNoteContent: (meetingId) =>
+    wrap(apiClient.put(`/api/personal-notes/${meetingId}/clear`)),
+
+  deleteNote: (meetingId) =>
+    wrap(apiClient.delete(`/api/personal-notes/${meetingId}`)),
 };

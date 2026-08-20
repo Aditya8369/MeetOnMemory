@@ -10,11 +10,15 @@ import { useTranslation } from "react-i18next";
 import AppContent from "../context/AppContent";
 import { useRBAC } from "../hooks/useRBAC.js";
 import useTheme from "../context/useTheme.jsx";
+import usePreferences from "../context/usePreferences.jsx";
+import { formatDateWithPreference } from "../utils/dateFormat.js";
 import { toast } from "react-toastify";
 import { notificationApi, authApi, organizationApi } from "../services";
+import { validateRedirect } from "../utils/validateRedirect.js";
 import { io } from "socket.io-client";
 import { createClerkSocketOptions } from "../services/apiClient.js";
 import LanguageSwitcher from "./LanguageSwitcher.jsx";
+import BrandLogo from "./branding/BrandLogo.jsx";
 import { useUser } from "@clerk/clerk-react";
 import {
   Menu,
@@ -43,6 +47,8 @@ import {
   GitMerge,
   History,
   Archive,
+  Network,
+  Clock,
 } from "lucide-react";
 
 const clerkPubKey = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY;
@@ -95,6 +101,7 @@ const Navbar = () => {
     useContext(AppContent);
   const { hasPermission } = useRBAC();
   const { theme, toggleTheme, mounted } = useTheme();
+  const { dateFormat } = usePreferences();
 
   const [menuOpen, setMenuOpen] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -157,17 +164,20 @@ const Navbar = () => {
   const [unreadCount, setUnreadCount] = useState(0);
   const [notifications, setNotifications] = useState([]);
 
-  const formatTimeAgo = (dateString) => {
-    const date = new Date(dateString);
-    const now = new Date();
-    const seconds = Math.floor((now - date) / 1000);
+  const formatTimeAgo = useCallback(
+    (dateString) => {
+      const date = new Date(dateString);
+      const now = new Date();
+      const seconds = Math.floor((now - date) / 1000);
 
-    if (seconds < 60) return "Just now";
-    if (seconds < 3600) return `${Math.floor(seconds / 60)}m ago`;
-    if (seconds < 86400) return `${Math.floor(seconds / 3600)}h ago`;
-    if (seconds < 604800) return `${Math.floor(seconds / 86400)}d ago`;
-    return date.toLocaleDateString();
-  };
+      if (seconds < 60) return "Just now";
+      if (seconds < 3600) return `${Math.floor(seconds / 60)}m ago`;
+      if (seconds < 86400) return `${Math.floor(seconds / 3600)}h ago`;
+      if (seconds < 604800) return `${Math.floor(seconds / 86400)}d ago`;
+      return formatDateWithPreference(date, dateFormat);
+    },
+    [dateFormat],
+  );
 
   useEffect(() => {
     if (userData && backendUrl) {
@@ -188,9 +198,10 @@ const Navbar = () => {
           if (data.success) {
             setNotifications(
               data.notifications.map((n) => ({
-                id: n.id,
+                id: n._id || n.id,
                 title: n.title,
                 description: n.description,
+                actionUrl: n.actionUrl || n.data?.url || n.url,
                 time: formatTimeAgo(n.createdAt),
                 unread: !n.isRead,
               })),
@@ -204,7 +215,7 @@ const Navbar = () => {
       fetchUnreadCount();
       fetchRecentNotifications();
     }
-  }, [userData, backendUrl]);
+  }, [userData, backendUrl, formatTimeAgo]);
 
   // Real-time notifications via Socket.IO
   useEffect(() => {
@@ -233,9 +244,10 @@ const Navbar = () => {
         setUnreadCount((prev) => prev + 1);
         setNotifications((prev) => {
           const formattedNotif = {
-            id: newNotif.id,
+            id: newNotif._id || newNotif.id,
             title: newNotif.title,
             description: newNotif.description,
+            actionUrl: newNotif.actionUrl || newNotif.data?.url || newNotif.url,
             time: "Just now",
             unread: true,
           };
@@ -251,6 +263,23 @@ const Navbar = () => {
       socket?.disconnect();
     };
   }, [userData, backendUrl]);
+
+  const handleNotificationClick = async (notif) => {
+    setNotificationsOpen(false);
+    if (notif.unread && notif.id) {
+      try {
+        await notificationApi.markAsRead(notif.id);
+        setNotifications((prev) =>
+          prev.map((n) => (n.id === notif.id ? { ...n, unread: false } : n)),
+        );
+        setUnreadCount((prev) => Math.max(0, prev - 1));
+      } catch (err) {
+        console.error("Failed to mark notification as read:", err);
+      }
+    }
+    const destination = validateRedirect(notif.actionUrl, "/notifications");
+    navigate(destination);
+  };
 
   const menuRef = useRef();
   const mobileMenuRef = useRef();
@@ -389,7 +418,7 @@ const Navbar = () => {
       label: t("navbar.dashboard"),
       href: "/dashboard",
       icon: LayoutDashboard,
-      permission: { resource: "reports", action: "view" },
+      permission: null,
     },
     {
       label: t("navbar.meetings"),
@@ -408,6 +437,12 @@ const Navbar = () => {
       href: "/organizations",
       icon: Building2,
       permission: { resource: "organizations", action: "view" },
+    },
+    {
+      label: "Focus Time",
+      href: "/focus-time",
+      icon: Clock,
+      permission: null,
     },
   ].filter(
     (link) =>
@@ -435,6 +470,12 @@ const Navbar = () => {
       permission: { resource: "knowledge", action: "view" },
     },
     {
+      label: "Knowledge Graph",
+      href: "/knowledge/graph",
+      icon: Network,
+      permission: { resource: "knowledge", action: "view" },
+    },
+    {
       label: "Meeting Templates",
       href: "/meeting-templates",
       icon: GitMerge,
@@ -451,6 +492,11 @@ const Navbar = () => {
       href: "/calendar",
       icon: CalendarDays,
       permission: { resource: "calendar", action: "view" },
+    },
+    {
+      label: "My Delegations",
+      href: "/delegations",
+      icon: Users,
     },
     {
       label: t("navbar.teamMembers"),
@@ -492,35 +538,12 @@ const Navbar = () => {
             onKeyDown={(e) => e.key === "Enter" && navigate("/")}
           >
             <div className="flex items-center justify-center shrink-0">
-              {/* Clean Extra Large Native Option A Infinity Symbol with scale only */}
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                viewBox="0 0 100 100"
+              <BrandLogo
+                variant="mark"
+                alt=""
+                aria-hidden="true"
                 className="relative w-10 h-10 sm:w-12 sm:h-12 lg:w-16 lg:h-16 transition-transform duration-300 group-hover:scale-105"
-              >
-                <defs>
-                  <linearGradient
-                    id="navInfinityGrad"
-                    x1="0%"
-                    y1="0%"
-                    x2="100%"
-                    y2="100%"
-                  >
-                    <stop offset="0%" stop-color="#2563eb" />
-                    <stop offset="100%" stop-color="#7c3aed" />
-                  </linearGradient>
-                </defs>
-                <path
-                  d="M25,50 C25,35 38,30 50,50 C62,70 75,65 75,50 C75,35 62,30 50,50 C38,70 25,65 25,50 Z"
-                  fill="none"
-                  stroke="url(#navInfinityGrad)"
-                  stroke-width="11"
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                />
-                <circle cx="25" cy="50" r="6.5" fill="#2563eb" />
-                <circle cx="75" cy="50" r="6.5" fill="#7c3aed" />
-              </svg>
+              />
             </div>
             {/* Clean, Consistent Text Layout (Hover effects removed) */}
             <span className="font-bold text-lg sm:text-2xl text-gray-900 dark:text-gray-100 tracking-tight shrink-0">
@@ -774,9 +797,11 @@ const Navbar = () => {
                       <div className="max-h-64 overflow-y-auto divide-y divide-gray-50 dark:divide-gray-700">
                         {notifications.length > 0 ? (
                           notifications.map((notif) => (
-                            <div
+                            <button
                               key={notif.id}
-                              className={`p-3.5 hover:bg-blue-50/20 dark:hover:bg-blue-900/20 transition-colors text-left ${
+                              type="button"
+                              onClick={() => handleNotificationClick(notif)}
+                              className={`w-full p-3.5 hover:bg-blue-50/20 dark:hover:bg-blue-900/20 transition-colors text-left block cursor-pointer ${
                                 notif.unread
                                   ? "bg-blue-50/5 dark:bg-blue-900/10"
                                   : ""
@@ -790,13 +815,13 @@ const Navbar = () => {
                                   {notif.title}
                                 </p>
                                 <span className="text-[10px] text-gray-400 dark:text-gray-500 font-medium whitespace-nowrap">
-                                  {notif.time}
+                                  {formatTimeAgo(notif.createdAt)}
                                 </span>
                               </div>
                               <p className="text-xs text-gray-500 dark:text-gray-400 leading-relaxed">
                                 {notif.description}
                               </p>
-                            </div>
+                            </button>
                           ))
                         ) : (
                           <div className="py-8 text-center text-gray-400 dark:text-gray-500 text-xs">

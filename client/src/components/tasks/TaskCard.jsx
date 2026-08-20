@@ -28,6 +28,17 @@ export default function TaskCard({
   const [isUpdating, setIsUpdating] = useState(false);
   const [isTogglingReminder, setIsTogglingReminder] = useState(false);
 
+  const handleKeyDown = (e) => {
+    if (e.key === "Enter" || e.key === " ") {
+      e.preventDefault();
+      setSelectedTask(task);
+    }
+  };
+
+  const handleStopPropagation = (e) => {
+    e.stopPropagation();
+  };
+
   const handleStatusChange = async (e) => {
     e.stopPropagation();
     const newStatus = e.target.value;
@@ -67,7 +78,11 @@ export default function TaskCard({
   return (
     <div
       onClick={() => setSelectedTask(task)}
-      className={`group bg-white dark:bg-slate-900 border rounded-xl p-5 hover:border-blue-300 dark:hover:border-blue-700 hover:shadow-md transition-all cursor-pointer ${
+      onKeyDown={handleKeyDown}
+      role="button"
+      tabIndex={0}
+      aria-label={`Open details for task: ${task.title}`}
+      className={`group bg-white dark:bg-slate-900 border rounded-xl p-5 hover:border-blue-300 dark:hover:border-blue-700 hover:shadow-md transition-all cursor-pointer focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 focus:ring-offset-2 dark:focus:ring-offset-slate-900 ${
         selected
           ? "border-blue-400 dark:border-blue-600 ring-1 ring-blue-200 dark:ring-blue-900"
           : isOverdue
@@ -83,7 +98,8 @@ export default function TaskCard({
               checked={selected}
               disabled={selectionDisabled && !selected}
               aria-label={`Select action item: ${task.title}`}
-              onClick={(e) => e.stopPropagation()}
+              onClick={handleStopPropagation}
+              onKeyDown={handleStopPropagation}
               onChange={(e) => {
                 e.stopPropagation();
                 onToggleSelect?.(task.id, e.target.checked);
@@ -138,7 +154,8 @@ export default function TaskCard({
               )}
               <select
                 value={task.status}
-                onClick={(e) => e.stopPropagation()}
+                onClick={handleStopPropagation}
+                onKeyDown={handleStopPropagation}
                 onChange={handleStatusChange}
                 disabled={isUpdating}
                 className={`appearance-none pl-7 pr-6 py-1 rounded-lg text-xs font-medium border cursor-pointer outline-none focus:ring-2 focus:ring-blue-500/50 transition-colors disabled:opacity-70 disabled:cursor-not-allowed ${statusStyle.bgColor} ${statusStyle.textColor} ${statusStyle.borderColor}`}
@@ -186,13 +203,19 @@ export default function TaskCard({
         <div className="flex items-center gap-2 shrink-0">
           <button
             onClick={handleReminderToggle}
+            onKeyDown={handleStopPropagation}
             disabled={isTogglingReminder}
             title={
               task.remindersEnabled !== false
                 ? "Reminders Enabled — click to disable"
                 : "Reminders Disabled — click to enable"
             }
-            className={`p-2 rounded-lg border text-xs font-medium transition-colors cursor-pointer ${
+            aria-label={
+              task.remindersEnabled !== false
+                ? "Disable reminders for this task"
+                : "Enable reminders for this task"
+            }
+            className={`p-2 rounded-lg border text-xs font-medium transition-colors cursor-pointer focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 ${
               task.remindersEnabled !== false
                 ? "bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 border-blue-200 dark:border-blue-800"
                 : "bg-slate-50 dark:bg-slate-800 text-slate-400 border-slate-200 dark:border-slate-700"
@@ -212,7 +235,8 @@ export default function TaskCard({
               e.stopPropagation();
               navigate(`/meeting/${task.meetingId}`);
             }}
-            className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-slate-600 dark:text-slate-400 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg transition-colors shrink-0"
+            onKeyDown={handleStopPropagation}
+            className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-slate-600 dark:text-slate-400 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg transition-colors shrink-0 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400"
           >
             <FileText className="w-4 h-4" />
             <span className="hidden sm:inline">View Meeting</span>
