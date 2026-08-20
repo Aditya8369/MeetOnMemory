@@ -341,7 +341,7 @@ const ParticipantEngagement = () => {
                       }}
                       aria-label={`View scorecard for ${row.userId?.name}`}
                       aria-current={isActive ? "true" : undefined}
-                      className={`cursor-pointer transition-colors ${
+                      className={`cursor-pointer transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-inset ${
                         isActive
                           ? "bg-indigo-50/40 dark:bg-indigo-950/30 hover:bg-indigo-100/40 dark:hover:bg-indigo-900/30"
                           : "hover:bg-gray-50 dark:hover:bg-gray-700"

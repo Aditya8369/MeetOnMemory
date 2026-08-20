@@ -230,6 +230,7 @@ describe("ParticipantEngagement Accessibility & Error Handling (#1855)", () => {
     expect(bobRow).toBeInTheDocument();
     expect(bobRow).toHaveAttribute("tabIndex", "0");
     expect(bobRow).toHaveAttribute("aria-current", "false");
+    expect(bobRow.className).toContain("focus:ring-2");
 
     // Click Bob's row
     fireEvent.click(bobRow);
