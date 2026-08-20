@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import apiClient from "../apiClient.js";
 
 const mockGetCsrfToken = vi.fn();
 const mockRefreshCsrfToken = vi.fn();
@@ -10,15 +11,12 @@ vi.mock("../csrfService.js", () => ({
 
 describe("apiClient interceptors", () => {
   beforeEach(() => {
-    vi.resetModules();
     vi.clearAllMocks();
     mockGetCsrfToken.mockReturnValue("tok-abc");
     mockRefreshCsrfToken.mockResolvedValue("tok-abc");
   });
 
   it("attaches credentials and the latest CSRF token on requests", async () => {
-    const { default: apiClient } = await import("../apiClient.js");
-
     const config = await apiClient.interceptors.request.handlers[0].fulfilled({
       headers: {},
     });
@@ -28,7 +26,6 @@ describe("apiClient interceptors", () => {
   });
 
   it("refreshes the CSRF token and retries once on CSRF failure", async () => {
-    const { default: apiClient } = await import("../apiClient.js");
     const retryResponse = { data: { ok: true } };
 
     mockRefreshCsrfToken.mockResolvedValue("tok-new");
@@ -60,8 +57,6 @@ describe("apiClient interceptors", () => {
   });
 
   it("does not retry CSRF failures more than once", async () => {
-    const { default: apiClient } = await import("../apiClient.js");
-
     await expect(
       apiClient.interceptors.response.handlers[0].rejected({
         config: { headers: {}, _retry: true },
@@ -78,8 +73,6 @@ describe("apiClient interceptors", () => {
   });
 
   it("maps 401 responses to a friendly session message", async () => {
-    const { default: apiClient } = await import("../apiClient.js");
-
     await expect(
       apiClient.interceptors.response.handlers[0].rejected({
         config: { headers: {} },
