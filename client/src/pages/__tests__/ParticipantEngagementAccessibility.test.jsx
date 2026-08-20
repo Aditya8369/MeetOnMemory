@@ -139,4 +139,109 @@ describe("ParticipantEngagement Accessibility & Error Handling (#1855)", () => {
       expect(screen.getByText("No rankings found.")).toBeInTheDocument();
     });
   });
+
+  it("makes rankings table rows clickable, keyboard-accessible, and loads selected user scorecard", async () => {
+    api.get.mockImplementation((url) => {
+      if (url.includes("organization/rankings")) {
+        return Promise.resolve({
+          data: {
+            success: true,
+            data: {
+              rankings: [
+                {
+                  _id: "r_1",
+                  userId: {
+                    _id: "u_1",
+                    name: "Alice",
+                    email: "alice@example.com",
+                  },
+                  overallScore: 88,
+                },
+                {
+                  _id: "r_2",
+                  userId: {
+                    _id: "u_2",
+                    name: "Bob",
+                    email: "bob@example.com",
+                  },
+                  overallScore: 92,
+                },
+              ],
+            },
+          },
+        });
+      }
+      if (url.includes("participant/u_1")) {
+        return Promise.resolve({
+          data: {
+            success: true,
+            data: {
+              userId: {
+                _id: "u_1",
+                name: "Alice",
+                email: "alice@example.com",
+              },
+              overallScore: 88,
+              dimensionalScores: { speaking: 80 },
+              historicalTrends: [],
+              aiInsights: {},
+            },
+          },
+        });
+      }
+      if (url.includes("participant/u_2")) {
+        return Promise.resolve({
+          data: {
+            success: true,
+            data: {
+              userId: {
+                _id: "u_2",
+                name: "Bob",
+                email: "bob@example.com",
+              },
+              overallScore: 92,
+              dimensionalScores: { speaking: 90 },
+              historicalTrends: [],
+              aiInsights: {},
+            },
+          },
+        });
+      }
+      return Promise.reject(new Error("Not found"));
+    });
+
+    render(
+      <BrowserRouter>
+        <ParticipantEngagement />
+      </BrowserRouter>,
+    );
+
+    // Initial scorecard is loaded for Alice
+    await waitFor(() => {
+      expect(
+        screen.getByRole("heading", { name: "Alice" }),
+      ).toBeInTheDocument();
+    });
+
+    // Check Bob row exists and has accessibility roles/attributes
+    const bobRow = screen.getByRole("button", {
+      name: "View scorecard for Bob",
+    });
+    expect(bobRow).toBeInTheDocument();
+    expect(bobRow).toHaveAttribute("tabIndex", "0");
+    expect(bobRow).toHaveAttribute("aria-current", "false");
+    expect(bobRow.className).toContain("focus:ring-2");
+
+    // Click Bob's row
+    fireEvent.click(bobRow);
+
+    // Verify Bob's scorecard is loaded
+    await waitFor(() => {
+      expect(screen.getByRole("heading", { name: "Bob" })).toBeInTheDocument();
+      expect(
+        screen.queryByRole("heading", { name: "Alice" }),
+      ).not.toBeInTheDocument();
+      expect(bobRow).toHaveAttribute("aria-current", "true");
+    });
+  });
 });
