@@ -7,6 +7,7 @@ import {
   getSeriesMeetings,
   cancelSeries,
 } from "../controllers/meetingSeriesController.js";
+import seriesRetrospectiveRoutes from "./seriesRetrospectiveRoutes.js";
 
 const router = express.Router();
 
@@ -29,6 +30,12 @@ router.patch(
   "/:id/cancel",
   requirePermission("meetings", "edit"),
   cancelSeries,
+);
+
+router.use(
+  "/:id/retrospective",
+  requirePermission("meetings", "view"),
+  seriesRetrospectiveRoutes,
 );
 
 export default router;

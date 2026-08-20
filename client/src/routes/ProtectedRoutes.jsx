@@ -65,7 +65,7 @@ import ParticipantEngagement from "../pages/ParticipantEngagement.jsx";
 import MyDelegations from "../pages/MyDelegations.jsx";
 import MeetingPatterns from "../pages/MeetingPatterns.jsx";
 import FocusTime from "../pages/FocusTime.jsx";
-
+import SeriesRetrospective from "../pages/SeriesRetrospective.jsx";
 const ProtectedRoutes = (
   <React.Fragment>
     <Route
@@ -89,6 +89,14 @@ const ProtectedRoutes = (
       element={
         <ProtectedRoute resource="meetings" action="view">
           <CompareMeetings />
+        </ProtectedRoute>
+      }
+    />
+    <Route
+      path="/meeting-series/:seriesId/retrospective"
+      element={
+        <ProtectedRoute resource="meetings" action="view">
+          <SeriesRetrospective />
         </ProtectedRoute>
       }
     />
