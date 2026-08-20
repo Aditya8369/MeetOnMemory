@@ -6,6 +6,86 @@ import { sendSuccess, sendError } from "../utils/responseHandler.js";
 import { ValidationError } from "../utils/errors.js";
 import axios from "axios";
 import logger from "../utils/logger.js";
+import crypto from "crypto";
+
+const getOAuthStateSecret = () => {
+  return (
+    process.env.GITHUB_OAUTH_STATE_SECRET ||
+    process.env.JWT_SECRET ||
+    process.env.SESSION_SECRET ||
+    "github-oauth-state-secret-default"
+  );
+};
+
+/**
+ * Generate HMAC-SHA256 signed OAuth state parameter to prevent state tampering and CSRF attacks.
+ *
+ * @param {Object} payload - { organizationId, userId, repositoryFullName }
+ * @returns {string} Signed state token formatted as `<base64urlData>.<hmacSignature>`
+ */
+export const generateSignedState = (payload) => {
+  const secret = getOAuthStateSecret();
+  const jsonStr = JSON.stringify({
+    ...payload,
+    timestamp: Date.now(),
+    nonce: crypto.randomBytes(16).toString("hex"),
+  });
+  const base64Data = Buffer.from(jsonStr).toString("base64url");
+  const signature = crypto
+    .createHmac("sha256", secret)
+    .update(base64Data)
+    .digest("hex");
+
+  return `${base64Data}.${signature}`;
+};
+
+/**
+ * Verify HMAC-SHA256 signed OAuth state parameter using timing-safe comparison.
+ *
+ * @param {string} stateToken
+ * @returns {Object|null} Decoded payload or null if invalid, tampered, or expired.
+ */
+export const verifySignedState = (stateToken) => {
+  if (
+    !stateToken ||
+    typeof stateToken !== "string" ||
+    !stateToken.includes(".")
+  ) {
+    return null;
+  }
+
+  const [base64Data, signature] = stateToken.split(".");
+  const secret = getOAuthStateSecret();
+
+  const expectedSig = crypto
+    .createHmac("sha256", secret)
+    .update(base64Data)
+    .digest("hex");
+
+  const sigBuf = Buffer.from(signature.toLowerCase());
+  const expBuf = Buffer.from(expectedSig.toLowerCase());
+
+  if (
+    sigBuf.length !== expBuf.length ||
+    !crypto.timingSafeEqual(sigBuf, expBuf)
+  ) {
+    return null;
+  }
+
+  try {
+    const jsonStr = Buffer.from(base64Data, "base64url").toString("utf-8");
+    const payload = JSON.parse(jsonStr);
+
+    // Expire state tokens older than 15 minutes (900,000 ms)
+    if (payload.timestamp && Date.now() - payload.timestamp > 15 * 60 * 1000) {
+      return null;
+    }
+
+    return payload;
+  } catch {
+    return null;
+  }
+};
 
 export const initiateOAuth = async (req, res) => {
   try {
@@ -13,6 +93,14 @@ export const initiateOAuth = async (req, res) => {
       req.query.organizationId || req.user?.organization?.toString();
     if (!organizationId) {
       return sendError(res, 400, "organizationId is required.");
+    }
+
+    // Ensure requesting user belongs to the targeted organization
+    if (
+      req.user?.organization &&
+      req.user.organization.toString() !== organizationId.toString()
+    ) {
+      return sendError(res, 403, "Forbidden: Organization access mismatch.");
     }
 
     const clientId = process.env.GITHUB_CLIENT_ID;
@@ -24,9 +112,10 @@ export const initiateOAuth = async (req, res) => {
       );
     }
 
-    const state = Buffer.from(JSON.stringify({ organizationId })).toString(
-      "base64",
-    );
+    const state = generateSignedState({
+      organizationId,
+      userId: req.user?._id?.toString(),
+    });
 
     const githubAuthUrl = `https://github.com/login/oauth/authorize?client_id=${clientId}&scope=repo&state=${state}`;
     res.redirect(githubAuthUrl);
@@ -43,14 +132,25 @@ export const handleCallback = async (req, res) => {
       return sendError(res, 400, "Authorization code is missing.");
     }
 
-    let decodedState;
-    try {
-      decodedState = JSON.parse(Buffer.from(state, "base64").toString("utf-8"));
-    } catch {
-      return sendError(res, 400, "Invalid state parameter.");
+    // Verify HMAC-SHA256 signature on state parameter
+    const decodedState = verifySignedState(state);
+    if (!decodedState || !decodedState.organizationId) {
+      return sendError(res, 400, "Invalid or tampered state parameter.");
     }
 
-    const { organizationId, repositoryFullName } = decodedState;
+    const { organizationId, repositoryFullName, userId } = decodedState;
+
+    // Verify organization ownership if authenticated user is present
+    if (
+      req.user?.organization &&
+      req.user.organization.toString() !== organizationId.toString()
+    ) {
+      return sendError(
+        res,
+        403,
+        "Forbidden: State organization does not match user organization.",
+      );
+    }
 
     const tokenResponse = await axios.post(
       "https://github.com/login/oauth/access_token",
@@ -73,7 +173,7 @@ export const handleCallback = async (req, res) => {
         organization: organizationId,
         accessToken: encryptToken(accessToken),
         repositoryFullName: repositoryFullName || "",
-        connectedBy: req.user?._id || null,
+        connectedBy: req.user?._id || userId || null,
       },
       { upsert: true, new: true },
     );

@@ -23,6 +23,7 @@ import Policies from "../pages/Policies.jsx";
 import AiSummaryTemplates from "../pages/AiSummaryTemplates.jsx";
 import Summaries from "../pages/Summaries.jsx";
 import Reports from "../pages/Reports.jsx";
+import WeeklyInsights from "../pages/WeeklyInsights.jsx";
 import ReportBuilder from "../pages/ReportBuilder.jsx";
 import AiSearch from "../pages/AiSearch.jsx";
 import AiAssistant from "../pages/AiAssistant.jsx";
@@ -336,6 +337,14 @@ const ProtectedRoutes = (
       }
     />
     <Route
+      path="/reports/weekly-insights"
+      element={
+        <ProtectedRoute resource="reports" action="view">
+          <WeeklyInsights />
+        </ProtectedRoute>
+      }
+    />
+    <Route
       path="/reports/builder/:templateId?"
       element={
         <ProtectedRoute resource="reports" action="view">
@@ -519,7 +528,6 @@ const ProtectedRoutes = (
         </ProtectedRoute>
       }
     />
-    <Route path="/meeting-templates" element={<MeetingTemplates />} />
     <Route
       path="/ai-summary-templates"
       element={

@@ -55,6 +55,10 @@ import {
   stopDataRetentionJob,
 } from "./jobs/dataRetentionJob.js";
 import { startEscalationJob, stopEscalationJob } from "./jobs/escalationJob.js";
+import {
+  startWeeklyInsightJob,
+  stopWeeklyInsightJob,
+} from "./jobs/weeklyInsightJob.js";
 import { createClient } from "redis"; // eslint-disable-line no-unused-vars
 import {
   initDataExportWorker, // eslint-disable-line no-unused-vars
@@ -62,6 +66,7 @@ import {
   shutdownQueues,
 } from "./services/queueService.js";
 import { initWebhookWorker } from "./services/webhookDispatcherService.js"; // eslint-disable-line no-unused-vars
+import reminderScheduler from "./services/reminderScheduler.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -120,7 +125,21 @@ gamificationEngine.init();
 // SERVER START (Skipped during Jest test execution)
 if (process.env.NODE_ENV !== "test") {
   server.listen(PORT, "0.0.0.0", () => {
+    console.log(`==================================================`);
     console.log(`🚀 MeetOnMemory Server running on port ${PORT}`);
+
+    // Fix #1901: Explicitly initialize the cron runner engine on server startup
+    try {
+      console.log(`⏳ Initializing background Cron systems...`);
+      reminderScheduler.start();
+      console.log(`✅ [Service Health]: Meeting Reminder Scheduler active.`);
+    } catch (schedulerError) {
+      console.error(
+        `❌ [Service Error]: Failed to start Reminder Scheduler:`,
+        schedulerError,
+      );
+    }
+    console.log(`==================================================`);
 
     setTimeout(() => {
       startWorkers(app);
@@ -162,6 +181,9 @@ if (process.env.NODE_ENV !== "test") {
 
   // Start automated escalation job
   startEscalationJob();
+
+  // Start weekly insight job
+  startWeeklyInsightJob();
 }
 
 // (AI, Data Export, and Webhook workers are initialized inside server.listen callback)
@@ -176,6 +198,7 @@ const gracefulShutdown = createGracefulShutdown({
     stopAutoBriefingJob();
     stopDataRetentionJob();
     stopEscalationJob();
+    stopWeeklyInsightJob();
   },
   closeQueues: shutdownQueues,
   closeDatabase: () => mongoose.connection.close(),
