@@ -98,8 +98,6 @@ describe("StoryThumbnails (#1800)", () => {
     const closeBtn = screen.getByRole("button", { name: /close viewer/i });
     fireEvent.click(closeBtn);
 
-    expect(
-      screen.queryByTestId("recap-story-viewer"),
-    ).not.toBeInTheDocument();
+    expect(screen.queryByTestId("recap-story-viewer")).not.toBeInTheDocument();
   });
 });
