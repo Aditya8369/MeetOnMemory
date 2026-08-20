@@ -99,4 +99,25 @@ describe("InviteMemberForm", () => {
       );
     });
   });
+
+  it("exposes WAI-ARIA dialog attributes and handles Escape key", () => {
+    render(
+      <InviteMemberForm
+        onClose={mockOnClose}
+        onSendInvite={mockOnSendInvite}
+      />,
+    );
+
+    const dialog = screen.getByRole("dialog");
+    expect(dialog).toBeInTheDocument();
+    expect(dialog).toHaveAttribute("aria-modal", "true");
+    expect(dialog).toHaveAttribute("aria-labelledby", "invite-modal-title");
+    expect(dialog).toHaveAttribute(
+      "aria-describedby",
+      "invite-modal-description",
+    );
+
+    fireEvent.keyDown(window, { key: "Escape" });
+    expect(mockOnClose).toHaveBeenCalledTimes(1);
+  });
 });
