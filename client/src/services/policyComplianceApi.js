@@ -1,4 +1,4 @@
-import apiClient from "./apiClient";
+import apiClient from "./apiClient.js";
 
 export const policyComplianceApi = {
   getFlags: (status = "unresolved", classification = "all") =>
