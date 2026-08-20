@@ -22,3 +22,16 @@ export const translationApi = {
     return data;
   },
 };
+
+export const requestTranscriptBulkTranslation = async (
+  meetingId,
+  targetLanguage,
+) => {
+  const { data } = await apiClient.post(
+    `/api/transcripts/meeting/${meetingId}/translate`,
+    {
+      targetLanguage,
+    },
+  );
+  return data;
+};
