@@ -235,4 +235,7 @@ import guestAccessRoutes from "./guestAccessRoutes.js";
 router.use("/api", guestAccessRoutes);
 router.use("/api/custom-fields", customFieldRoutes);
 
+import weeklyInsightRoutes from "./weeklyInsightRoutes.js";
+router.use("/api/weekly-insights", weeklyInsightRoutes);
+
 export default router;
