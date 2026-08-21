@@ -7,10 +7,13 @@ import {
   getNotifications,
   markAsRead,
   markAllAsRead,
+  markGroupAsRead,
   deleteNotification,
   getUnreadCount,
   getPreferences,
   updatePreferences,
+  muteMeeting,
+  unmuteMeeting,
 } from "../controllers/notificationController.js";
 
 const notificationRouter = express.Router();
@@ -32,6 +35,24 @@ notificationRouter.patch(
   writeLimiter,
   requirePermission("notifications", "self_manage"),
   markAllAsRead,
+);
+notificationRouter.patch(
+  "/mark-group-read",
+  writeLimiter,
+  requirePermission("notifications", "self_manage"),
+  markGroupAsRead,
+);
+notificationRouter.post(
+  "/mute-meeting/:meetingId",
+  writeLimiter,
+  requirePermission("notifications", "self_manage"),
+  muteMeeting,
+);
+notificationRouter.delete(
+  "/mute-meeting/:meetingId",
+  writeLimiter,
+  requirePermission("notifications", "self_manage"),
+  unmuteMeeting,
 );
 notificationRouter.patch(
   "/:id/read",

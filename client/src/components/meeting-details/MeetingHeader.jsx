@@ -8,15 +8,20 @@ import {
   Bookmark,
   MessageSquare,
   Link2,
+  BellOff,
+  Bell,
 } from "lucide-react";
 import { toast } from "react-toastify";
 import { toggleBookmarkAPI, getBookmarkStatusAPI } from "../../api/bookmarkApi";
 import { askAssistantAbout } from "../../utils/askAssistant.js";
+import { notificationApi } from "../../services/notificationApi.js";
 
 const MeetingHeader = ({ meeting, onShare, onShareInvite, onPresent }) => {
   const navigate = useNavigate();
   const [isBookmarked, setIsBookmarked] = useState(false);
   const [isLoadingBookmark, setIsLoadingBookmark] = useState(false);
+  const [isMuted, setIsMuted] = useState(false);
+  const [muteLoading, setMuteLoading] = useState(false);
 
   useEffect(() => {
     if (meeting?._id) {
@@ -25,6 +30,16 @@ const MeetingHeader = ({ meeting, onShare, onShareInvite, onPresent }) => {
           setIsBookmarked(data.bookmarked);
         })
         .catch((err) => console.error("Error fetching bookmark status:", err));
+
+      notificationApi
+        .getPreferences()
+        .then(({ data }) => {
+          const muted = (data?.preferences?.mutedMeetingIds || []).map(String);
+          setIsMuted(muted.includes(String(meeting._id)));
+        })
+        .catch(() => {
+          // Mute state is best-effort
+        });
     }
   }, [meeting]);
 
@@ -40,6 +55,27 @@ const MeetingHeader = ({ meeting, onShare, onShareInvite, onPresent }) => {
       toast.error("Failed to toggle bookmark");
     } finally {
       setIsLoadingBookmark(false);
+    }
+  };
+
+  const handleToggleMute = async () => {
+    if (!meeting?._id) return;
+    setMuteLoading(true);
+    try {
+      if (isMuted) {
+        await notificationApi.unmuteMeeting(meeting._id);
+        setIsMuted(false);
+        toast.success("Meeting notifications unmuted");
+      } else {
+        await notificationApi.muteMeeting(meeting._id);
+        setIsMuted(true);
+        toast.success("Meeting notifications muted");
+      }
+    } catch (error) {
+      console.error(error);
+      toast.error("Failed to update meeting mute");
+    } finally {
+      setMuteLoading(false);
     }
   };
 
@@ -158,6 +194,29 @@ const MeetingHeader = ({ meeting, onShare, onShareInvite, onPresent }) => {
               fill={isBookmarked ? "currentColor" : "none"}
             />
             {isBookmarked ? "Saved" : "Save"}
+          </button>
+          <button
+            type="button"
+            onClick={handleToggleMute}
+            disabled={muteLoading}
+            className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
+              isMuted
+                ? "bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300"
+                : "bg-gray-50 text-gray-700 hover:bg-gray-100 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700"
+            }`}
+            aria-pressed={isMuted}
+            title={
+              isMuted
+                ? "Unmute notifications for this meeting"
+                : "Mute notifications for this meeting"
+            }
+          >
+            {isMuted ? (
+              <BellOff className="w-4 h-4" />
+            ) : (
+              <Bell className="w-4 h-4" />
+            )}
+            {isMuted ? "Unmute" : "Mute"}
           </button>
           <button
             onClick={onPresent}
