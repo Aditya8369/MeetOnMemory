@@ -13,4 +13,6 @@ export const policyComplianceApi = {
     ),
   updateFlagStatus: (flagId, status) =>
     apiClient.patch(`/api/policy-compliance/flags/${flagId}`, { status }),
+  reEvaluate: (flagId) =>
+    apiClient.post("/api/policy-compliance/re-evaluate", { flagId }),
 };

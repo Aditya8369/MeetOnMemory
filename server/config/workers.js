@@ -9,6 +9,7 @@ import {
   initRecalculateImportanceWorker,
   initMemoryLifecycleWorker,
   initRecapDeliveryWorker,
+  initPolicyComplianceRetryWorker,
 } from "../services/queueService.js";
 import { initWebhookWorker } from "../services/webhookDispatcherService.js";
 import { describeRateLimitBacking } from "../middleware/rateLimitStore.js";
@@ -74,6 +75,9 @@ export async function startWorkers(app) {
     initMemoryLifecycleWorker(app),
   );
   await safeInit("Recap Delivery Worker", () => initRecapDeliveryWorker());
+  await safeInit("Policy Compliance Retry Worker", () =>
+    initPolicyComplianceRetryWorker(),
+  );
 
   // Pinecone pre-warm is best-effort and independent of the queue layer.
   try {

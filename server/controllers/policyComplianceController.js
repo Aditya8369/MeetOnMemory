@@ -3,6 +3,7 @@ import PolicyCompliance from "../models/policyComplianceModel.js";
 import Decision from "../models/decisionModel.js";
 import Policy from "../models/policyModel.js";
 import { sendSuccess, sendError } from "../utils/responseHandler.js";
+import { policyComplianceRetryQueue } from "../services/queueService.js";
 
 const isValidId = (id) => mongoose.Types.ObjectId.isValid(id);
 
@@ -194,5 +195,57 @@ export const updateFlagStatus = async (req, res) => {
   } catch (error) {
     console.error("updateFlagStatus error:", error);
     return sendError(res, 500, "Failed to update flag status");
+  }
+};
+
+// ─────────────────────────────────────────────────────────────
+// POST /api/policy-compliance/re-evaluate
+// Queue one failed/unclassified compliance record for a background retry.
+// ─────────────────────────────────────────────────────────────
+export const reEvaluateCompliance = async (req, res) => {
+  try {
+    const { flagId } = req.body || {};
+    const organization = req.user.organization;
+
+    if (!isValidId(flagId)) {
+      return sendError(res, 400, "Invalid flag id");
+    }
+    if (!organization) {
+      return sendError(res, 403, "Forbidden: Organization membership required");
+    }
+
+    const flag = await PolicyCompliance.findOne({
+      _id: flagId,
+      organization,
+    });
+
+    if (!flag) {
+      return sendError(res, 404, "Compliance record not found");
+    }
+
+    if (flag.classification !== "unclassified") {
+      return sendError(res, 409, "Compliance record is not awaiting retry");
+    }
+
+    if (!policyComplianceRetryQueue.isActive) {
+      return sendError(
+        res,
+        503,
+        "Background retry processing is unavailable. Please try again later.",
+      );
+    }
+
+    const job = await policyComplianceRetryQueue.add("re-evaluate", {
+      recordId: flag._id.toString(),
+      organizationId: organization.toString(),
+    });
+
+    return sendSuccess(res, {
+      queued: true,
+      jobId: job?.id || null,
+    });
+  } catch (error) {
+    console.error("reEvaluateCompliance error:", error);
+    return sendError(res, 500, "Failed to queue compliance re-evaluation");
   }
 };
