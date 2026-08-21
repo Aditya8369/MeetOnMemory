@@ -16,16 +16,12 @@ jest.mock("../middleware/userAuth.js", () => {
 
 // Mock controller methods
 jest.mock("../controllers/highlightReelController.js", () => ({
-  getHighlightReel: jest
-    .fn()
-    .mockImplementation((req, res) =>
-      res
-        .status(200)
-        .json({
-          success: true,
-          data: { status: "completed", narrative: "Meeting summary..." },
-        }),
-    ),
+  getHighlightReel: jest.fn().mockImplementation((req, res) =>
+    res.status(200).json({
+      success: true,
+      data: { status: "completed", narrative: "Meeting summary..." },
+    }),
+  ),
   generateHighlightReel: jest
     .fn()
     .mockImplementation((req, res) =>
