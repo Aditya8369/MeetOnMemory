@@ -39,6 +39,12 @@ import {
   resolveMeetingInvite,
 } from "../controllers/meetingController.js";
 import {
+  addMeetingBookmark,
+  removeMeetingBookmark,
+  getMeetingBookmarkStatus,
+  getBookmarkedMeetings,
+} from "../controllers/bookmarkController.js";
+import {
   resendDigest,
   previewDigest,
 } from "../controllers/digestController.js";
@@ -249,6 +255,40 @@ router.get(
   requireOrgMembership,
   requirePermission("meetings", "view"),
   getAllMeetings,
+);
+
+// ✅ Fetch All Bookmarked Meetings for current user (#1827)
+router.get(
+  "/bookmarked",
+  userAuth,
+  requireOrgMembership,
+  requirePermission("meetings", "view"),
+  getBookmarkedMeetings,
+);
+
+// ✅ Meeting bookmark operations (#1827)
+router.post(
+  "/:id/bookmark",
+  userAuth,
+  writeLimiter,
+  requireOrgMembership,
+  requirePermission("meetings", "view"),
+  addMeetingBookmark,
+);
+router.delete(
+  "/:id/bookmark",
+  userAuth,
+  writeLimiter,
+  requireOrgMembership,
+  requirePermission("meetings", "view"),
+  removeMeetingBookmark,
+);
+router.get(
+  "/:id/bookmark",
+  userAuth,
+  requireOrgMembership,
+  requirePermission("meetings", "view"),
+  getMeetingBookmarkStatus,
 );
 
 // ✅ Resolve shareable meeting invite (must be before /:id)
