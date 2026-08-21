@@ -49,6 +49,7 @@ import {
   Archive,
   Network,
   Clock,
+  BookOpen,
 } from "lucide-react";
 
 const clerkPubKey = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY;
@@ -451,6 +452,12 @@ const Navbar = () => {
   );
 
   const secondaryLinks = [
+    {
+      label: "Glossary",
+      href: "/glossary",
+      icon: BookOpen,
+      permission: { resource: "knowledge", action: "view" },
+    },
     {
       label: "Conflict Resolution",
       href: "/knowledge/conflicts",

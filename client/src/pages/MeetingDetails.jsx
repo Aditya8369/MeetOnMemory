@@ -33,6 +33,7 @@ import { getBriefing } from "../services/briefingApi";
 import GuestAccessManager from "../components/meetings/GuestAccessManager";
 import MeetingReadiness from "../components/MeetingReadiness";
 import FollowUpThreads from "../components/meeting-details/FollowUpThreads";
+import { Award } from "lucide-react";
 
 const MeetingDetails = () => {
   const { id } = useParams();
@@ -327,6 +328,14 @@ const MeetingDetails = () => {
                     📖 Open Pre-Meeting Briefing
                   </button>
                 )}
+
+                <button
+                  onClick={() => navigate(`/meeting/${id}/quality`)}
+                  className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-xs font-black uppercase tracking-wider rounded-xl shadow transition"
+                >
+                  <Award className="w-4 h-4" />
+                  Meeting Quality
+                </button>
 
                 {(briefingStatus === "idle" ||
                   briefingStatus === "none" ||

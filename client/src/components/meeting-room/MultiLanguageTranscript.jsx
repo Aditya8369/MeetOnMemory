@@ -5,7 +5,7 @@ import React, {
   useRef,
   useCallback,
 } from "react";
-import AppContent from "../../context/AppContent";
+import AppContent from "../../context/AppContent.js";
 import { io } from "socket.io-client";
 import apiClient, {
   createClerkSocketOptions,
@@ -23,7 +23,7 @@ import {
 import { toast } from "react-toastify";
 
 const MultiLanguageTranscript = ({ meetingId }) => {
-  const { backendUrl } = useContext(AppContent);
+  const { backendUrl } = useContext(AppContent) || {};
   const [transcript, setTranscript] = useState([]);
   const [selectedLanguage, setSelectedLanguage] = useState("en");
   const [showSettings, setShowSettings] = useState(false);
@@ -36,7 +36,7 @@ const MultiLanguageTranscript = ({ meetingId }) => {
   const fetchLanguages = useCallback(async () => {
     try {
       const { data } = await apiClient.get("/api/translation/languages");
-      setLanguages(data.languages || []);
+      setLanguages(data?.languages || []);
     } catch (error) {
       console.error("Error fetching languages:", error);
     }
@@ -46,7 +46,7 @@ const MultiLanguageTranscript = ({ meetingId }) => {
     try {
       const { data } = await apiClient.get("/api/translation/preferences");
       if (
-        data.defaultTargetLanguages &&
+        data?.defaultTargetLanguages &&
         data.defaultTargetLanguages.length > 0
       ) {
         setSelectedLanguage(data.defaultTargetLanguages[0]);
@@ -57,17 +57,19 @@ const MultiLanguageTranscript = ({ meetingId }) => {
   }, []);
 
   const fetchTranscript = useCallback(async () => {
+    if (!meetingId) return;
     try {
       const { data } = await apiClient.get(
         `/api/translation/cache/${meetingId}`,
       );
-      setTranscript(data.translations || []);
+      setTranscript(data?.translations || []);
     } catch (error) {
       console.error("Error fetching transcript:", error);
     }
   }, [meetingId]);
 
   const connectSocket = useCallback(async () => {
+    if (!backendUrl || !meetingId) return;
     try {
       const opts = await createClerkSocketOptions({
         transports: ["websocket"],
@@ -121,7 +123,7 @@ const MultiLanguageTranscript = ({ meetingId }) => {
             if (t.segmentId === data.segmentId) {
               return {
                 ...t,
-                translations: t.translations.map((tr) =>
+                translations: (t.translations || []).map((tr) =>
                   tr.language === data.language
                     ? { ...tr, text: data.correctedText, provider: "manual" }
                     : tr,
@@ -134,7 +136,7 @@ const MultiLanguageTranscript = ({ meetingId }) => {
         toast.success("Translation corrected");
       });
     } catch (error) {
-      console.error("Socket connection error:", error);
+      console.warn("Socket connection error:", error);
     }
   }, [backendUrl, meetingId]);
 
