@@ -32,6 +32,7 @@ import AgendaBuilder from "../components/meetings/AgendaBuilder";
 import { getBriefing } from "../services/briefingApi";
 import GuestAccessManager from "../components/meetings/GuestAccessManager";
 import MeetingReadiness from "../components/MeetingReadiness";
+import FollowUpThreads from "../components/meeting-details/FollowUpThreads";
 
 const MeetingDetails = () => {
   const { id } = useParams();
@@ -357,6 +358,10 @@ const MeetingDetails = () => {
 
           <MeetingTranscript meeting={meeting} />
           <TranscriptAnnotations meeting={meeting} />
+
+          <div className="mt-6 mb-6">
+            <FollowUpThreads meetingId={meeting._id} />
+          </div>
 
           <div className="mt-6 mb-6">
             <SentimentTimeline meetingId={meeting._id} />
