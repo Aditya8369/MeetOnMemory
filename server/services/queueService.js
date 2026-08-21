@@ -10,6 +10,7 @@ import recalculateImportanceJob from "../jobs/recalculateImportanceJob.js";
 import memoryLifecycleJob from "../jobs/memoryLifecycleJob.js";
 import policyComplianceReevaluationJob from "../jobs/policyComplianceReevaluationJob.js";
 import RecapEmailService from "./recapEmailService.js";
+import embeddingReindexJob from "../jobs/embeddingReindexJob.js";
 import queueRegistry, {
   readPositiveIntEnv,
   resolveJobOptions,
@@ -160,6 +161,9 @@ export const memoryLifecycleQueue = createQueueFacade("memory-lifecycle-queue");
 export const recapDeliveryQueue = createQueueFacade("recap-delivery-queue");
 export const policyComplianceRetryQueue = createQueueFacade(
   "policy-compliance-retry-queue",
+);
+export const embeddingReindexQueue = createQueueFacade(
+  "embedding-reindex-queue",
 );
 
 /**
@@ -368,6 +372,13 @@ export const initRecapDeliveryWorker = () =>
     },
   });
 
+export const initEmbeddingReindexWorker = () =>
+  createWorker({
+    name: "embedding-reindex-queue",
+    label: "Embedding Reindex Worker",
+    processor: embeddingReindexJob,
+  });
+
 /**
  * Drains every registered worker, then closes queues and shared Redis
  * connections. Safe to call more than once.
@@ -409,6 +420,7 @@ export const KNOWN_QUEUE_NAMES = Object.freeze([
   "recap-delivery-queue",
   "policy-compliance-retry-queue",
   "webhook-dispatches",
+  "embedding-reindex-queue",
 ]);
 
 /**

@@ -180,8 +180,35 @@ export const indexMeeting = async (meeting) => {
     console.log(
       `✅ Indexed meeting: ${title} (${transcriptChunks.length} chunks)`,
     );
+
+    if (meeting._id) {
+      await Meeting.updateOne(
+        { _id: meeting._id },
+        {
+          $set: {
+            "embeddingIndex.status": "succeeded",
+            "embeddingIndex.lastIndexedAt": new Date(),
+            "embeddingIndex.lastError": null,
+          },
+        },
+      ).catch(() => {});
+    }
   } catch (error) {
     console.error("❌ Failed to index meeting:", error);
+    if (meeting?._id) {
+      await Meeting.updateOne(
+        { _id: meeting._id },
+        {
+          $set: {
+            "embeddingIndex.status": "failed",
+            "embeddingIndex.lastError": String(error?.message || error).slice(
+              0,
+              500,
+            ),
+          },
+        },
+      ).catch(() => {});
+    }
     throw error;
   }
 };

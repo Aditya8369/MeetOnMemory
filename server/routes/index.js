@@ -214,6 +214,8 @@ router.use("/api/testimonials", testimonialRoutes);
 router.use("/api/admin/testimonials", adminTestimonialRouter);
 import adminJobsRoutes from "./adminJobsRoutes.js";
 router.use("/api/admin/jobs", adminJobsRoutes);
+import adminReindexRoutes from "./adminReindexRoutes.js";
+router.use("/api/admin/embeddings", adminReindexRoutes);
 router.use("/api/alerts/keywords", keywordAlertRoutes);
 router.use("/api/integrations/notion", notionIntegrationRoutes);
 
