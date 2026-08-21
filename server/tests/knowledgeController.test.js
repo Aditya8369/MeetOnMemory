@@ -210,6 +210,27 @@ describe("knowledgeController - NoSQL Injection & Query Validation", () => {
       });
       expect(res.status).toHaveBeenCalledWith(200);
     });
+
+    it("should escape '.*' in decision search rather than matching every document", async () => {
+      req.query = { sortBy: "createdAt", search: ".*" };
+
+      const mockPopulate = jest.fn().mockReturnValue({
+        sort: jest.fn().mockResolvedValue([]),
+      });
+      Decision.find.mockReturnValue({
+        populate: mockPopulate,
+      });
+
+      await getDecisions(req, res);
+
+      expect(Decision.find).toHaveBeenCalledWith(
+        expect.objectContaining({
+          organization: "org123",
+          text: { $regex: "\\.\\*", $options: "i" },
+          lifecycleState: { $nin: ["archived", "expired"] },
+        }),
+      );
+    });
   });
 
   describe("getOpenActionItems", () => {
@@ -323,6 +344,27 @@ describe("knowledgeController - NoSQL Injection & Query Validation", () => {
           $or: expect.arrayContaining([
             { text: { $regex: "C\\+\\+", $options: "i" } },
             { owner: { $regex: "C\\+\\+", $options: "i" } },
+          ]),
+        }),
+      );
+    });
+
+    it("should treat '.*' as literal search text, not a wildcard", async () => {
+      req.query = { status: "all", sortBy: "createdAt", search: ".*" };
+      mockFindChain();
+
+      await getOpenActionItems(req, res);
+
+      expect(Meeting.find).toHaveBeenCalledWith(
+        expect.objectContaining({
+          title: { $regex: "\\.\\*", $options: "i" },
+        }),
+      );
+      expect(ActionItem.find).toHaveBeenCalledWith(
+        expect.objectContaining({
+          $or: expect.arrayContaining([
+            { text: { $regex: "\\.\\*", $options: "i" } },
+            { owner: { $regex: "\\.\\*", $options: "i" } },
           ]),
         }),
       );

@@ -1,5 +1,6 @@
 import Decision from "../models/decisionModel.js";
 import mongoose from "mongoose";
+import { escapeRegex } from "../utils/regex.js";
 
 /**
  * @desc    Get the decision dependency graph for the current organization
@@ -29,8 +30,8 @@ export const getDecisionGraph = async (req, res) => {
 
     if (search && typeof search === "string") {
       // Escape regex metacharacters so user input can't be compiled as a live
-      // regex (ReDoS / regex injection), matching tagController's escaping.
-      const escapedSearch = search.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+      // regex (ReDoS / regex injection). See `utils/regex.js` (Issue #1770).
+      const escapedSearch = escapeRegex(search);
       filter.text = { $regex: escapedSearch, $options: "i" };
     }
 
