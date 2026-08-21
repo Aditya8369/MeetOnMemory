@@ -22,6 +22,7 @@ import PresentMode from "../components/meeting-details/PresentMode";
 import PrepChecklist from "../components/meetings/PrepChecklist";
 import SpeakingTimeBreakdown from "../components/meetings/SpeakingTimeBreakdown";
 import CarryForwardConfig from "../components/meetings/CarryForwardConfig";
+import RoleRotationConfig from "../components/meetings/RoleRotationConfig";
 import DuplicateDetectionPanel from "../components/meeting-details/DuplicateDetectionPanel";
 import MeetingTimeline from "../components/meeting-details/MeetingTimeline";
 import RecapStoryViewer from "../components/summaries/RecapStoryViewer";
@@ -424,14 +425,26 @@ const MeetingDetails = () => {
           <MeetingGoalsPanel meeting={meeting} currentUser={currentUser} />
 
           {meeting.series && (
-            <CarryForwardConfig
-              seriesId={meeting.series._id || meeting.series}
-              currentMeetingId={meeting._id}
-              onApplySuccess={() => {
-                // Reload meeting data to reflect new agenda items
-                window.location.reload();
-              }}
-            />
+            <>
+              <CarryForwardConfig
+                seriesId={meeting.series._id || meeting.series}
+                currentMeetingId={meeting._id}
+                onApplySuccess={() => {
+                  // Reload meeting data to reflect new agenda items
+                  window.location.reload();
+                }}
+              />
+              {currentUser?.publicMetadata?.dbUserId === meeting.uploadedBy && (
+                <RoleRotationConfig
+                  seriesId={meeting.series._id || meeting.series}
+                  users={meeting.participants.map((p) => ({
+                    _id: p.user,
+                    name: p.name,
+                    email: p.email,
+                  }))}
+                />
+              )}
+            </>
           )}
 
           <AgendaBuilder

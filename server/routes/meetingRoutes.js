@@ -56,6 +56,7 @@ import {
   uploadTranscriptChunk,
   storeEncryptedTranscript,
 } from "../controllers/transcriptController.js";
+import { getMeetingRoles } from "../controllers/roleRotationController.js";
 
 import path from "path";
 import { ValidationError } from "../utils/errors.js";
@@ -206,6 +207,15 @@ router.post(
   requireOrgMembership,
   requirePermission("meetings", "create"),
   retryTranscription,
+);
+
+// GET /api/meetings/:meetingId/roles
+router.get(
+  "/:meetingId/roles",
+  userAuth,
+  requireOrgMembership,
+  requirePermission("meetings", "view"),
+  getMeetingRoles,
 );
 
 // ========== EXISTING ROUTES (Working) ==========
