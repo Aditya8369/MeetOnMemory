@@ -31,12 +31,11 @@ export const getParticipantScorecard = async (req, res) => {
     }).populate("userId", "name email profilePic");
 
     if (!scorecard) {
-      // Create it if it doesn't exist
+      // Create it if it doesn't exist using real database calculations
       scorecard = await ParticipantEngagementService.updateScorecard(
         userId,
         orgId,
       );
-      // populate again
       scorecard = await ParticipantEngagement.findById(scorecard._id).populate(
         "userId",
         "name email profilePic",
@@ -130,6 +129,37 @@ export const recalculateScorecard = async (req, res) => {
     });
   } catch (error) {
     console.error("Error recalculating scorecard:", error);
+    res.status(500).json({ success: false, message: "Internal server error" });
+  }
+};
+
+/**
+ * Asynchronous recomputation job for all scorecards in an organization
+ */
+export const recomputeOrganizationScorecards = async (req, res) => {
+  try {
+    const orgId = (
+      req.user?.organization?._id || req.user?.organization
+    )?.toString();
+
+    if (!orgId || !mongoose.Types.ObjectId.isValid(orgId)) {
+      return res.status(400).json({
+        success: false,
+        message: "Organization ID is required and must be valid",
+      });
+    }
+
+    // Trigger async recomputation
+    const result =
+      await ParticipantEngagementService.recomputeAllScorecards(orgId);
+
+    res.status(200).json({
+      success: true,
+      data: result,
+      message: "Organization scorecards recomputation completed.",
+    });
+  } catch (error) {
+    console.error("Error recomputing organization scorecards:", error);
     res.status(500).json({ success: false, message: "Internal server error" });
   }
 };
