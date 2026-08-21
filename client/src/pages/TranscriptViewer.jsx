@@ -1,5 +1,6 @@
 import React, { useEffect, useState, useCallback, useContext } from "react";
 import { useParams, useNavigate } from "react-router-dom";
+import Navbar from "../components/Navbar.jsx";
 import api from "../services/apiClient.js";
 import { speakerMappingApi } from "../services/speakerMappingApi.js";
 import {
@@ -48,14 +49,14 @@ const TranscriptViewer = () => {
   const [searchResults, setSearchResults] = useState([]);
   const [highlightedSegment, setHighlightedSegment] = useState(null);
 
-  const { userData } = useContext(AppContent);
+  const { userData } = useContext(AppContent) || {};
   const [editingSpeakerIndex, setEditingSpeakerIndex] = useState(null);
   const [newSpeakerName, setNewSpeakerName] = useState("");
 
   const fetchTranscript = useCallback(async () => {
     try {
       setLoading(true);
-      const response = await api.get(`/transcripts/meeting/${meetingId}`);
+      const response = await api.get(`/api/transcripts/meeting/${meetingId}`);
 
       const data = response.data?.data || response.data;
       if (data && data.segments) {
@@ -146,7 +147,7 @@ const TranscriptViewer = () => {
 
     try {
       const response = await api.post(
-        `/transcripts/meeting/${meetingId}/search`,
+        `/api/transcripts/meeting/${meetingId}/search`,
         { query: searchQuery },
       );
 
@@ -160,7 +161,7 @@ const TranscriptViewer = () => {
   const handleExportText = async () => {
     try {
       const response = await api.get(
-        `/transcripts/meeting/${meetingId}/export/text`,
+        `/api/transcripts/meeting/${meetingId}/export/text`,
         {
           responseType: "blob",
         },
@@ -183,7 +184,7 @@ const TranscriptViewer = () => {
   const handleExportPDF = async () => {
     try {
       const response = await api.get(
-        `/transcripts/meeting/${meetingId}/export/pdf`,
+        `/api/transcripts/meeting/${meetingId}/export/pdf`,
         {
           responseType: "blob",
         },
@@ -229,12 +230,15 @@ const TranscriptViewer = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 dark:bg-slate-900 flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600 mx-auto"></div>
-          <p className="mt-4 text-gray-600 dark:text-gray-400">
-            Loading transcript...
-          </p>
+      <div className="min-h-screen bg-gray-50 dark:bg-slate-900 flex flex-col">
+        <Navbar />
+        <div className="flex-1 flex items-center justify-center pt-16">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600 mx-auto"></div>
+            <p className="mt-4 text-gray-600 dark:text-gray-400">
+              Loading transcript...
+            </p>
+          </div>
         </div>
       </div>
     );
@@ -242,21 +246,24 @@ const TranscriptViewer = () => {
 
   if (!transcript) {
     return (
-      <div className="min-h-screen bg-gray-50 dark:bg-slate-900 flex items-center justify-center">
-        <div className="text-center">
-          <FileText size={64} className="mx-auto text-gray-400 mb-4" />
-          <h2 className="text-2xl font-bold text-gray-800 dark:text-white mb-2">
-            Transcript Not Found
-          </h2>
-          <p className="text-gray-600 dark:text-gray-400 mb-6">
-            No transcript available for this meeting
-          </p>
-          <button
-            onClick={() => navigate(-1)}
-            className="px-6 py-3 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors"
-          >
-            Go Back
-          </button>
+      <div className="min-h-screen bg-gray-50 dark:bg-slate-900 flex flex-col">
+        <Navbar />
+        <div className="flex-1 flex items-center justify-center pt-16">
+          <div className="text-center">
+            <FileText size={64} className="mx-auto text-gray-400 mb-4" />
+            <h2 className="text-2xl font-bold text-gray-800 dark:text-white mb-2">
+              Transcript Not Found
+            </h2>
+            <p className="text-gray-600 dark:text-gray-400 mb-6">
+              No transcript available for this meeting
+            </p>
+            <button
+              onClick={() => navigate(-1)}
+              className="px-6 py-3 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors"
+            >
+              Go Back
+            </button>
+          </div>
         </div>
       </div>
     );
@@ -273,9 +280,11 @@ const TranscriptViewer = () => {
       (meeting.uploadedBy && meeting.uploadedBy._id === userData._id));
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-slate-900">
-      {/* Header */}
-      <div className="bg-white dark:bg-slate-800 border-b border-gray-200 dark:border-gray-700 sticky top-0 z-10">
+    <div className="min-h-screen bg-gray-50 dark:bg-slate-900 flex flex-col">
+      <Navbar />
+      <div className="pt-16">
+        {/* Header */}
+        <div className="bg-white dark:bg-slate-800 border-b border-gray-200 dark:border-gray-700 sticky top-16 z-10">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
@@ -525,6 +534,7 @@ const TranscriptViewer = () => {
             </div>
           )}
         </div>
+      </div>
       </div>
     </div>
   );

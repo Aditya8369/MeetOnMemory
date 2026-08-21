@@ -34,10 +34,10 @@ const TranscriptAnnotations = ({ meeting }) => {
         setLoading(true);
         const [transcriptRes, annotationsRes] = await Promise.all([
           api
-            .get(`/transcripts/meeting/${meeting._id}`)
+            .get(`/api/transcripts/meeting/${meeting._id}`)
             .catch(() => ({ data: null })),
           api
-            .get(`/transcript-annotations/meeting/${meeting._id}`)
+            .get(`/api/transcript-annotations/meeting/${meeting._id}`)
             .catch(() => ({ data: { annotations: [] } })),
         ]);
 
@@ -108,7 +108,7 @@ const TranscriptAnnotations = ({ meeting }) => {
         segmentIndex: selection.segmentIndex,
       };
 
-      const { data } = await api.post("/transcript-annotations", payload);
+      const { data } = await api.post("/api/transcript-annotations", payload);
       if (data.success) {
         toast.success("Annotation added");
         setAnnotations([
@@ -128,7 +128,7 @@ const TranscriptAnnotations = ({ meeting }) => {
 
   const handleDeleteAnnotation = async (id) => {
     try {
-      await api.delete(`/transcript-annotations/${id}`);
+      await api.delete(`/api/transcript-annotations/${id}`);
       setAnnotations(annotations.filter((a) => a._id !== id));
       toast.success("Annotation deleted");
     } catch {
@@ -138,7 +138,9 @@ const TranscriptAnnotations = ({ meeting }) => {
 
   const handleResolveAnnotation = async (id) => {
     try {
-      const { data } = await api.patch(`/transcript-annotations/${id}/resolve`);
+      const { data } = await api.patch(
+        `/api/transcript-annotations/${id}/resolve`,
+      );
       if (data.success) {
         setAnnotations(
           annotations.map((a) =>
