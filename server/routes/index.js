@@ -92,6 +92,7 @@ import notionIntegrationRoutes from "./notionIntegrationRoutes.js";
 import gamificationRoutes from "./gamificationRoutes.js";
 import actionItemsRoutes from "./actionItems.routes.js";
 import workloadRoutes from "./workloadRoutes.js";
+import minutesApprovalRoutes from "./minutesApprovalRoutes.js";
 
 const router = express.Router();
 
@@ -151,6 +152,7 @@ router.use("/api/meetings/:meetingId/topics", topicRoutes);
 router.use("/api/meetings/:meetingId/breakout-rooms", breakoutRoomRoutes);
 router.use("/api/workload", workloadRoutes);
 router.use("/api/meetings/:meetingId/attachments", attachmentRoutes);
+router.use("/api/meetings/:meetingId/minutes-approval", minutesApprovalRoutes);
 router.use("/api/meeting-series", meetingSeriesRoutes);
 router.use("/api/meeting-series", carryForwardRoutes);
 router.use("/api/comparison", comparisonRoutes);

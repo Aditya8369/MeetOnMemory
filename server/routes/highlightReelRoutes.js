@@ -8,16 +8,13 @@ import userAuth from "../middleware/userAuth.js";
 
 const router = express.Router();
 
-router.post(
-  "/:meetingId/highlight-reel/generate",
-  userAuth,
-  generateHighlightReel,
-);
-router.get("/:meetingId/highlight-reel", userAuth, getHighlightReel);
-router.get(
-  "/:meetingId/highlight-reel/export",
-  userAuth,
-  exportHighlightReelHtml,
-);
+// Enforce user authentication across all highlight reel endpoints
+router.use(userAuth);
+
+router.post("/:meetingId/highlight-reel/generate", generateHighlightReel);
+
+router.get("/:meetingId/highlight-reel", getHighlightReel);
+
+router.get("/:meetingId/highlight-reel/export", exportHighlightReelHtml);
 
 export default router;
