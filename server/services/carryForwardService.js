@@ -1,10 +1,47 @@
+import mongoose from "mongoose";
 import CarryForwardConfig from "../models/carryForwardConfigModel.js";
 import Meeting from "../models/meetingModel.js";
+import MeetingSeries from "../models/meetingSeriesModel.js";
 import ActionItem from "../models/actionItemModel.js";
 import { normalizeAgendaItems } from "../utils/agendaOrdering.js";
+import { ForbiddenError, NotFoundError } from "../utils/errors.js";
+
+const idsEqual = (a, b) => {
+  if (!a || !b) return false;
+  return a.toString() === b.toString();
+};
 
 class CarryForwardService {
-  async getConfig(seriesId, organizationId = null) {
+  /**
+   * Fail-closed series ownership check (Issue #1666).
+   *
+   * Loads the Meeting Series by `seriesId`, then verifies it belongs to the
+   * authenticated organization. Foreign and missing series both surface as
+   * 404 so existence in another tenant is not leaked.
+   *
+   * Never accepts a client-supplied organization id as a substitute for the
+   * authenticated org passed in by the controller.
+   */
+  async assertSeriesOwnedByOrganization(seriesId, organizationId) {
+    if (!organizationId) {
+      throw new ForbiddenError("Organization membership required");
+    }
+
+    if (!seriesId || !mongoose.Types.ObjectId.isValid(seriesId)) {
+      throw new NotFoundError("Series not found");
+    }
+
+    const series = await MeetingSeries.findById(seriesId);
+    if (!series || !idsEqual(series.organization, organizationId)) {
+      throw new NotFoundError("Series not found");
+    }
+
+    return series;
+  }
+
+  async getConfig(seriesId, organizationId) {
+    await this.assertSeriesOwnedByOrganization(seriesId, organizationId);
+
     let config = await CarryForwardConfig.findOne({ seriesId });
     if (!config) {
       config = new CarryForwardConfig({
@@ -21,21 +58,28 @@ class CarryForwardService {
     return config;
   }
 
-  async updateConfig(seriesId, rules) {
+  async updateConfig(seriesId, rules, organizationId) {
+    await this.assertSeriesOwnedByOrganization(seriesId, organizationId);
+
     const config = await CarryForwardConfig.findOneAndUpdate(
       { seriesId },
-      { $set: { carryForwardRules: rules } },
+      {
+        $set: {
+          carryForwardRules: rules,
+          organization: organizationId,
+        },
+      },
       { new: true, upsert: true },
     );
     return config;
   }
 
-  async getCarryForwardPreview(seriesId) {
-    const config = await this.getConfig(seriesId);
+  async getCarryForwardPreview(seriesId, organizationId) {
+    const config = await this.getConfig(seriesId, organizationId);
 
-    // Find the most recent completed meeting in the series
     const pastMeeting = await Meeting.findOne({
       series: seriesId,
+      organization: organizationId,
       status: "completed",
     }).sort({ seriesOccurrence: -1 });
 
@@ -74,7 +118,7 @@ class CarryForwardService {
       carriedActionItems = openActions.map((action) => ({
         text: `Review Action Item: ${action.text}`,
         description: `Owner: ${action.owner}`,
-        duration: 5, // Default 5 mins for action item review
+        duration: 5,
         status: "pending",
       }));
     }
@@ -96,22 +140,24 @@ class CarryForwardService {
     };
   }
 
-  async applyCarryForward(seriesId, currentMeetingId) {
-    const preview = await this.getCarryForwardPreview(seriesId);
+  async applyCarryForward(seriesId, currentMeetingId, organizationId) {
+    const preview = await this.getCarryForwardPreview(seriesId, organizationId);
 
     if (preview.agendaItems.length === 0 && preview.actionItems.length === 0) {
       return { success: false, message: "No items to carry forward." };
     }
 
-    const currentMeeting = await Meeting.findById(currentMeetingId);
+    const currentMeeting = await Meeting.findOne({
+      _id: currentMeetingId,
+      series: seriesId,
+      organization: organizationId,
+    });
     if (!currentMeeting) {
-      throw new Error("Meeting not found");
+      throw new NotFoundError("Meeting not found");
     }
 
-    // Combine preview items to prepend to current agenda
     const itemsToPrepend = [...preview.agendaItems, ...preview.actionItems];
 
-    // Create new agenda item objects
     const newAgendaItems = itemsToPrepend.map((item) => ({
       text: item.text,
       description: item.description,
@@ -120,7 +166,6 @@ class CarryForwardService {
       actualDuration: 0,
     }));
 
-    // Prepend to existing agenda
     const currentAgenda = currentMeeting.agendaItems || [];
     currentMeeting.agendaItems = normalizeAgendaItems([
       ...newAgendaItems,
