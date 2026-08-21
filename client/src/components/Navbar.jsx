@@ -35,6 +35,7 @@ import {
   Sparkles,
   Users,
   CheckSquare,
+  Activity,
   ShieldAlert,
   Moon,
   Sun,
@@ -504,6 +505,12 @@ const Navbar = () => {
       label: "My Delegations",
       href: "/delegations",
       icon: Users,
+    },
+    {
+      label: "Workload Balance",
+      href: "/workload",
+      icon: Activity,
+      permission: { resource: "tasks", action: "view" },
     },
     {
       label: t("navbar.teamMembers"),

@@ -66,6 +66,7 @@ import Leaderboard from "../pages/Leaderboard.jsx";
 import ParticipantEngagement from "../pages/ParticipantEngagement.jsx";
 import ActionItemAnalytics from "../pages/ActionItemAnalytics.jsx";
 import ActionItemsDashboard from "../pages/ActionItemsDashboard.jsx";
+import WorkloadDashboard from "../pages/WorkloadDashboard.jsx";
 import MyDelegations from "../pages/MyDelegations.jsx";
 import MeetingPatterns from "../pages/MeetingPatterns.jsx";
 import FocusTime from "../pages/FocusTime.jsx";
@@ -476,6 +477,14 @@ const ProtectedRoutes = (
       element={
         <ProtectedRoute resource="tasks" action="view">
           <ActionItemsDashboard />
+        </ProtectedRoute>
+      }
+    />
+    <Route
+      path="/workload"
+      element={
+        <ProtectedRoute resource="tasks" action="view">
+          <WorkloadDashboard />
         </ProtectedRoute>
       }
     />
