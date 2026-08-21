@@ -278,3 +278,11 @@ describe("Policy Compliance route prefix (#1562)", () => {
     });
   });
 });
+
+describe("Policy Compliance re-evaluation route (#1890)", () => {
+  it("registers the POST re-evaluation endpoint", () => {
+    expect(
+      countMatchingLayers(routes, "/api/policy-compliance/re-evaluate"),
+    ).toBeGreaterThan(0);
+  });
+});

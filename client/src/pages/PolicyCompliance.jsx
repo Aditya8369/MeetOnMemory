@@ -96,6 +96,7 @@ const PolicyCompliance = () => {
   const [statusTab, setStatusTab] = useState("unresolved");
   const [classificationTab, setClassificationTab] = useState("all");
   const [actioningId, setActioningId] = useState(null);
+  const [retryQueuedIds, setRetryQueuedIds] = useState(() => new Set());
 
   // Detail Modal States for getDecisionCompliance & getPolicyRelatedDecisions (Issue #1891)
   const [selectedDecisionId, setSelectedDecisionId] = useState(null);
@@ -191,6 +192,42 @@ const PolicyCompliance = () => {
     });
     return counts;
   }, [flags]);
+
+  const handleRetry = async (flagId) => {
+    if (!flagId || retryQueuedIds.has(flagId)) return;
+
+    const toastId = toast.loading(
+      "Queueing policy compliance re-evaluation...",
+    );
+    try {
+      const res = await policyComplianceApi.reEvaluate(flagId);
+      if (res.data?.success) {
+        setRetryQueuedIds((prev) => new Set(prev).add(flagId));
+        toast.update(toastId, {
+          render:
+            "Re-evaluation queued. The Needs Retry result will update when processing finishes.",
+          type: "success",
+          isLoading: false,
+          autoClose: 5000,
+        });
+      } else {
+        toast.update(toastId, {
+          render: res.data?.message || "Failed to queue re-evaluation",
+          type: "error",
+          isLoading: false,
+          autoClose: 5000,
+        });
+      }
+    } catch (err) {
+      console.error("Error queueing policy compliance re-evaluation:", err);
+      toast.update(toastId, {
+        render: "Failed to queue policy re-evaluation",
+        type: "error",
+        isLoading: false,
+        autoClose: 5000,
+      });
+    }
+  };
 
   const handleReview = async (flagId, status) => {
     try {
@@ -407,6 +444,22 @@ const PolicyCompliance = () => {
 
                   {/* Review actions */}
                   <div className="flex flex-col gap-2 shrink-0">
+                    {flag.classification === "unclassified" && (
+                      <button
+                        disabled={retryQueuedIds.has(flag._id)}
+                        onClick={() => handleRetry(flag._id)}
+                        className="inline-flex items-center gap-1 text-xs font-medium px-3 py-1.5 rounded-lg bg-amber-50 text-amber-700 hover:bg-amber-100 dark:bg-amber-950/40 dark:text-amber-400 dark:hover:bg-amber-950/60 disabled:opacity-50 cursor-pointer"
+                      >
+                        {retryQueuedIds.has(flag._id) ? (
+                          <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                        ) : (
+                          <RotateCcw className="w-3.5 h-3.5" />
+                        )}
+                        {retryQueuedIds.has(flag._id)
+                          ? "Queued"
+                          : "Retry Evaluation"}
+                      </button>
+                    )}
                     {flag.status !== "acknowledged" && (
                       <button
                         disabled={actioningId === flag._id}

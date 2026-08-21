@@ -404,38 +404,47 @@ export async function checkMeetingDecisionsAgainstPolicies(meeting, decisions) {
  * Acceptance criterion: superseded policies must not leave decisions
  * silently pointing at stale policy text.
  */
+/**
+ * Re-evaluates one existing decision↔policy compliance record.
+ * Used by the background retry queue so a single failed classification can be
+ * retried without re-running every decision attached to the policy.
+ */
+export async function reevaluatePolicyComplianceRecord(record) {
+  const Decision = (await import("../models/decisionModel.js")).default;
+  const decision = await Decision.findById(record.decisionId);
+  if (!decision) return null;
+
+  const policy = await Policy.findById(record.policyId);
+  if (
+    !policy ||
+    policy.organization?.toString() !== record.organization?.toString()
+  ) {
+    return null;
+  }
+
+  const { classification, reasoning } = await classifyRelationship(
+    decision.text,
+    policy,
+  );
+
+  record.policyVersion = policy.version;
+  record.classification = classification;
+  record.reasoning = reasoning;
+  record.lastEvaluatedAt = new Date();
+  record.status = "unresolved";
+  record.reviewedBy = null;
+  record.reviewedAt = null;
+  await record.save();
+  return record;
+}
+
 export async function reevaluatePolicyDecisions(policy) {
   try {
     const records = await PolicyCompliance.find({ policyId: policy._id });
     if (!records.length) return [];
 
-    const Decision = (await import("../models/decisionModel.js")).default;
-
     const settled = await Promise.allSettled(
-      records.map(async (record) => {
-        const decision = await Decision.findById(record.decisionId);
-        if (!decision) return null;
-
-        const { classification, reasoning } = await classifyRelationship(
-          decision.text,
-          policy,
-        );
-
-        record.policyVersion = policy.version;
-        record.classification = classification;
-        record.reasoning = reasoning;
-        record.lastEvaluatedAt = new Date();
-        // A version change is a material update — put it back in front of a
-        // reviewer rather than leaving a stale acknowledge/dismiss in place,
-        // regardless of whether the reclassification happens to match the
-        // old one (the policy text itself changed, so the prior review no
-        // longer speaks to what's actually in effect now).
-        record.status = "unresolved";
-        record.reviewedBy = null;
-        record.reviewedAt = null;
-        await record.save();
-        return record;
-      }),
+      records.map((record) => reevaluatePolicyComplianceRecord(record)),
     );
 
     return settled
