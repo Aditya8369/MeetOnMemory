@@ -37,6 +37,33 @@ export const deleteCollectionAPI = async (name) => {
 };
 
 export const getBookmarkStatusAPI = async (meetingId) => {
-  const response = await apiClient.get(`/api/bookmarks/status/${meetingId}`);
+  const response = await apiClient.get(`/api/meetings/${meetingId}/bookmark`);
+  return response.data;
+};
+
+export const addMeetingBookmarkAPI = async (
+  meetingId,
+  collectionName,
+  notes,
+  color,
+) => {
+  const response = await apiClient.post(`/api/meetings/${meetingId}/bookmark`, {
+    collectionName,
+    notes,
+    color,
+  });
+  return response.data;
+};
+
+export const removeMeetingBookmarkAPI = async (meetingId) => {
+  const response = await apiClient.delete(
+    `/api/meetings/${meetingId}/bookmark`,
+  );
+  return response.data;
+};
+
+export const getBookmarkedMeetingsAPI = async (collectionName) => {
+  const params = collectionName ? { collectionName } : {};
+  const response = await apiClient.get("/api/meetings/bookmarked", { params });
   return response.data;
 };
