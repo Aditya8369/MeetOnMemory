@@ -73,6 +73,7 @@ import SeriesRetrospective from "../pages/SeriesRetrospective.jsx";
 import DataRetentionSettings from "../pages/DataRetentionSettings.jsx";
 import FollowUpDashboard from "../pages/FollowUpDashboard.jsx";
 import Glossary from "../pages/Glossary.jsx";
+import StandupReports from "../pages/StandupReports.jsx";
 
 const ProtectedRoutes = (
   <React.Fragment>
@@ -640,6 +641,14 @@ const ProtectedRoutes = (
       element={
         <ProtectedRoute resource="reports" action="view">
           <MeetingPatterns />
+        </ProtectedRoute>
+      }
+    />
+    <Route
+      path="/standups"
+      element={
+        <ProtectedRoute resource="reports" action="view">
+          <StandupReports />
         </ProtectedRoute>
       }
     />

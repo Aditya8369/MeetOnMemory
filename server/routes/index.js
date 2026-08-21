@@ -247,5 +247,7 @@ import dataRetentionRoutes from "./dataRetentionRoutes.js";
 router.use("/api/data-retention", dataRetentionRoutes);
 import weeklyInsightRoutes from "./weeklyInsightRoutes.js";
 router.use("/api/weekly-insights", weeklyInsightRoutes);
+import standupReportRoutes from "./standupReportRoutes.js";
+router.use("/api/standups", standupReportRoutes);
 
 export default router;
