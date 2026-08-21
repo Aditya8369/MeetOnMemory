@@ -10,7 +10,7 @@ import userAuth from "../middleware/userAuth.js";
 
 const router = express.Router({ mergeParams: true });
 
-// All routes require authentication
+// All routes require user authentication
 router.use(userAuth);
 
 // Routes for /api/meetings/:meetingId/breakout-rooms

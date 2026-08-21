@@ -8,6 +8,7 @@ import {
   Captions,
   FileText,
   Lightbulb,
+  DoorOpen,
 } from "lucide-react";
 
 export default function MeetingHeader({
@@ -30,6 +31,7 @@ export default function MeetingHeader({
   const isNotesOpen = activePanel === "notes";
   const isParkingLotOpen = activePanel === "parkingLot";
   const isTranscriptOpen = activePanel === "transcript";
+  const isBreakoutRoomsOpen = activePanel === "breakoutRooms";
 
   return (
     <header
@@ -51,92 +53,115 @@ export default function MeetingHeader({
         </div>
       </div>
 
-      <button
-        type="button"
-        onClick={copyLink}
-        className="text-gray-300 hover:text-white flex items-center gap-1.5 text-sm font-semibold bg-gray-800 hover:bg-gray-700 px-4 py-2 rounded-xl transition-all cursor-pointer"
-      >
-        <Copy size={16} />
-        <span className="hidden sm:inline">Copy Link</span>
-      </button>
+      <div className="flex items-center gap-2">
+        <button
+          type="button"
+          onClick={copyLink}
+          className="text-gray-300 hover:text-white flex items-center gap-1.5 text-sm font-semibold bg-gray-800 hover:bg-gray-700 px-4 py-2 rounded-xl transition-all cursor-pointer"
+        >
+          <Copy size={16} />
+          <span className="hidden sm:inline">Copy Link</span>
+        </button>
 
-      {/* Notes Toggle */}
-      <button
-        type="button"
-        onClick={() => onTogglePanel("notes")}
-        aria-pressed={isNotesOpen}
-        className={`flex items-center gap-1.5 text-sm font-semibold px-4 py-2 rounded-xl transition-all cursor-pointer ${
-          isNotesOpen
-            ? "bg-indigo-600 text-white hover:bg-indigo-700"
-            : "bg-gray-800 text-gray-300 hover:text-white hover:bg-gray-700"
-        }`}
-        title={isNotesOpen ? "Hide notes" : "Open collaborative notes"}
-      >
-        {isNotesOpen ? (
-          <PanelRightClose size={16} />
-        ) : (
-          <NotebookPen size={16} />
-        )}
-        <span className="hidden sm:inline">
-          {isNotesOpen ? "Hide Notes" : "Notes"}
-        </span>
-      </button>
+        {/* Notes Toggle */}
+        <button
+          type="button"
+          onClick={() => onTogglePanel("notes")}
+          aria-pressed={isNotesOpen}
+          className={`flex items-center gap-1.5 text-sm font-semibold px-4 py-2 rounded-xl transition-all cursor-pointer ${
+            isNotesOpen
+              ? "bg-indigo-600 text-white hover:bg-indigo-700"
+              : "bg-gray-800 text-gray-300 hover:text-white hover:bg-gray-700"
+          }`}
+          title={isNotesOpen ? "Hide notes" : "Open collaborative notes"}
+        >
+          {isNotesOpen ? (
+            <PanelRightClose size={16} />
+          ) : (
+            <NotebookPen size={16} />
+          )}
+          <span className="hidden sm:inline">
+            {isNotesOpen ? "Hide Notes" : "Notes"}
+          </span>
+        </button>
 
-      <button
-        type="button"
-        onClick={() => onTogglePanel("parkingLot")}
-        aria-pressed={isParkingLotOpen}
-        className={`flex items-center gap-1.5 text-sm font-semibold px-4 py-2 rounded-xl transition-all cursor-pointer ${
-          isParkingLotOpen
-            ? "bg-indigo-600 text-white hover:bg-indigo-700"
-            : "bg-gray-800 text-gray-300 hover:text-white hover:bg-gray-700"
-        }`}
-        title={isParkingLotOpen ? "Hide parking lot" : "Open parking lot"}
-      >
-        <Lightbulb size={16} />
-        <span className="hidden sm:inline">
-          {isParkingLotOpen ? "Hide Ideas" : "Parking Lot"}
-        </span>
-      </button>
+        {/* Parking Lot Toggle */}
+        <button
+          type="button"
+          onClick={() => onTogglePanel("parkingLot")}
+          aria-pressed={isParkingLotOpen}
+          className={`flex items-center gap-1.5 text-sm font-semibold px-4 py-2 rounded-xl transition-all cursor-pointer ${
+            isParkingLotOpen
+              ? "bg-indigo-600 text-white hover:bg-indigo-700"
+              : "bg-gray-800 text-gray-300 hover:text-white hover:bg-gray-700"
+          }`}
+          title={isParkingLotOpen ? "Hide parking lot" : "Open parking lot"}
+        >
+          <Lightbulb size={16} />
+          <span className="hidden sm:inline">
+            {isParkingLotOpen ? "Hide Ideas" : "Parking Lot"}
+          </span>
+        </button>
 
-      {/* Transcription Toggle */}
-      <button
-        type="button"
-        onClick={toggleTranscription}
-        className={`flex items-center gap-1.5 text-sm font-semibold px-4 py-2 rounded-xl transition-all cursor-pointer ${
-          transcriptionEnabled
-            ? "bg-green-600 text-white hover:bg-green-700"
-            : "bg-gray-800 text-gray-300 hover:text-white hover:bg-gray-700"
-        }`}
-        title={
-          transcriptionEnabled
-            ? "Stop transcription"
-            : "Start live transcription"
-        }
-      >
-        <Captions size={16} />
-        <span className="hidden sm:inline">
-          {transcriptionEnabled ? "Stop" : "Captions"}
-        </span>
-      </button>
+        {/* Breakout Rooms Toggle */}
+        <button
+          type="button"
+          onClick={() => onTogglePanel("breakoutRooms")}
+          aria-pressed={isBreakoutRoomsOpen}
+          className={`flex items-center gap-1.5 text-sm font-semibold px-4 py-2 rounded-xl transition-all cursor-pointer ${
+            isBreakoutRoomsOpen
+              ? "bg-indigo-600 text-white hover:bg-indigo-700"
+              : "bg-gray-800 text-gray-300 hover:text-white hover:bg-gray-700"
+          }`}
+          title={
+            isBreakoutRoomsOpen ? "Hide breakout rooms" : "Open breakout rooms"
+          }
+        >
+          <DoorOpen size={16} />
+          <span className="hidden sm:inline">
+            {isBreakoutRoomsOpen ? "Hide Breakout" : "Breakout"}
+          </span>
+        </button>
 
-      {/* Transcript Toggle */}
-      <button
-        type="button"
-        onClick={() => onTogglePanel("transcript")}
-        aria-pressed={isTranscriptOpen}
-        className={`flex items-center gap-1.5 text-sm font-semibold px-4 py-2 rounded-xl transition-all cursor-pointer ${
-          isTranscriptOpen
-            ? "bg-indigo-600 text-white hover:bg-indigo-700"
-            : "bg-gray-800 text-gray-300 hover:text-white hover:bg-gray-700"
-        }`}
-        title={isTranscriptOpen ? "Hide transcript" : "Show transcript"}
-      >
-        <FileText size={16} />
-        <span className="hidden sm:inline">
-          {isTranscriptOpen ? "Hide" : "Transcript"}
-        </span>
-      </button>
+        {/* Transcription Toggle */}
+        <button
+          type="button"
+          onClick={toggleTranscription}
+          className={`flex items-center gap-1.5 text-sm font-semibold px-4 py-2 rounded-xl transition-all cursor-pointer ${
+            transcriptionEnabled
+              ? "bg-green-600 text-white hover:bg-green-700"
+              : "bg-gray-800 text-gray-300 hover:text-white hover:bg-gray-700"
+          }`}
+          title={
+            transcriptionEnabled
+              ? "Stop transcription"
+              : "Start live transcription"
+          }
+        >
+          <Captions size={16} />
+          <span className="hidden sm:inline">
+            {transcriptionEnabled ? "Stop" : "Captions"}
+          </span>
+        </button>
+
+        {/* Transcript Toggle */}
+        <button
+          type="button"
+          onClick={() => onTogglePanel("transcript")}
+          aria-pressed={isTranscriptOpen}
+          className={`flex items-center gap-1.5 text-sm font-semibold px-4 py-2 rounded-xl transition-all cursor-pointer ${
+            isTranscriptOpen
+              ? "bg-indigo-600 text-white hover:bg-indigo-700"
+              : "bg-gray-800 text-gray-300 hover:text-white hover:bg-gray-700"
+          }`}
+          title={isTranscriptOpen ? "Hide transcript" : "Show transcript"}
+        >
+          <FileText size={16} />
+          <span className="hidden sm:inline">
+            {isTranscriptOpen ? "Hide" : "Transcript"}
+          </span>
+        </button>
+      </div>
     </header>
   );
 }
