@@ -5,8 +5,7 @@ import { AppError } from "../utils/errors.js";
  * Tenant for carry-forward is always the authenticated user's organization.
  * Client-supplied organizationId (body/query/params) is ignored (Issue #1666).
  */
-const getAuthenticatedOrganizationId = (req) =>
-  req.user?.organization || req.user?.organizationId || null;
+const getAuthenticatedOrganizationId = (req) => req.user?.organization || null;
 
 const sendCarryForwardError = (res, error, fallbackMessage) => {
   if (error instanceof AppError) {

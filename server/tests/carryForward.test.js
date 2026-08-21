@@ -242,6 +242,31 @@ describe("Carry Forward Feature Tests", () => {
       expect(unchanged.agendaItems).toHaveLength(1);
     });
 
+    it("does not modify a foreign currentMeetingId", async () => {
+      const foreignMeeting = await Meeting.create({
+        title: "Foreign Current Meeting",
+        uploadedBy: user._id,
+        organization: foreignOrgId,
+        date: new Date(),
+        series: foreignSeries._id,
+        seriesOccurrence: 1,
+        status: "uploaded",
+        agendaItems: [{ text: "Do not touch", status: "pending" }],
+      });
+
+      await expect(
+        carryForwardService.applyCarryForward(
+          series._id,
+          foreignMeeting._id,
+          orgId,
+        ),
+      ).rejects.toBeInstanceOf(NotFoundError);
+
+      const unchanged = await Meeting.findById(foreignMeeting._id);
+      expect(unchanged.agendaItems).toHaveLength(1);
+      expect(unchanged.agendaItems[0].text).toBe("Do not touch");
+    });
+
     it("rejects a nonexistent series", async () => {
       const missingId = new mongoose.Types.ObjectId();
       await expect(
