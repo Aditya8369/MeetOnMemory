@@ -34,6 +34,7 @@ import { getBriefing } from "../services/briefingApi";
 import GuestAccessManager from "../components/meetings/GuestAccessManager";
 import MeetingReadiness from "../components/MeetingReadiness";
 import FollowUpThreads from "../components/meeting-details/FollowUpThreads";
+import MeetingRisksPanel from "../components/meetings/MeetingRisksPanel";
 import { Award } from "lucide-react";
 
 const MeetingDetails = () => {
@@ -435,6 +436,10 @@ const MeetingDetails = () => {
               }}
             />
           )}
+
+          <div className="mt-6 mb-6">
+            <MeetingRisksPanel meetingId={meeting._id} />
+          </div>
 
           <AgendaBuilder
             meetingId={meeting._id}
