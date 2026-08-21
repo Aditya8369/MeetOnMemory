@@ -8,6 +8,7 @@ import conflictScanJob from "./conflictDetection/conflictScanJob.js";
 import sentimentAnalysisJob from "../jobs/sentimentAnalysisJob.js";
 import recalculateImportanceJob from "../jobs/recalculateImportanceJob.js";
 import memoryLifecycleJob from "../jobs/memoryLifecycleJob.js";
+import policyComplianceReevaluationJob from "../jobs/policyComplianceReevaluationJob.js";
 import RecapEmailService from "./recapEmailService.js";
 import queueRegistry, {
   readPositiveIntEnv,
@@ -157,6 +158,9 @@ export const recalculateImportanceQueue = createQueueFacade(
 );
 export const memoryLifecycleQueue = createQueueFacade("memory-lifecycle-queue");
 export const recapDeliveryQueue = createQueueFacade("recap-delivery-queue");
+export const policyComplianceRetryQueue = createQueueFacade(
+  "policy-compliance-retry-queue",
+);
 
 /**
  * Creates a worker, wires the standard lifecycle logging, and registers it with
@@ -334,6 +338,13 @@ export const initMemoryLifecycleWorker = async (app) => {
 
   return worker;
 };
+
+export const initPolicyComplianceRetryWorker = () =>
+  createWorker({
+    name: "policy-compliance-retry-queue",
+    label: "Policy Compliance Retry Worker",
+    processor: policyComplianceReevaluationJob,
+  });
 
 /**
  * Processes queued meeting recap deliveries (Issue #1248).

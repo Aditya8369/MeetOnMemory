@@ -29,6 +29,7 @@ import AiSearch from "../pages/AiSearch.jsx";
 import AiAssistant from "../pages/AiAssistant.jsx";
 import MeetingDetails from "../pages/MeetingDetails.jsx";
 import MeetingBriefing from "../pages/MeetingBriefing.jsx";
+import MeetingQuality from "../pages/MeetingQuality.jsx";
 import MeetingRecycleBin from "../pages/MeetingRecycleBin.jsx";
 import MeetingRoom from "../pages/MeetingRoom.jsx";
 import TranscriptViewer from "../pages/TranscriptViewer.jsx";
@@ -71,6 +72,7 @@ import FocusTime from "../pages/FocusTime.jsx";
 import SeriesRetrospective from "../pages/SeriesRetrospective.jsx";
 import DataRetentionSettings from "../pages/DataRetentionSettings.jsx";
 import FollowUpDashboard from "../pages/FollowUpDashboard.jsx";
+import Glossary from "../pages/Glossary.jsx";
 
 const ProtectedRoutes = (
   <React.Fragment>
@@ -111,6 +113,14 @@ const ProtectedRoutes = (
       element={
         <ProtectedRoute resource="knowledge" action="view">
           <ConflictResolution />
+        </ProtectedRoute>
+      }
+    />
+    <Route
+      path="/glossary"
+      element={
+        <ProtectedRoute resource="knowledge" action="view">
+          <Glossary />
         </ProtectedRoute>
       }
     />
@@ -401,6 +411,14 @@ const ProtectedRoutes = (
       element={
         <ProtectedRoute resource="meetings" action="view">
           <MeetingBriefing />
+        </ProtectedRoute>
+      }
+    />
+    <Route
+      path="/meeting/:id/quality"
+      element={
+        <ProtectedRoute resource="meetings" action="view">
+          <MeetingQuality />
         </ProtectedRoute>
       }
     />

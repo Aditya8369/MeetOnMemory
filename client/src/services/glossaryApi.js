@@ -5,7 +5,7 @@ import api from "./apiClient";
  * @param {Object} params { status, search }
  */
 export const fetchTerms = async (params = {}) => {
-  const { data } = await api.get("/glossary", { params });
+  const { data } = await api.get("/api/glossary", { params });
   return data;
 };
 
@@ -14,7 +14,7 @@ export const fetchTerms = async (params = {}) => {
  * @param {Object} termData
  */
 export const createTerm = async (termData) => {
-  const { data } = await api.post("/glossary", termData);
+  const { data } = await api.post("/api/glossary", termData);
   return data;
 };
 
@@ -24,7 +24,7 @@ export const createTerm = async (termData) => {
  * @param {Object} termData
  */
 export const updateTerm = async (id, termData) => {
-  const { data } = await api.put(`/glossary/${id}`, termData);
+  const { data } = await api.put(`/api/glossary/${id}`, termData);
   return data;
 };
 
@@ -33,7 +33,7 @@ export const updateTerm = async (id, termData) => {
  * @param {string} id
  */
 export const deleteTerm = async (id) => {
-  const { data } = await api.delete(`/glossary/${id}`);
+  const { data } = await api.delete(`/api/glossary/${id}`);
   return data;
 };
 
@@ -42,7 +42,7 @@ export const deleteTerm = async (id) => {
  * @param {string} id
  */
 export const approveTerm = async (id) => {
-  const { data } = await api.post(`/glossary/${id}/approve`);
+  const { data } = await api.post(`/api/glossary/${id}/approve`);
   return data;
 };
 
@@ -61,7 +61,7 @@ export const detectTerms = async (text) => {
     return detectCache.get(text);
   }
 
-  const { data } = await api.post("/glossary/detect", { text });
+  const { data } = await api.post("/api/glossary/detect", { text });
 
   detectCache.set(text, data);
   // Optional: keep cache size bounded if needed, but for a single meeting session it's fine.
@@ -85,6 +85,6 @@ export const getCachedDetection = (text) => {
  * @param {string} meetingId
  */
 export const extractTerms = async (meetingId) => {
-  const { data } = await api.post("/glossary/extract", { meetingId });
+  const { data } = await api.post("/api/glossary/extract", { meetingId });
   return data;
 };

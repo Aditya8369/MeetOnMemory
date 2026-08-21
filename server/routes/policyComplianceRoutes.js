@@ -7,6 +7,7 @@ import {
   getPolicyRelatedDecisions,
   getComplianceFlags,
   updateFlagStatus,
+  reEvaluateCompliance,
 } from "../controllers/policyComplianceController.js";
 
 const router = express.Router();
@@ -30,6 +31,12 @@ router.patch(
   writeLimiter,
   requirePermission("policies", "edit"),
   updateFlagStatus,
+);
+router.post(
+  "/re-evaluate",
+  writeLimiter,
+  requirePermission("policies", "edit"),
+  reEvaluateCompliance,
 );
 
 export default router;
