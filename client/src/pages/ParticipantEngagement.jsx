@@ -21,6 +21,7 @@ const ParticipantEngagement = () => {
   const [scorecard, setScorecard] = useState(null);
   const [rankings, setRankings] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [recalculating, setRecalculating] = useState(false);
   const [error, setError] = useState(null);
 
   const fetchScorecard = useCallback(async (userId) => {
@@ -75,6 +76,24 @@ const ParticipantEngagement = () => {
   useEffect(() => {
     fetchDashboardData();
   }, [fetchDashboardData]);
+
+  const handleRecalculateScorecard = async () => {
+    const targetUserId = scorecard?.userId?._id;
+    if (!targetUserId) return;
+    try {
+      setRecalculating(true);
+      const res = await api.post(
+        `/api/engagement/participant/${targetUserId}/recalculate`,
+      );
+      if (res.data.success) {
+        setScorecard(res.data.data);
+      }
+    } catch (err) {
+      console.error("Error recalculating scorecard:", err);
+    } finally {
+      setRecalculating(false);
+    }
+  };
 
   if (loading) {
     return (
@@ -152,13 +171,26 @@ const ParticipantEngagement = () => {
       }))
     : [];
 
+  const metrics = scorecard?.metrics || {};
+
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-gray-900">
       <Navbar />
       <div className="pt-28 pb-16 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto space-y-8">
-        <h1 className="text-3xl font-bold text-gray-800 dark:text-white">
-          Participant Engagement
-        </h1>
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <h1 className="text-3xl font-bold text-gray-800 dark:text-white">
+            Participant Engagement
+          </h1>
+          {scorecard && (
+            <button
+              onClick={handleRecalculateScorecard}
+              disabled={recalculating}
+              className="inline-flex items-center gap-2 px-4 py-2 text-xs font-semibold text-white bg-indigo-600 hover:bg-indigo-700 rounded-xl transition-all disabled:opacity-50 cursor-pointer"
+            >
+              {recalculating ? "Recalculating..." : "Recalculate Real Metrics"}
+            </button>
+          )}
+        </div>
 
         {scorecard && (
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
@@ -185,13 +217,42 @@ const ParticipantEngagement = () => {
                 {scorecard.userId?.name}
               </h2>
               <p className="text-gray-500">{scorecard.userId?.email}</p>
-              <div className="mt-6 text-center">
+              <div className="mt-4 text-center">
                 <span className="text-5xl font-black text-indigo-600">
                   {scorecard.overallScore}
                 </span>
                 <p className="text-sm text-gray-500 uppercase tracking-wide mt-1">
                   Overall Score
                 </p>
+              </div>
+
+              {/* Real Aggregated Metrics Sub-panel */}
+              <div className="w-full mt-6 pt-4 border-t border-slate-100 dark:border-slate-700 grid grid-cols-2 gap-2 text-center text-xs">
+                <div className="bg-slate-50 dark:bg-slate-700/50 p-2 rounded-lg">
+                  <span className="font-bold text-gray-800 dark:text-gray-100 block">
+                    {metrics.meetingsAttended || 0}
+                  </span>
+                  <span className="text-gray-500">Meetings</span>
+                </div>
+                <div className="bg-slate-50 dark:bg-slate-700/50 p-2 rounded-lg">
+                  <span className="font-bold text-gray-800 dark:text-gray-100 block">
+                    {metrics.totalSpeakingTimeMinutes || 0} min
+                  </span>
+                  <span className="text-gray-500">Spoken</span>
+                </div>
+                <div className="bg-slate-50 dark:bg-slate-700/50 p-2 rounded-lg">
+                  <span className="font-bold text-gray-800 dark:text-gray-100 block">
+                    {metrics.actionItemsCompleted || 0} /{" "}
+                    {metrics.actionItemsAssigned || 0}
+                  </span>
+                  <span className="text-gray-500">Action Items</span>
+                </div>
+                <div className="bg-slate-50 dark:bg-slate-700/50 p-2 rounded-lg">
+                  <span className="font-bold text-gray-800 dark:text-gray-100 block">
+                    {metrics.decisionsInvolved || 0}
+                  </span>
+                  <span className="text-gray-500">Decisions</span>
+                </div>
               </div>
             </div>
 
