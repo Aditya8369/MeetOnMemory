@@ -392,3 +392,33 @@ export const getQueueStatus = () => ({
   workers: queueRegistry.listWorkers(),
   shuttingDown: queueRegistry.isClosing(),
 });
+
+/**
+ * Known BullMQ queue names used by this app (Issue #2080 admin jobs board).
+ * Includes queues defined in queueRegistry even if not yet lazy-instantiated.
+ */
+export const KNOWN_QUEUE_NAMES = Object.freeze([
+  "ai-mom-generation",
+  "ai-mom-results",
+  "data-export-queue",
+  "export-cleanup-queue",
+  "conflict-scan-queue",
+  "sentiment-analysis-queue",
+  "recalculate-importance-queue",
+  "memory-lifecycle-queue",
+  "recap-delivery-queue",
+  "policy-compliance-retry-queue",
+  "webhook-dispatches",
+]);
+
+/**
+ * Returns a live BullMQ Queue instance (creating it if needed), or null when
+ * Redis is not configured.
+ *
+ * @param {string} name
+ * @returns {import("bullmq").Queue|null}
+ */
+export const getQueueInstance = (name) => {
+  if (typeof name !== "string" || !name) return null;
+  return getQueue(name);
+};
