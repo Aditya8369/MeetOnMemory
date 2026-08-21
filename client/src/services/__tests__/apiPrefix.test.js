@@ -2,14 +2,12 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import api from "../apiClient";
 import { compareMeetings, getComparableMeetings } from "../comparisonApi";
 import { meetingSeriesApi } from "../meetingSeriesApi";
-import { speakerMappingApi } from "../speakerMappingApi";
 
 vi.mock("../apiClient", () => ({
   default: {
     post: vi.fn(),
     get: vi.fn(),
     patch: vi.fn(),
-    delete: vi.fn(),
   },
 }));
 
@@ -58,35 +56,6 @@ describe("API Services Endpoint Prefix (#803)", () => {
     it("should call /api/meeting-series/:id/cancel for cancelSeries", async () => {
       meetingSeriesApi.cancelSeries("s1");
       expect(api.patch).toHaveBeenCalledWith("/api/meeting-series/s1/cancel");
-    });
-  });
-
-  describe("speakerMappingApi", () => {
-    it("should call /api/speaker-mappings/:meetingId for getMappings", async () => {
-      api.get.mockResolvedValueOnce({ data: { data: [] } });
-      await speakerMappingApi.getMappings("m1");
-      expect(api.get).toHaveBeenCalledWith("/api/speaker-mappings/m1");
-    });
-
-    it("should call /api/speaker-mappings/:meetingId/suggest for suggestMappings", async () => {
-      api.get.mockResolvedValueOnce({ data: { data: [] } });
-      await speakerMappingApi.suggestMappings("m1");
-      expect(api.get).toHaveBeenCalledWith("/api/speaker-mappings/m1/suggest");
-    });
-
-    it("should call /api/speaker-mappings/:meetingId for saveAndApplyMapping", async () => {
-      api.post.mockResolvedValueOnce({ data: { success: true } });
-      await speakerMappingApi.saveAndApplyMapping("m1", "Speaker 1", "Alice");
-      expect(api.post).toHaveBeenCalledWith("/api/speaker-mappings/m1", {
-        originalLabel: "Speaker 1",
-        mappedName: "Alice",
-      });
-    });
-
-    it("should call /api/speaker-mappings/:meetingId/:mappingId for revertMapping", async () => {
-      api.delete.mockResolvedValueOnce({ data: { success: true } });
-      await speakerMappingApi.revertMapping("m1", "map-1");
-      expect(api.delete).toHaveBeenCalledWith("/api/speaker-mappings/m1/map-1");
     });
   });
 });

@@ -1,4 +1,5 @@
 import Transcript from "../models/transcriptModel.js";
+import { translateContent } from "../services/translationService.js";
 import Meeting from "../models/meetingModel.js";
 import { transcribeFileWithSegments } from "../services/TranscriptionService.js";
 import {
@@ -1016,40 +1017,65 @@ function formatTimestamp(seconds) {
 export const translateTranscript = async (req, res) => {
   try {
     const { meetingId } = req.params;
+    const { targetLanguage } = req.body;
 
-    // Authorization: User must be authenticated (handled by userAuth)
-    // Authorization: User must be part of organization and have view permission (handled by requireOrgAccess and requirePermission)
+    if (!targetLanguage) {
+      return res.status(400).json({
+        success: false,
+        error: "Target language configuration parameter is required.",
+      });
+    }
 
     const transcript = await Transcript.findOne({
       meeting: meetingId,
     }).populate("meeting");
+
     if (!transcript) {
-      return res.status(404).json({ message: "Transcript not found" });
+      return res.status(404).json({
+        success: false,
+        error: "Target transcript identifier records not found.",
+      });
     }
 
     const meeting = transcript.meeting;
 
-    // Translation ownership check (where applicable)
-    // Ensure only the user who uploaded the meeting or an admin can perform translation operations
     const isOwner = meeting.uploadedBy?.toString() === req.user._id.toString();
     const isAdmin = req.user.role === "admin";
 
     if (!isOwner && !isAdmin) {
       return res.status(403).json({
+        success: false,
         message:
           "Forbidden: You do not own this meeting and cannot perform translation operations",
       });
     }
 
-    // Since this is a placeholder for actual translation logic (per constraints),
-    // we return a success response immediately.
-    res.json({
-      message: "Translation authorized and processed successfully",
-      transcript: transcript.fullText,
+    // Orchestrate live bulk translation processing
+    const translatedSegments = await translateContent(
+      meetingId,
+      "transcript",
+      targetLanguage,
+    );
+
+    // Format the translated segments to fullText equivalent
+    const translatedTextOutput = translatedSegments
+      .map((s) => `${s.speaker ? `[${s.speaker}] ` : ""}${s.text}`)
+      .join("\n\n");
+
+    return res.status(200).json({
+      success: true,
+      transcriptId: transcript._id,
+      targetLanguage,
+      status: "completed",
+      translatedText: translatedTextOutput,
     });
   } catch (error) {
-    console.error("Error translating transcript:", error);
-    res.status(500).json({ message: "Failed to translate transcript" });
+    console.error(`❌ [Translation Controller Exception]:`, error);
+    return res.status(500).json({
+      success: false,
+      error:
+        "Downstream localization processing error occurred during translation aggregation.",
+    });
   }
 };
 

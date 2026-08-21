@@ -812,3 +812,54 @@ Return ONLY a valid JSON object matching this structure (no markdown formatting,
 
   return parsed;
 };
+
+export const generateSeriesRetrospectiveSummary = async (
+  seriesTitle,
+  metricsData,
+) => {
+  if (!GEMINI_API_KEY) {
+    throw new Error(
+      "Series Retrospective generation is unavailable: GEMINI_API_KEY is not configured.",
+    );
+  }
+
+  const prompt = `
+You are an AI meeting assistant. Your task is to generate a narrative retrospective summary for a meeting series.
+Series Title: "${seriesTitle}"
+
+Here is the aggregated metrics data for the series:
+${JSON.stringify(metricsData, null, 2)}
+
+Based on this data, provide a professional, 3-4 paragraph narrative summarizing the evolution of this meeting series.
+Focus on:
+1. Are topics recurring too often without resolution?
+2. Are action items being completed consistently, or are there chronic carryovers?
+3. How is the attendance trend?
+4. How is the overall sentiment evolving?
+5. Are decisions actually being followed through?
+
+Return ONLY a valid JSON object matching this structure (no markdown formatting, no commentary):
+{
+  "summary": "The narrative summary..."
+}
+`;
+
+  let outputText;
+  try {
+    outputText = await generateText(prompt, "Gemini series retrospective");
+  } catch (err) {
+    console.error("❌ Series retrospective generation failed:", err.message);
+    throw new Error(
+      `Series retrospective generation failed (${err.kind ?? AI_ERROR_KIND.UNKNOWN}): ${err.message}`,
+    );
+  }
+
+  const parsed = parseJsonOutput(outputText);
+  if (!parsed || !parsed.summary) {
+    throw new Error(
+      "Failed to parse Gemini JSON output for series retrospective",
+    );
+  }
+
+  return parsed.summary;
+};

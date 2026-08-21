@@ -33,9 +33,7 @@ export const useMeetingDuplicates = (meetingId) => {
     try {
       await meetingDuplicateApi.mergeMeetings(primaryId, secondaryId);
       toast.success("Meetings merged successfully");
-      await fetchDuplicates();
-      // To simulate the invalidation of the primary meeting:
-      window.location.reload();
+      setDuplicates((prev) => prev.filter((d) => d._id !== secondaryId));
     } catch (error) {
       toast.error(error.response?.data?.message || "Failed to merge meetings");
       throw error;
@@ -48,7 +46,7 @@ export const useMeetingDuplicates = (meetingId) => {
     setIsDismissing(true);
     try {
       await meetingDuplicateApi.dismissDuplicate(primaryId, secondaryId);
-      await fetchDuplicates();
+      setDuplicates((prev) => prev.filter((d) => d._id !== secondaryId));
     } catch (error) {
       toast.error(
         error.response?.data?.message || "Failed to dismiss duplicate",

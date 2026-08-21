@@ -3,6 +3,7 @@ import { useParams, useNavigate } from "react-router-dom";
 import Navbar from "../components/Navbar.jsx";
 import api from "../services/apiClient.js";
 import { speakerMappingApi } from "../services/speakerMappingApi.js";
+import { requestTranscriptBulkTranslation } from "../services/translationApi.js";
 import {
   FileText,
   Search,
@@ -52,6 +53,34 @@ const TranscriptViewer = () => {
   const { userData } = useContext(AppContent) || {};
   const [editingSpeakerIndex, setEditingSpeakerIndex] = useState(null);
   const [newSpeakerName, setNewSpeakerName] = useState("");
+
+  const [targetLang, setTargetLang] = useState("es");
+  const [translationStatus, setTranslationStatus] = useState("idle");
+  const [translatedText, setTranslatedText] = useState("");
+
+  const handleTriggerTranslation = async () => {
+    setTranslationStatus("translating");
+    try {
+      const data = await requestTranscriptBulkTranslation(
+        meetingId,
+        targetLang,
+      );
+      if (data && data.success) {
+        setTranslatedText(data.translatedText);
+        setTranslationStatus("translated");
+      } else {
+        setTranslationStatus("failed");
+      }
+    } catch (err) {
+      console.error("Translation error:", err);
+      setTranslationStatus("failed");
+    }
+  };
+
+  const handleResetToOriginal = () => {
+    setTranslationStatus("idle");
+    setTranslatedText("");
+  };
 
   const fetchTranscript = useCallback(async () => {
     try {
@@ -377,6 +406,45 @@ const TranscriptViewer = () => {
               Search
             </button>
           </div>
+
+          {/* Language Selector Controls */}
+          <div className="mt-4 flex items-center justify-between border-t border-gray-200 dark:border-gray-700 pt-4">
+            <div className="text-sm font-medium text-gray-700 dark:text-gray-300">
+              Bulk Translation
+            </div>
+            <div className="flex items-center gap-3">
+              <select
+                value={targetLang}
+                onChange={(e) => setTargetLang(e.target.value)}
+                disabled={translationStatus === "translating"}
+                className="rounded-xl border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 px-3 py-1.5 text-xs font-semibold focus:outline-none"
+              >
+                <option value="es">Spanish (Español)</option>
+                <option value="fr">French (Français)</option>
+                <option value="zh">Chinese (中文)</option>
+                <option value="de">German (Deutsch)</option>
+              </select>
+
+              {translationStatus === "translated" ? (
+                <button
+                  onClick={handleResetToOriginal}
+                  className="px-4 py-2 bg-gray-600 hover:bg-gray-700 text-white text-xs font-black uppercase tracking-wider rounded-xl transition"
+                >
+                  ↩️ Show Original
+                </button>
+              ) : (
+                <button
+                  onClick={handleTriggerTranslation}
+                  disabled={translationStatus === "translating"}
+                  className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-black uppercase tracking-wider rounded-xl transition disabled:opacity-40"
+                >
+                  {translationStatus === "translating"
+                    ? "Translating..."
+                    : "Translate"}
+                </button>
+              )}
+            </div>
+          </div>
         </div>
       </div>
 
@@ -386,19 +454,46 @@ const TranscriptViewer = () => {
           {/* Transcript Content */}
           <div className="lg:col-span-2 space-y-4">
             {/* Sentiment Chart */}
-            <MeetingSentimentChart
-              transcript={transcript}
-              onPointClick={(segmentData) => {
-                const index = transcript.segments.findIndex(
-                  (s) => s.startTime === segmentData.startTime,
-                );
-                if (index !== -1) {
-                  scrollToSegment(index);
-                }
-              }}
-            />
+            {translationStatus !== "translated" && (
+              <MeetingSentimentChart
+                transcript={transcript}
+                onPointClick={(segmentData) => {
+                  const index = transcript.segments.findIndex(
+                    (s) => s.startTime === segmentData.startTime,
+                  );
+                  if (index !== -1) {
+                    scrollToSegment(index);
+                  }
+                }}
+              />
+            )}
 
-            {transcript.segments?.length === 0 ? (
+            {/* Operational Alert Messaging Feedback */}
+            {translationStatus === "translating" && (
+              <div className="mb-4 text-xs font-semibold text-amber-600 bg-amber-50 dark:bg-amber-950/20 p-3 rounded-xl border border-amber-200 dark:border-amber-900/40 flex items-center gap-2">
+                <span className="w-3.5 h-3.5 border-2 border-amber-600/30 border-t-amber-600 rounded-full animate-spin" />
+                Processing bulk text blocks. Please wait...
+              </div>
+            )}
+
+            {translationStatus === "failed" && (
+              <div className="mb-4 text-xs font-semibold text-red-600 bg-red-50 dark:bg-red-950/20 p-3 rounded-xl border border-red-200 dark:border-red-900/40">
+                ⚠️ Translation Failure: Downstream service timed out. Please try
+                again.
+              </div>
+            )}
+
+            {translationStatus === "translated" ? (
+              <div className="p-5 bg-gray-50 dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 relative">
+                <span className="absolute top-3 right-3 text-[9px] font-black uppercase bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-900/40 px-2 py-0.5 rounded-md">
+                  ✨ AI Translation Implemented
+                </span>
+                <p className="text-sm leading-relaxed text-gray-800 dark:text-gray-200 whitespace-pre-line font-serif">
+                  {translatedText ||
+                    "No transcript text content currently compiled."}
+                </p>
+              </div>
+            ) : transcript.segments?.length === 0 ? (
               <div className="bg-white dark:bg-slate-800 rounded-lg p-8 text-center">
                 <FileText size={48} className="mx-auto text-gray-400 mb-4" />
                 <p className="text-gray-600 dark:text-gray-400">

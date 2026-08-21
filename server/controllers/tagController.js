@@ -4,7 +4,8 @@ import Meeting from "../models/meetingModel.js";
 import { sendSuccess } from "../utils/responseHandler.js";
 import { ValidationError, NotFoundError } from "../utils/errors.js";
 import { buildPaginationMeta, parsePagination } from "../utils/pagination.js";
-import { caseInsensitiveEquals, escapeRegExp } from "../utils/regexUtils.js";
+import { caseInsensitiveEquals } from "../utils/regexUtils.js";
+import { escapeRegex } from "../utils/regex.js";
 import mongoose from "mongoose";
 
 // Validation schemas
@@ -257,11 +258,11 @@ export const autocomplete = async (req, res, next) => {
     }
 
     // Prefix matching is a genuine pattern query, so this one stays a regex —
-    // it just uses the shared helper rather than a fourth open-coded copy of
-    // the same character class (Issue #1157).
+    // user input is escaped via `escapeRegex` so `.*` / `C++` stay literal
+    // (Issues #1157 / #1770).
     const tags = await Tag.find({
       organization: orgId,
-      name: { $regex: new RegExp(`^${escapeRegExp(q)}`, "i") },
+      name: { $regex: `^${escapeRegex(q)}`, $options: "i" },
     })
       .limit(10)
       .sort({ usageCount: -1 });

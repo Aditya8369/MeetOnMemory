@@ -9,6 +9,7 @@ import searchRoutes from "./searchRoutes.js";
 import aiRoutes from "./aiRoutes.js";
 import policyRoutes from "./policyRoutes.js";
 import analyticsRoutes from "./analyticsRoutes.js";
+import actionItemAnalyticsRoutes from "./actionItemAnalyticsRoutes.js";
 import geminiRoutes from "./geminiRoutes.js";
 import notesRoutes from "./notes.routes.js";
 import userRoutes from "./userRoutes.js";
@@ -118,6 +119,7 @@ router.use("/api/search", searchRoutes);
 router.use("/api/ai", aiRoutes);
 router.use("/api/policies", policyRoutes);
 router.use("/api/analytics", analyticsRoutes);
+router.use("/api/action-item-analytics", actionItemAnalyticsRoutes);
 router.use("/api/gemini", geminiRoutes);
 router.use("/api/notes", notesRoutes);
 router.use("/api/favorites", favoriteRoutes);
@@ -165,7 +167,10 @@ router.use("/api/scheduler", schedulerRoutes);
 // Recap schedule + delivery history (GET /history/deliveries) — Issue #1401
 router.use("/api/recap-schedule", recapScheduleRoutes);
 router.use("/api/clips", meetingClipRoutes);
-router.use("/api/speaker-mappings", speakerMappingRoutes);
+router.use(
+  ["/api/speaker-mapping", "/api/speaker-mappings"],
+  speakerMappingRoutes,
+);
 router.use("/api/note-versions", noteVersionRoutes);
 router.use("/api/reports", reportRoutes);
 router.use("/api/agenda-suggestions", agendaSuggestionRoutes);
@@ -234,5 +239,13 @@ router.use("/api/patterns", meetingPatternRoutes);
 import guestAccessRoutes from "./guestAccessRoutes.js";
 router.use("/api", guestAccessRoutes);
 router.use("/api/custom-fields", customFieldRoutes);
+
+import meetingNudgeRoutes from "./meetingNudgeRoutes.js";
+router.use("/api/nudges", meetingNudgeRoutes);
+
+import dataRetentionRoutes from "./dataRetentionRoutes.js";
+router.use("/api/data-retention", dataRetentionRoutes);
+import weeklyInsightRoutes from "./weeklyInsightRoutes.js";
+router.use("/api/weekly-insights", weeklyInsightRoutes);
 
 export default router;

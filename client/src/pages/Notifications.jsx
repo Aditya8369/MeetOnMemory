@@ -25,6 +25,7 @@ import {
   ChevronRight,
   CheckSquare,
 } from "lucide-react";
+import NudgeInbox from "../components/NudgeInbox";
 
 /**
  * Issue #977 & #1214: Category icons mapping for all notification types.
@@ -288,6 +289,8 @@ const Notifications = () => {
               </button>
             )}
           </div>
+
+          <NudgeInbox organizationId={userData?.currentOrganization} />
 
           {/* Filters Section - Issue #1214: Tasks filter added */}
           <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 p-4 shadow-sm">

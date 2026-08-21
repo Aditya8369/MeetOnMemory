@@ -4,6 +4,7 @@ import GlossaryTerm from "../models/glossaryTermModel.js";
 import glossaryService from "../services/glossaryService.js";
 import { caseInsensitiveEquals } from "../utils/regexUtils.js";
 import { AppError } from "../utils/errors.js";
+import { buildPaginationMeta, parsePagination } from "../utils/pagination.js";
 
 /**
  * Field limits (Issue #1273).
@@ -143,7 +144,29 @@ export const getTerms = async (req, res) => {
       query.$text = { $search: search };
     }
 
-    const terms = await GlossaryTerm.find(query).sort({ term: 1 });
+    // Pagination support (Issue #1679)
+    const { page, limit, skip } = parsePagination(req.query, {
+      defaultLimit: 50,
+      maxLimit: 100,
+    });
+
+    const total = await GlossaryTerm.countDocuments(query);
+    const terms = await GlossaryTerm.find(query)
+      .sort({ term: 1 })
+      .skip(skip)
+      .limit(limit);
+
+    // If query specifically requested pagination (page or limit provided), return envelope;
+    // otherwise if unpaginated query, return envelope with array in terms property & support top-level array for backwards compatibility
+    if (req.query.page !== undefined || req.query.limit !== undefined) {
+      return res.status(200).json({
+        success: true,
+        terms,
+        pagination: buildPaginationMeta({ total, page, limit }),
+      });
+    }
+
+    // For backwards compatibility with existing clients expecting array directly or envelope
     res.status(200).json(terms);
   } catch (error) {
     console.error("Error fetching glossary terms:", error);

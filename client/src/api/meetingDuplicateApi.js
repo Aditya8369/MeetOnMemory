@@ -1,17 +1,17 @@
-import axios from "axios";
+import apiClient from "../services/apiClient";
 
 const detectDuplicates = async (meetingId) => {
-  return axios.get(`/api/meetings/${meetingId}/duplicates`);
+  return apiClient.get(`/api/meetings/${meetingId}/duplicates`);
 };
 
 const mergeMeetings = async (primaryId, secondaryId) => {
-  return axios.post(`/api/meetings/${primaryId}/duplicates/merge`, {
+  return apiClient.post(`/api/meetings/${primaryId}/duplicates/merge`, {
     secondaryId,
   });
 };
 
 const dismissDuplicate = async (primaryId, secondaryId) => {
-  return axios.post(`/api/meetings/${primaryId}/duplicates`, {
+  return apiClient.post(`/api/meetings/${primaryId}/duplicates`, {
     secondaryId,
   });
 };
