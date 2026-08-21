@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useCallback } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 import apiClient from "../services/apiClient.js";
 import Navbar from "../components/Navbar.jsx";
+import TaskDetailsModal from "../components/tasks/TaskDetailsModal.jsx";
 import {
   BarChart,
   Bar,
@@ -35,8 +36,10 @@ import { toast } from "react-toastify";
 
 const FollowUpDashboard = () => {
   const navigate = useNavigate();
+  const { id: taskIdFromParams } = useParams();
 
   const [tasks, setTasks] = useState([]);
+  const [selectedTask, setSelectedTask] = useState(null);
   const [analytics, setAnalytics] = useState(null);
   const [loading, setLoading] = useState(true);
   const [statusFilter, setStatusFilter] = useState("all");
@@ -79,6 +82,30 @@ const FollowUpDashboard = () => {
     fetchTasks();
     fetchAnalytics();
   }, [fetchTasks, fetchAnalytics]);
+
+  useEffect(() => {
+    if (taskIdFromParams) {
+      const found = tasks.find((t) => t._id === taskIdFromParams);
+      if (found) {
+        setSelectedTask(found);
+      } else {
+        (async () => {
+          try {
+            const { data } = await apiClient.get(
+              `/api/followup/tasks/${taskIdFromParams}`,
+            );
+            if (data?.task || data) {
+              setSelectedTask(data.task || data);
+            }
+          } catch (err) {
+            console.error("Error fetching task details:", err);
+          }
+        })();
+      }
+    } else {
+      setSelectedTask(null);
+    }
+  }, [taskIdFromParams, tasks]);
 
   const updateTaskStatus = async (taskId, status) => {
     try {
@@ -492,6 +519,39 @@ const FollowUpDashboard = () => {
           )}
         </div>
       </div>
+
+      <TaskDetailsModal
+        selectedTask={
+          selectedTask
+            ? {
+                ...selectedTask,
+                priority:
+                  selectedTask.priority ||
+                  selectedTask.metadata?.priority ||
+                  "medium",
+                dueDate: selectedTask.dueDate || selectedTask.deadline,
+                owner:
+                  selectedTask.owner ||
+                  selectedTask.assignee?.name ||
+                  selectedTask.assignee ||
+                  "Unassigned",
+                meetingTitle:
+                  selectedTask.meetingTitle || selectedTask.meeting?.title,
+                meetingId:
+                  selectedTask.meetingId ||
+                  selectedTask.meeting?._id ||
+                  selectedTask.meeting,
+              }
+            : null
+        }
+        setSelectedTask={(task) => {
+          setSelectedTask(task);
+          if (!task && taskIdFromParams) {
+            navigate("/followup");
+          }
+        }}
+        navigate={navigate}
+      />
     </div>
   );
 };

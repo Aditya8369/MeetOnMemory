@@ -70,6 +70,7 @@ import MeetingPatterns from "../pages/MeetingPatterns.jsx";
 import FocusTime from "../pages/FocusTime.jsx";
 import SeriesRetrospective from "../pages/SeriesRetrospective.jsx";
 import DataRetentionSettings from "../pages/DataRetentionSettings.jsx";
+import FollowUpDashboard from "../pages/FollowUpDashboard.jsx";
 
 const ProtectedRoutes = (
   <React.Fragment>
@@ -456,6 +457,38 @@ const ProtectedRoutes = (
       element={
         <ProtectedRoute resource="tasks" action="view">
           <ActionItemsDashboard />
+        </ProtectedRoute>
+      }
+    />
+    <Route
+      path="/followup"
+      element={
+        <ProtectedRoute resource="tasks" action="view">
+          <FollowUpDashboard />
+        </ProtectedRoute>
+      }
+    />
+    <Route
+      path="/follow-up-dashboard"
+      element={
+        <ProtectedRoute resource="tasks" action="view">
+          <FollowUpDashboard />
+        </ProtectedRoute>
+      }
+    />
+    <Route
+      path="/followup-dashboard"
+      element={
+        <ProtectedRoute resource="tasks" action="view">
+          <FollowUpDashboard />
+        </ProtectedRoute>
+      }
+    />
+    <Route
+      path="/followup/tasks/:id"
+      element={
+        <ProtectedRoute resource="tasks" action="view">
+          <FollowUpDashboard />
         </ProtectedRoute>
       }
     />
