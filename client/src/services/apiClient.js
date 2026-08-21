@@ -152,6 +152,46 @@ apiClient.interceptors.response.use(
 
     const originalRequest = error.config;
 
+    // Intercept offline mutations and queue them in IndexedDB
+    if (!error.response && error.config && !isCancellation(error)) {
+      const method = error.config.method?.toUpperCase();
+      if (
+        method &&
+        method !== "GET" &&
+        method !== "HEAD" &&
+        method !== "OPTIONS"
+      ) {
+        try {
+          const { queueMutation } = await import("./offlineQueue.js");
+          let absoluteUrl = error.config.url;
+          if (
+            absoluteUrl &&
+            !absoluteUrl.startsWith("http://") &&
+            !absoluteUrl.startsWith("https://")
+          ) {
+            const base =
+              error.config.baseURL ||
+              apiClient.defaults.baseURL ||
+              window.location.origin;
+            absoluteUrl = new URL(absoluteUrl, base).href;
+          }
+          await queueMutation({
+            url: absoluteUrl,
+            method: error.config.method,
+            headers: error.config.headers,
+            body: error.config.data,
+          });
+          const offlineError = new Error(
+            "Offline mutation queued successfully",
+          );
+          offlineError.isOfflineQueue = true;
+          return Promise.reject(offlineError);
+        } catch (queueErr) {
+          console.error("Failed to queue offline mutation:", queueErr);
+        }
+      }
+    }
+
     // ── Cancellation (Issue #978) ────────────────────────────────────────
     // We aborted this ourselves — the user typed another character, or
     // navigated away. Reject without rewriting the message, so callers can
