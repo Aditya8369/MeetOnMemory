@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useContext } from "react";
+import React, { useState, useEffect, useContext, useCallback } from "react";
 import AppContent from "../context/AppContent";
 import {
   getEscalationDashboardMetrics,
@@ -19,7 +19,9 @@ import {
 } from "react-line-icons";
 
 const EscalationDashboard = () => {
-  const { currentOrganization } = useContext(AppContent);
+  const { userData } = useContext(AppContent);
+  const organizationId =
+    userData?.organization?._id || userData?.organization || null;
   const [metrics, setMetrics] = useState(null);
   const [policies, setPolicies] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -37,18 +39,12 @@ const EscalationDashboard = () => {
     targetRole: "manager",
   });
 
-  useEffect(() => {
-    if (currentOrganization?._id) {
-      loadData();
-    }
-  }, [currentOrganization, loadData]);
-
-  const loadData = React.useCallback(async () => {
+  const loadData = useCallback(async () => {
     setLoading(true);
     try {
       const [dashData, policyData] = await Promise.all([
-        getEscalationDashboardMetrics(currentOrganization._id),
-        getPolicies(currentOrganization._id),
+        getEscalationDashboardMetrics(organizationId),
+        getPolicies(organizationId),
       ]);
       setMetrics(dashData);
       setPolicies(policyData);
@@ -57,7 +53,15 @@ const EscalationDashboard = () => {
     } finally {
       setLoading(false);
     }
-  }, [currentOrganization]);
+  }, [organizationId]);
+
+  useEffect(() => {
+    if (organizationId) {
+      loadData();
+    } else {
+      setLoading(false);
+    }
+  }, [organizationId, loadData]);
 
   const handleAddStep = () => {
     setNewPolicy({ ...newPolicy, steps: [...newPolicy.steps, newStep] });
@@ -78,7 +82,7 @@ const EscalationDashboard = () => {
     try {
       await createPolicy({
         ...newPolicy,
-        organization: currentOrganization._id,
+        organization: organizationId,
       });
       toast.success("Policy created successfully");
       setShowPolicyForm(false);

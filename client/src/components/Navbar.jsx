@@ -49,6 +49,7 @@ import {
   Archive,
   Network,
   Clock,
+  AlertTriangle,
 } from "lucide-react";
 
 const clerkPubKey = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY;
@@ -497,6 +498,11 @@ const Navbar = () => {
       label: "My Delegations",
       href: "/delegations",
       icon: Users,
+    },
+    {
+      label: "Escalations",
+      href: "/escalations",
+      icon: AlertTriangle,
     },
     {
       label: t("navbar.teamMembers"),

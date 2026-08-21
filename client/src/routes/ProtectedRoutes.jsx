@@ -71,6 +71,7 @@ import FocusTime from "../pages/FocusTime.jsx";
 import SeriesRetrospective from "../pages/SeriesRetrospective.jsx";
 import DataRetentionSettings from "../pages/DataRetentionSettings.jsx";
 import FollowUpDashboard from "../pages/FollowUpDashboard.jsx";
+import EscalationDashboard from "../pages/EscalationDashboard.jsx";
 
 const ProtectedRoutes = (
   <React.Fragment>
@@ -287,6 +288,14 @@ const ProtectedRoutes = (
       element={
         <ProtectedRoute>
           <FocusTime />
+        </ProtectedRoute>
+      }
+    />
+    <Route
+      path="/escalations"
+      element={
+        <ProtectedRoute>
+          <EscalationDashboard />
         </ProtectedRoute>
       }
     />
