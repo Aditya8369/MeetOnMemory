@@ -650,6 +650,7 @@ const MeetingRoom = () => {
                     true
                   }
                   currentUserId={userData?._id || userId}
+                  socket={socketRef?.current || socket}
                 />
               </div>
             )}

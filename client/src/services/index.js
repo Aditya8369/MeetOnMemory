@@ -22,7 +22,6 @@ export * from "./personalNoteApi";
 export { default as aiSummaryTemplateApi } from "./aiSummaryTemplateApi";
 export * from "./savedFilterApi";
 export * from "./speakingTimeApi";
-export { default as highlightReelApi } from "./highlightReelApi.js";
 export * from "./breakoutRoomApi.js";
 export { default as meetingGoalApi } from "./meetingGoalApi";
 export * from "./actionItemDependencyApi";

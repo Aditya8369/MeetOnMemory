@@ -1,19 +1,17 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { breakoutRoomApi } from "../../services/breakoutRoomApi.js";
-import { useSocket } from "../../context/SocketContext";
 
-const BreakoutRoomPanel = ({ meetingId, isHost, currentUserId }) => {
+const BreakoutRoomPanel = ({ meetingId, isHost, currentUserId, socket }) => {
   const [rooms, setRooms] = useState([]);
   const [newRoomName, setNewRoomName] = useState("");
   const [loading, setLoading] = useState(false);
-  const { socket } = useSocket();
 
   const fetchRooms = useCallback(async () => {
     if (!meetingId) return;
     try {
       setLoading(true);
       const response = await breakoutRoomApi.getRooms(meetingId);
-      if (response.success && Array.isArray(response.data)) {
+      if (response?.success && Array.isArray(response.data)) {
         setRooms(response.data);
       }
     } catch (err) {
