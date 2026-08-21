@@ -251,6 +251,8 @@ import dataRetentionRoutes from "./dataRetentionRoutes.js";
 router.use("/api/data-retention", dataRetentionRoutes);
 import weeklyInsightRoutes from "./weeklyInsightRoutes.js";
 router.use("/api/weekly-insights", weeklyInsightRoutes);
+import standupReportRoutes from "./standupReportRoutes.js";
+router.use("/api/standups", standupReportRoutes);
 import meetingRiskRoutes from "./meetingRiskRoutes.js";
 router.use("/api/meeting-risks", meetingRiskRoutes);
 
