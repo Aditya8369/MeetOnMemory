@@ -14,6 +14,7 @@ import { toast } from "react-toastify";
 import { Loader2, CheckCircle2 } from "lucide-react";
 import CollaborativeEditor from "../components/meetings/CollaborativeEditor.jsx";
 import ParkingLotPanel from "../components/meetings/ParkingLotPanel.jsx";
+import BreakoutRoomPanel from "../components/meeting-room/BreakoutRoomPanel.jsx";
 import PeerVideo from "../components/meetings/PeerVideo.jsx";
 import MeetingHeader from "../components/meetings/MeetingHeader.jsx";
 import MeetingControlBar from "../components/meetings/MeetingControlBar.jsx";
@@ -53,6 +54,7 @@ const MEETING_ROOM_PANELS = {
   NOTES: "notes",
   PARKING_LOT: "parkingLot",
   TRANSCRIPT: "transcript",
+  BREAKOUT_ROOMS: "breakoutRooms",
 };
 
 const MeetingRoom = () => {
@@ -103,6 +105,7 @@ const MeetingRoom = () => {
   const showNotes = activePanel === MEETING_ROOM_PANELS.NOTES;
   const showParkingLot = activePanel === MEETING_ROOM_PANELS.PARKING_LOT;
   const showTranscript = activePanel === MEETING_ROOM_PANELS.TRANSCRIPT;
+  const showBreakoutRooms = activePanel === MEETING_ROOM_PANELS.BREAKOUT_ROOMS;
 
   // Transcription state
   const [showCaptions] = useState(true);
@@ -629,6 +632,24 @@ const MeetingRoom = () => {
                     userData?.organizations?.[0]
                   }
                   meetingId={roomId}
+                />
+              </div>
+            )}
+
+            {/* Breakout Rooms Panel */}
+            {showBreakoutRooms && (
+              <div
+                data-testid="meeting-room-breakout-rooms-panel"
+                className="w-full md:w-[360px] lg:w-[400px] shrink-0 bg-gray-950 border-l border-gray-800 overflow-hidden flex flex-col transition-all duration-300"
+              >
+                <BreakoutRoomPanel
+                  meetingId={roomId}
+                  isHost={
+                    userData?.role === "admin" ||
+                    userData?.role === "host" ||
+                    true
+                  }
+                  currentUserId={userData?._id || userId}
                 />
               </div>
             )}
