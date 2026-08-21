@@ -19,6 +19,7 @@ import PeerVideo from "../components/meetings/PeerVideo.jsx";
 import MeetingHeader from "../components/meetings/MeetingHeader.jsx";
 import MeetingControlBar from "../components/meetings/MeetingControlBar.jsx";
 import TranscriptPanel from "../components/meetings/TranscriptPanel.jsx";
+import MultiLanguageTranscript from "../components/meeting-room/MultiLanguageTranscript.jsx";
 import LiveCaptions from "../components/meetings/LiveCaptions.jsx";
 import DeviceSetupModal from "../components/meetings/DeviceSetupModal.jsx";
 import useWebRTC from "../hooks/useWebRTC";
@@ -660,6 +661,7 @@ const MeetingRoom = () => {
               showTranscript={showTranscript}
               onClose={closePanel}
               transcriptSegments={transcriptSegments}
+              meetingId={roomId}
             />
           </div>
 

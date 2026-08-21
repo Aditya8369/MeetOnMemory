@@ -1,5 +1,5 @@
 import express from "express";
-import { protect } from "../middleware/authMiddleware.js";
+import userAuth from "../middleware/userAuth.js";
 import {
   createFocusTimeBlock,
   getFocusTimeBlocks,
@@ -10,7 +10,7 @@ import {
 
 const router = express.Router();
 
-router.use(protect); // Ensure all routes are protected
+router.use(userAuth); // Ensure all routes are protected
 
 router.route("/").get(getFocusTimeBlocks).post(createFocusTimeBlock);
 

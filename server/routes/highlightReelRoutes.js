@@ -4,19 +4,19 @@ import {
   getHighlightReel,
   exportHighlightReelHtml,
 } from "../controllers/highlightReelController.js";
-import { requireAuth } from "../middleware/authMiddleware.js";
+import userAuth from "../middleware/userAuth.js";
 
 const router = express.Router();
 
 router.post(
   "/:meetingId/highlight-reel/generate",
-  requireAuth,
+  userAuth,
   generateHighlightReel,
 );
-router.get("/:meetingId/highlight-reel", requireAuth, getHighlightReel);
+router.get("/:meetingId/highlight-reel", userAuth, getHighlightReel);
 router.get(
   "/:meetingId/highlight-reel/export",
-  requireAuth,
+  userAuth,
   exportHighlightReelHtml,
 );
 
