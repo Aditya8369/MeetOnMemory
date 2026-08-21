@@ -97,13 +97,11 @@ export const generateManualReport = async (req, res) => {
     res.json({ success: true, data: report });
   } catch (error) {
     console.error("generateManualReport Error:", error);
-    res
-      .status(500)
-      .json({
-        success: false,
-        message: "Server error generating report",
-        error: error.message,
-      });
+    res.status(500).json({
+      success: false,
+      message: "Server error generating report",
+      error: error.message,
+    });
   }
 };
 
