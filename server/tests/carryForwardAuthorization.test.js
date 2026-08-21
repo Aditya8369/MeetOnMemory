@@ -202,6 +202,34 @@ describe("Carry-forward series ownership (#1666)", () => {
       const unchanged = await Meeting.findById(meeting._id);
       expect(unchanged.agendaItems).toHaveLength(1);
     });
+
+    it("rejects apply when currentMeetingId belongs to a foreign organization", async () => {
+      const ownSeries = await seedSeries({ organization: ORG_A });
+      await seedMeeting({
+        series: ownSeries,
+        organization: ORG_A,
+        status: "completed",
+        seriesOccurrence: 1,
+      });
+      const foreignSeries = await seedSeries({
+        organization: ORG_B,
+        title: "Foreign Target Series",
+      });
+      const foreignMeeting = await seedMeeting({
+        series: foreignSeries,
+        organization: ORG_B,
+        seriesOccurrence: 2,
+      });
+
+      const res = await request(app)
+        .post(`/api/meeting-series/${ownSeries._id}/carry-forward/apply`)
+        .send({ currentMeetingId: foreignMeeting._id });
+
+      expect(res.status).toBe(404);
+      const unchanged = await Meeting.findById(foreignMeeting._id);
+      expect(unchanged.agendaItems).toHaveLength(1);
+      expect(unchanged.agendaItems[0].text).toBe("Existing item");
+    });
   });
 
   describe("Nonexistent series", () => {
