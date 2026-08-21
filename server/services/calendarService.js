@@ -5,23 +5,22 @@ import { ClientSecretCredential } from "@azure/identity"; // eslint-disable-line
 import { Client } from "@microsoft/microsoft-graph-client";
 import CalendarConnection from "../models/calendarConnectionModel.js";
 
-// Encryption key from environment
-const ENCRYPTION_KEY =
-  process.env.CALENDAR_ENCRYPTION_KEY || process.env.TOKEN_ENCRYPTION_KEY;
-
-if (!ENCRYPTION_KEY) {
-  console.warn(
-    "Calendar encryption key is not configured. Set CALENDAR_ENCRYPTION_KEY or TOKEN_ENCRYPTION_KEY to enable calendar token encryption.",
-  );
-}
+// Encryption key from environment — resolved at use time so a missing or
+// empty value cannot be cached as a silent default (Issue #1768).
+const getCalendarEncryptionKey = () => {
+  const key =
+    process.env.CALENDAR_ENCRYPTION_KEY || process.env.TOKEN_ENCRYPTION_KEY;
+  if (typeof key !== "string" || !key.trim()) {
+    throw new Error("Calendar encryption key is not configured");
+  }
+  return key;
+};
 
 /**
  * Encrypt a token for storage
  */
 export const encryptToken = (token) => {
-  if (!ENCRYPTION_KEY) {
-    throw new Error("Calendar encryption key is not configured");
-  }
+  const ENCRYPTION_KEY = getCalendarEncryptionKey();
 
   return CryptoJS.AES.encrypt(token, ENCRYPTION_KEY).toString();
 };
@@ -40,9 +39,7 @@ export const getGoogleOAuthClient = () => {
 export const decryptToken = (encryptedToken) => {
   if (!encryptedToken) return null;
 
-  if (!ENCRYPTION_KEY) {
-    throw new Error("Calendar encryption key is not configured");
-  }
+  const ENCRYPTION_KEY = getCalendarEncryptionKey();
 
   try {
     const bytes = CryptoJS.AES.decrypt(encryptedToken, ENCRYPTION_KEY);
