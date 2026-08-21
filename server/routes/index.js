@@ -91,6 +91,7 @@ import breakoutRoomRoutes from "./breakoutRoomRoutes.js";
 import notionIntegrationRoutes from "./notionIntegrationRoutes.js";
 import gamificationRoutes from "./gamificationRoutes.js";
 import actionItemsRoutes from "./actionItems.routes.js";
+import workloadRoutes from "./workloadRoutes.js";
 
 const router = express.Router();
 
@@ -148,6 +149,7 @@ router.use("/api/tags", tagRoutes);
 router.use("/api/polls", pollRoutes);
 router.use("/api/meetings/:meetingId/topics", topicRoutes);
 router.use("/api/meetings/:meetingId/breakout-rooms", breakoutRoomRoutes);
+router.use("/api/workload", workloadRoutes);
 router.use("/api/meetings/:meetingId/attachments", attachmentRoutes);
 router.use("/api/meeting-series", meetingSeriesRoutes);
 router.use("/api/meeting-series", carryForwardRoutes);
