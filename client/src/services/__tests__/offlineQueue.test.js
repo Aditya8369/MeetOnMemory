@@ -4,7 +4,7 @@ import apiClient from "../apiClient.js";
 // Mock indexedDB completely
 let dbStore = {};
 const mockDb = {
-  transaction: (storeName, mode) => ({
+  transaction: (_storeName, _mode) => ({
     objectStore: () => ({
       add: (item) => {
         const id = Math.random().toString(36).substring(2, 9);
@@ -44,7 +44,7 @@ const mockDb = {
   }),
 };
 
-global.indexedDB = {
+globalThis.indexedDB = {
   open: () => {
     const req = { onsuccess: null, onerror: null, onupgradeneeded: null };
     setTimeout(() => {
