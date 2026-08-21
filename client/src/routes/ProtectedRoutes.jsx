@@ -64,6 +64,7 @@ import SpeakingTimeTrends from "../pages/SpeakingTimeTrends.jsx";
 import Leaderboard from "../pages/Leaderboard.jsx";
 import ParticipantEngagement from "../pages/ParticipantEngagement.jsx";
 import ActionItemAnalytics from "../pages/ActionItemAnalytics.jsx";
+import ActionItemsDashboard from "../pages/ActionItemsDashboard.jsx";
 import MyDelegations from "../pages/MyDelegations.jsx";
 import MeetingPatterns from "../pages/MeetingPatterns.jsx";
 import FocusTime from "../pages/FocusTime.jsx";
@@ -447,6 +448,14 @@ const ProtectedRoutes = (
       element={
         <ProtectedRoute resource="tasks" action="view">
           <Tasks />
+        </ProtectedRoute>
+      }
+    />
+    <Route
+      path="/action-items"
+      element={
+        <ProtectedRoute resource="tasks" action="view">
+          <ActionItemsDashboard />
         </ProtectedRoute>
       }
     />

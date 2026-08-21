@@ -1,5 +1,5 @@
 import { useState, useCallback } from "react";
-import api from "../services/api";
+import api from "../services/apiClient.js";
 
 /**
  * @desc Hook for managing action item state, fetching lists, and triggering AI extraction.
@@ -14,8 +14,12 @@ export const useActionItems = () => {
     setIsLoading(true);
     setError(null);
     try {
-      const params = new URLSearchParams(filters).toString();
-      const { data } = await api.get(`/action-items?${params}`);
+      const cleanFilters = Object.fromEntries(
+        Object.entries(filters).filter(([, v]) => v !== undefined && v !== ""),
+      );
+      const params = new URLSearchParams(cleanFilters).toString();
+      const url = params ? `/api/action-items?${params}` : "/api/action-items";
+      const { data } = await api.get(url);
       setItems(data.data || []);
     } catch (err) {
       setError(err.response?.data?.error || "Failed to fetch action items");
@@ -26,8 +30,9 @@ export const useActionItems = () => {
 
   const fetchMeetingItems = useCallback(async (meetingId) => {
     setIsLoading(true);
+    setError(null);
     try {
-      const { data } = await api.get(`/action-items/meeting/${meetingId}`);
+      const { data } = await api.get(`/api/action-items/meeting/${meetingId}`);
       setItems(data.data || []);
     } catch (err) {
       setError(err.response?.data?.error || "Failed to fetch meeting items");
@@ -40,10 +45,12 @@ export const useActionItems = () => {
     setIsExtracting(true);
     setError(null);
     try {
-      const { data } = await api.post(`/meetings/${meetingId}/extract-actions`);
+      const { data } = await api.post(
+        `/api/action-items/meetings/${meetingId}/extract-actions`,
+      );
       // Append new items to existing list
       setItems((prev) => [...(data.data || []), ...prev]);
-      return data.count;
+      return data.count || data.data?.length || 0;
     } catch (err) {
       setError(err.response?.data?.error || "AI extraction failed");
       return 0;
@@ -54,7 +61,7 @@ export const useActionItems = () => {
 
   const updateItem = useCallback(async (id, updates) => {
     try {
-      const { data } = await api.patch(`/action-items/${id}`, updates);
+      const { data } = await api.patch(`/api/action-items/${id}`, updates);
       setItems((prev) =>
         prev.map((item) => (item._id === id ? data.data : item)),
       );
@@ -67,7 +74,7 @@ export const useActionItems = () => {
 
   const deleteItem = useCallback(async (id) => {
     try {
-      await api.delete(`/action-items/${id}`);
+      await api.delete(`/api/action-items/${id}`);
       setItems((prev) => prev.filter((item) => item._id !== id));
       return true;
     } catch (err) {
