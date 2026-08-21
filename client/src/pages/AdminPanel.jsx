@@ -27,11 +27,13 @@ import {
   Clock,
   RefreshCw,
   ListTodo,
+  Database,
 } from "lucide-react";
 import Navbar from "../components/Navbar.jsx";
 import TemplateBuilder from "../components/admin/TemplateBuilder.jsx";
 import TestimonialsModeration from "../components/admin/TestimonialsModeration.jsx";
 import JobsDashboard from "../components/admin/JobsDashboard.jsx";
+import EmbeddingReindexAdmin from "../components/admin/EmbeddingReindexAdmin.jsx";
 import MembershipRequests from "../components/organization/MembershipRequests.jsx";
 import AppContent from "../context/AppContent.js";
 import {
@@ -106,6 +108,14 @@ const MODULES = [
     icon: ListTodo,
     iconBg: "bg-teal-50 dark:bg-teal-900/30",
     iconColor: "text-teal-600 dark:text-teal-400",
+  },
+  {
+    id: "embeddings",
+    labelKey: "Embeddings",
+    descriptionKey: "Pinecone index health and reindex actions",
+    icon: Database,
+    iconBg: "bg-cyan-50 dark:bg-cyan-900/30",
+    iconColor: "text-cyan-600 dark:text-cyan-400",
   },
   {
     id: "policies",
@@ -275,6 +285,7 @@ const AdminPanel = () => {
       activeModule === "templates" ||
       activeModule === "testimonials" ||
       activeModule === "jobs" ||
+      activeModule === "embeddings" ||
       activeModule === "joinRequests"
     ) {
       return;
@@ -562,6 +573,8 @@ const AdminPanel = () => {
             <TestimonialsModeration />
           ) : activeModule === "jobs" ? (
             <JobsDashboard />
+          ) : activeModule === "embeddings" ? (
+            <EmbeddingReindexAdmin />
           ) : activeModule === "joinRequests" ? (
             <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-2xl p-6 shadow-sm">
               <MembershipRequests organizationId={orgId} />
@@ -670,18 +683,28 @@ const AdminPanel = () => {
             </div>
           ) : activeModule === "meetings" ? (
             <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-2xl p-6 shadow-sm space-y-4">
-              <div className="flex items-center justify-between">
+              <div className="flex items-center justify-between gap-3 flex-wrap">
                 <h3 className="text-lg font-bold text-slate-900 dark:text-white">
                   Meeting Records
                 </h3>
-                <button
-                  type="button"
-                  onClick={() => navigate("/meetings")}
-                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-rose-50 dark:bg-rose-900/30 text-rose-700 dark:text-rose-300 hover:bg-rose-100 dark:hover:bg-rose-900/50 cursor-pointer"
-                >
-                  <span>View All Meetings</span>
-                  <ExternalLink className="w-3.5 h-3.5" />
-                </button>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => selectModule("embeddings")}
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-teal-50 dark:bg-teal-900/30 text-teal-700 dark:text-teal-300 hover:bg-teal-100 dark:hover:bg-teal-900/50 cursor-pointer"
+                  >
+                    <Database className="w-3.5 h-3.5" />
+                    Embedding reindex
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => navigate("/meetings")}
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-rose-50 dark:bg-rose-900/30 text-rose-700 dark:text-rose-300 hover:bg-rose-100 dark:hover:bg-rose-900/50 cursor-pointer"
+                  >
+                    <span>View All Meetings</span>
+                    <ExternalLink className="w-3.5 h-3.5" />
+                  </button>
+                </div>
               </div>
 
               {loadingModule ? (
@@ -704,7 +727,18 @@ const AdminPanel = () => {
                           {m.date
                             ? new Date(m.date).toLocaleDateString()
                             : "No date"}
+                          {m.embeddingIndex?.lastIndexedAt
+                            ? ` · indexed ${new Date(m.embeddingIndex.lastIndexedAt).toLocaleDateString()}`
+                            : ""}
+                          {m.embeddingIndex?.status
+                            ? ` · ${m.embeddingIndex.status}`
+                            : ""}
                         </p>
+                        {m.embeddingIndex?.lastError ? (
+                          <p className="text-xs text-rose-500 mt-1">
+                            {m.embeddingIndex.lastError}
+                          </p>
+                        ) : null}
                       </div>
                       <span className="text-xs font-semibold px-2.5 py-0.5 rounded-full bg-rose-50 dark:bg-rose-900/30 text-rose-700 dark:text-rose-300">
                         {m.status || "Recorded"}
