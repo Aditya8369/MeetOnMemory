@@ -24,6 +24,7 @@ import mongoose from "mongoose";
 
 import {
   escapeRegExp,
+  escapeRegex,
   literalRegExp,
   wordBoundaryRegExp,
   caseInsensitiveEquals,
@@ -128,6 +129,10 @@ describe("regexUtils", () => {
 
     it("is still exported from meetingSoftDelete for existing importers", () => {
       expect(reExportedEscape).toBe(escapeRegExp);
+    });
+
+    it("is the same function as escapeRegex (Issue #1770)", () => {
+      expect(escapeRegex).toBe(escapeRegExp);
     });
   });
 

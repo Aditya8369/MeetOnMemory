@@ -3,6 +3,7 @@ import PersonalNote from "../models/personalNoteModel.js";
 import Meeting from "../models/meetingModel.js";
 import { hasPermission } from "../utils/rbacPermissions.js";
 import { resolveAccessibleMeeting } from "../utils/resolveAccessibleMeeting.js";
+import { escapeRegex } from "../utils/regex.js";
 
 // Re-export for existing personal-note tests and callers (Issue #1389).
 export { resolveAccessibleMeeting };
@@ -644,7 +645,7 @@ export const searchNotes = async (req, res) => {
         });
       }
       // Escape regex special characters to prevent ReDoS and regex injection
-      const escapedQuery = query.replace(/[/\-\\^$*+?.()|[\]{}]/g, "\\$&");
+      const escapedQuery = escapeRegex(query);
       filter.$or = [
         { title: { $regex: escapedQuery, $options: "i" } },
         { content: { $regex: escapedQuery, $options: "i" } },

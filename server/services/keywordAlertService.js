@@ -1,10 +1,7 @@
 import KeywordAlert from "../models/keywordAlertModel.js";
 import { createNotifications } from "./notificationService.js";
 import EmailService from "./EmailService.js";
-
-const escapeRegex = (string) => {
-  return string.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"); // $& means the whole matched string
-};
+import { escapeRegex } from "../utils/regex.js";
 
 export const scanTranscriptForKeywords = async (meeting, transcript) => {
   if (!transcript || !meeting || !meeting.organization) return;
