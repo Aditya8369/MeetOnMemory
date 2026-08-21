@@ -22,6 +22,8 @@ import TranscriptPanel from "../components/meetings/TranscriptPanel.jsx";
 import MultiLanguageTranscript from "../components/meeting-room/MultiLanguageTranscript.jsx";
 import LiveCaptions from "../components/meetings/LiveCaptions.jsx";
 import DeviceSetupModal from "../components/meetings/DeviceSetupModal.jsx";
+import axios from "../services/apiClient.js";
+import FacilitatorDashboard from "./FacilitatorDashboard.jsx";
 import useWebRTC from "../hooks/useWebRTC";
 import useDevicePermission from "../hooks/useDevicePermission";
 import useLiveTranscription from "../hooks/useLiveTranscription";
@@ -64,6 +66,8 @@ const MeetingRoom = () => {
   const { userData } = useContext(AppContent);
   const { isSignedIn, isLoaded, userId } = useAuth();
   const [socket, setSocket] = useState(null);
+  const [meeting, setMeeting] = useState(null);
+  const [userRole, setUserRole] = useState(null);
   const localUserInfo = useMemo(() => buildLocalUserInfo(userData), [userData]);
   const localUserInfoRef = useRef(localUserInfo);
   localUserInfoRef.current = localUserInfo;
@@ -154,6 +158,28 @@ const MeetingRoom = () => {
     }
     return () => clearInterval(interval);
   }, [timerState.isRunning, meetingEnded]);
+
+  useEffect(() => {
+    if (!roomId) return;
+    const fetchMeetingData = async () => {
+      try {
+        const [meetingRes, rolesRes] = await Promise.all([
+          axios.get(`/api/meetings/${roomId}`),
+          axios.get(`/api/meetings/${roomId}/roles`),
+        ]);
+        setMeeting(meetingRes.data.meeting);
+        const myRoleObj = rolesRes.data.find(
+          (r) => r.userId?._id === userId || r.userId === userId,
+        );
+        if (myRoleObj) {
+          setUserRole(myRoleObj.role);
+        }
+      } catch (error) {
+        console.error("Failed to fetch meeting data:", error);
+      }
+    };
+    fetchMeetingData();
+  }, [roomId, userId]);
 
   const setupSocketListeners = (activeSocket) => {
     const userInfo = localUserInfoRef.current;
@@ -536,7 +562,19 @@ const MeetingRoom = () => {
       )}
 
       {/* ---------- ACTIVE MEETING SCREEN ---------- */}
-      {joined && !meetingEnded && (
+      {joined && !meetingEnded && userRole === "facilitator" && meeting && (
+        <FacilitatorDashboard
+          meeting={meeting}
+          onAdvanceAgenda={() => {
+            // emit socket event to advance agenda
+          }}
+          onNudgeParticipant={() => {
+            toast.success("Nudge sent to participant");
+          }}
+        />
+      )}
+
+      {joined && !meetingEnded && userRole !== "facilitator" && (
         <div className="flex-1 flex flex-col min-h-0 bg-gray-900 relative">
           <MeetingHeader
             roomId={roomId}
@@ -592,6 +630,16 @@ const MeetingRoom = () => {
                       className={`w-2 h-2 rounded-full shrink-0 ${micOn ? "bg-green-500" : "bg-red-500"}`}
                     />
                     <span className="truncate">{localUserInfo.name}</span>
+                    {userRole === "scribe" && (
+                      <span className="ml-1 bg-blue-500/20 text-blue-300 text-[10px] px-1.5 py-0.5 rounded border border-blue-500/30">
+                        📝 Scribe
+                      </span>
+                    )}
+                    {userRole === "timekeeper" && (
+                      <span className="ml-1 bg-emerald-500/20 text-emerald-300 text-[10px] px-1.5 py-0.5 rounded border border-emerald-500/30">
+                        ⏱️ Timekeeper
+                      </span>
+                    )}
                     {isScreenSharing && (
                       <span className="text-[10px] sm:text-xs text-indigo-300 shrink-0">
                         Sharing

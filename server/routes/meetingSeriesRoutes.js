@@ -8,6 +8,11 @@ import {
   cancelSeries,
 } from "../controllers/meetingSeriesController.js";
 import seriesRetrospectiveRoutes from "./seriesRetrospectiveRoutes.js";
+import {
+  getRoleRotationConfig,
+  updateRoleRotationConfig,
+  overrideRole,
+} from "../controllers/roleRotationController.js";
 
 const router = express.Router();
 
@@ -36,6 +41,22 @@ router.use(
   "/:id/retrospective",
   requirePermission("meetings", "view"),
   seriesRetrospectiveRoutes,
+);
+
+router.get(
+  "/:id/roles/config",
+  requirePermission("meetings", "view"),
+  getRoleRotationConfig,
+);
+router.put(
+  "/:id/roles/config",
+  requirePermission("meetings", "edit"),
+  updateRoleRotationConfig,
+);
+router.post(
+  "/:id/roles/override",
+  requirePermission("meetings", "edit"),
+  overrideRole,
 );
 
 export default router;
