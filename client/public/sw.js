@@ -48,10 +48,163 @@ self.addEventListener("fetch", (event) => {
 });
 
 // Background sync for offline mutations
+const DB_NAME = "offline-mutations-db";
+const STORE_NAME = "mutations";
+const DB_VERSION = 1;
+
+function openDB() {
+  return new Promise((resolve, reject) => {
+    const request = indexedDB.open(DB_NAME, DB_VERSION);
+    request.onsuccess = (event) => resolve(event.target.result);
+    request.onerror = (event) => reject(event.target.error);
+  });
+}
+
+function getQueuedMutations(db) {
+  return new Promise((resolve, reject) => {
+    const transaction = db.transaction(STORE_NAME, "readonly");
+    const store = transaction.objectStore(STORE_NAME);
+    const request = store.getAll();
+    request.onsuccess = () => resolve(request.result);
+    request.onerror = (event) => reject(event.target.error);
+  });
+}
+
+function deleteMutation(db, id) {
+  return new Promise((resolve, reject) => {
+    const transaction = db.transaction(STORE_NAME, "readwrite");
+    const store = transaction.objectStore(STORE_NAME);
+    const request = store.delete(id);
+    request.onsuccess = () => resolve();
+    request.onerror = (event) => reject(event.target.error);
+  });
+}
+
+function updateMutationStatus(db, id, status, errorMsg) {
+  return new Promise((resolve, reject) => {
+    const transaction = db.transaction(STORE_NAME, "readwrite");
+    const store = transaction.objectStore(STORE_NAME);
+    const getRequest = store.get(id);
+    getRequest.onsuccess = () => {
+      const data = getRequest.result;
+      if (data) {
+        data.status = status;
+        data.error = errorMsg;
+        const updateRequest = store.put(data);
+        updateRequest.onsuccess = () => resolve();
+        updateRequest.onerror = (event) => reject(event.target.error);
+      } else {
+        resolve();
+      }
+    };
+    getRequest.onerror = (event) => reject(event.target.error);
+  });
+}
+
+async function notifyClients(message) {
+  const clients = await self.clients.matchAll();
+  clients.forEach((client) => {
+    client.postMessage(message);
+  });
+}
+
+async function syncMutations() {
+  let db;
+  try {
+    db = await openDB();
+  } catch (err) {
+    console.error("[Service Worker] Failed to open DB for sync:", err);
+    return;
+  }
+
+  const mutations = await getQueuedMutations(db);
+  if (!mutations || mutations.length === 0) {
+    return;
+  }
+
+  for (const mutation of mutations) {
+    if (mutation.status === "syncing" || mutation.status === "conflict") {
+      continue;
+    }
+
+    try {
+      await updateMutationStatus(db, mutation.id, "syncing");
+
+      const fetchOptions = {
+        method: mutation.method,
+        headers: {
+          ...mutation.headers,
+          "Content-Type": "application/json",
+        },
+      };
+
+      if (
+        mutation.body &&
+        mutation.method !== "GET" &&
+        mutation.method !== "HEAD"
+      ) {
+        fetchOptions.body =
+          typeof mutation.body === "string"
+            ? mutation.body
+            : JSON.stringify(mutation.body);
+      }
+
+      const response = await fetch(mutation.url, fetchOptions);
+
+      if (response.ok) {
+        await deleteMutation(db, mutation.id);
+        await notifyClients({
+          type: "SYNC_SUCCESS",
+          mutationId: mutation.id,
+          url: mutation.url,
+        });
+      } else if (response.status === 409) {
+        await updateMutationStatus(
+          db,
+          mutation.id,
+          "conflict",
+          "Merge conflict during sync",
+        );
+        await notifyClients({
+          type: "SYNC_CONFLICT",
+          mutationId: mutation.id,
+          url: mutation.url,
+          message: "A merge conflict occurred. Please review details offline.",
+        });
+      } else {
+        const errorText = await response
+          .text()
+          .catch(() => "Unknown response error");
+        await updateMutationStatus(db, mutation.id, "failed", errorText);
+        await notifyClients({
+          type: "SYNC_FAILURE",
+          mutationId: mutation.id,
+          url: mutation.url,
+          error: errorText,
+        });
+      }
+    } catch (fetchErr) {
+      console.error(
+        "[Service Worker] Fetch failed during sync replay:",
+        fetchErr,
+      );
+      await updateMutationStatus(db, mutation.id, "queued");
+      break;
+    }
+  }
+}
+
 self.addEventListener("sync", (event) => {
   if (event.tag === "sync-mutations") {
     console.log("[Service Worker] Syncing local DB mutations to server");
-    // Placeholder: Fetch queued mutations from IndexedDB and replay to API
+    event.waitUntil(syncMutations());
+  }
+});
+
+self.addEventListener("message", (event) => {
+  if (event.data && event.data.type === "TRIGGER_SYNC") {
+    console.log("[Service Worker] Received TRIGGER_SYNC instruction");
+    event.waitUntil(syncMutations());
   }
 });
 /* eslint-disable no-undef */
