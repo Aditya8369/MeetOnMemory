@@ -20,9 +20,7 @@ describe("useActionItems hook (#1874)", () => {
   it("fetches action items with /api/action-items prefix", async () => {
     api.get.mockResolvedValueOnce({
       data: {
-        data: [
-          { _id: "item-1", title: "Write tests", status: "pending" },
-        ],
+        data: [{ _id: "item-1", title: "Write tests", status: "pending" }],
       },
     });
 
@@ -40,9 +38,7 @@ describe("useActionItems hook (#1874)", () => {
   it("fetches meeting action items with /api/action-items/meeting/:meetingId prefix", async () => {
     api.get.mockResolvedValueOnce({
       data: {
-        data: [
-          { _id: "item-2", title: "Meeting item", status: "in_progress" },
-        ],
+        data: [{ _id: "item-2", title: "Meeting item", status: "in_progress" }],
       },
     });
 
@@ -52,7 +48,9 @@ describe("useActionItems hook (#1874)", () => {
       await result.current.fetchMeetingItems("meeting-123");
     });
 
-    expect(api.get).toHaveBeenCalledWith("/api/action-items/meeting/meeting-123");
+    expect(api.get).toHaveBeenCalledWith(
+      "/api/action-items/meeting/meeting-123",
+    );
     expect(result.current.items).toHaveLength(1);
   });
 
