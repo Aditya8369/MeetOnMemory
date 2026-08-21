@@ -16,33 +16,25 @@ jest.mock("../middleware/userAuth.js", () => {
 
 // Mock controller methods
 jest.mock("../controllers/breakoutRoomController.js", () => ({
-  createRoom: jest
-    .fn()
-    .mockImplementation((req, res) =>
-      res
-        .status(201)
-        .json({
-          success: true,
-          data: { _id: "room-1", name: req.body.name, status: "pending" },
-        }),
-    ),
-  getRooms: jest
-    .fn()
-    .mockImplementation((req, res) =>
-      res
-        .status(200)
-        .json({
-          success: true,
-          data: [
-            {
-              _id: "room-1",
-              name: "Team 1",
-              status: "pending",
-              participants: [],
-            },
-          ],
-        }),
-    ),
+  createRoom: jest.fn().mockImplementation((req, res) =>
+    res.status(201).json({
+      success: true,
+      data: { _id: "room-1", name: req.body.name, status: "pending" },
+    }),
+  ),
+  getRooms: jest.fn().mockImplementation((req, res) =>
+    res.status(200).json({
+      success: true,
+      data: [
+        {
+          _id: "room-1",
+          name: "Team 1",
+          status: "pending",
+          participants: [],
+        },
+      ],
+    }),
+  ),
   assignParticipants: jest
     .fn()
     .mockImplementation((req, res) =>
