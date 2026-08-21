@@ -28,6 +28,10 @@ import {
   stripClientTenantFields,
 } from "../utils/resolveSearchTenant.js";
 import {
+  applyHybridAdvancedFilters,
+  parseHybridFilterOptions,
+} from "../utils/hybridAdvancedFilters.js";
+import {
   buildGraph,
   expandFromSeeds,
   nodeKey,
@@ -128,6 +132,7 @@ export function resolveOptions(rawOptions = {}) {
     includeTypes: includeTypes.length
       ? includeTypes
       : DEFAULT_OPTIONS.includeTypes,
+    ...parseHybridFilterOptions(sanitized),
   };
 }
 
@@ -315,7 +320,7 @@ async function enrichWithMeetingContext(rankedResults, graph, organization) {
       ? new mongoose.Types.ObjectId(expectedOrg)
       : expectedOrg,
   })
-    .select("title createdAt organization")
+    .select("title createdAt date meetingType tags participants organization")
     .lean();
   const meetingById = new Map(meetings.map((m) => [m._id.toString(), m]));
 
@@ -328,6 +333,10 @@ async function enrichWithMeetingContext(rankedResults, graph, organization) {
             ...result,
             title: result.title || meeting.title,
             createdAt: meeting.createdAt,
+            date: meeting.date || meeting.createdAt,
+            meetingType: meeting.meetingType || null,
+            tags: meeting.tags || [],
+            participants: meeting.participants || [],
             organization: meeting.organization?.toString() || expectedOrg,
           };
         }
@@ -348,6 +357,10 @@ async function enrichWithMeetingContext(rankedResults, graph, organization) {
               id: meeting._id.toString(),
               title: meeting.title,
               createdAt: meeting.createdAt,
+              date: meeting.date || meeting.createdAt,
+              meetingType: meeting.meetingType || null,
+              tags: meeting.tags || [],
+              participants: meeting.participants || [],
               organization: meeting.organization?.toString() || expectedOrg,
             },
           }
@@ -441,9 +454,13 @@ export async function hybridRetrieve(query, organization, rawOptions = {}) {
       : [];
 
   const fused = fuseResults(semanticResults, graphExpansions, options);
-  const topResults = fused.slice(0, options.topK);
+  const topResults = fused.slice(0, Math.max(options.topK * 3, options.topK));
   const enriched = await enrichWithMeetingContext(topResults, graph, tenantOrg);
-  const explained = attachExplanations(enriched, graph, tenantOrg);
+  const filtered = applyHybridAdvancedFilters(enriched, options).slice(
+    0,
+    options.topK,
+  );
+  const explained = attachExplanations(filtered, graph, tenantOrg);
   const results = filterHybridResultsByTenant(
     explained,
     graph.nodes,
@@ -459,6 +476,7 @@ export async function hybridRetrieve(query, organization, rawOptions = {}) {
       semanticHitCount: semanticResults.length,
       graphExpansionCount: graphExpansions.length,
       fusedCount: fused.length,
+      filteredCount: results.length,
     },
   };
 }
