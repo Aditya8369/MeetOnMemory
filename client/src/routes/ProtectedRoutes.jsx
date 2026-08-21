@@ -71,6 +71,7 @@ import FocusTime from "../pages/FocusTime.jsx";
 import SeriesRetrospective from "../pages/SeriesRetrospective.jsx";
 import DataRetentionSettings from "../pages/DataRetentionSettings.jsx";
 import FollowUpDashboard from "../pages/FollowUpDashboard.jsx";
+import Glossary from "../pages/Glossary.jsx";
 
 const ProtectedRoutes = (
   <React.Fragment>
@@ -111,6 +112,14 @@ const ProtectedRoutes = (
       element={
         <ProtectedRoute resource="knowledge" action="view">
           <ConflictResolution />
+        </ProtectedRoute>
+      }
+    />
+    <Route
+      path="/glossary"
+      element={
+        <ProtectedRoute resource="knowledge" action="view">
+          <Glossary />
         </ProtectedRoute>
       }
     />
