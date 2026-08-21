@@ -179,6 +179,9 @@ describe("Gemini AI Endpoint Authentication and Authorization", () => {
     });
 
     it("should allow authenticated member with view reports permission to generate insights", async () => {
+      process.env.GEMINI_API_KEY = "test-gemini-secret-key";
+      process.env.GEMINI_MODEL = process.env.GEMINI_MODEL || "gemini-1.5-flash";
+
       const res = await request(app)
         .post("/api/gemini/insights")
         .set(authHeader(userToken))
@@ -189,6 +192,17 @@ describe("Gemini AI Endpoint Authentication and Authorization", () => {
       expect(res.body.insight).toBe(
         "This is a mocked professional analytics summary highlighting trends and insights.",
       );
+
+      expect(axiosSpy).toHaveBeenCalledTimes(1);
+      const [url, payload, config] = axiosSpy.mock.calls[0];
+      expect(url).toContain(
+        "https://generativelanguage.googleapis.com/v1beta/models/",
+      );
+      expect(url).toContain(":generateContent");
+      expect(url).not.toContain("key=");
+      expect(url).not.toContain("test-gemini-secret-key");
+      expect(config.headers["x-goog-api-key"]).toBe("test-gemini-secret-key");
+      expect(payload.contents[0].parts[0].text).toContain("totalMeetings");
     });
   });
 });

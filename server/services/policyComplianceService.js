@@ -138,9 +138,14 @@ async function callGeminiClassifier(prompt) {
   // co-loaded with other large deps; Gemini calls only need it at runtime.
   const { default: axios } = await import("axios");
   const response = await axios.post(
-    `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${GEMINI_API_KEY}`,
+    `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent`,
     { contents: [{ parts: [{ text: prompt }] }] },
-    { timeout: 20000 },
+    {
+      timeout: 20000,
+      headers: {
+        "x-goog-api-key": GEMINI_API_KEY,
+      },
+    },
   );
 
   return response.data?.candidates?.[0]?.content?.parts?.[0]?.text || "{}";
