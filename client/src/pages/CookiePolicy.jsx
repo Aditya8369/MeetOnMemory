@@ -22,19 +22,19 @@ import {
   Database,
 } from "lucide-react";
 
+import {
+  getCookiePreferences,
+  applyCookiePreferences,
+  clearNonEssentialCookies,
+} from "../utils/cookieManager.js";
+
 const CookiePolicy = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [activeSection, setActiveSection] = useState("introduction");
   const [expandedFaq, setExpandedFaq] = useState(null);
 
-  // Dynamic state for interactive Cookie Console
-  const [preferences, setPreferences] = useState({
-    essential: true,
-    functional: true,
-    analytics: false,
-    targeting: false,
-    aiContext: false,
-  });
+  // Dynamic state for interactive Cookie Console initialized from stored cookie preferences
+  const [preferences, setPreferences] = useState(() => getCookiePreferences());
   const [showSaveToast, setShowSaveToast] = useState(false);
   const [clearedLogs, setClearedLogs] = useState(false);
 
@@ -290,23 +290,26 @@ const CookiePolicy = () => {
 
   // Handle Cookie Preferences Save Action
   const handleSavePreferences = () => {
-    // Save to local storage for persistence simulator
-    localStorage.setItem("mom_cookie_preferences", JSON.stringify(preferences));
+    // Apply preferences to real browser cookies and local storage
+    applyCookiePreferences(preferences);
     setShowSaveToast(true);
     setTimeout(() => {
       setShowSaveToast(false);
     }, 4000);
   };
 
-  // Handle Clear Local Storage Simulator
+  // Handle Clear Local Storage & Cookies
   const handleClearStorage = () => {
-    setPreferences({
+    const resetPrefs = {
       essential: true,
       functional: false,
       analytics: false,
       targeting: false,
       aiContext: false,
-    });
+    };
+    setPreferences(resetPrefs);
+    clearNonEssentialCookies();
+    applyCookiePreferences(resetPrefs);
     setClearedLogs(true);
     setTimeout(() => {
       setClearedLogs(false);
