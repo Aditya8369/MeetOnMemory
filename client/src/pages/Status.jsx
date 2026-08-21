@@ -672,7 +672,15 @@ const Status = () => {
               Status reflects live checks against{" "}
               <code className="text-[11px]">/api/status</code>, backed by the
               same dependency probes as{" "}
-              <code className="text-[11px]">/health</code>.
+              <code className="text-[11px]">/health</code>. Admins can inspect
+              background queues on the{" "}
+              <a
+                href="/admin-panel?module=jobs"
+                className="text-blue-600 dark:text-blue-400 font-semibold hover:underline"
+              >
+                Jobs dashboard
+              </a>
+              .
             </p>
           </div>
           <a

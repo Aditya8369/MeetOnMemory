@@ -6,7 +6,7 @@ import React, {
   useCallback,
 } from "react";
 import { useTranslation } from "react-i18next";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import {
   LayoutDashboard,
   Building2,
@@ -26,10 +26,12 @@ import {
   Loader2,
   Clock,
   RefreshCw,
+  ListTodo,
 } from "lucide-react";
 import Navbar from "../components/Navbar.jsx";
 import TemplateBuilder from "../components/admin/TemplateBuilder.jsx";
 import TestimonialsModeration from "../components/admin/TestimonialsModeration.jsx";
+import JobsDashboard from "../components/admin/JobsDashboard.jsx";
 import MembershipRequests from "../components/organization/MembershipRequests.jsx";
 import AppContent from "../context/AppContent.js";
 import {
@@ -98,6 +100,14 @@ const MODULES = [
     iconColor: "text-sky-600 dark:text-sky-400",
   },
   {
+    id: "jobs",
+    labelKey: "Jobs",
+    descriptionKey: "Background queues, failures, and retries",
+    icon: ListTodo,
+    iconBg: "bg-teal-50 dark:bg-teal-900/30",
+    iconColor: "text-teal-600 dark:text-teal-400",
+  },
+  {
     id: "policies",
     labelKey: "adminPanel.policies",
     descriptionKey: "adminPanel.policiesDesc",
@@ -134,10 +144,17 @@ const MODULES = [
 const AdminPanel = () => {
   const { t } = useTranslation();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { userData } = useContext(AppContent) || {};
   const orgId = userData?.organization?._id || userData?.organization;
 
-  const [activeModule, setActiveModule] = useState("overview");
+  const initialModule = (() => {
+    const requested = searchParams.get("module");
+    if (requested && MODULES.some((m) => m.id === requested)) return requested;
+    return "overview";
+  })();
+
+  const [activeModule, setActiveModule] = useState(initialModule);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const sidebarRef = useRef(null);
 
@@ -257,6 +274,7 @@ const AdminPanel = () => {
       activeModule === "overview" ||
       activeModule === "templates" ||
       activeModule === "testimonials" ||
+      activeModule === "jobs" ||
       activeModule === "joinRequests"
     ) {
       return;
@@ -542,6 +560,8 @@ const AdminPanel = () => {
             <TemplateBuilder />
           ) : activeModule === "testimonials" ? (
             <TestimonialsModeration />
+          ) : activeModule === "jobs" ? (
+            <JobsDashboard />
           ) : activeModule === "joinRequests" ? (
             <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-2xl p-6 shadow-sm">
               <MembershipRequests organizationId={orgId} />

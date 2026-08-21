@@ -212,6 +212,8 @@ router.use("/api/sentiment-timeline", sentimentTimelineRoutes);
 router.use("/api/rsvps", meetingRsvpRoutes);
 router.use("/api/testimonials", testimonialRoutes);
 router.use("/api/admin/testimonials", adminTestimonialRouter);
+import adminJobsRoutes from "./adminJobsRoutes.js";
+router.use("/api/admin/jobs", adminJobsRoutes);
 router.use("/api/alerts/keywords", keywordAlertRoutes);
 router.use("/api/integrations/notion", notionIntegrationRoutes);
 
