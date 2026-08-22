@@ -10,16 +10,23 @@ export default function LiveChatWidget({
   handleSendMessage,
 }) {
   return (
-    <div className="live-chat-widget bg-white dark:bg-slate-800 border border-gray-100 dark:border-slate-800 rounded-2xl p-5 shadow-xs flex flex-col max-h-[460px]">
+    <div
+      className="live-chat-widget bg-white dark:bg-slate-800 border border-gray-100 dark:border-slate-800 rounded-2xl p-5 shadow-xs flex flex-col max-h-[460px]"
+      role="region"
+      aria-label="AI support bot"
+    >
       <div className="flex items-center justify-between pb-3 border-b border-gray-100 dark:border-slate-700/60">
         <div className="flex items-center gap-2.5">
-          <div className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-ping" />
+          <div
+            className="w-2.5 h-2.5 rounded-full bg-blue-500 shrink-0"
+            aria-hidden="true"
+          />
           <div>
             <h3 className="font-bold text-sm text-gray-950 dark:text-white">
-              Live Support Assistant
+              AI Support Bot
             </h3>
             <p className="text-[10px] text-gray-400 dark:text-slate-500">
-              Automated Bot Reply System
+              Automated assistant · not a live agent
             </p>
           </div>
         </div>
@@ -51,9 +58,17 @@ export default function LiveChatWidget({
         ))}
 
         {botTyping && (
-          <div className="flex flex-col items-start animate-pulse">
+          <div
+            className="flex flex-col items-start animate-pulse"
+            role="status"
+            aria-live="polite"
+          >
+            <span className="sr-only">Automated assistant is typing</span>
             <div className="p-3 rounded-xl bg-gray-100 dark:bg-slate-700/60 text-gray-800 dark:text-slate-200 rounded-bl-none">
-              <div className="flex gap-1.5 py-0.5 items-center">
+              <div
+                className="flex gap-1.5 py-0.5 items-center"
+                aria-hidden="true"
+              >
                 <div className="w-1.5 h-1.5 bg-gray-400 rounded-full animate-bounce" />
                 <div className="w-1.5 h-1.5 bg-gray-400 rounded-full animate-bounce animation-delay-200" />
                 <div className="w-1.5 h-1.5 bg-gray-400 rounded-full animate-bounce animation-delay-400" />
@@ -71,14 +86,15 @@ export default function LiveChatWidget({
       >
         <input
           type="text"
-          placeholder="Ask a quick question..."
+          placeholder="Ask the support bot..."
+          aria-label="Message the automated support bot"
           value={chatInput}
           onChange={(e) => setChatInput(e.target.value)}
           className="flex-1 border border-gray-200 dark:border-slate-700 rounded-xl px-3 py-2 bg-white dark:bg-slate-900 text-gray-900 dark:text-white placeholder-gray-400 focus:outline-none focus:ring-1 focus:ring-blue-500 text-xs"
         />
         <button
           type="submit"
-          aria-label="Send message"
+          aria-label="Send message to the support bot"
           className="p-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl transition shrink-0"
         >
           <Send className="w-3.5 h-3.5" aria-hidden="true" />
