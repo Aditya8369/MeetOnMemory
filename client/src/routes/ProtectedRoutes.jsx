@@ -64,6 +64,7 @@ import AutomationRules from "../pages/AutomationRules.jsx";
 import TopicExplorer from "../pages/TopicExplorer.jsx";
 import ConflictResolution from "../pages/ConflictResolution.jsx";
 import SpeakingTimeTrends from "../pages/SpeakingTimeTrends.jsx";
+import SpeakingTimeCompare from "../pages/SpeakingTimeCompare.jsx";
 import Leaderboard from "../pages/Leaderboard.jsx";
 import ParticipantEngagement from "../pages/ParticipantEngagement.jsx";
 import ActionItemAnalytics from "../pages/ActionItemAnalytics.jsx";
@@ -644,6 +645,14 @@ const ProtectedRoutes = (
       element={
         <ProtectedRoute resource="reports" action="view">
           <SpeakingTimeTrends />
+        </ProtectedRoute>
+      }
+    />
+    <Route
+      path="/speaking-time-compare"
+      element={
+        <ProtectedRoute resource="reports" action="view">
+          <SpeakingTimeCompare />
         </ProtectedRoute>
       }
     />
