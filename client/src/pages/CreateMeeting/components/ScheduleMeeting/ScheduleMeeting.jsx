@@ -143,6 +143,13 @@ const ScheduleMeeting = ({ hookProps, loadingDuplicate = false }) => {
           onChange={(fields, isValid) => setCustomFields({ fields, isValid })}
         />
 
+        <SmartAgendaGenerator
+          organizationId={userData?.organization?._id || userData?.organization}
+          meetingId={null}
+          currentAgenda={agendaItems}
+          onApplySuccess={setAgendaItems}
+        />
+
         <AgendaSection
           agendaItems={agendaItems}
           setAgendaItems={setAgendaItems}
