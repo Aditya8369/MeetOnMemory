@@ -18,6 +18,7 @@ import {
 import Navbar from "../components/Navbar.jsx";
 import TopContributorsWidget from "../components/organization/TopContributorsWidget";
 import DashboardMetricsWidget from "../components/dashboard/DashboardMetricsWidget.jsx";
+import FeedbackTrendChart from "../components/dashboard/FeedbackTrendChart.jsx";
 import OrganizationLogo from "../components/organization/OrganizationLogo.jsx";
 import OrganizationBanner from "../components/organization/OrganizationBanner.jsx";
 import PersonalNotesSidebar from "../components/PersonalNotesSidebar.jsx";
@@ -56,6 +57,8 @@ const Dashboard = () => {
 
   const organizationName =
     userData?.organization?.name?.toUpperCase() || "ORGANIZATION";
+  const organizationId =
+    userData?.organization?._id || userData?.organization || "";
   const organizationLogoUrl =
     userData?.organization?.logoUrl || userData?.organization?.logo || "";
   const organizationBannerUrl = userData?.organization?.bannerUrl || "";
@@ -316,6 +319,12 @@ const Dashboard = () => {
 
         {/* ── Operational Metrics ── */}
         <DashboardMetricsWidget />
+
+        {organizationId ? (
+          <div className="mb-8">
+            <FeedbackTrendChart orgId={organizationId} />
+          </div>
+        ) : null}
 
         {/* ── Feature Cards ── */}
         <section aria-label="Dashboard features">

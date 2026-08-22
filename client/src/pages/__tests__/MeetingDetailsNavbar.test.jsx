@@ -111,6 +111,17 @@ vi.mock("../../components/meeting-details/PollSection", () => ({
     <div data-testid="poll-section">Polls for {meetingId}</div>
   ),
 }));
+vi.mock("../../components/meeting-details/FeedbackForm", () => ({
+  default: ({ meetingId, organizationId }) => (
+    <div
+      data-testid="meeting-feedback-form"
+      data-meeting-id={meetingId}
+      data-organization-id={organizationId || ""}
+    >
+      Feedback for {meetingId}
+    </div>
+  ),
+}));
 
 import { meetingApi } from "../../services";
 
@@ -142,6 +153,7 @@ describe("MeetingDetails Navbar Integration (#1637)", () => {
           title: "Quarterly Planning",
           uploadedBy: "db_123",
           participants: [],
+          organization: { _id: "org-42" },
         },
       },
     });
@@ -161,6 +173,10 @@ describe("MeetingDetails Navbar Integration (#1637)", () => {
     expect(screen.getByTestId("poll-section")).toHaveTextContent(
       "Polls for 123",
     );
+    const feedbackForm = screen.getByTestId("meeting-feedback-form");
+    expect(feedbackForm).toHaveTextContent("Feedback for 123");
+    expect(feedbackForm).toHaveAttribute("data-meeting-id", "123");
+    expect(feedbackForm).toHaveAttribute("data-organization-id", "org-42");
   });
 
   it("renders Navbar in error state", async () => {
