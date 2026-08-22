@@ -149,6 +149,14 @@ const MODULES = [
     iconBg: "bg-orange-50 dark:bg-orange-900/30",
     iconColor: "text-orange-600 dark:text-orange-400",
   },
+  {
+    id: "health",
+    labelKey: "System Health",
+    descriptionKey: "Live dependency statuses and system diagnostics",
+    icon: Activity,
+    iconBg: "bg-red-50 dark:bg-red-900/30",
+    iconColor: "text-red-600 dark:text-red-400",
+  },
 ];
 
 const AdminPanel = () => {
@@ -391,6 +399,10 @@ const AdminPanel = () => {
   ];
 
   const selectModule = (id) => {
+    if (id === "health") {
+      navigate("/admin/health");
+      return;
+    }
     setActiveModule(id);
     setSidebarOpen(false);
   };
