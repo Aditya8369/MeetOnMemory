@@ -45,6 +45,7 @@ import KnowledgeArchive from "../pages/KnowledgeArchive.jsx";
 import GraphSnapshots from "../pages/GraphSnapshots.jsx";
 import KnowledgeGraph from "../pages/KnowledgeGraph.jsx";
 import DecisionGraph from "../pages/DecisionGraph.jsx";
+import DecisionLog from "../pages/DecisionLog.jsx";
 import PolicyCompliance from "../pages/PolicyCompliance.jsx";
 import Settings from "../pages/Settings.jsx";
 import MembershipRequests from "../pages/MembershipRequests.jsx";
@@ -181,6 +182,14 @@ const ProtectedRoutes = (
       element={
         <ProtectedRoute resource="knowledge" action="view">
           <DecisionGraph />
+        </ProtectedRoute>
+      }
+    />
+    <Route
+      path="/decision-log"
+      element={
+        <ProtectedRoute resource="knowledge" action="view">
+          <DecisionLog />
         </ProtectedRoute>
       }
     />
