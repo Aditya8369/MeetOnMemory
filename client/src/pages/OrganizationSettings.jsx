@@ -1,4 +1,10 @@
-import React, { useState, useEffect, useContext, useRef, useCallback } from "react";
+import React, {
+  useState,
+  useEffect,
+  useContext,
+  useRef,
+  useCallback,
+} from "react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "react-toastify";
 import {
@@ -176,153 +182,7 @@ import { validateImageUrl } from "../utils/imageUrl.js";
 import NotionConnectPanel from "../components/integrations/NotionConnectPanel.jsx";
 import GitHubConnectPanel from "../components/integrations/GitHubConnectPanel.jsx";
 import IssueTrackerConfig from "../components/integrations/IssueTrackerConfig.jsx";
-
-// Custom hooks for file upload
-const useFileUpload = (options = {}) => {
-  const {
-    maxSize = 5 * 1024 * 1024, // 5MB default
-    acceptedTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp', 'image/svg+xml'],
-    onProgress,
-    onSuccess,
-    onError,
-    onStart
-  } = options;
-
-  const [isUploading, setIsUploading] = useState(false);
-  const [uploadProgress, setUploadProgress] = useState(0);
-  const [uploadedFile, setUploadedFile] = useState(null);
-  const [error, setError] = useState(null);
-
-  const validateFile = useCallback((file) => {
-    // Check file size
-    if (file.size > maxSize) {
-      const maxSizeMB = (maxSize / (1024 * 1024)).toFixed(1);
-      return {
-        valid: false,
-        error: `File size exceeds ${maxSizeMB}MB limit. Current: ${(file.size / (1024 * 1024)).toFixed(1)}MB`
-      };
-    }
-
-    // Check file type
-    if (!acceptedTypes.includes(file.type)) {
-      return {
-        valid: false,
-        error: `File type "${file.type}" is not supported. Accepted: ${acceptedTypes.join(', ')}`
-      };
-    }
-
-    return { valid: true };
-  }, [maxSize, acceptedTypes]);
-
-  const uploadFile = useCallback(async (file, endpoint, additionalData = {}) => {
-    const validation = validateFile(file);
-    if (!validation.valid) {
-      setError(validation.error);
-      if (onError) onError(validation.error);
-      return null;
-    }
-
-    setIsUploading(true);
-    setUploadProgress(0);
-    setError(null);
-    if (onStart) onStart(file);
-
-    try {
-      const formData = new FormData();
-      formData.append('file', file);
-      
-      // Add additional data to formData
-      Object.keys(additionalData).forEach(key => {
-        if (additionalData[key] !== undefined && additionalData[key] !== null) {
-          formData.append(key, additionalData[key]);
-        }
-      });
-
-      // Simulate progress for better UX
-      const progressInterval = setInterval(() => {
-        setUploadProgress(prev => {
-          const newProgress = prev + Math.random() * 10;
-          if (newProgress >= 95) {
-            clearInterval(progressInterval);
-            return 95;
-          }
-          return Math.min(newProgress, 95);
-        });
-        if (onProgress) {
-          onProgress(uploadProgress);
-        }
-      }, 200);
-
-      // Make the actual API call
-      const response = await fetch(endpoint, {
-        method: 'POST',
-        body: formData,
-        credentials: 'include',
-      });
-
-      clearInterval(progressInterval);
-
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.message || `Upload failed with status ${response.status}`);
-      }
-
-      const data = await response.json();
-      
-      // Set progress to 100% on success
-      setUploadProgress(100);
-      
-      // Store the uploaded file info
-      const fileData = {
-        url: data.url || data.fileUrl || data.location || data.file?.url,
-        publicId: data.publicId || data.id || data.file?.publicId,
-        fileName: file.name,
-        fileSize: file.size,
-        fileType: file.type,
-        ...data
-      };
-
-      setUploadedFile(fileData);
-      
-      if (onSuccess) {
-        onSuccess(fileData);
-      }
-
-      // Reset progress after a delay
-      setTimeout(() => {
-        setUploadProgress(0);
-      }, 1000);
-
-      return fileData;
-    } catch (error) {
-      const errorMessage = error.message || 'Upload failed. Please try again.';
-      setError(errorMessage);
-      if (onError) onError(errorMessage);
-      setUploadProgress(0);
-      return null;
-    } finally {
-      setIsUploading(false);
-    }
-  }, [validateFile, onProgress, onSuccess, onError, onStart, uploadProgress]);
-
-  const resetUpload = useCallback(() => {
-    setIsUploading(false);
-    setUploadProgress(0);
-    setUploadedFile(null);
-    setError(null);
-  }, []);
-
-  return {
-    isUploading,
-    uploadProgress,
-    uploadedFile,
-    error,
-    uploadFile,
-    resetUpload,
-    validateFile,
-    setError
-  };
-};
+import OrgCustomFieldsSection from "../components/organization/OrgCustomFieldsSection.jsx";
 
 // Image editor component
 const ImageEditor = ({ imageUrl, onSave, onCancel, onClose }) => {
@@ -334,11 +194,17 @@ const ImageEditor = ({ imageUrl, onSave, onCancel, onClose }) => {
   const [brightness, setBrightness] = useState(100);
   const [contrast, setContrast] = useState(100);
   const [cropMode, setCropMode] = useState(false);
-  const [cropArea, setCropArea] = useState({ x: 0, y: 0, width: 100, height: 100 });
-  const [isDragging, setIsDragging] = useState(false);
-  const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
+  const [cropArea] = useState({
+    x: 0,
+    y: 0,
+    width: 100,
+    height: 100,
+  });
   const [imageLoaded, setImageLoaded] = useState(false);
-  const [imageDimensions, setImageDimensions] = useState({ width: 0, height: 0 });
+  const [, setImageDimensions] = useState({
+    width: 0,
+    height: 0,
+  });
 
   const handleImageLoad = (e) => {
     const img = e.target;
@@ -350,9 +216,9 @@ const ImageEditor = ({ imageUrl, onSave, onCancel, onClose }) => {
     const canvas = canvasRef.current;
     if (!canvas) return;
 
-    const ctx = canvas.getContext('2d');
+    const ctx = canvas.getContext("2d");
     const img = new Image();
-    img.crossOrigin = 'anonymous';
+    img.crossOrigin = "anonymous";
     img.src = imageUrl;
 
     img.onload = () => {
@@ -375,7 +241,7 @@ const ImageEditor = ({ imageUrl, onSave, onCancel, onClose }) => {
 
       // Apply image filters
       ctx.filter = `brightness(${brightness}%) contrast(${contrast}%)`;
-      
+
       // Draw image
       ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
 
@@ -383,8 +249,8 @@ const ImageEditor = ({ imageUrl, onSave, onCancel, onClose }) => {
       ctx.restore();
 
       // Update preview
-      const previewUrl = canvas.toDataURL('image/png');
-      const previewImg = document.getElementById('preview-image');
+      const previewUrl = canvas.toDataURL("image/png");
+      const previewImg = document.getElementById("preview-image");
       if (previewImg) {
         previewImg.src = previewUrl;
       }
@@ -395,19 +261,23 @@ const ImageEditor = ({ imageUrl, onSave, onCancel, onClose }) => {
     if (imageLoaded) {
       applyEdits();
     }
-  }, [applyEdits, imageLoaded, rotation, flipX, flipY, scale, brightness, contrast]);
+  }, [
+    applyEdits,
+    imageLoaded,
+    rotation,
+    flipX,
+    flipY,
+    scale,
+    brightness,
+    contrast,
+  ]);
 
   const handleSave = () => {
     const canvas = canvasRef.current;
     if (canvas) {
-      const dataUrl = canvas.toDataURL('image/png');
+      const dataUrl = canvas.toDataURL("image/png");
       onSave(dataUrl);
     }
-  };
-
-  const handleCrop = () => {
-    // Implement crop functionality
-    toast.info('Crop feature coming soon!');
   };
 
   const handleReset = () => {
@@ -430,8 +300,12 @@ const ImageEditor = ({ imageUrl, onSave, onCancel, onClose }) => {
               <ImageIcon className="w-5 h-5 text-blue-600 dark:text-blue-400" />
             </div>
             <div>
-              <h3 className="text-lg font-bold text-slate-900 dark:text-white">Image Editor</h3>
-              <p className="text-xs text-slate-500 dark:text-slate-400">Crop, rotate, and enhance your image</p>
+              <h3 className="text-lg font-bold text-slate-900 dark:text-white">
+                Image Editor
+              </h3>
+              <p className="text-xs text-slate-500 dark:text-slate-400">
+                Crop, rotate, and enhance your image
+              </p>
             </div>
           </div>
           <button
@@ -448,7 +322,7 @@ const ImageEditor = ({ imageUrl, onSave, onCancel, onClose }) => {
             <canvas
               ref={canvasRef}
               className="max-w-full max-h-full object-contain"
-              style={{ display: 'none' }}
+              style={{ display: "none" }}
             />
             <img
               id="preview-image"
@@ -482,7 +356,9 @@ const ImageEditor = ({ imageUrl, onSave, onCancel, onClose }) => {
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             {/* Transform Controls */}
             <div className="space-y-2">
-              <label className="text-xs font-semibold text-slate-600 dark:text-slate-400">Scale</label>
+              <label className="text-xs font-semibold text-slate-600 dark:text-slate-400">
+                Scale
+              </label>
               <input
                 type="range"
                 min="0.1"
@@ -492,11 +368,15 @@ const ImageEditor = ({ imageUrl, onSave, onCancel, onClose }) => {
                 onChange={(e) => setScale(parseFloat(e.target.value))}
                 className="w-full"
               />
-              <span className="text-xs text-slate-500">{scale.toFixed(1)}x</span>
+              <span className="text-xs text-slate-500">
+                {scale.toFixed(1)}x
+              </span>
             </div>
 
             <div className="space-y-2">
-              <label className="text-xs font-semibold text-slate-600 dark:text-slate-400">Rotation</label>
+              <label className="text-xs font-semibold text-slate-600 dark:text-slate-400">
+                Rotation
+              </label>
               <input
                 type="range"
                 min="-180"
@@ -510,7 +390,9 @@ const ImageEditor = ({ imageUrl, onSave, onCancel, onClose }) => {
             </div>
 
             <div className="space-y-2">
-              <label className="text-xs font-semibold text-slate-600 dark:text-slate-400">Brightness</label>
+              <label className="text-xs font-semibold text-slate-600 dark:text-slate-400">
+                Brightness
+              </label>
               <input
                 type="range"
                 min="0"
@@ -523,7 +405,9 @@ const ImageEditor = ({ imageUrl, onSave, onCancel, onClose }) => {
             </div>
 
             <div className="space-y-2">
-              <label className="text-xs font-semibold text-slate-600 dark:text-slate-400">Contrast</label>
+              <label className="text-xs font-semibold text-slate-600 dark:text-slate-400">
+                Contrast
+              </label>
               <input
                 type="range"
                 min="0"
@@ -591,15 +475,15 @@ const ImageEditor = ({ imageUrl, onSave, onCancel, onClose }) => {
 };
 
 // Drag and drop file upload component
-const FileDropZone = ({ 
-  onFileSelect, 
-  accept = 'image/*',
+const FileDropZone = ({
+  onFileSelect,
+  accept = "image/*",
   maxSize = 5 * 1024 * 1024,
   multiple = false,
   children,
-  className = '',
+  className = "",
   disabled = false,
-  label = 'Drop files here or click to browse'
+  label = "Drop files here or click to browse",
 }) => {
   const [isDragOver, setIsDragOver] = useState(false);
   const fileInputRef = useRef(null);
@@ -616,45 +500,53 @@ const FileDropZone = ({
     setIsDragOver(false);
   }, []);
 
-  const handleDragOver = useCallback((e) => {
-    e.preventDefault();
-    e.stopPropagation();
-    if (!isDragOver) {
-      setIsDragOver(true);
-    }
-  }, [isDragOver]);
+  const handleDragOver = useCallback(
+    (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      if (!isDragOver) {
+        setIsDragOver(true);
+      }
+    },
+    [isDragOver],
+  );
 
-  const handleDrop = useCallback((e) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setIsDragOver(false);
+  const handleDrop = useCallback(
+    (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      setIsDragOver(false);
 
-    if (disabled) return;
+      if (disabled) return;
 
-    const files = Array.from(e.dataTransfer.files);
-    if (files.length > 0) {
-      // Validate files
-      const validFiles = files.filter(file => {
-        if (file.size > maxSize) {
-          toast.error(`File "${file.name}" exceeds ${(maxSize / (1024 * 1024)).toFixed(1)}MB limit`);
-          return false;
-        }
-        if (!file.type.startsWith('image/')) {
-          toast.error(`File "${file.name}" is not an image`);
-          return false;
-        }
-        return true;
-      });
+      const files = Array.from(e.dataTransfer.files);
+      if (files.length > 0) {
+        // Validate files
+        const validFiles = files.filter((file) => {
+          if (file.size > maxSize) {
+            toast.error(
+              `File "${file.name}" exceeds ${(maxSize / (1024 * 1024)).toFixed(1)}MB limit`,
+            );
+            return false;
+          }
+          if (!file.type.startsWith("image/")) {
+            toast.error(`File "${file.name}" is not an image`);
+            return false;
+          }
+          return true;
+        });
 
-      if (validFiles.length > 0) {
-        if (!multiple) {
-          onFileSelect(validFiles[0]);
-        } else {
-          onFileSelect(validFiles);
+        if (validFiles.length > 0) {
+          if (!multiple) {
+            onFileSelect(validFiles[0]);
+          } else {
+            onFileSelect(validFiles);
+          }
         }
       }
-    }
-  }, [disabled, maxSize, multiple, onFileSelect]);
+    },
+    [disabled, maxSize, multiple, onFileSelect],
+  );
 
   const handleClick = useCallback(() => {
     if (!disabled && fileInputRef.current) {
@@ -662,26 +554,29 @@ const FileDropZone = ({
     }
   }, [disabled]);
 
-  const handleFileChange = useCallback((e) => {
-    const files = Array.from(e.target.files || []);
-    if (files.length > 0) {
-      if (!multiple) {
-        onFileSelect(files[0]);
-      } else {
-        onFileSelect(files);
+  const handleFileChange = useCallback(
+    (e) => {
+      const files = Array.from(e.target.files || []);
+      if (files.length > 0) {
+        if (!multiple) {
+          onFileSelect(files[0]);
+        } else {
+          onFileSelect(files);
+        }
       }
-    }
-    // Reset input
-    e.target.value = '';
-  }, [multiple, onFileSelect]);
+      // Reset input
+      e.target.value = "";
+    },
+    [multiple, onFileSelect],
+  );
 
   return (
     <div
       className={`relative border-2 border-dashed rounded-xl p-8 text-center transition-all ${
         isDragOver
-          ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20 scale-105'
-          : 'border-slate-300 dark:border-slate-600 hover:border-blue-400 dark:hover:border-blue-500'
-      } ${disabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'} ${className}`}
+          ? "border-blue-500 bg-blue-50 dark:bg-blue-900/20 scale-105"
+          : "border-slate-300 dark:border-slate-600 hover:border-blue-400 dark:hover:border-blue-500"
+      } ${disabled ? "opacity-50 cursor-not-allowed" : "cursor-pointer"} ${className}`}
       onDragEnter={handleDragEnter}
       onDragLeave={handleDragLeave}
       onDragOver={handleDragOver}
@@ -704,10 +599,11 @@ const FileDropZone = ({
           </div>
           <div>
             <p className="text-sm font-medium text-slate-700 dark:text-slate-300">
-              {isDragOver ? 'Drop to upload' : label}
+              {isDragOver ? "Drop to upload" : label}
             </p>
             <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-              Supports {accept.replace(/\*/g, '')} up to {(maxSize / (1024 * 1024)).toFixed(1)}MB
+              Supports {accept.replace(/\*/g, "")} up to{" "}
+              {(maxSize / (1024 * 1024)).toFixed(1)}MB
             </p>
           </div>
           {!multiple && (
@@ -729,7 +625,7 @@ const UploadProgress = ({ progress, isUploading, fileName, onCancel }) => {
     <div className="mt-3 p-3 bg-slate-50 dark:bg-slate-800/50 rounded-xl">
       <div className="flex items-center justify-between mb-1.5">
         <span className="text-sm font-medium text-slate-700 dark:text-slate-300 truncate max-w-[70%]">
-          {fileName || 'Uploading...'}
+          {fileName || "Uploading..."}
         </span>
         <span className="text-sm font-semibold text-blue-600 dark:text-blue-400">
           {Math.round(progress)}%
@@ -741,8 +637,10 @@ const UploadProgress = ({ progress, isUploading, fileName, onCancel }) => {
           style={{ width: `${progress}%` }}
         />
         {isUploading && (
-          <div className="absolute top-0 left-0 h-full bg-gradient-to-r from-blue-500 to-blue-600 rounded-full animate-pulse" 
-               style={{ width: `${progress}%` }} />
+          <div
+            className="absolute top-0 left-0 h-full bg-gradient-to-r from-blue-500 to-blue-600 rounded-full animate-pulse"
+            style={{ width: `${progress}%` }}
+          />
         )}
       </div>
       {onCancel && isUploading && (
@@ -758,27 +656,27 @@ const UploadProgress = ({ progress, isUploading, fileName, onCancel }) => {
 };
 
 // Image preview with overlay
-const ImagePreview = ({ 
-  src, 
-  alt, 
-  onRemove, 
-  onEdit, 
+const ImagePreview = ({
+  src,
+  alt,
+  onRemove,
+  onEdit,
   onDownload,
-  size = 'md',
+  size = "md",
   showControls = true,
-  className = '',
+  className = "",
   isUploading = false,
-  uploadProgress = 0
+  uploadProgress = 0,
 }) => {
   const [isHovered, setIsHovered] = useState(false);
   const [showFullScreen, setShowFullScreen] = useState(false);
 
   const sizeClasses = {
-    sm: 'w-16 h-16',
-    md: 'w-24 h-24',
-    lg: 'w-32 h-32',
-    xl: 'w-48 h-48',
-    '2xl': 'w-64 h-64',
+    sm: "w-16 h-16",
+    md: "w-24 h-24",
+    lg: "w-32 h-32",
+    xl: "w-48 h-48",
+    "2xl": "w-64 h-64",
   };
 
   if (!src) return null;
@@ -792,15 +690,17 @@ const ImagePreview = ({
       >
         <img
           src={src}
-          alt={alt || 'Preview'}
+          alt={alt || "Preview"}
           className="w-full h-full object-cover rounded-xl border border-slate-200 dark:border-slate-700"
         />
-        
+
         {isUploading && (
           <div className="absolute inset-0 bg-black/50 rounded-xl flex items-center justify-center">
             <div className="text-center">
               <Loader2 className="w-6 h-6 text-white animate-spin mx-auto mb-1" />
-              <span className="text-xs text-white">{Math.round(uploadProgress)}%</span>
+              <span className="text-xs text-white">
+                {Math.round(uploadProgress)}%
+              </span>
             </div>
           </div>
         )}
@@ -851,10 +751,13 @@ const ImagePreview = ({
           className="fixed inset-0 z-50 bg-black/90 flex items-center justify-center p-4"
           onClick={() => setShowFullScreen(false)}
         >
-          <div className="max-w-4xl w-full max-h-[90vh]" onClick={(e) => e.stopPropagation()}>
+          <div
+            className="max-w-4xl w-full max-h-[90vh]"
+            onClick={(e) => e.stopPropagation()}
+          >
             <img
               src={src}
-              alt={alt || 'Preview'}
+              alt={alt || "Preview"}
               className="w-full h-full object-contain rounded-xl"
             />
             <div className="absolute top-4 right-4 flex gap-2">
@@ -933,17 +836,11 @@ const OrganizationSettings = () => {
   const [bannerUploadProgress, setBannerUploadProgress] = useState(0);
   const [showImageEditor, setShowImageEditor] = useState(false);
   const [editingImageType, setEditingImageType] = useState(null); // 'logo' or 'banner'
-  const [editingImageUrl, setEditingImageUrl] = useState('');
+  const [editingImageUrl, setEditingImageUrl] = useState("");
   const [showLogoDropZone, setShowLogoDropZone] = useState(false);
   const [showBannerDropZone, setShowBannerDropZone] = useState(false);
-  const [logoFile, setLogoFile] = useState(null);
-  const [bannerFile, setBannerFile] = useState(null);
-
-  // Refs
-  const logoInputRef = useRef(null);
-  const bannerInputRef = useRef(null);
-  const logoDropRef = useRef(null);
-  const bannerDropRef = useRef(null);
+  const [, setLogoFile] = useState(null);
+  const [, setBannerFile] = useState(null);
 
   // Industry options
   const industryOptions = [
@@ -962,137 +859,168 @@ const OrganizationSettings = () => {
   ];
 
   // File upload handlers
-  const handleLogoUpload = useCallback(async (file) => {
-    if (!file) return;
+  const handleLogoUpload = useCallback(
+    async (file) => {
+      if (!file) return;
 
-    // Validate file
-    const validTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp', 'image/svg+xml'];
-    const maxSize = 5 * 1024 * 1024; // 5MB
+      // Validate file
+      const validTypes = [
+        "image/jpeg",
+        "image/png",
+        "image/gif",
+        "image/webp",
+        "image/svg+xml",
+      ];
+      const maxSize = 5 * 1024 * 1024; // 5MB
 
-    if (!validTypes.includes(file.type)) {
-      toast.error('Please upload a valid image file (JPEG, PNG, GIF, WebP, or SVG)');
-      return;
-    }
-
-    if (file.size > maxSize) {
-      toast.error(`File size exceeds 5MB limit. Current: ${(file.size / (1024 * 1024)).toFixed(1)}MB`);
-      return;
-    }
-
-    setLogoFile(file);
-    setUploadingLogo(true);
-    setLogoUploadProgress(0);
-
-    try {
-      const formData = new FormData();
-      formData.append('logo', file);
-      formData.append('organizationId', metadata._id);
-
-      // Simulate upload progress
-      const interval = setInterval(() => {
-        setLogoUploadProgress(prev => {
-          const newProgress = prev + Math.random() * 8;
-          if (newProgress >= 90) {
-            clearInterval(interval);
-            return 90;
-          }
-          return Math.min(newProgress, 90);
-        });
-      }, 150);
-
-      // Upload to server
-      const response = await organizationApi.uploadOrganizationLogo(metadata._id, formData);
-
-      clearInterval(interval);
-      setLogoUploadProgress(100);
-
-      if (response.data.success) {
-        const logoUrl = response.data.data.logoUrl || response.data.data.url;
-        setFormData(prev => ({ ...prev, logo: logoUrl }));
-        toast.success('Logo uploaded successfully!');
-        
-        // Reset logo file
-        setLogoFile(null);
-        
-        // Close drop zone
-        setShowLogoDropZone(false);
-      } else {
-        throw new Error(response.data.message || 'Failed to upload logo');
+      if (!validTypes.includes(file.type)) {
+        toast.error(
+          "Please upload a valid image file (JPEG, PNG, GIF, WebP, or SVG)",
+        );
+        return;
       }
-    } catch (error) {
-      console.error('Logo upload error:', error);
-      toast.error(error.message || 'Failed to upload logo. Please try again.');
-    } finally {
-      setUploadingLogo(false);
-      setTimeout(() => setLogoUploadProgress(0), 1500);
-    }
-  }, [metadata._id]);
 
-  const handleBannerUpload = useCallback(async (file) => {
-    if (!file) return;
-
-    // Validate file
-    const validTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
-    const maxSize = 10 * 1024 * 1024; // 10MB for banners
-
-    if (!validTypes.includes(file.type)) {
-      toast.error('Please upload a valid image file (JPEG, PNG, GIF, or WebP)');
-      return;
-    }
-
-    if (file.size > maxSize) {
-      toast.error(`File size exceeds 10MB limit. Current: ${(file.size / (1024 * 1024)).toFixed(1)}MB`);
-      return;
-    }
-
-    setBannerFile(file);
-    setUploadingBanner(true);
-    setBannerUploadProgress(0);
-
-    try {
-      const formData = new FormData();
-      formData.append('banner', file);
-      formData.append('organizationId', metadata._id);
-
-      // Simulate upload progress
-      const interval = setInterval(() => {
-        setBannerUploadProgress(prev => {
-          const newProgress = prev + Math.random() * 8;
-          if (newProgress >= 90) {
-            clearInterval(interval);
-            return 90;
-          }
-          return Math.min(newProgress, 90);
-        });
-      }, 150);
-
-      // Upload to server
-      const response = await organizationApi.uploadOrganizationBanner(metadata._id, formData);
-
-      clearInterval(interval);
-      setBannerUploadProgress(100);
-
-      if (response.data.success) {
-        const bannerUrl = response.data.data.bannerUrl || response.data.data.url;
-        setFormData(prev => ({ ...prev, bannerUrl }));
-        toast.success('Banner uploaded successfully!');
-        
-        // Reset banner file
-        setBannerFile(null);
-        
-        // Close drop zone
-        setShowBannerDropZone(false);
-      } else {
-        throw new Error(response.data.message || 'Failed to upload banner');
+      if (file.size > maxSize) {
+        toast.error(
+          `File size exceeds 5MB limit. Current: ${(file.size / (1024 * 1024)).toFixed(1)}MB`,
+        );
+        return;
       }
-    } catch (error) {
-      console.error('Banner upload error:', error);
-      toast.error(error.message || 'Failed to upload banner. Please try again.');
-    } finally {
-      setUploadingBanner(false);
-      setTimeout(() => setBannerUploadProgress(0), 1500);
-    }
-  }, [metadata._id]);
+
+      setLogoFile(file);
+      setUploadingLogo(true);
+      setLogoUploadProgress(0);
+
+      try {
+        const formData = new FormData();
+        formData.append("logo", file);
+        formData.append("organizationId", metadata._id);
+
+        // Simulate upload progress
+        const interval = setInterval(() => {
+          setLogoUploadProgress((prev) => {
+            const newProgress = prev + Math.random() * 8;
+            if (newProgress >= 90) {
+              clearInterval(interval);
+              return 90;
+            }
+            return Math.min(newProgress, 90);
+          });
+        }, 150);
+
+        // Upload to server
+        const response = await organizationApi.uploadOrganizationLogo(
+          metadata._id,
+          formData,
+        );
+
+        clearInterval(interval);
+        setLogoUploadProgress(100);
+
+        if (response.data.success) {
+          const logoUrl = response.data.data.logoUrl || response.data.data.url;
+          setFormData((prev) => ({ ...prev, logo: logoUrl }));
+          toast.success("Logo uploaded successfully!");
+
+          // Reset logo file
+          setLogoFile(null);
+
+          // Close drop zone
+          setShowLogoDropZone(false);
+        } else {
+          throw new Error(response.data.message || "Failed to upload logo");
+        }
+      } catch (error) {
+        console.error("Logo upload error:", error);
+        toast.error(
+          error.message || "Failed to upload logo. Please try again.",
+        );
+      } finally {
+        setUploadingLogo(false);
+        setTimeout(() => setLogoUploadProgress(0), 1500);
+      }
+    },
+    [metadata._id],
+  );
+
+  const handleBannerUpload = useCallback(
+    async (file) => {
+      if (!file) return;
+
+      // Validate file
+      const validTypes = ["image/jpeg", "image/png", "image/gif", "image/webp"];
+      const maxSize = 10 * 1024 * 1024; // 10MB for banners
+
+      if (!validTypes.includes(file.type)) {
+        toast.error(
+          "Please upload a valid image file (JPEG, PNG, GIF, or WebP)",
+        );
+        return;
+      }
+
+      if (file.size > maxSize) {
+        toast.error(
+          `File size exceeds 10MB limit. Current: ${(file.size / (1024 * 1024)).toFixed(1)}MB`,
+        );
+        return;
+      }
+
+      setBannerFile(file);
+      setUploadingBanner(true);
+      setBannerUploadProgress(0);
+
+      try {
+        const formData = new FormData();
+        formData.append("banner", file);
+        formData.append("organizationId", metadata._id);
+
+        // Simulate upload progress
+        const interval = setInterval(() => {
+          setBannerUploadProgress((prev) => {
+            const newProgress = prev + Math.random() * 8;
+            if (newProgress >= 90) {
+              clearInterval(interval);
+              return 90;
+            }
+            return Math.min(newProgress, 90);
+          });
+        }, 150);
+
+        // Upload to server
+        const response = await organizationApi.uploadOrganizationBanner(
+          metadata._id,
+          formData,
+        );
+
+        clearInterval(interval);
+        setBannerUploadProgress(100);
+
+        if (response.data.success) {
+          const bannerUrl =
+            response.data.data.bannerUrl || response.data.data.url;
+          setFormData((prev) => ({ ...prev, bannerUrl }));
+          toast.success("Banner uploaded successfully!");
+
+          // Reset banner file
+          setBannerFile(null);
+
+          // Close drop zone
+          setShowBannerDropZone(false);
+        } else {
+          throw new Error(response.data.message || "Failed to upload banner");
+        }
+      } catch (error) {
+        console.error("Banner upload error:", error);
+        toast.error(
+          error.message || "Failed to upload banner. Please try again.",
+        );
+      } finally {
+        setUploadingBanner(false);
+        setTimeout(() => setBannerUploadProgress(0), 1500);
+      }
+    },
+    [metadata._id],
+  );
 
   // Image editing handlers
   const handleEditImage = useCallback((type, imageUrl) => {
@@ -1101,63 +1029,68 @@ const OrganizationSettings = () => {
     setShowImageEditor(true);
   }, []);
 
-  const handleImageEditorSave = useCallback(async (editedImageDataUrl) => {
-    try {
-      // Convert data URL to file
-      const response = await fetch(editedImageDataUrl);
-      const blob = await response.blob();
-      const file = new File([blob], `edited-${editingImageType}.png`, { type: 'image/png' });
+  const handleImageEditorSave = useCallback(
+    async (editedImageDataUrl) => {
+      try {
+        // Convert data URL to file
+        const response = await fetch(editedImageDataUrl);
+        const blob = await response.blob();
+        const file = new File([blob], `edited-${editingImageType}.png`, {
+          type: "image/png",
+        });
 
-      // Upload based on type
-      if (editingImageType === 'logo') {
-        await handleLogoUpload(file);
-      } else if (editingImageType === 'banner') {
-        await handleBannerUpload(file);
+        // Upload based on type
+        if (editingImageType === "logo") {
+          await handleLogoUpload(file);
+        } else if (editingImageType === "banner") {
+          await handleBannerUpload(file);
+        }
+
+        setShowImageEditor(false);
+        setEditingImageType(null);
+        setEditingImageUrl("");
+      } catch (error) {
+        console.error("Error saving edited image:", error);
+        toast.error("Failed to save edited image");
       }
-
-      setShowImageEditor(false);
-      setEditingImageType(null);
-      setEditingImageUrl('');
-    } catch (error) {
-      console.error('Error saving edited image:', error);
-      toast.error('Failed to save edited image');
-    }
-  }, [editingImageType, handleLogoUpload, handleBannerUpload]);
+    },
+    [editingImageType, handleLogoUpload, handleBannerUpload],
+  );
 
   // Remove image handlers
   const handleRemoveLogo = useCallback(() => {
-    setFormData(prev => ({ ...prev, logo: '' }));
-    setErrors(prev => {
+    setFormData((prev) => ({ ...prev, logo: "" }));
+    setErrors((prev) => {
       const next = { ...prev };
       delete next.logo;
       return next;
     });
-    toast.info('Logo removed');
+    toast.info("Logo removed");
   }, []);
 
   const handleRemoveBanner = useCallback(() => {
-    setFormData(prev => ({ ...prev, bannerUrl: '' }));
-    setErrors(prev => {
+    setFormData((prev) => ({ ...prev, bannerUrl: "" }));
+    setErrors((prev) => {
       const next = { ...prev };
       delete next.bannerUrl;
       return next;
     });
-    toast.info('Banner removed');
+    toast.info("Banner removed");
   }, []);
 
   // Download image handler
-  const handleDownloadImage = useCallback((imageUrl, fileName = 'image') => {
+  const handleDownloadImage = useCallback((imageUrl, fileName = "image") => {
     try {
-      const link = document.createElement('a');
+      const link = document.createElement("a");
       link.href = imageUrl;
       link.download = fileName;
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
-      toast.success('Image downloaded');
+      toast.success("Image downloaded");
     } catch (error) {
-      console.error('Error downloading image:', error);
-      toast.error('Failed to download image');
+      console.error("Error downloading image:", error);
+      toast.error("Failed to download image");
     }
   }, []);
 
@@ -1202,7 +1135,10 @@ const OrganizationSettings = () => {
       }
     } catch (error) {
       console.error("Error fetching organization settings:", error);
-      const msg = error.response?.data?.message || error.message || "Failed to load organization settings.";
+      const msg =
+        error.response?.data?.message ||
+        error.message ||
+        "Failed to load organization settings.";
       toast.error(msg);
     } finally {
       setLoading(false);
@@ -1214,91 +1150,100 @@ const OrganizationSettings = () => {
   }, [fetchOrgSettings]);
 
   // Detect unsaved changes (isDirty)
-  const isDirty = initialData && JSON.stringify(initialData) !== JSON.stringify(formData);
+  const isDirty =
+    initialData && JSON.stringify(initialData) !== JSON.stringify(formData);
 
   // Real-time client-side field validation
-  const validateField = useCallback((field, value) => {
-    let newErrors = { ...errors };
+  const validateField = useCallback(
+    (field, value) => {
+      let newErrors = { ...errors };
 
-    switch (field) {
-      case "name":
-        if (!value.trim()) {
-          newErrors.name = "Organization name is required.";
-        } else if (value.trim().length > 100) {
-          newErrors.name = "Organization name cannot exceed 100 characters.";
-        } else {
-          delete newErrors.name;
-        }
-        break;
+      switch (field) {
+        case "name":
+          if (!value.trim()) {
+            newErrors.name = "Organization name is required.";
+          } else if (value.trim().length > 100) {
+            newErrors.name = "Organization name cannot exceed 100 characters.";
+          } else {
+            delete newErrors.name;
+          }
+          break;
 
-      case "description":
-        if (value && value.length > 500) {
-          newErrors.description = "Short description cannot exceed 500 characters.";
-        } else {
-          delete newErrors.description;
-        }
-        break;
+        case "description":
+          if (value && value.length > 500) {
+            newErrors.description =
+              "Short description cannot exceed 500 characters.";
+          } else {
+            delete newErrors.description;
+          }
+          break;
 
-      case "about":
-        if (value && value.length > 2000) {
-          newErrors.about = "About bio cannot exceed 2000 characters.";
-        } else {
-          delete newErrors.about;
-        }
-        break;
+        case "about":
+          if (value && value.length > 2000) {
+            newErrors.about = "About bio cannot exceed 2000 characters.";
+          } else {
+            delete newErrors.about;
+          }
+          break;
 
-      case "contactEmail":
-        if (value && value.trim()) {
-          const emailPattern = /^[^\s@]+@[^\s@.]+\.[^\s@.]+$/;
-          if (!emailPattern.test(value.trim())) {
-            newErrors.contactEmail = "Please enter a valid email address.";
+        case "contactEmail":
+          if (value && value.trim()) {
+            const emailPattern = /^[^\s@]+@[^\s@.]+\.[^\s@.]+$/;
+            if (!emailPattern.test(value.trim())) {
+              newErrors.contactEmail = "Please enter a valid email address.";
+            } else {
+              delete newErrors.contactEmail;
+            }
           } else {
             delete newErrors.contactEmail;
           }
-        } else {
-          delete newErrors.contactEmail;
-        }
-        break;
+          break;
 
-      case "website":
-        if (value && value.trim()) {
-          const urlPattern = /^(https?:\/\/)?([\w-]+\.)+[\w-]+(\/.*)?$/i;
-          if (!urlPattern.test(value.trim())) {
-            newErrors.website = "Please enter a valid URL (e.g. https://example.com).";
+        case "website":
+          if (value && value.trim()) {
+            const urlPattern = /^(https?:\/\/)?([\w-]+\.)+[\w-]+(\/.*)?$/i;
+            if (!urlPattern.test(value.trim())) {
+              newErrors.website =
+                "Please enter a valid URL (e.g. https://example.com).";
+            } else {
+              delete newErrors.website;
+            }
           } else {
             delete newErrors.website;
           }
-        } else {
-          delete newErrors.website;
+          break;
+
+        case "logo": {
+          const logoError = validateImageUrl(value, "Logo URL");
+          if (logoError) newErrors.logo = logoError;
+          else delete newErrors.logo;
+          break;
         }
-        break;
 
-      case "logo": {
-        const logoError = validateImageUrl(value, "Logo URL");
-        if (logoError) newErrors.logo = logoError;
-        else delete newErrors.logo;
-        break;
+        case "bannerUrl": {
+          const bannerError = validateImageUrl(value, "Banner URL");
+          if (bannerError) newErrors.bannerUrl = bannerError;
+          else delete newErrors.bannerUrl;
+          break;
+        }
+
+        default:
+          break;
       }
 
-      case "bannerUrl": {
-        const bannerError = validateImageUrl(value, "Banner URL");
-        if (bannerError) newErrors.bannerUrl = bannerError;
-        else delete newErrors.bannerUrl;
-        break;
-      }
+      setErrors(newErrors);
+    },
+    [errors],
+  );
 
-      default:
-        break;
-    }
-
-    setErrors(newErrors);
-  }, [errors]);
-
-  const handleChange = useCallback((e) => {
-    const { name, value } = e.target;
-    setFormData(prev => ({ ...prev, [name]: value }));
-    validateField(name, value);
-  }, [validateField]);
+  const handleChange = useCallback(
+    (e) => {
+      const { name, value } = e.target;
+      setFormData((prev) => ({ ...prev, [name]: value }));
+      validateField(name, value);
+    },
+    [validateField],
+  );
 
   // Validate entire form before submission
   const validateForm = useCallback(() => {
@@ -1328,7 +1273,8 @@ const OrganizationSettings = () => {
     if (formData.website && formData.website.trim()) {
       const urlPattern = /^(https?:\/\/)?([\w-]+\.)+[\w-]+(\/.*)?$/i;
       if (!urlPattern.test(formData.website.trim())) {
-        newErrors.website = "Please enter a valid URL (e.g. https://example.com).";
+        newErrors.website =
+          "Please enter a valid URL (e.g. https://example.com).";
       }
     }
 
@@ -1343,51 +1289,62 @@ const OrganizationSettings = () => {
   }, [formData]);
 
   // Handle Save
-  const handleSave = useCallback(async (e) => {
-    if (e) e.preventDefault();
+  const handleSave = useCallback(
+    async (e) => {
+      if (e) e.preventDefault();
 
-    if (!canEdit) {
-      toast.error("You do not have permission to edit organization settings.");
-      return;
-    }
-
-    if (!validateForm()) {
-      toast.error("Please fix validation errors before saving.");
-      return;
-    }
-
-    try {
-      setSaving(true);
-      const { data } = await organizationApi.updateOrganizationSettings(metadata._id, {
-        ...formData,
-        logo: formData.logo,
-        logoUrl: formData.logo,
-        bannerUrl: formData.bannerUrl,
-      });
-
-      if (data.success) {
-        toast.success("Organization settings updated successfully!");
-        setInitialData(formData);
-
-        // Update user context if user's selected org name changed
-        if (getUserData) {
-          const updatedUser = await getUserData();
-          if (updatedUser && setUserData) {
-            setUserData(updatedUser);
-            localStorage.setItem("userData", JSON.stringify(updatedUser));
-          }
-        }
-      } else {
-        toast.error(data.message || "Failed to update settings.");
+      if (!canEdit) {
+        toast.error(
+          "You do not have permission to edit organization settings.",
+        );
+        return;
       }
-    } catch (error) {
-      console.error("Error updating organization settings:", error);
-      const msg = error.response?.data?.message || error.message || "Failed to update organization settings.";
-      toast.error(msg);
-    } finally {
-      setSaving(false);
-    }
-  }, [canEdit, validateForm, formData, metadata._id, getUserData, setUserData]);
+
+      if (!validateForm()) {
+        toast.error("Please fix validation errors before saving.");
+        return;
+      }
+
+      try {
+        setSaving(true);
+        const { data } = await organizationApi.updateOrganizationSettings(
+          metadata._id,
+          {
+            ...formData,
+            logo: formData.logo,
+            logoUrl: formData.logo,
+            bannerUrl: formData.bannerUrl,
+          },
+        );
+
+        if (data.success) {
+          toast.success("Organization settings updated successfully!");
+          setInitialData(formData);
+
+          // Update user context if user's selected org name changed
+          if (getUserData) {
+            const updatedUser = await getUserData();
+            if (updatedUser && setUserData) {
+              setUserData(updatedUser);
+              localStorage.setItem("userData", JSON.stringify(updatedUser));
+            }
+          }
+        } else {
+          toast.error(data.message || "Failed to update settings.");
+        }
+      } catch (error) {
+        console.error("Error updating organization settings:", error);
+        const msg =
+          error.response?.data?.message ||
+          error.message ||
+          "Failed to update organization settings.";
+        toast.error(msg);
+      } finally {
+        setSaving(false);
+      }
+    },
+    [canEdit, validateForm, formData, metadata._id, getUserData, setUserData],
+  );
 
   // Reset/Discard changes
   const handleDiscard = useCallback(() => {
@@ -1673,7 +1630,8 @@ const OrganizationSettings = () => {
                   Organization Branding
                 </h2>
                 <p className="text-xs text-slate-500 dark:text-slate-400">
-                  Upload logo and banner images with live preview and editing tools
+                  Upload logo and banner images with live preview and editing
+                  tools
                 </p>
               </div>
             </div>
@@ -1687,9 +1645,12 @@ const OrganizationSettings = () => {
                       <ImageIcon className="w-4 h-4 text-blue-600 dark:text-blue-400" />
                     </div>
                     <div>
-                      <h3 className="text-sm font-semibold text-slate-900 dark:text-white">Organization Logo</h3>
+                      <h3 className="text-sm font-semibold text-slate-900 dark:text-white">
+                        Organization Logo
+                      </h3>
                       <p className="text-xs text-slate-500 dark:text-slate-400">
-                        Square image recommended (JPEG, PNG, GIF, WebP, SVG) • Max 5MB
+                        Square image recommended (JPEG, PNG, GIF, WebP, SVG) •
+                        Max 5MB
                       </p>
                     </div>
                   </div>
@@ -1729,7 +1690,9 @@ const OrganizationSettings = () => {
                         <>
                           <button
                             type="button"
-                            onClick={() => handleEditImage('logo', formData.logo)}
+                            onClick={() =>
+                              handleEditImage("logo", formData.logo)
+                            }
                             className="p-1.5 text-xs bg-slate-100 dark:bg-slate-800 rounded-lg hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors flex items-center gap-1"
                           >
                             <Sliders className="w-3.5 h-3.5" />
@@ -1737,7 +1700,12 @@ const OrganizationSettings = () => {
                           </button>
                           <button
                             type="button"
-                            onClick={() => handleDownloadImage(formData.logo, `${formData.name || 'organization'}-logo`)}
+                            onClick={() =>
+                              handleDownloadImage(
+                                formData.logo,
+                                `${formData.name || "organization"}-logo`,
+                              )
+                            }
                             className="p-1.5 text-xs bg-slate-100 dark:bg-slate-800 rounded-lg hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors flex items-center gap-1"
                           >
                             <Download className="w-3.5 h-3.5" />
@@ -1777,7 +1745,9 @@ const OrganizationSettings = () => {
                       disabled={!canEdit || saving}
                       placeholder="https://cdn.example.com/logo.png"
                       aria-invalid={Boolean(errors.logo)}
-                      aria-describedby={errors.logo ? "org-logo-error" : undefined}
+                      aria-describedby={
+                        errors.logo ? "org-logo-error" : undefined
+                      }
                       className={`w-full px-4 py-2.5 text-sm rounded-xl bg-slate-50 dark:bg-slate-800/80 border ${
                         errors.logo
                           ? "border-red-500 focus:ring-red-500"
@@ -1785,13 +1755,17 @@ const OrganizationSettings = () => {
                       } text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 transition-all disabled:opacity-60 disabled:cursor-not-allowed`}
                     />
                     {errors.logo ? (
-                      <p id="org-logo-error" className="text-xs text-red-500 flex items-center gap-1">
+                      <p
+                        id="org-logo-error"
+                        className="text-xs text-red-500 flex items-center gap-1"
+                      >
                         <AlertCircle className="w-3.5 h-3.5" />
                         {errors.logo}
                       </p>
                     ) : (
                       <p className="text-xs text-slate-500 dark:text-slate-400">
-                        Enter a URL or use the upload button above. Leave empty to use the default placeholder.
+                        Enter a URL or use the upload button above. Leave empty
+                        to use the default placeholder.
                       </p>
                     )}
                   </div>
@@ -1826,9 +1800,12 @@ const OrganizationSettings = () => {
                       <PanelsTopLeft className="w-4 h-4 text-purple-600 dark:text-purple-400" />
                     </div>
                     <div>
-                      <h3 className="text-sm font-semibold text-slate-900 dark:text-white">Organization Banner</h3>
+                      <h3 className="text-sm font-semibold text-slate-900 dark:text-white">
+                        Organization Banner
+                      </h3>
                       <p className="text-xs text-slate-500 dark:text-slate-400">
-                        Wide cover image (3:1 ratio recommended) • JPEG, PNG, GIF, WebP • Max 10MB
+                        Wide cover image (3:1 ratio recommended) • JPEG, PNG,
+                        GIF, WebP • Max 10MB
                       </p>
                     </div>
                   </div>
@@ -1836,7 +1813,9 @@ const OrganizationSettings = () => {
                     <div className="flex items-center gap-2">
                       <button
                         type="button"
-                        onClick={() => setShowBannerDropZone(!showBannerDropZone)}
+                        onClick={() =>
+                          setShowBannerDropZone(!showBannerDropZone)
+                        }
                         className="px-3 py-1.5 text-xs bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors flex items-center gap-1.5"
                       >
                         {showBannerDropZone ? (
@@ -1864,13 +1843,15 @@ const OrganizationSettings = () => {
                       heightClass="h-36 sm:h-44"
                     />
                   </div>
-                  
+
                   <div className="flex items-center gap-3">
                     {canEdit && formData.bannerUrl && (
                       <>
                         <button
                           type="button"
-                          onClick={() => handleEditImage('banner', formData.bannerUrl)}
+                          onClick={() =>
+                            handleEditImage("banner", formData.bannerUrl)
+                          }
                           className="p-1.5 text-xs bg-slate-100 dark:bg-slate-800 rounded-lg hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors flex items-center gap-1"
                         >
                           <Sliders className="w-3.5 h-3.5" />
@@ -1878,7 +1859,12 @@ const OrganizationSettings = () => {
                         </button>
                         <button
                           type="button"
-                          onClick={() => handleDownloadImage(formData.bannerUrl, `${formData.name || 'organization'}-banner`)}
+                          onClick={() =>
+                            handleDownloadImage(
+                              formData.bannerUrl,
+                              `${formData.name || "organization"}-banner`,
+                            )
+                          }
                           className="p-1.5 text-xs bg-slate-100 dark:bg-slate-800 rounded-lg hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors flex items-center gap-1"
                         >
                           <Download className="w-3.5 h-3.5" />
@@ -1916,7 +1902,9 @@ const OrganizationSettings = () => {
                     disabled={!canEdit || saving}
                     placeholder="https://cdn.example.com/banner.jpg"
                     aria-invalid={Boolean(errors.bannerUrl)}
-                    aria-describedby={errors.bannerUrl ? "org-banner-error" : undefined}
+                    aria-describedby={
+                      errors.bannerUrl ? "org-banner-error" : undefined
+                    }
                     className={`w-full px-4 py-2.5 text-sm rounded-xl bg-slate-50 dark:bg-slate-800/80 border ${
                       errors.bannerUrl
                         ? "border-red-500 focus:ring-red-500"
@@ -1924,13 +1912,17 @@ const OrganizationSettings = () => {
                     } text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 transition-all disabled:opacity-60 disabled:cursor-not-allowed`}
                   />
                   {errors.bannerUrl ? (
-                    <p id="org-banner-error" className="text-xs text-red-500 flex items-center gap-1">
+                    <p
+                      id="org-banner-error"
+                      className="text-xs text-red-500 flex items-center gap-1"
+                    >
                       <AlertCircle className="w-3.5 h-3.5" />
                       {errors.bannerUrl}
                     </p>
                   ) : (
                     <p className="text-xs text-slate-500 dark:text-slate-400">
-                      Enter a URL or use the upload button above. Leave empty to use the default gradient.
+                      Enter a URL or use the upload button above. Leave empty to
+                      use the default gradient.
                     </p>
                   )}
                 </div>
@@ -1966,12 +1958,12 @@ const OrganizationSettings = () => {
               onCancel={() => {
                 setShowImageEditor(false);
                 setEditingImageType(null);
-                setEditingImageUrl('');
+                setEditingImageUrl("");
               }}
               onClose={() => {
                 setShowImageEditor(false);
                 setEditingImageType(null);
-                setEditingImageUrl('');
+                setEditingImageUrl("");
               }}
             />
           )}
@@ -2260,6 +2252,12 @@ const OrganizationSettings = () => {
             </div>
           )}
         </form>
+
+        {canEdit && metadata._id ? (
+          <div className="mt-8">
+            <OrgCustomFieldsSection orgId={metadata._id} />
+          </div>
+        ) : null}
       </div>
     </div>
   );

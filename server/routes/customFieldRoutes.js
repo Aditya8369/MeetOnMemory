@@ -2,24 +2,28 @@ import express from "express";
 import {
   createDefinition,
   getDefinitions,
+  updateDefinition,
+  deleteDefinition,
   setMeetingFields,
   getMeetingFields,
 } from "../controllers/customFieldController.js";
 import requireAuth from "../middleware/userAuth.js";
-// Assume role checks for admin exist, otherwise just use requireAuth
-import { requireRole } from "../middleware/roleAuth.js";
+import { requireOrgMembership, requireRole } from "../middleware/rbac.js";
 
 const router = express.Router();
 
 router.use(requireAuth);
+router.use(requireOrgMembership);
 
-// Organization level definitions
-// Example path: /api/custom-fields/org/:orgId
-router.post("/org/:orgId", requireRole(["admin", "owner"]), createDefinition);
+const requireOrgAdmin = requireRole(["admin", "owner"]);
+
+// Organization-level definitions. :orgId is kept for API compatibility;
+// handlers always scope to req.user.organization.
 router.get("/org/:orgId", getDefinitions);
+router.post("/org/:orgId", requireOrgAdmin, createDefinition);
+router.patch("/org/:orgId/:definitionId", requireOrgAdmin, updateDefinition);
+router.delete("/org/:orgId/:definitionId", requireOrgAdmin, deleteDefinition);
 
-// Meeting level values
-// Example path: /api/custom-fields/meeting/:meetingId
 router.post("/meeting/:meetingId", setMeetingFields);
 router.get("/meeting/:meetingId", getMeetingFields);
 

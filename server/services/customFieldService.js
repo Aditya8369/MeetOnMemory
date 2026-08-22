@@ -1,19 +1,26 @@
 import CustomFieldDefinition from "../models/customFieldDefinitionModel.js";
 import CustomFieldValue from "../models/customFieldValueModel.js";
 
+function normalizeOptions(options) {
+  if (!Array.isArray(options)) return [];
+  return options
+    .filter((option) => typeof option === "string")
+    .map((option) => option.trim())
+    .filter(Boolean);
+}
+
 class CustomFieldService {
   async createDefinition(orgId, data) {
-    if (
-      data.type === "dropdown" &&
-      (!data.options ||
-        !Array.isArray(data.options) ||
-        data.options.length === 0)
-    ) {
+    const options = normalizeOptions(data.options);
+    if (data.type === "dropdown" && options.length === 0) {
       throw new Error("Dropdown fields require options");
     }
     const def = new CustomFieldDefinition({
       organization: orgId,
-      ...data,
+      name: data.name,
+      type: data.type,
+      options: data.type === "dropdown" ? options : undefined,
+      required: Boolean(data.required),
     });
     await def.save();
     return def;
@@ -34,13 +41,23 @@ class CustomFieldService {
     });
     if (!def) throw new Error("Definition not found");
 
-    if (data.options !== undefined) def.options = data.options;
     if (data.name !== undefined) def.name = data.name;
     if (data.required !== undefined) def.required = data.required;
     if (data.active !== undefined) def.active = data.active;
+    if (data.options !== undefined) {
+      const options = normalizeOptions(data.options);
+      if (def.type === "dropdown" && options.length === 0) {
+        throw new Error("Dropdown fields require options");
+      }
+      def.options = def.type === "dropdown" ? options : undefined;
+    }
 
     await def.save();
     return def;
+  }
+
+  async deleteDefinition(id, orgId) {
+    return this.updateDefinition(id, orgId, { active: false });
   }
 
   async setMeetingFields(meetingId, orgId, fieldsData) {

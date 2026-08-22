@@ -39,6 +39,65 @@ describe("customFieldService", () => {
         }),
       ).rejects.toThrow("Dropdown fields require options");
     });
+
+    it("creates a checkbox (boolean) definition", async () => {
+      const def = await CustomFieldService.createDefinition(ORG_A, {
+        name: "NDA signed",
+        type: "checkbox",
+      });
+      expect(def.type).toBe("checkbox");
+      expect(def.organization.toString()).toBe(ORG_A.toString());
+    });
+
+    it("does not let client payload overwrite organization", async () => {
+      const def = await CustomFieldService.createDefinition(ORG_A, {
+        name: "Case Number",
+        type: "text",
+        organization: ORG_B,
+      });
+      expect(def.organization.toString()).toBe(ORG_A.toString());
+    });
+  });
+
+  describe("updateDefinition and deleteDefinition", () => {
+    it("updates a definition only within the owning organization", async () => {
+      const def = await CustomFieldService.createDefinition(ORG_A, {
+        name: "Priority",
+        type: "dropdown",
+        options: ["Low", "High"],
+      });
+
+      await expect(
+        CustomFieldService.updateDefinition(def._id, ORG_B, {
+          name: "Hijacked",
+        }),
+      ).rejects.toThrow("Definition not found");
+
+      const updated = await CustomFieldService.updateDefinition(
+        def._id,
+        ORG_A,
+        { name: "Severity", options: ["Low", "Medium", "High"] },
+      );
+      expect(updated.name).toBe("Severity");
+      expect(updated.options).toEqual(["Low", "Medium", "High"]);
+    });
+
+    it("soft-deletes a definition by deactivating it", async () => {
+      const def = await CustomFieldService.createDefinition(ORG_A, {
+        name: "Region",
+        type: "text",
+      });
+
+      const deleted = await CustomFieldService.deleteDefinition(def._id, ORG_A);
+      expect(deleted.active).toBe(false);
+
+      const activeOnly = await CustomFieldService.getDefinitions(ORG_A, true);
+      expect(activeOnly).toHaveLength(0);
+
+      const all = await CustomFieldService.getDefinitions(ORG_A, false);
+      expect(all).toHaveLength(1);
+      expect(all[0].active).toBe(false);
+    });
   });
 
   describe("setMeetingFields and validation", () => {
