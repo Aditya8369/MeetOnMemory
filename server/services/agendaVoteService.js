@@ -108,3 +108,29 @@ export const autoSortByVotes = async (meetingId) => {
   await meeting.save();
   return meeting.agendaItems;
 };
+
+/**
+ * Get all votes cast by a specific user in a meeting.
+ * Returns an object mapping agendaItemId to vote value (1 or -1).
+ */
+export const getUserVotes = async (meetingId, userId) => {
+  const meetingObjectId =
+    typeof meetingId === "string" && mongoose.Types.ObjectId.isValid(meetingId)
+      ? new mongoose.Types.ObjectId(meetingId)
+      : meetingId;
+  const userObjectId =
+    typeof userId === "string" && mongoose.Types.ObjectId.isValid(userId)
+      ? new mongoose.Types.ObjectId(userId)
+      : userId;
+
+  const votes = await AgendaVote.find({
+    meetingId: meetingObjectId,
+    userId: userObjectId,
+  });
+
+  const votesMap = {};
+  for (const v of votes) {
+    votesMap[v.agendaItemId.toString()] = v.vote;
+  }
+  return votesMap;
+};
