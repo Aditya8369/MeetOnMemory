@@ -1,6 +1,6 @@
 import { act, renderHook } from "@testing-library/react";
 import React from "react";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import AppContent from "../../../../context/AppContent";
 import { useScheduleMeeting } from "../useScheduleMeeting";
 import { meetingApi, meetingSeriesApi } from "../../../../services";
