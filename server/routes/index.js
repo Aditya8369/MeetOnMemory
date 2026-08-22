@@ -270,4 +270,7 @@ router.use("/api/meeting-risks", meetingRiskRoutes);
 import actionItemSlaRoutes from "./actionItemSlaRoutes.js";
 router.use("/api/action-item-sla", actionItemSlaRoutes);
 
+import actionItemTemplateRoutes from "./actionItemTemplateRoutes.js";
+router.use("/api/action-item-templates", actionItemTemplateRoutes);
+
 export default router;

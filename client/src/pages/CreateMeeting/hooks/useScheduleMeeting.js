@@ -5,6 +5,7 @@ import {
   meetingTemplateApi,
   aiSummaryTemplateApi,
 } from "../../../services";
+import * as actionItemTemplateApi from "../../../services/actionItemTemplateApi";
 import { useCallback, useContext, useEffect, useMemo, useState } from "react";
 import { customFieldApi } from "../../../api/customFieldApi";
 import AppContent from "../../../context/AppContent";
@@ -86,6 +87,9 @@ export const useScheduleMeeting = ({
   const [aiSummaryTemplates, setAiSummaryTemplates] = useState([]);
   const [selectedAiSummaryTemplateId, setSelectedAiSummaryTemplateId] =
     useState("");
+  const [actionItemTemplates, setActionItemTemplates] = useState([]);
+  const [selectedActionItemTemplateId, setSelectedActionItemTemplateId] =
+    useState("");
   const [customFields, setCustomFields] = useState({
     fields: [],
     isValid: true,
@@ -113,6 +117,7 @@ export const useScheduleMeeting = ({
       agendaItems,
       selectedTemplateId,
       selectedAiSummaryTemplateId,
+      selectedActionItemTemplateId,
     }),
     [
       participants,
@@ -120,6 +125,7 @@ export const useScheduleMeeting = ({
       agendaItems,
       selectedTemplateId,
       selectedAiSummaryTemplateId,
+      selectedActionItemTemplateId,
     ],
   );
 
@@ -132,6 +138,9 @@ export const useScheduleMeeting = ({
     }
     if (typeof draft?.selectedAiSummaryTemplateId === "string") {
       setSelectedAiSummaryTemplateId(draft.selectedAiSummaryTemplateId);
+    }
+    if (typeof draft?.selectedActionItemTemplateId === "string") {
+      setSelectedActionItemTemplateId(draft.selectedActionItemTemplateId);
     }
   };
 
@@ -178,6 +187,7 @@ export const useScheduleMeeting = ({
       recordingType: "upload",
     });
     setSelectedTemplateId("");
+    setSelectedActionItemTemplateId("");
     clearDraft();
   }, [clearDraft]);
 
@@ -210,6 +220,17 @@ export const useScheduleMeeting = ({
         })
         .catch((err) =>
           console.error("Failed to fetch AI summary templates:", err),
+        );
+
+      actionItemTemplateApi
+        .getTemplates()
+        .then((data) => {
+          if (!cancelled && data) {
+            setActionItemTemplates(data);
+          }
+        })
+        .catch((err) =>
+          console.error("Failed to fetch Action Item templates:", err),
         );
     }
     return () => {
@@ -412,6 +433,19 @@ export const useScheduleMeeting = ({
             toast.info("📅 Calendar invites sent to all participants!");
           }
 
+          if (selectedActionItemTemplateId) {
+            try {
+              await actionItemTemplateApi.applyTemplateToMeeting(
+                selectedActionItemTemplateId,
+                response.data.meeting._id,
+              );
+              toast.success("Action items generated from template");
+            } catch (err) {
+              console.error("Failed to apply action item template", err);
+              toast.error("Meeting saved, but action items failed to generate");
+            }
+          }
+
           resetFormState();
         } else {
           toast.error(response.data?.message || "Failed to schedule meeting");
@@ -445,6 +479,9 @@ export const useScheduleMeeting = ({
     aiSummaryTemplates,
     selectedAiSummaryTemplateId,
     setSelectedAiSummaryTemplateId,
+    actionItemTemplates,
+    selectedActionItemTemplateId,
+    setSelectedActionItemTemplateId,
     handleTemplateSelect,
     handleScheduleChange,
     addParticipant,
