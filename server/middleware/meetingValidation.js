@@ -112,6 +112,7 @@ export const createMeetingSchema = z
       .optional(),
     recordingType: z.enum(["upload", "live"]).optional().default("upload"),
     syncToCalendar: z.boolean().optional().default(false),
+    auditNote: z.string().optional().default(""),
   })
   .strict();
 

@@ -23,6 +23,12 @@ vi.mock("../../../../services", () => ({
   },
 }));
 
+vi.mock("../../../../api/focusTimeApi", () => ({
+  focusTimeApi: {
+    getBlocks: vi.fn().mockResolvedValue([]),
+  },
+}));
+
 vi.mock("react-toastify", () => ({
   toast: {
     info: vi.fn(),

@@ -64,6 +64,7 @@ const createSeriesSchema = z.object({
     )
     .optional()
     .default([]),
+  auditNote: z.string().optional().default(""),
 });
 
 export const createSeries = async (req, res) => {
@@ -84,6 +85,7 @@ export const createSeries = async (req, res) => {
       venue,
       participants,
       agendaItems,
+      auditNote,
     } = validatedData;
 
     const start = parseISO(startDate);
@@ -137,6 +139,7 @@ export const createSeries = async (req, res) => {
       endDate: end,
       time,
       duration,
+      auditNote,
     });
 
     await series.save();
@@ -160,6 +163,7 @@ export const createSeries = async (req, res) => {
       agendaItems: normalizeAgendaItems(agendaItems),
       series: series._id,
       seriesOccurrence: index + 1,
+      auditNote,
     }));
 
     const createdMeetings = await Meeting.insertMany(meetingsToCreate);

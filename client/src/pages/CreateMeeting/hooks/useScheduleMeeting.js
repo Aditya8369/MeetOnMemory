@@ -7,6 +7,7 @@ import {
 } from "../../../services";
 import { useCallback, useContext, useEffect, useMemo, useState } from "react";
 import { customFieldApi } from "../../../api/customFieldApi";
+import { focusTimeApi } from "../../../api/focusTimeApi";
 import AppContent from "../../../context/AppContent";
 import {
   buildMeetingDraftKey,
@@ -95,6 +96,16 @@ export const useScheduleMeeting = ({
     policyDetails: null,
     recordingType: "upload",
   });
+  const [focusBlocks, setFocusBlocks] = useState([]);
+
+  useEffect(() => {
+    focusTimeApi
+      .getBlocks()
+      .then((blocks) => setFocusBlocks(blocks || []))
+      .catch((err) =>
+        console.error("Error loading focus blocks in scheduler:", err),
+      );
+  }, []);
 
   const userId = userData?._id || userData?.id;
   const organizationId =
@@ -310,6 +321,69 @@ export const useScheduleMeeting = ({
       return;
     }
 
+    const checkFocusConflict = () => {
+      if (!scheduleData.date || !scheduleData.time) return null;
+      const duration = Number(scheduleData.duration) || 60;
+
+      // Parse meeting start & end dates
+      const meetingStart = new Date(
+        `${scheduleData.date}T${scheduleData.time}`,
+      );
+      const meetingEnd = new Date(
+        meetingStart.getTime() + duration * 60 * 1000,
+      );
+
+      // Iterate and find conflicts
+      for (const block of focusBlocks) {
+        const blockStart = new Date(block.startTime);
+        const blockEnd = new Date(block.endTime);
+
+        if (block.isRecurring) {
+          const dayOfWeek = meetingStart.getDay();
+          if (
+            block.daysOfWeek.includes(dayOfWeek) &&
+            blockStart <= meetingStart
+          ) {
+            const slotStart = new Date(meetingStart);
+            slotStart.setHours(
+              blockStart.getHours(),
+              blockStart.getMinutes(),
+              0,
+              0,
+            );
+            const slotDuration = blockEnd - blockStart;
+            const slotEnd = new Date(slotStart.getTime() + slotDuration);
+
+            if (meetingStart < slotEnd && meetingEnd > slotStart) {
+              return block.title || "Focus Time";
+            }
+          }
+        } else {
+          if (meetingStart < blockEnd && meetingEnd > blockStart) {
+            return block.title || "Focus Time";
+          }
+        }
+      }
+      return null;
+    };
+
+    let finalAuditNote = "";
+    const conflictTitle = checkFocusConflict();
+    if (conflictTitle) {
+      const confirmSchedule = window.confirm(
+        `⚠️ Warning: This meeting overlaps with your Focus Time block: "${conflictTitle}".\n\nWould you like to schedule it anyway?`,
+      );
+      if (!confirmSchedule) return;
+
+      const reason = window.prompt(
+        "Please enter an audit note explaining the reason for scheduling over Focus Time:",
+      );
+      if (reason === null) return; // User cancelled
+
+      finalAuditNote =
+        reason || "Scheduled despite overlapping focus time block.";
+    }
+
     const isRecurring =
       Boolean(scheduleData.recurrencePattern) &&
       scheduleData.recurrencePattern !== "none";
@@ -366,6 +440,7 @@ export const useScheduleMeeting = ({
             description: a.description,
             duration: a.duration ? Number(a.duration) : undefined,
           })),
+          auditNote: finalAuditNote,
         };
 
         const response = await meetingSeriesApi.createSeries(seriesPayload);
@@ -389,6 +464,7 @@ export const useScheduleMeeting = ({
           policyDetails: duplicateMetadata.policyDetails,
           recordingType: duplicateMetadata.recordingType,
           agendaItems: normalizeAgendaItems(agendaItems),
+          auditNote: finalAuditNote,
         };
 
         const response = await meetingApi.scheduleMeeting(payload);

@@ -215,6 +215,7 @@ export const createMeeting = async (uploaderId, orgId, data) => {
     summary: "",
     structuredMoM: null,
     status: "uploaded",
+    auditNote: data.auditNote || "",
   });
 
   scheduleIndexMeeting(meeting);

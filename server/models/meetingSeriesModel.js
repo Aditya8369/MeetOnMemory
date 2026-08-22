@@ -60,6 +60,10 @@ const meetingSeriesSchema = new mongoose.Schema(
         ref: "User",
       },
     ],
+    auditNote: {
+      type: String,
+      default: "",
+    },
   },
   { timestamps: true },
 );
