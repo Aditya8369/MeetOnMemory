@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from "react";
+import React, { useState, useRef, useEffect, useContext } from "react";
 import { useNavigate } from "react-router-dom";
 import AppContent from "../../context/AppContent.js";
 import useExport from "../../hooks/useExport.js";
@@ -18,6 +18,9 @@ const TRANSCRIPTION_POLL_TIMEOUT_MS = 10 * 60 * 1000;
 
 const MeetingActions = ({ meeting, onDelete, onRename }) => {
   const navigate = useNavigate();
+  const { userData } = useContext(AppContent);
+  const isViewerOrGuest =
+    userData?.role === "viewer" || userData?.role === "guest";
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [showRenameModal, setShowRenameModal] = useState(false);
   const [newTitle, setNewTitle] = useState("");
@@ -298,34 +301,44 @@ const MeetingActions = ({ meeting, onDelete, onRename }) => {
         </h2>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-          <button
-            onClick={toggleRecording}
-            disabled={isProcessing}
-            className={`flex items-center justify-center gap-2 px-4 py-2 rounded-lg transition-colors text-sm font-medium ${
-              isRecording
-                ? "bg-red-500 hover:bg-red-600 text-white"
-                : isProcessing
-                  ? "bg-gray-100 text-gray-400 cursor-not-allowed"
-                  : "bg-blue-600 hover:bg-blue-700 text-white"
-            }`}
-          >
-            {isProcessing ? (
-              <>
-                <Loader2 className="w-4 h-4 animate-spin" />
-                Processing...
-              </>
-            ) : isRecording ? (
-              <>
-                <MicOff className="w-4 h-4" />
-                Stop Recording
-              </>
-            ) : (
-              <>
-                <Mic className="w-4 h-4" />
-                Start Recording
-              </>
-            )}
-          </button>
+          {!isViewerOrGuest ? (
+            <button
+              onClick={toggleRecording}
+              disabled={isProcessing}
+              className={`flex items-center justify-center gap-2 px-4 py-2 rounded-lg transition-colors text-sm font-medium ${
+                isRecording
+                  ? "bg-red-500 hover:bg-red-600 text-white"
+                  : isProcessing
+                    ? "bg-gray-100 text-gray-400 cursor-not-allowed"
+                    : "bg-blue-600 hover:bg-blue-700 text-white"
+              }`}
+            >
+              {isProcessing ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  Processing...
+                </>
+              ) : isRecording ? (
+                <>
+                  <MicOff className="w-4 h-4" />
+                  Stop Recording
+                </>
+              ) : (
+                <>
+                  <Mic className="w-4 h-4" />
+                  Start Recording
+                </>
+              )}
+            </button>
+          ) : (
+            <div
+              className="flex items-center justify-center gap-2 px-4 py-2 bg-gray-100 dark:bg-gray-800 text-gray-400 dark:text-gray-500 rounded-lg text-sm font-medium cursor-not-allowed border border-gray-200 dark:border-gray-700 select-none"
+              title="Recording is restricted to members and hosts"
+            >
+              <Mic className="w-4 h-4 opacity-50" />
+              Recording (Read-Only)
+            </div>
+          )}
 
           <button
             onClick={handleDownloadTranscript}
@@ -414,45 +427,49 @@ const MeetingActions = ({ meeting, onDelete, onRename }) => {
             )}
           </div>
 
-          <button
-            onClick={handleRename}
-            className="flex items-center justify-center gap-2 px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition-colors text-sm font-medium"
-          >
-            <svg
-              className="w-4 h-4"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
-              />
-            </svg>
-            Rename Meeting
-          </button>
+          {!isViewerOrGuest && (
+            <>
+              <button
+                onClick={handleRename}
+                className="flex items-center justify-center gap-2 px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition-colors text-sm font-medium"
+              >
+                <svg
+                  className="w-4 h-4"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
+                  />
+                </svg>
+                Rename Meeting
+              </button>
 
-          <button
-            onClick={handleDelete}
-            className="flex items-center justify-center gap-2 px-4 py-2 bg-red-50 hover:bg-red-100 text-red-700 rounded-lg transition-colors text-sm font-medium"
-          >
-            <svg
-              className="w-4 h-4"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
-              />
-            </svg>
-            Delete Meeting
-          </button>
+              <button
+                onClick={handleDelete}
+                className="flex items-center justify-center gap-2 px-4 py-2 bg-red-50 hover:bg-red-100 text-red-700 rounded-lg transition-colors text-sm font-medium"
+              >
+                <svg
+                  className="w-4 h-4"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                  />
+                </svg>
+                Delete Meeting
+              </button>
+            </>
+          )}
         </div>
 
         <button

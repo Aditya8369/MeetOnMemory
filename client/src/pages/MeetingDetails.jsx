@@ -1,6 +1,7 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useContext } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { toast } from "react-toastify";
+import AppContent from "../context/AppContent";
 import { meetingApi } from "../services";
 import MeetingHeader from "../components/meeting-details/MeetingHeader";
 import MeetingSummary from "../components/meeting-details/MeetingSummary";
@@ -38,12 +39,15 @@ import FollowUpThreads from "../components/meeting-details/FollowUpThreads";
 import PollSection from "../components/meeting-details/PollSection";
 import FeedbackForm from "../components/meeting-details/FeedbackForm";
 import MeetingRisksPanel from "../components/meetings/MeetingRisksPanel";
-import { Award } from "lucide-react";
+import { Award, ShieldAlert } from "lucide-react";
 
 const MeetingDetails = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   const { user: currentUser } = useUser();
+  const { userData } = useContext(AppContent);
+  const isViewerOrGuest =
+    userData?.role === "viewer" || userData?.role === "guest";
   const [meeting, setMeeting] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -252,6 +256,20 @@ const MeetingDetails = () => {
       <Navbar />
       <div className="flex-grow pt-28 pb-12 px-6">
         <div className="max-w-6xl mx-auto">
+          {isViewerOrGuest && (
+            <div className="mb-6 p-4 bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-900/60 rounded-2xl flex items-center gap-3 text-amber-800 dark:text-amber-200 text-sm">
+              <ShieldAlert className="w-5 h-5 text-amber-600 dark:text-amber-400 shrink-0" />
+              <div className="flex-1">
+                <span className="font-bold">
+                  Read-Only Access ({userData?.role || "Viewer"} Mode):
+                </span>{" "}
+                You have view permissions for this meeting. Interactive controls
+                like recording, editing notes, renaming, and member invitations
+                are disabled.
+              </div>
+            </div>
+          )}
+
           <div className="mb-4 flex justify-end">
             <button
               onClick={() => setIsStoryViewerOpen(true)}
