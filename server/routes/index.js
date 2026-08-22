@@ -91,6 +91,8 @@ import breakoutRoomRoutes from "./breakoutRoomRoutes.js";
 import notionIntegrationRoutes from "./notionIntegrationRoutes.js";
 import gamificationRoutes from "./gamificationRoutes.js";
 import actionItemsRoutes from "./actionItems.routes.js";
+import workloadRoutes from "./workloadRoutes.js";
+import minutesApprovalRoutes from "./minutesApprovalRoutes.js";
 
 const router = express.Router();
 
@@ -148,7 +150,9 @@ router.use("/api/tags", tagRoutes);
 router.use("/api/polls", pollRoutes);
 router.use("/api/meetings/:meetingId/topics", topicRoutes);
 router.use("/api/meetings/:meetingId/breakout-rooms", breakoutRoomRoutes);
+router.use("/api/workload", workloadRoutes);
 router.use("/api/meetings/:meetingId/attachments", attachmentRoutes);
+router.use("/api/meetings/:meetingId/minutes-approval", minutesApprovalRoutes);
 router.use("/api/meeting-series", meetingSeriesRoutes);
 router.use("/api/meeting-series", carryForwardRoutes);
 router.use("/api/comparison", comparisonRoutes);
@@ -208,6 +212,10 @@ router.use("/api/sentiment-timeline", sentimentTimelineRoutes);
 router.use("/api/rsvps", meetingRsvpRoutes);
 router.use("/api/testimonials", testimonialRoutes);
 router.use("/api/admin/testimonials", adminTestimonialRouter);
+import adminJobsRoutes from "./adminJobsRoutes.js";
+router.use("/api/admin/jobs", adminJobsRoutes);
+import adminReindexRoutes from "./adminReindexRoutes.js";
+router.use("/api/admin/embeddings", adminReindexRoutes);
 router.use("/api/alerts/keywords", keywordAlertRoutes);
 router.use("/api/integrations/notion", notionIntegrationRoutes);
 
@@ -247,5 +255,9 @@ import dataRetentionRoutes from "./dataRetentionRoutes.js";
 router.use("/api/data-retention", dataRetentionRoutes);
 import weeklyInsightRoutes from "./weeklyInsightRoutes.js";
 router.use("/api/weekly-insights", weeklyInsightRoutes);
+import standupReportRoutes from "./standupReportRoutes.js";
+router.use("/api/standups", standupReportRoutes);
+import meetingRiskRoutes from "./meetingRiskRoutes.js";
+router.use("/api/meeting-risks", meetingRiskRoutes);
 
 export default router;

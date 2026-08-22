@@ -4,6 +4,7 @@ import { toast } from "react-toastify";
 import { meetingApi } from "../services";
 import MeetingHeader from "../components/meeting-details/MeetingHeader";
 import MeetingSummary from "../components/meeting-details/MeetingSummary";
+import MinutesApproval from "../components/meetings/MinutesApproval";
 import MeetingCollaborativeNotes from "../components/meeting-details/MeetingCollaborativeNotes";
 import MeetingTranscript from "../components/meeting-details/MeetingTranscript";
 import MeetingParticipants from "../components/meeting-details/MeetingParticipants";
@@ -22,6 +23,7 @@ import PresentMode from "../components/meeting-details/PresentMode";
 import PrepChecklist from "../components/meetings/PrepChecklist";
 import SpeakingTimeBreakdown from "../components/meetings/SpeakingTimeBreakdown";
 import CarryForwardConfig from "../components/meetings/CarryForwardConfig";
+import RoleRotationConfig from "../components/meetings/RoleRotationConfig";
 import DuplicateDetectionPanel from "../components/meeting-details/DuplicateDetectionPanel";
 import MeetingTimeline from "../components/meeting-details/MeetingTimeline";
 import RecapStoryViewer from "../components/summaries/RecapStoryViewer";
@@ -33,6 +35,8 @@ import { getBriefing } from "../services/briefingApi";
 import GuestAccessManager from "../components/meetings/GuestAccessManager";
 import MeetingReadiness from "../components/MeetingReadiness";
 import FollowUpThreads from "../components/meeting-details/FollowUpThreads";
+import MeetingRisksPanel from "../components/meetings/MeetingRisksPanel";
+import { Award } from "lucide-react";
 
 const MeetingDetails = () => {
   const { id } = useParams();
@@ -328,6 +332,14 @@ const MeetingDetails = () => {
                   </button>
                 )}
 
+                <button
+                  onClick={() => navigate(`/meeting/${id}/quality`)}
+                  className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-xs font-black uppercase tracking-wider rounded-xl shadow transition"
+                >
+                  <Award className="w-4 h-4" />
+                  Meeting Quality
+                </button>
+
                 {(briefingStatus === "idle" ||
                   briefingStatus === "none" ||
                   briefingStatus === "failed") && (
@@ -342,6 +354,7 @@ const MeetingDetails = () => {
             </div>
           </div>
           <MeetingSummary meeting={meeting} />
+          <MinutesApproval meeting={meeting} />
           <MeetingCollaborativeNotes meeting={meeting} />
 
           <div className="mt-6 mb-6">
@@ -415,15 +428,31 @@ const MeetingDetails = () => {
           <MeetingGoalsPanel meeting={meeting} currentUser={currentUser} />
 
           {meeting.series && (
-            <CarryForwardConfig
-              seriesId={meeting.series._id || meeting.series}
-              currentMeetingId={meeting._id}
-              onApplySuccess={() => {
-                // Reload meeting data to reflect new agenda items
-                window.location.reload();
-              }}
-            />
+            <>
+              <CarryForwardConfig
+                seriesId={meeting.series._id || meeting.series}
+                currentMeetingId={meeting._id}
+                onApplySuccess={() => {
+                  // Reload meeting data to reflect new agenda items
+                  window.location.reload();
+                }}
+              />
+              {currentUser?.publicMetadata?.dbUserId === meeting.uploadedBy && (
+                <RoleRotationConfig
+                  seriesId={meeting.series._id || meeting.series}
+                  users={meeting.participants.map((p) => ({
+                    _id: p.user,
+                    name: p.name,
+                    email: p.email,
+                  }))}
+                />
+              )}
+            </>
           )}
+
+          <div className="mt-6 mb-6">
+            <MeetingRisksPanel meetingId={meeting._id} />
+          </div>
 
           <AgendaBuilder
             meetingId={meeting._id}

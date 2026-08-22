@@ -5,6 +5,12 @@ export const notificationApi = {
   getUnreadCount: () => apiClient.get("/api/notifications/unread-count"),
   markAsRead: (id) => apiClient.patch(`/api/notifications/${id}/read`),
   markAllAsRead: () => apiClient.patch("/api/notifications/mark-all-read"),
+  markGroupAsRead: (ids) =>
+    apiClient.patch("/api/notifications/mark-group-read", { ids }),
+  muteMeeting: (meetingId) =>
+    apiClient.post(`/api/notifications/mute-meeting/${meetingId}`),
+  unmuteMeeting: (meetingId) =>
+    apiClient.delete(`/api/notifications/mute-meeting/${meetingId}`),
   deleteNotification: (id) => apiClient.delete(`/api/notifications/${id}`),
   getPreferences: () => apiClient.get("/api/notifications/preferences"),
   updatePreferences: (data) =>

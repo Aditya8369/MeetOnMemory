@@ -29,6 +29,7 @@ import AiSearch from "../pages/AiSearch.jsx";
 import AiAssistant from "../pages/AiAssistant.jsx";
 import MeetingDetails from "../pages/MeetingDetails.jsx";
 import MeetingBriefing from "../pages/MeetingBriefing.jsx";
+import MeetingQuality from "../pages/MeetingQuality.jsx";
 import MeetingRecycleBin from "../pages/MeetingRecycleBin.jsx";
 import MeetingRoom from "../pages/MeetingRoom.jsx";
 import TranscriptViewer from "../pages/TranscriptViewer.jsx";
@@ -65,6 +66,7 @@ import Leaderboard from "../pages/Leaderboard.jsx";
 import ParticipantEngagement from "../pages/ParticipantEngagement.jsx";
 import ActionItemAnalytics from "../pages/ActionItemAnalytics.jsx";
 import ActionItemsDashboard from "../pages/ActionItemsDashboard.jsx";
+import WorkloadDashboard from "../pages/WorkloadDashboard.jsx";
 import MyDelegations from "../pages/MyDelegations.jsx";
 import MeetingPatterns from "../pages/MeetingPatterns.jsx";
 import FocusTime from "../pages/FocusTime.jsx";
@@ -72,6 +74,8 @@ import SeriesRetrospective from "../pages/SeriesRetrospective.jsx";
 import DataRetentionSettings from "../pages/DataRetentionSettings.jsx";
 import FollowUpDashboard from "../pages/FollowUpDashboard.jsx";
 import EscalationDashboard from "../pages/EscalationDashboard.jsx";
+import Glossary from "../pages/Glossary.jsx";
+import StandupReports from "../pages/StandupReports.jsx";
 
 const ProtectedRoutes = (
   <React.Fragment>
@@ -112,6 +116,14 @@ const ProtectedRoutes = (
       element={
         <ProtectedRoute resource="knowledge" action="view">
           <ConflictResolution />
+        </ProtectedRoute>
+      }
+    />
+    <Route
+      path="/glossary"
+      element={
+        <ProtectedRoute resource="knowledge" action="view">
+          <Glossary />
         </ProtectedRoute>
       }
     />
@@ -414,6 +426,14 @@ const ProtectedRoutes = (
       }
     />
     <Route
+      path="/meeting/:id/quality"
+      element={
+        <ProtectedRoute resource="meetings" action="view">
+          <MeetingQuality />
+        </ProtectedRoute>
+      }
+    />
+    <Route
       path="/meeting-room/:roomId"
       element={
         <ProtectedRoute resource="meetings" action="view">
@@ -466,6 +486,14 @@ const ProtectedRoutes = (
       element={
         <ProtectedRoute resource="tasks" action="view">
           <ActionItemsDashboard />
+        </ProtectedRoute>
+      }
+    />
+    <Route
+      path="/workload"
+      element={
+        <ProtectedRoute resource="tasks" action="view">
+          <WorkloadDashboard />
         </ProtectedRoute>
       }
     />
@@ -631,6 +659,14 @@ const ProtectedRoutes = (
       element={
         <ProtectedRoute resource="reports" action="view">
           <MeetingPatterns />
+        </ProtectedRoute>
+      }
+    />
+    <Route
+      path="/standups"
+      element={
+        <ProtectedRoute resource="reports" action="view">
+          <StandupReports />
         </ProtectedRoute>
       }
     />

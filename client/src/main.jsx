@@ -14,6 +14,14 @@ import { AssistantProvider } from "./context/AssistantContext.jsx";
 import { registerSW } from "virtual:pwa-register";
 registerSW({ immediate: true });
 
+import {
+  getCookiePreferences,
+  applyCookiePreferences,
+} from "./utils/cookieManager.js";
+
+// Initialize and apply stored cookie consent preferences on application boot
+applyCookiePreferences(getCookiePreferences());
+
 // Prevent FOUC by applying theme class before render
 const savedTheme = localStorage.getItem("theme");
 const systemPrefersDark = window.matchMedia(

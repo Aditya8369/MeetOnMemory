@@ -231,8 +231,8 @@ export const createActionItem = async (req, res) => {
 export const getActionItems = async (req, res) => {
   try {
     const { status, priority, meetingId } = req.query;
-    const userId = req.user.id;
-    const orgId = req.user.organizationId;
+    const userId = req.user._id || req.user.id;
+    const orgId = req.user.organization || req.user.organizationId;
 
     const filter = {
       $or: [{ assignee: userId }, { assignedBy: userId }],
@@ -335,7 +335,7 @@ export const updateActionItem = async (req, res) => {
     if (["completed", "resolved"].includes(updates.status)) {
       eventBus.emit("actionItem.completed", {
         userId: updatedItem.assignee?._id || req.user.id,
-        organizationId: req.user.organizationId,
+        organizationId: req.user.organization || req.user.organizationId,
         actionItemId: updatedItem._id,
       });
     }

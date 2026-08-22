@@ -29,7 +29,12 @@ import {
  *    maxHops?: number,              // graph traversal depth, default 2
  *    decay?: number,                // per-hop score decay (0-1), default 0.6
  *    minEdgeWeight?: number,        // ignore weak relatesTo edges (0-100)
- *    includeTypes?: ("meeting"|"decision"|"actionItem")[]
+ *    includeTypes?: ("meeting"|"decision"|"actionItem")[],
+ *    dateFrom?: string,             // YYYY-MM-DD
+ *    dateTo?: string,               // YYYY-MM-DD
+ *    meetingType?: string,          // conference|policy|event|internal
+ *    speaker?: string,              // participant name/email substring
+ *    tag?: string                   // exact tag match (case-insensitive)
  *  }
  */
 export const hybridSearch = async (req, res) => {

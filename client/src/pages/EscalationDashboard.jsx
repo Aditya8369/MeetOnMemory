@@ -8,15 +8,6 @@ import {
   deletePolicy,
 } from "../services/escalationApi";
 import { toast } from "react-toastify";
-import {
-  FaChartLine,
-  FaCheckCircle,
-  FaExclamationCircle,
-  FaShieldAlt,
-  FaPlus,
-  FaTrash,
-  FaEdit,
-} from "react-line-icons";
 
 const EscalationDashboard = () => {
   const { userData } = useContext(AppContent);

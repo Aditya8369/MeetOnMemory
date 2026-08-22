@@ -1,5 +1,5 @@
-import React, { useEffect, useState, useCallback } from "react";
-import highlightReelApi from "../../api/highlightReelApi";
+import React, { useEffect, useState, useCallback, useRef } from "react";
+import highlightReelApi from "../../services/highlightReelApi.js";
 import { toast } from "react-toastify";
 
 const HighlightReel = ({ meetingId }) => {
@@ -7,13 +7,24 @@ const HighlightReel = ({ meetingId }) => {
   const [loading, setLoading] = useState(true);
   const [generating, setGenerating] = useState(false);
   const [error, setError] = useState(null);
+  const pollIntervalRef = useRef(null);
+
+  const stopPolling = useCallback(() => {
+    if (pollIntervalRef.current) {
+      clearInterval(pollIntervalRef.current);
+      pollIntervalRef.current = null;
+    }
+  }, []);
 
   const fetchReel = useCallback(async () => {
     try {
       setLoading(true);
+      setError(null);
       const { data } = await highlightReelApi.getHighlightReel(meetingId);
       if (data.success && data.data) {
         setReel(data.data);
+      } else {
+        setReel(null);
       }
     } catch (err) {
       if (err.response?.status === 404) {
@@ -27,35 +38,59 @@ const HighlightReel = ({ meetingId }) => {
     }
   }, [meetingId]);
 
+  // Polling mechanism when reel is pending
+  const startPolling = useCallback(() => {
+    stopPolling();
+    pollIntervalRef.current = setInterval(async () => {
+      try {
+        const res = await highlightReelApi.getHighlightReel(meetingId);
+        if (res.data?.success && res.data.data) {
+          const currentReel = res.data.data;
+          if (currentReel.status !== "pending") {
+            setReel(currentReel);
+            stopPolling();
+            if (currentReel.status === "failed") {
+              toast.error("Highlight reel generation failed.");
+            } else {
+              toast.success("Highlight reel generated successfully!");
+            }
+          }
+        }
+      } catch (pollErr) {
+        console.error("Error polling highlight reel status:", pollErr);
+      }
+    }, 3000);
+  }, [meetingId, stopPolling]);
+
   useEffect(() => {
     if (meetingId) {
       fetchReel();
     }
-  }, [meetingId, fetchReel]);
+    return () => stopPolling();
+  }, [meetingId, fetchReel, stopPolling]);
+
+  useEffect(() => {
+    if (reel?.status === "pending" && !pollIntervalRef.current) {
+      startPolling();
+    } else if (reel?.status !== "pending") {
+      stopPolling();
+    }
+  }, [reel, startPolling, stopPolling]);
 
   const handleGenerate = async () => {
     try {
       setGenerating(true);
+      setError(null);
       const { data } = await highlightReelApi.generateHighlightReel(meetingId);
       if (data.success) {
         toast.info("Highlight Reel generation started. Check back shortly.");
-        // We set status locally to pending to show the UI
         setReel({ status: "pending" });
-        // Poll for completion (simple approach)
-        const interval = setInterval(async () => {
-          try {
-            const res = await highlightReelApi.getHighlightReel(meetingId);
-            if (res.data.success && res.data.data.status !== "pending") {
-              setReel(res.data.data);
-              clearInterval(interval);
-            }
-          } catch {
-            // Ignore interval errors
-          }
-        }, 5000);
+        startPolling();
       }
     } catch (err) {
-      toast.error(err.response?.data?.message || "Failed to generate reel");
+      const msg = err.response?.data?.message || "Failed to generate reel";
+      toast.error(msg);
+      setError(msg);
     } finally {
       setGenerating(false);
     }
@@ -83,8 +118,18 @@ const HighlightReel = ({ meetingId }) => {
     );
   }
 
-  if (error) {
-    return <div className="text-red-500">{error}</div>;
+  if (error && !reel) {
+    return (
+      <div className="bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-900 rounded-lg p-6 text-center">
+        <p className="text-red-600 dark:text-red-400 text-sm mb-3">{error}</p>
+        <button
+          onClick={fetchReel}
+          className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg text-xs font-semibold cursor-pointer"
+        >
+          Retry Fetching Reel
+        </button>
+      </div>
+    );
   }
 
   if (!reel || reel.status === "failed") {
@@ -98,7 +143,7 @@ const HighlightReel = ({ meetingId }) => {
         <button
           onClick={handleGenerate}
           disabled={generating}
-          className="px-4 py-2 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-lg hover:opacity-90 transition-opacity disabled:opacity-50 flex items-center gap-2"
+          className="px-4 py-2 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-lg hover:opacity-90 transition-opacity disabled:opacity-50 flex items-center gap-2 cursor-pointer"
         >
           {generating ? (
             <>
@@ -198,7 +243,8 @@ const HighlightReel = ({ meetingId }) => {
   };
 
   const formatTime = (seconds) => {
-    return new Date(seconds * 1000).toISOString().substr(11, 8);
+    if (typeof seconds !== "number" || isNaN(seconds)) return "00:00:00";
+    return new Date(seconds * 1000).toISOString().substring(11, 19);
   };
 
   return (
@@ -215,13 +261,14 @@ const HighlightReel = ({ meetingId }) => {
         <div className="flex gap-2">
           <button
             onClick={handleExport}
-            className="px-3 py-1.5 bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-800 dark:text-white rounded-lg text-sm font-medium transition-colors"
+            className="px-3 py-1.5 bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-800 dark:text-white rounded-lg text-sm font-medium transition-colors cursor-pointer"
           >
             Export HTML
           </button>
           <button
             onClick={handleGenerate}
-            className="px-3 py-1.5 border border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700 rounded-lg text-sm font-medium transition-colors"
+            disabled={generating}
+            className="px-3 py-1.5 border border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700 rounded-lg text-sm font-medium transition-colors cursor-pointer disabled:opacity-50"
           >
             Regenerate
           </button>
@@ -229,7 +276,7 @@ const HighlightReel = ({ meetingId }) => {
       </div>
 
       <div className="space-y-6 mt-8 relative before:absolute before:inset-0 before:ml-5 before:-translate-x-px md:before:mx-auto md:before:translate-x-0 before:h-full before:w-0.5 before:bg-gradient-to-b before:from-transparent before:via-gray-300 dark:before:via-gray-600 before:to-transparent">
-        {reel.highlights.map((h, i) => (
+        {(reel.highlights || []).map((h, i) => (
           <div
             key={i}
             className="relative flex items-center justify-between md:justify-normal md:odd:flex-row-reverse group is-active"
@@ -251,7 +298,7 @@ const HighlightReel = ({ meetingId }) => {
                   </span>
                 </div>
                 <span
-                  className={`text-xs px-2 py-0.5 rounded-full ${sentimentColors[h.sentiment]}`}
+                  className={`text-xs px-2 py-0.5 rounded-full ${sentimentColors[h.sentiment] || sentimentColors.neutral}`}
                 >
                   {h.sentiment}
                 </span>

@@ -35,6 +35,7 @@ import {
   Sparkles,
   Users,
   CheckSquare,
+  Activity,
   ShieldAlert,
   Moon,
   Sun,
@@ -50,6 +51,7 @@ import {
   Network,
   Clock,
   AlertTriangle,
+  BookOpen,
 } from "lucide-react";
 
 const clerkPubKey = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY;
@@ -453,6 +455,12 @@ const Navbar = () => {
 
   const secondaryLinks = [
     {
+      label: "Glossary",
+      href: "/glossary",
+      icon: BookOpen,
+      permission: { resource: "knowledge", action: "view" },
+    },
+    {
       label: "Conflict Resolution",
       href: "/knowledge/conflicts",
       icon: ScanSearch,
@@ -503,6 +511,12 @@ const Navbar = () => {
       label: "Escalations",
       href: "/escalations",
       icon: AlertTriangle,
+    },
+    {
+      label: "Workload Balance",
+      href: "/workload",
+      icon: Activity,
+      permission: { resource: "tasks", action: "view" },
     },
     {
       label: t("navbar.teamMembers"),

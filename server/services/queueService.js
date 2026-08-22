@@ -8,7 +8,9 @@ import conflictScanJob from "./conflictDetection/conflictScanJob.js";
 import sentimentAnalysisJob from "../jobs/sentimentAnalysisJob.js";
 import recalculateImportanceJob from "../jobs/recalculateImportanceJob.js";
 import memoryLifecycleJob from "../jobs/memoryLifecycleJob.js";
+import policyComplianceReevaluationJob from "../jobs/policyComplianceReevaluationJob.js";
 import RecapEmailService from "./recapEmailService.js";
+import embeddingReindexJob from "../jobs/embeddingReindexJob.js";
 import queueRegistry, {
   readPositiveIntEnv,
   resolveJobOptions,
@@ -157,6 +159,12 @@ export const recalculateImportanceQueue = createQueueFacade(
 );
 export const memoryLifecycleQueue = createQueueFacade("memory-lifecycle-queue");
 export const recapDeliveryQueue = createQueueFacade("recap-delivery-queue");
+export const policyComplianceRetryQueue = createQueueFacade(
+  "policy-compliance-retry-queue",
+);
+export const embeddingReindexQueue = createQueueFacade(
+  "embedding-reindex-queue",
+);
 
 /**
  * Creates a worker, wires the standard lifecycle logging, and registers it with
@@ -335,6 +343,13 @@ export const initMemoryLifecycleWorker = async (app) => {
   return worker;
 };
 
+export const initPolicyComplianceRetryWorker = () =>
+  createWorker({
+    name: "policy-compliance-retry-queue",
+    label: "Policy Compliance Retry Worker",
+    processor: policyComplianceReevaluationJob,
+  });
+
 /**
  * Processes queued meeting recap deliveries (Issue #1248).
  * Jobs are enqueued by recapScheduleController.retryDelivery as "retry-delivery".
@@ -355,6 +370,13 @@ export const initRecapDeliveryWorker = () =>
 
       await RecapEmailService.sendImmediateRecap(meetingId);
     },
+  });
+
+export const initEmbeddingReindexWorker = () =>
+  createWorker({
+    name: "embedding-reindex-queue",
+    label: "Embedding Reindex Worker",
+    processor: embeddingReindexJob,
   });
 
 /**
@@ -381,3 +403,34 @@ export const getQueueStatus = () => ({
   workers: queueRegistry.listWorkers(),
   shuttingDown: queueRegistry.isClosing(),
 });
+
+/**
+ * Known BullMQ queue names used by this app (Issue #2080 admin jobs board).
+ * Includes queues defined in queueRegistry even if not yet lazy-instantiated.
+ */
+export const KNOWN_QUEUE_NAMES = Object.freeze([
+  "ai-mom-generation",
+  "ai-mom-results",
+  "data-export-queue",
+  "export-cleanup-queue",
+  "conflict-scan-queue",
+  "sentiment-analysis-queue",
+  "recalculate-importance-queue",
+  "memory-lifecycle-queue",
+  "recap-delivery-queue",
+  "policy-compliance-retry-queue",
+  "webhook-dispatches",
+  "embedding-reindex-queue",
+]);
+
+/**
+ * Returns a live BullMQ Queue instance (creating it if needed), or null when
+ * Redis is not configured.
+ *
+ * @param {string} name
+ * @returns {import("bullmq").Queue|null}
+ */
+export const getQueueInstance = (name) => {
+  if (typeof name !== "string" || !name) return null;
+  return getQueue(name);
+};
