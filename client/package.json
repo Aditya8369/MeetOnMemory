@@ -92,5 +92,7 @@
     "vite-plugin-pwa": "^1.3.0",
     "vitest": "^4.1.10"
   },
-  "overrides": {}
+  "overrides": {
+    "nanoid": "3.3.18"
+  }
 }
