@@ -6,6 +6,8 @@ import {
 } from "../services/recapApi";
 import { Dialog } from "@headlessui/react";
 import { toast } from "react-toastify";
+import SandboxedHtmlPreview from "./SandboxedHtmlPreview";
+import { sanitizeHtml } from "../utils/sanitizeHtml";
 
 const RecapPreferences = () => {
   const [preferences, setPreferences] = useState({
@@ -115,7 +117,7 @@ const RecapPreferences = () => {
             : null,
       };
       const html = await previewRecapEmail(payload);
-      setPreviewHtml(html);
+      setPreviewHtml(sanitizeHtml(html));
       setIsPreviewOpen(true);
     } catch {
       toast.error("Failed to generate preview");
@@ -291,8 +293,11 @@ const RecapPreferences = () => {
                   Email Preview
                 </Dialog.Title>
                 <div className="mt-2 w-full border rounded p-4 max-h-[60vh] overflow-y-auto bg-gray-50">
-                  {/* Dangerously set HTML since we generate it in backend */}
-                  <div dangerouslySetInnerHTML={{ __html: previewHtml }} />
+                  <SandboxedHtmlPreview
+                    htmlContent={previewHtml}
+                    title="Email Preview"
+                    className="min-h-[240px]"
+                  />
                 </div>
               </div>
             </div>
