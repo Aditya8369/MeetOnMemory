@@ -1,10 +1,15 @@
 // services/ConflictScanManager.js
 import cron from "node-cron";
+import ConflictResolution from "../components/ConflictResolution.jsx"; // Adjust import path
 
-const memoryStore = new Map();
 const localStorage = {
-  getItem: (key) => memoryStore.get(key),
-  setItem: (key, value) => memoryStore.set(key, value),
+  store: {},
+  getItem(key) {
+    return this.store[key] || null;
+  },
+  setItem(key, value) {
+    this.store[key] = value;
+  },
 };
 class ConflictScanManager {
   constructor() {

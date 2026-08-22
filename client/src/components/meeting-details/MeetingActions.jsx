@@ -7,6 +7,11 @@ import { toast } from "react-toastify";
 import apiClient from "../../services/apiClient";
 import ConfirmModal from "../ConfirmModal.jsx";
 import { usePolling } from "../../hooks/usePolling.js";
+import {
+  generateICS,
+  getGoogleCalendarUrl,
+  getOutlookCalendarUrl,
+} from "../../utils/calendarExport.js";
 
 /**
  * Deadline for the post-recording transcription poll (Issue #1455).
@@ -22,6 +27,7 @@ const MeetingActions = ({ meeting, onDelete, onRename }) => {
   const [showRenameModal, setShowRenameModal] = useState(false);
   const [newTitle, setNewTitle] = useState("");
   const [showExportMenu, setShowExportMenu] = useState(false);
+  const [showCalendarMenu, setShowCalendarMenu] = useState(false);
   const { exportMeeting, isExporting } = useExport();
 
   // Recording state
@@ -410,6 +416,59 @@ const MeetingActions = ({ meeting, onDelete, onRename }) => {
                 >
                   Export as Markdown
                 </button>
+              </div>
+            )}
+          </div>
+
+          <div className="relative">
+            <button
+              onClick={() => setShowCalendarMenu(!showCalendarMenu)}
+              className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition-colors text-sm font-medium"
+            >
+              <svg
+                className="w-4 h-4"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"
+                />
+              </svg>
+              Add to Calendar
+            </button>
+            {showCalendarMenu && (
+              <div className="absolute top-full left-0 mt-2 w-full bg-white border border-gray-200 rounded-lg shadow-lg z-10 overflow-hidden">
+                <button
+                  onClick={() => {
+                    setShowCalendarMenu(false);
+                    generateICS(meeting);
+                  }}
+                  className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors"
+                >
+                  Download ICS
+                </button>
+                <a
+                  href={getGoogleCalendarUrl(meeting)}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  onClick={() => setShowCalendarMenu(false)}
+                  className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors"
+                >
+                  Google Calendar
+                </a>
+                <a
+                  href={getOutlookCalendarUrl(meeting)}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  onClick={() => setShowCalendarMenu(false)}
+                  className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors"
+                >
+                  Outlook Web
+                </a>
               </div>
             )}
           </div>

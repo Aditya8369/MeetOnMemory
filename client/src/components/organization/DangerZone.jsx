@@ -2,7 +2,7 @@
 import React, { useState, useCallback, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "react-toastify";
-import { organizationApi } from "../../services";
+import { organizationApi } from "../../services/organizationApi";
 import {
   AlertTriangle,
   UserMinus,
@@ -443,7 +443,6 @@ const DangerZone = ({
   const navigate = useNavigate();
   const [expanded, setExpanded] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [, setAction] = useState(null); // 'leave', 'delete', 'transfer'
   const [showLeaveConfirm, setShowLeaveConfirm] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [showTransferModal, setShowTransferModal] = useState(false);
@@ -488,7 +487,6 @@ const DangerZone = ({
     } finally {
       setLoading(false);
       setShowLeaveConfirm(false);
-      setAction(null);
     }
   }, [organization, navigate, currentUser]);
 
@@ -534,7 +532,6 @@ const DangerZone = ({
     } finally {
       setLoading(false);
       setShowDeleteConfirm(false);
-      setAction(null);
       setOrganizationName("");
     }
   }, [organization, navigate, currentUser, organizationName]);
@@ -584,7 +581,6 @@ const DangerZone = ({
       } finally {
         setLoading(false);
         setShowTransferModal(false);
-        setAction(null);
       }
     },
     [organization, currentUser, onRefresh],
@@ -686,7 +682,6 @@ const DangerZone = ({
                 </div>
                 <button
                   onClick={() => {
-                    setAction("leave");
                     setShowLeaveConfirm(true);
                   }}
                   disabled={loading}
@@ -730,7 +725,6 @@ const DangerZone = ({
                 </div>
                 <button
                   onClick={() => {
-                    setAction("transfer");
                     setShowTransferModal(true);
                   }}
                   disabled={loading}
@@ -800,7 +794,6 @@ const DangerZone = ({
                 </div>
                 <button
                   onClick={() => {
-                    setAction("delete");
                     setShowDeleteConfirm(true);
                     setOrganizationName("");
                   }}
@@ -832,7 +825,6 @@ const DangerZone = ({
         isOpen={showLeaveConfirm}
         onClose={() => {
           setShowLeaveConfirm(false);
-          setAction(null);
         }}
         onConfirm={handleLeave}
         title="Leave Organization"
@@ -864,7 +856,6 @@ const DangerZone = ({
         isOpen={showDeleteConfirm}
         onClose={() => {
           setShowDeleteConfirm(false);
-          setAction(null);
           setOrganizationName("");
         }}
         onConfirm={handleDelete}
@@ -927,7 +918,6 @@ const DangerZone = ({
         isOpen={showTransferModal}
         onClose={() => {
           setShowTransferModal(false);
-          setAction(null);
         }}
         onTransfer={handleTransfer}
         members={members || []}
@@ -937,5 +927,4 @@ const DangerZone = ({
     </div>
   );
 };
-
 export default DangerZone;

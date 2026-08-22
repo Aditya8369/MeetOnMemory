@@ -2,6 +2,7 @@ import mongoose from "mongoose";
 import {
   getBreakdownForMeeting,
   getTrendsForUser,
+  getOrgSpeakingTimeStats,
 } from "../services/speakingTimeService.js";
 import Meeting from "../models/meetingModel.js";
 
@@ -69,6 +70,30 @@ export const getSpeakingTimeTrends = async (req, res) => {
     return res.status(200).json({ success: true, data: trends });
   } catch (error) {
     console.error("Error in getSpeakingTimeTrends:", error);
+    return res
+      .status(500)
+      .json({ success: false, message: "Internal server error" });
+  }
+};
+
+/**
+ * Controller to get speaking time comparison stats for all members in the user's organization
+ */
+export const getSpeakingTimeOrgCompare = async (req, res) => {
+  try {
+    const orgId = req.user.organization;
+    if (!orgId) {
+      return res
+        .status(400)
+        .json({ success: false, message: "Organization ID is required" });
+    }
+
+    const { startDate, endDate } = req.query;
+
+    const stats = await getOrgSpeakingTimeStats(orgId, startDate, endDate);
+    return res.status(200).json({ success: true, data: stats });
+  } catch (error) {
+    console.error("Error in getSpeakingTimeOrgCompare:", error);
     return res
       .status(500)
       .json({ success: false, message: "Internal server error" });

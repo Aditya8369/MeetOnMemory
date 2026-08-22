@@ -3,8 +3,8 @@ import React, {
   useState,
   useEffect,
   useCallback,
-  useMemo,
   useRef,
+  useMemo,
 } from "react";
 import { toast } from "react-toastify";
 import {
@@ -303,14 +303,14 @@ const AssigneePicker = ({
             const bEmail = b.email?.toLowerCase() || "";
 
             // Exact match priority
-            if (aName === searchQuery.toLowerCase()) return -1;
-            if (bName === searchQuery.toLowerCase()) return 1;
-            if (aEmail === searchQuery.toLowerCase()) return -1;
-            if (bEmail === searchQuery.toLowerCase()) return 1;
+            if (aName === query.toLowerCase()) return -1;
+            if (bName === query.toLowerCase()) return 1;
+            if (aEmail === query.toLowerCase()) return -1;
+            if (bEmail === query.toLowerCase()) return 1;
 
             // Starts with priority
-            if (aName.startsWith(searchQuery.toLowerCase())) return -1;
-            if (bName.startsWith(searchQuery.toLowerCase())) return 1;
+            if (aName.startsWith(query.toLowerCase())) return -1;
+            if (bName.startsWith(query.toLowerCase())) return 1;
 
             return 0;
           });
@@ -334,7 +334,6 @@ const AssigneePicker = ({
       validatePermission,
       onSearch,
       onError,
-      searchQuery,
     ],
   );
 

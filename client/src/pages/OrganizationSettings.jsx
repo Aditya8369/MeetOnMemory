@@ -59,7 +59,6 @@ import {
   FlipHorizontal,
   FlipVertical,
   Contrast,
-  Brightness,
   Sliders,
   Palette,
   Crop,
@@ -139,11 +138,8 @@ import {
   Cloudy,
   Thermometer,
   Activity,
-  Pulse,
   HeartPulse,
   Brain,
-  CpuChip,
-  Memory,
   MonitorSmartphone,
   TabletSmartphone,
   LaptopMinimal,
@@ -166,12 +162,8 @@ import {
   CloudHail,
   CloudFog,
   CloudDrizzle,
-  CloudSnowflake,
   CloudSunRain,
   CloudMoonRain,
-  CloudLightningRain,
-  CloudSnowRain,
-  CloudFogRain,
 } from "lucide-react";
 import Navbar from "../components/Navbar.jsx";
 import AppContent from "../context/AppContent";

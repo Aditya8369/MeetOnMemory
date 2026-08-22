@@ -46,6 +46,7 @@ import KnowledgeArchive from "../pages/KnowledgeArchive.jsx";
 import GraphSnapshots from "../pages/GraphSnapshots.jsx";
 import KnowledgeGraph from "../pages/KnowledgeGraph.jsx";
 import DecisionGraph from "../pages/DecisionGraph.jsx";
+import DecisionLog from "../pages/DecisionLog.jsx";
 import PolicyCompliance from "../pages/PolicyCompliance.jsx";
 import Settings from "../pages/Settings.jsx";
 import MembershipRequests from "../pages/MembershipRequests.jsx";
@@ -64,6 +65,7 @@ import AutomationRules from "../pages/AutomationRules.jsx";
 import TopicExplorer from "../pages/TopicExplorer.jsx";
 import ConflictResolution from "../pages/ConflictResolution.jsx";
 import SpeakingTimeTrends from "../pages/SpeakingTimeTrends.jsx";
+import SpeakingTimeCompare from "../pages/SpeakingTimeCompare.jsx";
 import Leaderboard from "../pages/Leaderboard.jsx";
 import ParticipantEngagement from "../pages/ParticipantEngagement.jsx";
 import ActionItemAnalytics from "../pages/ActionItemAnalytics.jsx";
@@ -182,6 +184,14 @@ const ProtectedRoutes = (
       element={
         <ProtectedRoute resource="knowledge" action="view">
           <DecisionGraph />
+        </ProtectedRoute>
+      }
+    />
+    <Route
+      path="/decision-log"
+      element={
+        <ProtectedRoute resource="knowledge" action="view">
+          <DecisionLog />
         </ProtectedRoute>
       }
     />
@@ -644,6 +654,14 @@ const ProtectedRoutes = (
       element={
         <ProtectedRoute resource="reports" action="view">
           <SpeakingTimeTrends />
+        </ProtectedRoute>
+      }
+    />
+    <Route
+      path="/speaking-time-compare"
+      element={
+        <ProtectedRoute resource="reports" action="view">
+          <SpeakingTimeCompare />
         </ProtectedRoute>
       }
     />
