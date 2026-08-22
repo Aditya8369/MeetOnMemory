@@ -8,6 +8,8 @@ import {
   upsertSchedule,
   getSchedule,
   getDeliveryHistory,
+  getFailedDeliveries,
+  dryRunDelivery,
   retryDelivery,
 } from "../controllers/recapScheduleController.js";
 
@@ -35,7 +37,13 @@ router.use(requireOrgMembership);
 // Static paths MUST be registered before "/:organizationId"
 // so "history" / "retry" are not captured as organization ids (#1401).
 router.get("/history/deliveries", getDeliveryHistory);
+router.get("/history/failed", getFailedDeliveries);
 router.post("/retry/:deliveryId", retryDelivery);
+router.post(
+  "/:organizationId/dry-run",
+  requireOrganizationParamMatch("organizationId"),
+  dryRunDelivery,
+);
 
 router.get(
   "/:organizationId",

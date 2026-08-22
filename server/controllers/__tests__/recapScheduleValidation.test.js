@@ -5,9 +5,20 @@ import RecapSchedule from "../../models/recapScheduleModel.js";
 
 jest.mock("../../models/recapDeliveryModel.js");
 jest.mock("../../models/recapScheduleModel.js");
+jest.mock("../../models/userModel.js", () => ({
+  default: { findById: jest.fn() },
+}));
+jest.mock("../../models/membershipModel.js", () => ({
+  default: { find: jest.fn() },
+}));
+jest.mock("../../utils/webhookUrlSafety.js", () => ({
+  isSafeWebhookUrl: jest.fn(async () => true),
+}));
 jest.mock("../../services/queueService.js", () => ({
   recapDeliveryQueue: { isActive: false, add: jest.fn() },
 }));
+
+import { isSafeWebhookUrl } from "../../utils/webhookUrlSafety.js";
 
 describe("Recap Schedule Controller Validation (#1609)", () => {
   let req, res;
@@ -45,6 +56,7 @@ describe("Recap Schedule Controller Validation (#1609)", () => {
           _id: "507f1f77bcf86cd799439011",
           userId: "507f1f77bcf86cd799439011",
           meetingId: { organization: "org123", title: "Team Sync" },
+          save: jest.fn().mockResolvedValue(undefined),
         }),
       });
 
@@ -85,6 +97,41 @@ describe("Recap Schedule Controller Validation (#1609)", () => {
       await upsertSchedule(req, res);
 
       expect(res.status).toHaveBeenCalledWith(200);
+    });
+
+    it("rejects webhook channel without URL (Issue #2069)", async () => {
+      req.body = {
+        scheduleType: "daily",
+        deliveryChannel: "webhook",
+        webhookUrl: "",
+      };
+
+      await upsertSchedule(req, res);
+
+      expect(res.status).toHaveBeenCalledWith(400);
+      expect(res.json).toHaveBeenCalledWith(
+        expect.objectContaining({
+          error: expect.stringMatching(/webhook url is required/i),
+        }),
+      );
+    });
+
+    it("rejects unsafe webhook destinations", async () => {
+      isSafeWebhookUrl.mockResolvedValueOnce(false);
+      req.body = {
+        scheduleType: "immediate",
+        deliveryChannel: "webhook",
+        webhookUrl: "http://localhost/hook",
+      };
+
+      await upsertSchedule(req, res);
+
+      expect(res.status).toHaveBeenCalledWith(400);
+      expect(res.json).toHaveBeenCalledWith(
+        expect.objectContaining({
+          error: expect.stringMatching(/not allowed/i),
+        }),
+      );
     });
   });
 });

@@ -5,7 +5,6 @@ import { MemoryRouter } from "react-router-dom";
 import RecapScheduleDashboard from "../RecapScheduleDashboard.jsx";
 import AppContent from "../../context/AppContent.js";
 import { RBACProvider } from "../../context/RBACContext.jsx";
-import { ThemeProvider } from "../../context/ThemeContext.jsx";
 import { recapScheduleApi } from "../../services/recapScheduleApi.js";
 
 vi.mock("@clerk/clerk-react", () => ({
@@ -25,6 +24,15 @@ vi.mock("../../services/recapScheduleApi.js", () => ({
       .fn()
       .mockResolvedValue({ data: { scheduleType: "daily", timezone: "UTC" } }),
     getDeliveryHistory: vi.fn().mockResolvedValue({ data: [] }),
+    getFailedDeliveries: vi.fn().mockResolvedValue({ data: [] }),
+    dryRun: vi.fn().mockResolvedValue({
+      data: {
+        recipients: [],
+        recipientCount: 0,
+        warnings: [],
+        channel: "email",
+      },
+    }),
     upsertSchedule: vi.fn(),
     retryDelivery: vi.fn(),
   },
@@ -36,13 +44,11 @@ const mockUserData = {
 const renderDashboard = () =>
   render(
     <MemoryRouter>
-      <ThemeProvider>
-        <AppContent.Provider value={{ userData: mockUserData }}>
-          <RBACProvider>
-            <RecapScheduleDashboard />
-          </RBACProvider>
-        </AppContent.Provider>
-      </ThemeProvider>
+      <AppContent.Provider value={{ userData: mockUserData }}>
+        <RBACProvider>
+          <RecapScheduleDashboard />
+        </RBACProvider>
+      </AppContent.Provider>
     </MemoryRouter>,
   );
 
@@ -53,6 +59,7 @@ describe("RecapScheduleDashboard Date & Timezone Validation (#1308)", () => {
       data: { scheduleType: "daily", timezone: "UTC" },
     });
     recapScheduleApi.getDeliveryHistory.mockResolvedValue({ data: [] });
+    recapScheduleApi.getFailedDeliveries.mockResolvedValue({ data: [] });
   });
 
   it("prevents submission when start date is set in the past", async () => {
@@ -99,6 +106,7 @@ describe("RecapScheduleDashboard Retry Feedback (#1524)", () => {
     recapScheduleApi.getSchedule.mockResolvedValue({
       data: { scheduleType: "daily", timezone: "UTC" },
     });
+    recapScheduleApi.getFailedDeliveries.mockResolvedValue({ data: [] });
   });
 
   it("shows inline success feedback when a retry is enqueued", async () => {
