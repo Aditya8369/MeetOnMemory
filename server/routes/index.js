@@ -219,6 +219,8 @@ import adminReindexRoutes from "./adminReindexRoutes.js";
 router.use("/api/admin/embeddings", adminReindexRoutes);
 import adminHealthRoutes from "./adminHealthRoutes.js";
 router.use("/api/admin/health", adminHealthRoutes);
+import adminRbacRoutes from "./adminRbacRoutes.js";
+router.use("/api/admin/rbac", adminRbacRoutes);
 router.use("/api/alerts/keywords", keywordAlertRoutes);
 router.use("/api/integrations/notion", notionIntegrationRoutes);
 

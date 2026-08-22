@@ -1,5 +1,5 @@
 import express from "express";
-import { requireAuth } from "../middleware/authMiddleware.js";
+import userAuth from "../middleware/userAuth.js";
 import {
   getMyReports,
   getTeamReports,
@@ -10,7 +10,7 @@ import {
 
 const router = express.Router();
 
-router.use(requireAuth);
+router.use(userAuth);
 
 router.get("/my", getMyReports);
 router.get("/team", getTeamReports);

@@ -36,3 +36,4 @@ export { favoriteApi } from "./favoriteApi";
 export * from "./agendaBuilderApi";
 export { default as highlightReelApi } from "./highlightReelApi.js";
 export * from "./adminHealthApi";
+export * from "./adminRbacApi";
