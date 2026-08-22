@@ -1,6 +1,7 @@
 import Meeting from "../models/meetingModel.js";
 import User from "../models/userModel.js";
 import EmailService from "./EmailService.js";
+import { checkQuietHours } from "../utils/quietHours.js";
 
 class MeetingDigestService {
   /**
@@ -131,6 +132,16 @@ class MeetingDigestService {
 
       // Send emails
       for (const email of recipients) {
+        const userObj = await User.findOne({ email });
+        if (userObj) {
+          const inQuietHours = await checkQuietHours(userObj._id);
+          if (inQuietHours) {
+            console.log(
+              `[MeetingDigestService] Deferring digest email for ${email} due to quiet hours.`,
+            );
+            continue;
+          }
+        }
         await EmailService.sendMail({
           from: process.env.SENDER_EMAIL || "no-reply@meetonmemory.com",
           to: email,

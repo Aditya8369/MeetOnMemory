@@ -23,6 +23,13 @@ vi.mock("react-toastify", () => ({
   },
 }));
 
+vi.mock("../../services/notificationApi.js", () => ({
+  notificationApi: {
+    getPreferences: vi.fn().mockResolvedValue({ data: { preferences: {} } }),
+    updatePreferences: vi.fn(),
+  },
+}));
+
 describe("DigestPreferences Timezone Context (#1686)", () => {
   beforeEach(() => {
     vi.clearAllMocks();
