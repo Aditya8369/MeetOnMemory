@@ -291,7 +291,12 @@ const MeetingDetails = () => {
           <DuplicateDetectionPanel meetingId={meeting._id} />
           <MeetingFollowUpBanner meeting={meeting} />
           <div className="mt-6 mb-6">
-            <MeetingReadiness meetingId={meeting._id} />
+            <MeetingReadiness
+              meetingId={meeting._id}
+              meeting={meeting}
+              briefingStatus={briefingStatus}
+              currentUser={currentUser}
+            />
           </div>
           <MeetingHeader
             meeting={meeting}
