@@ -15,6 +15,8 @@ import {
   XCircle,
   Loader2,
   Power,
+  RefreshCw,
+  Send,
 } from "lucide-react";
 import { toast } from "react-toastify";
 import { webhookApi } from "../services";
@@ -32,10 +34,58 @@ const WebhooksManager = ({ organizationId }) => {
 
   const [visibleSecrets, setVisibleSecrets] = useState({});
   const [copiedId, setCopiedId] = useState(null);
+  const [rotatedSecret, setRotatedSecret] = useState(null);
+  const [pingingId, setPingingId] = useState(null);
 
   const addWebhookButtonRef = useRef(null);
   const emptyStateButtonRef = useRef(null);
   const editButtonRefs = useRef({});
+
+  const handleRotateSecret = async (hookId) => {
+    if (
+      !window.confirm(
+        "Are you sure you want to rotate this webhook secret? Any systems using the old secret will fail to verify signatures.",
+      )
+    ) {
+      return;
+    }
+    try {
+      const { data } = await webhookApi.rotateSecret(hookId);
+      if (data.success && data.secret) {
+        setRotatedSecret({ id: hookId, secret: data.secret });
+        toast.success("Secret rotated successfully!");
+      }
+    } catch (err) {
+      console.error("Failed to rotate secret:", err);
+      toast.error("Failed to rotate secret.");
+    }
+  };
+
+  const handleTestPing = async (hookId) => {
+    try {
+      setPingingId(hookId);
+      const { data } = await webhookApi.ping(hookId);
+      if (data.success) {
+        const status = data.delivery?.status || "failed";
+        const code = data.delivery?.responseStatus || "No response";
+        if (status === "delivered") {
+          toast.success(
+            `✅ Test ping delivered successfully! (Status ${code})`,
+          );
+        } else {
+          toast.error(
+            `❌ Test ping failed to deliver. (Status: ${status}, Code: ${code})`,
+          );
+        }
+        fetchWebhooks();
+      }
+    } catch (err) {
+      console.error("Failed to trigger test ping:", err);
+      toast.error("Failed to trigger test ping.");
+    } finally {
+      setPingingId(null);
+    }
+  };
 
   const fetchWebhooks = useCallback(async () => {
     if (!organizationId) return;
@@ -164,6 +214,42 @@ const WebhooksManager = ({ organizationId }) => {
         </button>
       </div>
 
+      {rotatedSecret && (
+        <div className="p-5 rounded-2xl bg-indigo-50 dark:bg-indigo-950/40 border border-indigo-200 dark:border-indigo-800 space-y-3">
+          <div className="flex items-center justify-between">
+            <span className="font-bold text-indigo-900 dark:text-indigo-200 text-sm flex items-center gap-2">
+              <span className="w-2 h-2 rounded-full bg-indigo-500 animate-ping" />
+              New Webhook Secret Generated
+            </span>
+            <button
+              onClick={() => setRotatedSecret(null)}
+              className="text-xs font-semibold text-slate-500 hover:text-slate-800 dark:hover:text-slate-200"
+            >
+              Dismiss
+            </button>
+          </div>
+          <p className="text-xs text-indigo-700 dark:text-indigo-300">
+            Please copy this secret key now. For security reasons, it will not
+            be shown again.
+          </p>
+          <div className="flex items-center gap-2">
+            <code className="px-3 py-1.5 rounded-lg bg-indigo-100 dark:bg-indigo-900/60 text-indigo-800 dark:text-indigo-200 font-mono text-xs select-all break-all">
+              {rotatedSecret.secret}
+            </code>
+            <button
+              onClick={() => copyToClipboard(rotatedSecret.secret, "rotated")}
+              className="p-2 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-700"
+            >
+              {copiedId === "rotated" ? (
+                <Check className="w-4 h-4 text-emerald-500" />
+              ) : (
+                <Copy className="w-4 h-4" />
+              )}
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Webhook Cards List */}
       {loading ? (
         <div className="flex flex-col items-center justify-center py-16 text-slate-500">
@@ -273,11 +359,34 @@ const WebhooksManager = ({ organizationId }) => {
                   {/* Right Actions */}
                   <div className="flex items-center gap-2 border-t md:border-t-0 pt-3 md:pt-0 border-slate-100 dark:border-slate-800 shrink-0">
                     <button
+                      onClick={() => handleTestPing(hook._id)}
+                      disabled={pingingId === hook._id}
+                      className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-900/30 dark:hover:bg-indigo-900/50 text-indigo-700 dark:text-indigo-300 text-xs font-semibold transition-colors disabled:opacity-50 cursor-pointer"
+                      title="Send Test Ping"
+                    >
+                      {pingingId === hook._id ? (
+                        <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                      ) : (
+                        <Send className="w-3.5 h-3.5" />
+                      )}
+                      <span>Ping</span>
+                    </button>
+
+                    <button
+                      onClick={() => handleRotateSecret(hook._id)}
+                      className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 text-xs font-semibold transition-colors cursor-pointer"
+                      title="Rotate Webhook Secret"
+                    >
+                      <RefreshCw className="w-3.5 h-3.5" />
+                      <span>Rotate</span>
+                    </button>
+
+                    <button
                       onClick={() => {
                         setLogsWebhook(hook);
                         setShowLogsModal(true);
                       }}
-                      className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 text-xs font-semibold transition-colors"
+                      className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 text-xs font-semibold transition-colors cursor-pointer"
                     >
                       <List className="w-3.5 h-3.5" /> View Logs
                     </button>
