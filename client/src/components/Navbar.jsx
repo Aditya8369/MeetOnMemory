@@ -50,6 +50,7 @@ import {
   Archive,
   Network,
   Clock,
+  AlertTriangle,
   BookOpen,
 } from "lucide-react";
 
@@ -505,6 +506,11 @@ const Navbar = () => {
       label: "My Delegations",
       href: "/delegations",
       icon: Users,
+    },
+    {
+      label: "Escalations",
+      href: "/escalations",
+      icon: AlertTriangle,
     },
     {
       label: "Workload Balance",

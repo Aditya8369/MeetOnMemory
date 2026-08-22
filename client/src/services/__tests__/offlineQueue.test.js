@@ -4,7 +4,7 @@ import apiClient from "../apiClient.js";
 // Mock indexedDB completely
 let dbStore = {};
 const mockDb = {
-  transaction: (_storeName, _mode) => ({
+  transaction: () => ({
     objectStore: () => ({
       add: (item) => {
         const id = Math.random().toString(36).substring(2, 9);

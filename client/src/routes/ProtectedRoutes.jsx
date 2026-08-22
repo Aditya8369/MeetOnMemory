@@ -73,6 +73,7 @@ import FocusTime from "../pages/FocusTime.jsx";
 import SeriesRetrospective from "../pages/SeriesRetrospective.jsx";
 import DataRetentionSettings from "../pages/DataRetentionSettings.jsx";
 import FollowUpDashboard from "../pages/FollowUpDashboard.jsx";
+import EscalationDashboard from "../pages/EscalationDashboard.jsx";
 import Glossary from "../pages/Glossary.jsx";
 import StandupReports from "../pages/StandupReports.jsx";
 
@@ -299,6 +300,14 @@ const ProtectedRoutes = (
       element={
         <ProtectedRoute>
           <FocusTime />
+        </ProtectedRoute>
+      }
+    />
+    <Route
+      path="/escalations"
+      element={
+        <ProtectedRoute>
+          <EscalationDashboard />
         </ProtectedRoute>
       }
     />
