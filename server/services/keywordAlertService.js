@@ -71,39 +71,88 @@ export const scanTranscriptForKeywords = async (meeting, transcript) => {
 
     // 3. Dispatch in-app notifications
     if (usersToNotifyApp.length > 0) {
-      // Create personalized notifications by looping since each might have different matched keywords,
-      // or we can just send a generic one using bulk if we simplify.
-      // To be precise with keywords, we create individually. The createNotifications takes an array of users but sends the same payload.
-      // So we will just loop and use createNotifications for each.
-      const promises = usersToNotifyApp.map((userId) => {
+      const promises = usersToNotifyApp.map(async (userId) => {
         const { matchedKeywords } = matchedKeywordsMap.get(userId);
         const keywordStr = matchedKeywords.join(", ");
-        return createNotifications([userId], {
+        await createNotifications([userId], {
           title: "Keyword Alert",
           description: `Your watched keyword(s) (${keywordStr}) were mentioned in "${meetingTitle}".`,
-          category: "system", // Or add keyword_alerts to CATEGORY_TO_PREFERENCE later
+          category: "system",
           actionUrl: `/meeting/${meetingId}`,
           actionLabel: "View Meeting",
         });
+
+        // Record history log (bounded to last 50 entries)
+        await KeywordAlert.findOneAndUpdate(
+          { user: userId, organization: orgId },
+          {
+            $push: {
+              deliveryHistory: {
+                $each: [
+                  {
+                    channel: "app",
+                    matchedKeywords,
+                    meetingId,
+                    meetingTitle,
+                    status: "delivered",
+                    summary: `In-app notification sent for keywords: ${keywordStr}`,
+                    sentAt: new Date(),
+                  },
+                ],
+                $slice: -50,
+              },
+            },
+          },
+        );
       });
       await Promise.all(promises);
     }
 
     // 4. Dispatch email notifications
     if (usersToNotifyEmail.length > 0) {
-      const emailPromises = usersToNotifyEmail.map((alert) => {
+      const emailPromises = usersToNotifyEmail.map(async (alert) => {
         const userIdStr = alert.user._id.toString();
         const { matchedKeywords } = matchedKeywordsMap.get(userIdStr);
         const keywordStr = matchedKeywords.join(", ");
 
-        return EmailService.sendMail({
-          to: alert.user.email,
-          subject: `MeetOnMemory: Keyword Alert - ${meetingTitle}`,
-          html: `<p>Hi ${alert.user.name},</p>
+        let status = "delivered";
+        try {
+          await EmailService.sendMail({
+            to: alert.user.email,
+            subject: `MeetOnMemory: Keyword Alert - ${meetingTitle}`,
+            html: `<p>Hi ${alert.user.name},</p>
 <p>The following keywords you are watching were mentioned in the meeting <strong>${meetingTitle}</strong>:</p>
 <p><strong>${keywordStr}</strong></p>
 <p><a href="${process.env.FRONTEND_URL}/meeting/${meetingId}">Click here to view the meeting</a></p>`,
-        });
+          });
+        } catch (mailErr) {
+          console.error("Failed to send keyword alert email:", mailErr);
+          status = "failed";
+        }
+
+        // Record history log (bounded to last 50 entries)
+        await KeywordAlert.findOneAndUpdate(
+          { user: userIdStr, organization: orgId },
+          {
+            $push: {
+              deliveryHistory: {
+                $each: [
+                  {
+                    channel: "email",
+                    matchedKeywords,
+                    meetingId,
+                    meetingTitle,
+                    recipientEmail: alert.user.email,
+                    status,
+                    summary: `Email alert (${status}) to ${alert.user.email} for keywords: ${keywordStr}`,
+                    sentAt: new Date(),
+                  },
+                ],
+                $slice: -50,
+              },
+            },
+          },
+        );
       });
       await Promise.all(emailPromises);
     }
