@@ -30,6 +30,7 @@ import AiAssistant from "../pages/AiAssistant.jsx";
 import MeetingDetails from "../pages/MeetingDetails.jsx";
 import MeetingBriefing from "../pages/MeetingBriefing.jsx";
 import MeetingQuality from "../pages/MeetingQuality.jsx";
+import MeetingEffectiveness from "../pages/MeetingEffectiveness.jsx";
 import MeetingRecycleBin from "../pages/MeetingRecycleBin.jsx";
 import MeetingRoom from "../pages/MeetingRoom.jsx";
 import TranscriptViewer from "../pages/TranscriptViewer.jsx";
@@ -443,6 +444,14 @@ const ProtectedRoutes = (
       element={
         <ProtectedRoute resource="meetings" action="view">
           <MeetingQuality />
+        </ProtectedRoute>
+      }
+    />
+    <Route
+      path="/effectiveness/:meetingId?"
+      element={
+        <ProtectedRoute resource="reports" action="view">
+          <MeetingEffectiveness />
         </ProtectedRoute>
       }
     />

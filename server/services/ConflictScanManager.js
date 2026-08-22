@@ -1,12 +1,16 @@
 // services/ConflictScanManager.js
-import cron from 'node-cron';
-import ConflictResolution from '../components/ConflictResolution.jsx'; // Adjust import path
+import cron from "node-cron";
 
+const memoryStore = new Map();
+const localStorage = {
+  getItem: (key) => memoryStore.get(key),
+  setItem: (key, value) => memoryStore.set(key, value),
+};
 class ConflictScanManager {
   constructor() {
     this.scheduledJobs = new Map();
     this.scanHistory = [];
-    this.defaultSchedule = '0 0 * * *'; // Daily at midnight
+    this.defaultSchedule = "0 0 * * *"; // Daily at midnight
     this.isInitialized = false;
   }
 
@@ -15,12 +19,12 @@ class ConflictScanManager {
    */
   async initialize() {
     if (this.isInitialized) return;
-    
+
     const settings = await this.getSettings();
     if (settings.schedulingEnabled) {
       this.startScheduledScan(settings.schedule || this.defaultSchedule);
     }
-    
+
     // Load history from storage
     this.scanHistory = await this.loadHistory();
     this.isInitialized = true;
@@ -34,7 +38,7 @@ class ConflictScanManager {
     this.stopScheduledScan();
 
     const job = cron.schedule(cronExpression, async () => {
-      console.log('Running scheduled conflict scan...');
+      console.log("Running scheduled conflict scan...");
       await this.performScan({ scheduled: true });
     });
 
@@ -44,7 +48,7 @@ class ConflictScanManager {
       job,
       cronExpression,
       startDate: new Date(),
-      status: 'active'
+      status: "active",
     });
 
     console.log(`Scheduled scan started with cron: ${cronExpression}`);
@@ -59,7 +63,7 @@ class ConflictScanManager {
       jobData.job.stop();
       this.scheduledJobs.delete(id);
     }
-    console.log('Scheduled scan stopped');
+    console.log("Scheduled scan stopped");
   }
 
   /**
@@ -68,21 +72,21 @@ class ConflictScanManager {
   async performScan(options = {}) {
     const startTime = new Date();
     const scanId = `scan-${Date.now()}`;
-    
+
     try {
       // Update status to in-progress
       const historyEntry = this.createHistoryEntry({
         id: scanId,
         timestamp: startTime,
-        status: 'in_progress',
-        triggeredBy: options.scheduled ? 'scheduled' : 'manual',
-        scope: options.scope || 'all'
+        status: "in_progress",
+        triggeredBy: options.scheduled ? "scheduled" : "manual",
+        scope: options.scope || "all",
       });
 
       // Execute the actual conflict scan
       // Using your existing ConflictResolution.jsx logic
       const results = await this.executeConflictScan(options);
-      
+
       // Calculate severity levels
       const severityCounts = this.calculateSeverityCounts(results);
       const hasHighSeverity = severityCounts.high > 0;
@@ -90,18 +94,18 @@ class ConflictScanManager {
       // Update history entry with results
       const completedEntry = {
         ...historyEntry,
-        status: 'completed',
+        status: "completed",
         endTime: new Date(),
         duration: new Date() - startTime,
         totalFindings: results.length || 0,
         severityCounts,
         findings: results,
-        hasHighSeverity
+        hasHighSeverity,
       };
 
       // Save to history
       await this.saveHistory(completedEntry);
-      
+
       // Notify admins if high severity conflicts found
       if (hasHighSeverity && options.scheduled) {
         await this.notifyAdmins(completedEntry);
@@ -113,13 +117,13 @@ class ConflictScanManager {
       const failedEntry = {
         id: scanId,
         timestamp: startTime,
-        status: 'failed',
-        triggeredBy: options.scheduled ? 'scheduled' : 'manual',
+        status: "failed",
+        triggeredBy: options.scheduled ? "scheduled" : "manual",
         error: error.message,
         endTime: new Date(),
-        duration: new Date() - startTime
+        duration: new Date() - startTime,
       };
-      
+
       await this.saveHistory(failedEntry);
       throw error;
     }
@@ -129,29 +133,31 @@ class ConflictScanManager {
    * Get scan history with pagination
    */
   async getHistory(filters = {}) {
-    const { 
-      limit = 50, 
-      offset = 0, 
-      status, 
+    const {
+      limit = 50,
+      offset = 0,
+      status,
       triggeredBy,
       startDate,
-      endDate 
+      endDate,
     } = filters;
 
     let history = this.scanHistory;
 
     // Apply filters
     if (status) {
-      history = history.filter(entry => entry.status === status);
+      history = history.filter((entry) => entry.status === status);
     }
     if (triggeredBy) {
-      history = history.filter(entry => entry.triggeredBy === triggeredBy);
+      history = history.filter((entry) => entry.triggeredBy === triggeredBy);
     }
     if (startDate) {
-      history = history.filter(entry => entry.timestamp >= new Date(startDate));
+      history = history.filter(
+        (entry) => entry.timestamp >= new Date(startDate),
+      );
     }
     if (endDate) {
-      history = history.filter(entry => entry.timestamp <= new Date(endDate));
+      history = history.filter((entry) => entry.timestamp <= new Date(endDate));
     }
 
     // Sort by timestamp (newest first)
@@ -161,7 +167,7 @@ class ConflictScanManager {
       total: history.length,
       entries: history.slice(offset, offset + limit),
       offset,
-      limit
+      limit,
     };
   }
 
@@ -169,7 +175,7 @@ class ConflictScanManager {
    * Get a specific scan by ID
    */
   async getScanById(scanId) {
-    return this.scanHistory.find(entry => entry.id === scanId) || null;
+    return this.scanHistory.find((entry) => entry.id === scanId) || null;
   }
 
   /**
@@ -177,20 +183,20 @@ class ConflictScanManager {
    */
   async updateSettings(settings) {
     const { schedulingEnabled, schedule, notificationEnabled } = settings;
-    
+
     // Stop current schedule
     this.stopScheduledScan();
-    
+
     // Start new schedule if enabled
     if (schedulingEnabled) {
       this.startScheduledScan(schedule || this.defaultSchedule);
     }
-    
+
     // Save settings
     await this.saveSettings({
       schedulingEnabled,
       schedule: schedule || this.defaultSchedule,
-      notificationEnabled: notificationEnabled !== false
+      notificationEnabled: notificationEnabled !== false,
     });
   }
 
@@ -203,7 +209,7 @@ class ConflictScanManager {
     return {
       schedulingEnabled: settings.schedulingEnabled || false,
       schedule: settings.schedule || this.defaultSchedule,
-      notificationEnabled: settings.notificationEnabled !== false
+      notificationEnabled: settings.notificationEnabled !== false,
     };
   }
 
@@ -218,13 +224,15 @@ class ConflictScanManager {
         cronExpression: jobData.cronExpression,
         startDate: jobData.startDate,
         status: jobData.status,
-        nextRun: jobData.job.nextInvocation ? jobData.job.nextInvocation() : 'unknown'
+        nextRun: jobData.job.nextInvocation
+          ? jobData.job.nextInvocation()
+          : "unknown",
       });
     }
-    
+
     return {
       hasActiveJobs: jobs.length > 0,
-      jobs
+      jobs,
     };
   }
 
@@ -234,17 +242,17 @@ class ConflictScanManager {
     return {
       id: data.id || `scan-${Date.now()}`,
       timestamp: data.timestamp || new Date(),
-      status: data.status || 'pending',
-      triggeredBy: data.triggeredBy || 'manual',
-      scope: data.scope || 'all',
-      ...data
+      status: data.status || "pending",
+      triggeredBy: data.triggeredBy || "manual",
+      scope: data.scope || "all",
+      ...data,
     };
   }
 
   calculateSeverityCounts(results) {
     const counts = { low: 0, medium: 0, high: 0, critical: 0 };
     if (Array.isArray(results)) {
-      results.forEach(result => {
+      results.forEach((result) => {
         if (result.severity && counts[result.severity] !== undefined) {
           counts[result.severity]++;
         }
@@ -253,17 +261,27 @@ class ConflictScanManager {
     return counts;
   }
 
-  async executeConflictScan(options) {
+  async executeConflictScan(_options) {
     // Integrate with your existing ConflictResolution.jsx logic
     // This should call your actual conflict detection logic
-    
+
     // Example implementation - replace with your actual scan logic
     return new Promise((resolve) => {
       // Simulate scan
       setTimeout(() => {
         const mockResults = [
-          { id: 1, severity: 'high', description: 'Conflict in file A', path: '/src/fileA.js' },
-          { id: 2, severity: 'medium', description: 'Conflict in file B', path: '/src/fileB.js' },
+          {
+            id: 1,
+            severity: "high",
+            description: "Conflict in file A",
+            path: "/src/fileA.js",
+          },
+          {
+            id: 2,
+            severity: "medium",
+            description: "Conflict in file B",
+            path: "/src/fileB.js",
+          },
         ];
         resolve(mockResults);
       }, 1000);
@@ -272,16 +290,16 @@ class ConflictScanManager {
 
   async notifyAdmins(scanResult) {
     // Implement notification logic
-    console.log('High severity conflicts found:', scanResult);
+    console.log("High severity conflicts found:", scanResult);
     // Send email, Slack, etc.
   }
 
   // ============ Storage Methods ============
-  
+
   async loadSettings() {
     // Load from localStorage or database
     try {
-      const saved = localStorage.getItem('conflictScanSettings');
+      const saved = localStorage.getItem("conflictScanSettings");
       return saved ? JSON.parse(saved) : {};
     } catch {
       return {};
@@ -289,12 +307,12 @@ class ConflictScanManager {
   }
 
   async saveSettings(settings) {
-    localStorage.setItem('conflictScanSettings', JSON.stringify(settings));
+    localStorage.setItem("conflictScanSettings", JSON.stringify(settings));
   }
 
   async loadHistory() {
     try {
-      const saved = localStorage.getItem('conflictScanHistory');
+      const saved = localStorage.getItem("conflictScanHistory");
       return saved ? JSON.parse(saved) : [];
     } catch {
       return [];
@@ -303,19 +321,22 @@ class ConflictScanManager {
 
   async saveHistory(entry) {
     // Update or add entry
-    const index = this.scanHistory.findIndex(e => e.id === entry.id);
+    const index = this.scanHistory.findIndex((e) => e.id === entry.id);
     if (index >= 0) {
       this.scanHistory[index] = entry;
     } else {
       this.scanHistory.unshift(entry);
     }
-    
+
     // Keep only last 100 entries
     if (this.scanHistory.length > 100) {
       this.scanHistory = this.scanHistory.slice(0, 100);
     }
-    
-    localStorage.setItem('conflictScanHistory', JSON.stringify(this.scanHistory));
+
+    localStorage.setItem(
+      "conflictScanHistory",
+      JSON.stringify(this.scanHistory),
+    );
   }
 }
 
