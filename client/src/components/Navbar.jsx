@@ -497,6 +497,12 @@ const Navbar = () => {
       permission: { resource: "policies", action: "view" },
     },
     {
+      label: "SLA Compliance",
+      href: "/sla-compliance",
+      icon: ShieldAlert,
+      permission: { resource: "reports", action: "view" },
+    },
+    {
       label: t("navbar.calendar"),
       href: "/calendar",
       icon: CalendarDays,

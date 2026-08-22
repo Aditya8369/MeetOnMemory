@@ -265,4 +265,7 @@ router.use("/api/standups", standupReportRoutes);
 import meetingRiskRoutes from "./meetingRiskRoutes.js";
 router.use("/api/meeting-risks", meetingRiskRoutes);
 
+import actionItemSlaRoutes from "./actionItemSlaRoutes.js";
+router.use("/api/action-item-sla", actionItemSlaRoutes);
+
 export default router;

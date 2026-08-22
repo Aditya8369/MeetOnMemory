@@ -45,6 +45,8 @@ import {
   Medal,
   Trophy,
   Crown as CrownIcon,
+  Settings,
+  X,
   Database,
 } from "lucide-react";
 
@@ -927,4 +929,5 @@ const DangerZone = ({
     </div>
   );
 };
+
 export default DangerZone;
