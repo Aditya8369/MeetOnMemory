@@ -1,5 +1,11 @@
 // components/shared/AssigneePicker.jsx
-import React, { useState, useEffect, useCallback, useRef } from "react";
+import React, {
+  useState,
+  useEffect,
+  useCallback,
+  useRef,
+  useMemo,
+} from "react";
 import { toast } from "react-toastify";
 import {
   User,
@@ -297,14 +303,14 @@ const AssigneePicker = ({
             const bEmail = b.email?.toLowerCase() || "";
 
             // Exact match priority
-            if (aName === searchQuery.toLowerCase()) return -1;
-            if (bName === searchQuery.toLowerCase()) return 1;
-            if (aEmail === searchQuery.toLowerCase()) return -1;
-            if (bEmail === searchQuery.toLowerCase()) return 1;
+            if (aName === query.toLowerCase()) return -1;
+            if (bName === query.toLowerCase()) return 1;
+            if (aEmail === query.toLowerCase()) return -1;
+            if (bEmail === query.toLowerCase()) return 1;
 
             // Starts with priority
-            if (aName.startsWith(searchQuery.toLowerCase())) return -1;
-            if (bName.startsWith(searchQuery.toLowerCase())) return 1;
+            if (aName.startsWith(query.toLowerCase())) return -1;
+            if (bName.startsWith(query.toLowerCase())) return 1;
 
             return 0;
           });
@@ -328,18 +334,17 @@ const AssigneePicker = ({
       validatePermission,
       onSearch,
       onError,
-      searchQuery,
     ],
   );
 
   // Debounced search
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  const debouncedSearch = useCallback(
-    debounce((query) => {
-      if (query.length >= minSearchLength || query.length === 0) {
-        performSearch(query);
-      }
-    }, debounceDelay),
+  const debouncedSearch = useMemo(
+    () =>
+      debounce((query) => {
+        if (query.length >= minSearchLength || query.length === 0) {
+          performSearch(query);
+        }
+      }, debounceDelay),
     [performSearch, minSearchLength, debounceDelay],
   );
 

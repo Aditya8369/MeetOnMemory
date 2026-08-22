@@ -2,6 +2,7 @@
 import React, { useState, useCallback, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "react-toastify";
+import { organizationApi } from "../../services/organizationApi";
 import {
   AlertTriangle,
   UserMinus,
@@ -48,7 +49,6 @@ import {
   X,
   Database,
 } from "lucide-react";
-import organizationApi from "../../services/organizationApi";
 
 // Confirmation Modal with Typed Confirmation
 const ConfirmModal = ({

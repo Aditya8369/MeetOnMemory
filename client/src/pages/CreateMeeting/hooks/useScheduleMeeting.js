@@ -1,6 +1,7 @@
 import { toast } from "react-toastify";
 import {
   meetingApi,
+  meetingSeriesApi,
   meetingTemplateApi,
   aiSummaryTemplateApi,
 } from "../../../services";
@@ -29,6 +30,10 @@ export const buildDuplicateScheduleState = (duplicateData = {}) => ({
     syncToCalendar: true,
     reminderEnabled: duplicateData.reminderEnabled || false,
     reminderMinutesBefore: duplicateData.reminderMinutesBefore || 30,
+    recurrencePattern: duplicateData.recurrencePattern || "none",
+    endDate: duplicateData.endDate || "",
+    dayOfWeek: duplicateData.dayOfWeek || "",
+    dayOfMonth: duplicateData.dayOfMonth || "",
   },
   participants: (duplicateData.participants || []).map(
     (participant, index) => ({
@@ -65,6 +70,10 @@ export const useScheduleMeeting = ({
     syncToCalendar: true,
     reminderEnabled: false,
     reminderMinutesBefore: 30,
+    recurrencePattern: "none",
+    endDate: "",
+    dayOfWeek: "",
+    dayOfMonth: "",
   });
   const [participants, setParticipants] = useState([]);
   const [newParticipant, setNewParticipant] = useState({ name: "", email: "" });
@@ -141,6 +150,36 @@ export const useScheduleMeeting = ({
     serverUpdatedAt,
     onRestore: restoreDraftValues,
   });
+
+  const resetFormState = useCallback(() => {
+    setScheduleData({
+      title: "",
+      description: "",
+      meetingType: "conference",
+      date: "",
+      time: "",
+      duration: "",
+      location: "",
+      venue: "",
+      syncToCalendar: true,
+      reminderEnabled: false,
+      reminderMinutesBefore: 30,
+      recurrencePattern: "none",
+      endDate: "",
+      dayOfWeek: "",
+      dayOfMonth: "",
+    });
+    setParticipants([]);
+    setAgendaItems([]);
+    setAttachments([]);
+    setDuplicateMetadata({
+      tags: [],
+      policyDetails: null,
+      recordingType: "upload",
+    });
+    setSelectedTemplateId("");
+    clearDraft();
+  }, [clearDraft]);
 
   useEffect(() => {
     let cancelled = false;
@@ -271,70 +310,119 @@ export const useScheduleMeeting = ({
       return;
     }
 
+    const isRecurring =
+      Boolean(scheduleData.recurrencePattern) &&
+      scheduleData.recurrencePattern !== "none";
+
+    if (isRecurring) {
+      if (!scheduleData.endDate) {
+        toast.error("End date is required for recurring meetings");
+        return;
+      }
+      if (new Date(scheduleData.date) > new Date(scheduleData.endDate)) {
+        toast.error("Start date must be before or equal to end date");
+        return;
+      }
+      const validPatterns = ["daily", "weekly", "biweekly", "monthly"];
+      if (!validPatterns.includes(scheduleData.recurrencePattern)) {
+        toast.error("Invalid recurrence pattern selected");
+        return;
+      }
+    }
+
     setLoading(true);
     try {
-      const payload = {
-        ...scheduleData,
-        participants,
-        tags: duplicateMetadata.tags,
-        policyDetails: duplicateMetadata.policyDetails,
-        recordingType: duplicateMetadata.recordingType,
-        agendaItems: normalizeAgendaItems(agendaItems),
-      };
+      if (isRecurring) {
+        const seriesPayload = {
+          title: scheduleData.title.trim(),
+          description: scheduleData.description || "",
+          meetingType: scheduleData.meetingType || "conference",
+          recurrencePattern: scheduleData.recurrencePattern,
+          dayOfWeek:
+            scheduleData.dayOfWeek !== "" &&
+            scheduleData.dayOfWeek !== undefined &&
+            scheduleData.dayOfWeek !== null
+              ? Number(scheduleData.dayOfWeek)
+              : undefined,
+          dayOfMonth:
+            scheduleData.dayOfMonth !== "" &&
+            scheduleData.dayOfMonth !== undefined &&
+            scheduleData.dayOfMonth !== null
+              ? Number(scheduleData.dayOfMonth)
+              : undefined,
+          startDate: scheduleData.date,
+          endDate: scheduleData.endDate,
+          time: scheduleData.time,
+          duration: scheduleData.duration ? Number(scheduleData.duration) : 60,
+          location: scheduleData.location || "",
+          venue: scheduleData.venue || "",
+          participants: participants.map((p) => ({
+            name: p.name,
+            email: p.email,
+            role: p.role,
+          })),
+          agendaItems: normalizeAgendaItems(agendaItems).map((a) => ({
+            text: a.text,
+            description: a.description,
+            duration: a.duration ? Number(a.duration) : undefined,
+          })),
+        };
 
-      const response = await meetingApi.scheduleMeeting(payload);
+        const response = await meetingSeriesApi.createSeries(seriesPayload);
 
-      if (response.data?.success) {
-        if (customFields.fields.length > 0 && userData?.organization) {
-          try {
-            await customFieldApi.setMeetingFields(
-              response.data.meeting._id,
-              userData.organization,
-              customFields.fields,
-            );
-          } catch (err) {
-            console.error("Failed to save custom fields", err);
-            toast.error("Meeting saved, but custom fields failed to save");
-          }
+        if (response.data?.success) {
+          const createdCount = response.data.meetingsCreated || 0;
+          toast.success(
+            `✅ Meeting series created successfully with ${createdCount} occurrence(s)!`,
+          );
+          resetFormState();
+        } else {
+          toast.error(
+            response.data?.message || "Failed to create meeting series",
+          );
         }
-        toast.success("✅ Meeting scheduled and synced to calendars!");
-
-        // Trigger calendar integration
-        if (response.data.calendarLinks) {
-          toast.info("📅 Calendar invites sent to all participants!");
-        }
-
-        // Reset form
-        setScheduleData({
-          title: "",
-          description: "",
-          meetingType: "conference",
-          date: "",
-          time: "",
-          duration: "",
-          location: "",
-          venue: "",
-          syncToCalendar: true,
-          reminderEnabled: false,
-          reminderMinutesBefore: 30,
-        });
-        setParticipants([]);
-        setAgendaItems([]);
-        setAttachments([]);
-        setDuplicateMetadata({
-          tags: [],
-          policyDetails: null,
-          recordingType: "upload",
-        });
-        setSelectedTemplateId("");
-        clearDraft();
       } else {
-        toast.error(response.data?.message || "Failed to schedule meeting");
+        const payload = {
+          ...scheduleData,
+          participants,
+          tags: duplicateMetadata.tags,
+          policyDetails: duplicateMetadata.policyDetails,
+          recordingType: duplicateMetadata.recordingType,
+          agendaItems: normalizeAgendaItems(agendaItems),
+        };
+
+        const response = await meetingApi.scheduleMeeting(payload);
+
+        if (response.data?.success) {
+          if (customFields.fields.length > 0 && userData?.organization) {
+            try {
+              await customFieldApi.setMeetingFields(
+                response.data.meeting._id,
+                userData.organization,
+                customFields.fields,
+              );
+            } catch (err) {
+              console.error("Failed to save custom fields", err);
+              toast.error("Meeting saved, but custom fields failed to save");
+            }
+          }
+          toast.success("✅ Meeting scheduled and synced to calendars!");
+
+          if (response.data.calendarLinks) {
+            toast.info("📅 Calendar invites sent to all participants!");
+          }
+
+          resetFormState();
+        } else {
+          toast.error(response.data?.message || "Failed to schedule meeting");
+        }
       }
     } catch (error) {
       console.error("Error scheduling meeting:", error);
       toast.error(
-        error.response?.data?.message || "Unable to schedule meeting",
+        error.response?.data?.message ||
+          error.response?.data?.errors?.[0]?.message ||
+          "Unable to schedule meeting",
       );
     } finally {
       setLoading(false);

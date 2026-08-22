@@ -2,7 +2,15 @@
 import cron from "node-cron";
 import ConflictResolution from "../components/ConflictResolution.jsx"; // Adjust import path
 
-const mockStorage = new Map();
+const localStorage = {
+  store: {},
+  getItem(key) {
+    return this.store[key] || null;
+  },
+  setItem(key, value) {
+    this.store[key] = value;
+  },
+};
 
 class ConflictScanManager {
   constructor() {
@@ -297,7 +305,7 @@ class ConflictScanManager {
   async loadSettings() {
     // Load from localStorage or database
     try {
-      const saved = mockStorage.get("conflictScanSettings");
+      const saved = localStorage.getItem("conflictScanSettings");
       return saved ? JSON.parse(saved) : {};
     } catch {
       return {};
@@ -305,12 +313,12 @@ class ConflictScanManager {
   }
 
   async saveSettings(settings) {
-    mockStorage.set("conflictScanSettings", JSON.stringify(settings));
+    localStorage.setItem("conflictScanSettings", JSON.stringify(settings));
   }
 
   async loadHistory() {
     try {
-      const saved = mockStorage.get("conflictScanHistory");
+      const saved = localStorage.getItem("conflictScanHistory");
       return saved ? JSON.parse(saved) : [];
     } catch {
       return [];
@@ -331,7 +339,10 @@ class ConflictScanManager {
       this.scanHistory = this.scanHistory.slice(0, 100);
     }
 
-    mockStorage.set("conflictScanHistory", JSON.stringify(this.scanHistory));
+    localStorage.setItem(
+      "conflictScanHistory",
+      JSON.stringify(this.scanHistory),
+    );
   }
 }
 
