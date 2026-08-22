@@ -432,6 +432,11 @@ const MeetingDetails = () => {
               <CarryForwardConfig
                 seriesId={meeting.series._id || meeting.series}
                 currentMeetingId={meeting._id}
+                userRole={
+                  currentUser?.publicMetadata?.dbUserId === meeting.uploadedBy
+                    ? "host"
+                    : "member"
+                }
                 onApplySuccess={() => {
                   // Reload meeting data to reflect new agenda items
                   window.location.reload();

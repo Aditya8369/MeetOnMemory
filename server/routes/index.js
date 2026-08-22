@@ -155,6 +155,7 @@ router.use("/api/meetings/:meetingId/attachments", attachmentRoutes);
 router.use("/api/meetings/:meetingId/minutes-approval", minutesApprovalRoutes);
 router.use("/api/meeting-series", meetingSeriesRoutes);
 router.use("/api/meeting-series", carryForwardRoutes);
+router.use("/api", carryForwardRoutes);
 router.use("/api/comparison", comparisonRoutes);
 router.use("/api/dashboard", dashboardRoutes);
 router.use("/api/digest-preferences", digestRoutes);
