@@ -11,7 +11,6 @@ const localStorage = {
     this.store[key] = value;
   },
 };
-
 class ConflictScanManager {
   constructor() {
     this.scheduledJobs = new Map();
@@ -267,7 +266,7 @@ class ConflictScanManager {
     return counts;
   }
 
-  async executeConflictScan(options) {
+  async executeConflictScan(_options) {
     // Integrate with your existing ConflictResolution.jsx logic
     // This should call your actual conflict detection logic
 
