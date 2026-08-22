@@ -36,6 +36,7 @@ import JobsDashboard from "../components/admin/JobsDashboard.jsx";
 import EmbeddingReindexAdmin from "../components/admin/EmbeddingReindexAdmin.jsx";
 import MembershipRequests from "../components/organization/MembershipRequests.jsx";
 import AppContent from "../context/AppContent.js";
+import { fetchPlatformStatus } from "../services/statusApi.js";
 import {
   organizationApi,
   meetingApi,
@@ -167,6 +168,29 @@ const AdminPanel = () => {
   const [activeModule, setActiveModule] = useState(initialModule);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const sidebarRef = useRef(null);
+  const [redisDegraded, setRedisDegraded] = useState(false);
+
+  useEffect(() => {
+    const checkRedisStatus = async () => {
+      try {
+        const res = await fetchPlatformStatus();
+        if (res.ok && res.data?.services) {
+          const redisService = res.data.services.find((s) => s.id === "redis");
+          if (
+            redisService &&
+            (redisService.status === "degraded" ||
+              redisService.status === "outage" ||
+              redisService.status === "unknown")
+          ) {
+            setRedisDegraded(true);
+          }
+        }
+      } catch (err) {
+        console.error("Failed to fetch status for Redis check", err);
+      }
+    };
+    checkRedisStatus();
+  }, []);
 
   // Overview Data
   const [loadingOverview, setLoadingOverview] = useState(true);
@@ -465,6 +489,28 @@ const AdminPanel = () => {
 
         {/* Main content */}
         <div className="flex-1 min-w-0 px-4 sm:px-6 lg:px-8 py-6">
+          {redisDegraded && (
+            <div className="mb-6 p-4 bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-900/40 text-amber-800 dark:text-amber-300 text-sm rounded-2xl flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 shadow-xs">
+              <div className="flex items-start gap-3">
+                <span className="text-lg">⚠️</span>
+                <div>
+                  <strong className="font-bold">
+                    Redis Cache & Real-Time Support is Degraded:
+                  </strong>{" "}
+                  Rate limiting fallback is active and real-time features may
+                  experience lag or cache misses.
+                </div>
+              </div>
+              <a
+                href="https://docs.meetonmemory.com/redis-setup"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-xs font-bold text-amber-700 hover:text-amber-800 dark:text-amber-400 dark:hover:text-amber-300 underline shrink-0 whitespace-nowrap"
+              >
+                Enable Redis in Docs →
+              </a>
+            </div>
+          )}
           <div className="flex items-start gap-3 mb-6">
             <button
               type="button"

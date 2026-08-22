@@ -260,11 +260,11 @@ apiClient.interceptors.response.use(
         case 404:
           friendlyMessage = "The requested resource was not found.";
           break;
-        // 429 deliberately has no case here. It falls through to the default
-        // branch, which prefers the backend's own message — and the server
-        // always sends one, which is more specific than anything hardcoded
-        // here ("You can only request a data export once every 24 hours."
-        // rather than a generic "too many requests").
+        case 429:
+          friendlyMessage =
+            error.response.data?.message ||
+            "Too many requests. Temporary rate limiting is active to protect the service. Please retry in a moment.";
+          break;
         case 500:
         case 502:
         case 503:

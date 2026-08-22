@@ -492,6 +492,26 @@ const Status = () => {
                       {service.message}
                     </p>
                   )}
+                  {service.id === "redis" &&
+                    service.status !== "operational" && (
+                      <div className="mt-3 p-3 bg-amber-50 dark:bg-amber-950/20 border border-amber-100 dark:border-amber-900/30 rounded-xl text-xs text-amber-800 dark:text-amber-300">
+                        <p className="font-bold">Service Impact:</p>
+                        <p className="mt-0.5 leading-relaxed">
+                          With Redis unavailable, rate-limiting is handled
+                          in-memory and real-time document synchronization
+                          fallback mode is active. Administrators can configure
+                          Redis to restore optimal caching and performance.
+                        </p>
+                        <a
+                          href="https://docs.meetonmemory.com/redis-setup"
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-block mt-2 font-bold text-amber-700 hover:text-amber-800 dark:text-amber-400 dark:hover:text-amber-300 underline"
+                        >
+                          Learn how to enable Redis →
+                        </a>
+                      </div>
+                    )}
                 </div>
               );
             })}
