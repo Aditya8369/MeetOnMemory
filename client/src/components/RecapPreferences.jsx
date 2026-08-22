@@ -26,15 +26,6 @@ const RecapPreferences = () => {
   const [previewHtml, setPreviewHtml] = useState("");
   const [isPreviewOpen, setIsPreviewOpen] = useState(false);
 
-  const formatHour = (hour) => {
-    if (hour === 0) return "12:00 AM";
-    if (hour < 12) return `${hour}:00 AM`;
-    if (hour === 12) return "12:00 PM";
-    return `${hour - 12}:00 PM`;
-  };
-
-  const hoursOptions = Array.from({ length: 24 }, (_, i) => i);
-
   const quietHoursError = (() => {
     const { quietHoursStart: start, quietHoursEnd: end } = preferences;
     if ((start === "" && end !== "") || (start !== "" && end === "")) {

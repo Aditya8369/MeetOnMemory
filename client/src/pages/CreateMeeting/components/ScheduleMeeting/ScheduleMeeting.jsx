@@ -44,6 +44,9 @@ const ScheduleMeeting = ({ hookProps, loadingDuplicate = false }) => {
     customFields,
     setCustomFields,
     userData,
+    actionItemTemplates,
+    selectedActionItemTemplateId,
+    setSelectedActionItemTemplateId,
   } = hookProps;
 
   return (
@@ -132,8 +135,34 @@ const ScheduleMeeting = ({ hookProps, loadingDuplicate = false }) => {
               ))}
             </select>
             <p className="text-xs text-indigo-700 dark:text-indigo-400 mt-2">
-              Custom instructions allow you to dictate exactly how the AI will
+              custom instructions allow you to dictate exactly how the AI will
               write the MoM (e.g. Sales BANT, Sprint Retro).
+            </p>
+          </div>
+        )}
+
+        {actionItemTemplates && actionItemTemplates.length > 0 && (
+          <div className="mb-6 bg-emerald-50/50 dark:bg-emerald-950/30 p-4 rounded-xl border border-emerald-100 dark:border-emerald-900/50">
+            <label className="flex items-center gap-2 text-sm font-semibold text-emerald-900 dark:text-emerald-300 mb-2">
+              <FileText size={16} /> Action Item Template
+            </label>
+            <select
+              value={selectedActionItemTemplateId || ""}
+              onChange={(e) => setSelectedActionItemTemplateId(e.target.value)}
+              className="w-full px-4 py-2 bg-white dark:bg-slate-800 border border-emerald-200 dark:border-emerald-800 rounded-lg focus:ring-2 focus:ring-emerald-400 outline-none text-sm text-gray-700 dark:text-gray-200"
+            >
+              <option value="">
+                -- Let standard tasks generate automatically --
+              </option>
+              {actionItemTemplates.map((t) => (
+                <option key={t._id} value={t._id}>
+                  {t.name} ({t.items?.length || 0} tasks)
+                </option>
+              ))}
+            </select>
+            <p className="text-xs text-emerald-700 dark:text-emerald-400 mt-2">
+              Manually apply a specific set of standard action items for this
+              meeting.
             </p>
           </div>
         )}

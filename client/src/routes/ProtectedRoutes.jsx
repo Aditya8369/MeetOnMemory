@@ -81,6 +81,7 @@ import EscalationDashboard from "../pages/EscalationDashboard.jsx";
 import Glossary from "../pages/Glossary.jsx";
 import StandupReports from "../pages/StandupReports.jsx";
 import SlaCompliance from "../pages/SlaCompliance.jsx";
+import ActionItemTemplates from "../pages/ActionItemTemplates.jsx";
 
 const ProtectedRoutes = (
   <React.Fragment>
@@ -575,6 +576,14 @@ const ProtectedRoutes = (
       element={
         <ProtectedRoute resource="reports" action="view">
           <SlaCompliance />
+        </ProtectedRoute>
+      }
+    />
+    <Route
+      path="/action-item-templates"
+      element={
+        <ProtectedRoute resource="reports" action="view">
+          <ActionItemTemplates />
         </ProtectedRoute>
       }
     />
