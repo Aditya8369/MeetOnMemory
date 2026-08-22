@@ -15,6 +15,7 @@ import { Loader2, CheckCircle2 } from "lucide-react";
 import CollaborativeEditor from "../components/meetings/CollaborativeEditor.jsx";
 import ParkingLotPanel from "../components/meetings/ParkingLotPanel.jsx";
 import BreakoutRoomPanel from "../components/meeting-room/BreakoutRoomPanel.jsx";
+import PollSection from "../components/meeting-details/PollSection.jsx";
 import PeerVideo from "../components/meetings/PeerVideo.jsx";
 import MeetingHeader from "../components/meetings/MeetingHeader.jsx";
 import MeetingControlBar from "../components/meetings/MeetingControlBar.jsx";
@@ -58,6 +59,7 @@ const MEETING_ROOM_PANELS = {
   PARKING_LOT: "parkingLot",
   TRANSCRIPT: "transcript",
   BREAKOUT_ROOMS: "breakoutRooms",
+  POLLS: "polls",
 };
 
 const MeetingRoom = () => {
@@ -111,6 +113,7 @@ const MeetingRoom = () => {
   const showParkingLot = activePanel === MEETING_ROOM_PANELS.PARKING_LOT;
   const showTranscript = activePanel === MEETING_ROOM_PANELS.TRANSCRIPT;
   const showBreakoutRooms = activePanel === MEETING_ROOM_PANELS.BREAKOUT_ROOMS;
+  const showPolls = activePanel === MEETING_ROOM_PANELS.POLLS;
 
   // Transcription state
   const [showCaptions] = useState(true);
@@ -700,6 +703,19 @@ const MeetingRoom = () => {
                   }
                   currentUserId={userData?._id || userId}
                   socket={socketRef?.current || socket}
+                />
+              </div>
+            )}
+
+            {showPolls && (
+              <div
+                data-testid="meeting-room-polls-panel"
+                className="w-full md:w-[360px] lg:w-[400px] shrink-0 p-4 bg-gray-950 border-l border-gray-800 overflow-y-auto flex flex-col transition-all duration-300"
+              >
+                <PollSection
+                  meetingId={roomId}
+                  socket={socketRef?.current || socket}
+                  title="Live Polls"
                 />
               </div>
             )}

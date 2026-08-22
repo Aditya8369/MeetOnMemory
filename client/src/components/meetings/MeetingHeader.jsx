@@ -9,6 +9,7 @@ import {
   FileText,
   Lightbulb,
   DoorOpen,
+  BarChart3,
 } from "lucide-react";
 
 export default function MeetingHeader({
@@ -32,6 +33,7 @@ export default function MeetingHeader({
   const isParkingLotOpen = activePanel === "parkingLot";
   const isTranscriptOpen = activePanel === "transcript";
   const isBreakoutRoomsOpen = activePanel === "breakoutRooms";
+  const isPollsOpen = activePanel === "polls";
 
   return (
     <header
@@ -120,6 +122,24 @@ export default function MeetingHeader({
           <DoorOpen size={16} />
           <span className="hidden sm:inline">
             {isBreakoutRoomsOpen ? "Hide Breakout" : "Breakout"}
+          </span>
+        </button>
+
+        {/* Polls Toggle */}
+        <button
+          type="button"
+          onClick={() => onTogglePanel("polls")}
+          aria-pressed={isPollsOpen}
+          className={`flex items-center gap-1.5 text-sm font-semibold px-4 py-2 rounded-xl transition-all cursor-pointer ${
+            isPollsOpen
+              ? "bg-indigo-600 text-white hover:bg-indigo-700"
+              : "bg-gray-800 text-gray-300 hover:text-white hover:bg-gray-700"
+          }`}
+          title={isPollsOpen ? "Hide live polls" : "Open live polls"}
+        >
+          <BarChart3 size={16} />
+          <span className="hidden sm:inline">
+            {isPollsOpen ? "Hide Polls" : "Polls"}
           </span>
         </button>
 
