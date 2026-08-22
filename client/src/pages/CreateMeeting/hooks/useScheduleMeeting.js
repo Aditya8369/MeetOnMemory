@@ -297,6 +297,38 @@ export const useScheduleMeeting = ({
     setParticipants(participants.filter((p) => p.id !== id));
   };
 
+  const importParticipants = (rows) => {
+    if (!Array.isArray(rows) || rows.length === 0) return;
+    const existing = new Set(
+      participants.map((p) =>
+        String(p.email || "")
+          .trim()
+          .toLowerCase(),
+      ),
+    );
+    const toAdd = [];
+    for (const row of rows) {
+      const email = String(row.email || "").trim();
+      const key = email.toLowerCase();
+      if (!email || existing.has(key)) continue;
+      existing.add(key);
+      toAdd.push({
+        id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+        name: String(row.name || "").trim(),
+        email,
+        role: String(row.role || "").trim(),
+      });
+    }
+    if (toAdd.length === 0) {
+      toast.info("No new participants to import.");
+      return;
+    }
+    setParticipants((prev) => [...prev, ...toAdd]);
+    toast.success(
+      `Imported ${toAdd.length} participant${toAdd.length === 1 ? "" : "s"} from CSV`,
+    );
+  };
+
   const addAgendaItem = () => {
     if (newAgenda.trim()) {
       setAgendaItems((current) =>
@@ -562,6 +594,7 @@ export const useScheduleMeeting = ({
     handleScheduleChange,
     addParticipant,
     removeParticipant,
+    importParticipants,
     addAgendaItem,
     removeAgendaItem,
     reorderAgendaItem,
