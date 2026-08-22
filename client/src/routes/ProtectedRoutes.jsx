@@ -77,6 +77,7 @@ import FollowUpDashboard from "../pages/FollowUpDashboard.jsx";
 import EscalationDashboard from "../pages/EscalationDashboard.jsx";
 import Glossary from "../pages/Glossary.jsx";
 import StandupReports from "../pages/StandupReports.jsx";
+import SlaCompliance from "../pages/SlaCompliance.jsx";
 
 const ProtectedRoutes = (
   <React.Fragment>
@@ -547,6 +548,14 @@ const ProtectedRoutes = (
       element={
         <ProtectedRoute resource="policies" action="view">
           <PolicyCompliance />
+        </ProtectedRoute>
+      }
+    />
+    <Route
+      path="/sla-compliance"
+      element={
+        <ProtectedRoute resource="reports" action="view">
+          <SlaCompliance />
         </ProtectedRoute>
       }
     />

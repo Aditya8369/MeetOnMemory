@@ -59,7 +59,6 @@ import {
   FlipHorizontal,
   FlipVertical,
   Contrast,
-  Brightness,
   Sliders,
   Palette,
   Crop,
@@ -139,11 +138,8 @@ import {
   Cloudy,
   Thermometer,
   Activity,
-  Pulse,
   HeartPulse,
   Brain,
-  CpuChip,
-  Memory,
   MonitorSmartphone,
   TabletSmartphone,
   LaptopMinimal,
@@ -166,12 +162,8 @@ import {
   CloudHail,
   CloudFog,
   CloudDrizzle,
-  CloudSnowflake,
   CloudSunRain,
   CloudMoonRain,
-  CloudLightningRain,
-  CloudSnowRain,
-  CloudFogRain,
 } from "lucide-react";
 import Navbar from "../components/Navbar.jsx";
 import AppContent from "../context/AppContent";
@@ -184,6 +176,7 @@ import GitHubConnectPanel from "../components/integrations/GitHubConnectPanel.js
 import IssueTrackerConfig from "../components/integrations/IssueTrackerConfig.jsx";
 import OrgCustomFieldsSection from "../components/organization/OrgCustomFieldsSection.jsx";
 import CostConfigSettings from "../components/organization/CostConfigSettings.jsx";
+import SlaConfigPanel from "../components/organization/SlaConfigPanel.jsx";
 
 // Image editor component
 const ImageEditor = ({ imageUrl, onSave, onCancel, onClose }) => {
@@ -2257,6 +2250,7 @@ const OrganizationSettings = () => {
         {canEdit && metadata._id ? (
           <div className="mt-8 space-y-8">
             <OrgCustomFieldsSection orgId={metadata._id} />
+            <SlaConfigPanel organizationId={metadata._id} />
             <CostConfigSettings canEdit={canEdit} />
           </div>
         ) : (
