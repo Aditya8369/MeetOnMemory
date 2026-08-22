@@ -174,6 +174,20 @@ class CarryForwardService {
 
     await currentMeeting.save();
 
+    // Log the execution run to configuration history
+    const carryForwardConfig = await CarryForwardConfig.findOne({ seriesId });
+    if (carryForwardConfig) {
+      if (!carryForwardConfig.history) {
+        carryForwardConfig.history = [];
+      }
+      carryForwardConfig.history.push({
+        executedAt: new Date(),
+        targetMeetingTitle: currentMeeting.title,
+        itemsCount: itemsToPrepend.length,
+      });
+      await carryForwardConfig.save();
+    }
+
     return {
       success: true,
       message: `Carried forward ${itemsToPrepend.length} items.`,
