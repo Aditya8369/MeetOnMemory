@@ -35,3 +35,4 @@ export { default as bulkMeetingApi } from "./bulkMeetingApi";
 export { favoriteApi } from "./favoriteApi";
 export * from "./agendaBuilderApi";
 export { default as highlightReelApi } from "./highlightReelApi.js";
+export * from "./adminHealthApi";

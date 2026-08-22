@@ -50,6 +50,7 @@ import Settings from "../pages/Settings.jsx";
 import MembershipRequests from "../pages/MembershipRequests.jsx";
 import MembersManagement from "../pages/Admin/MembersManagement.jsx";
 import AuditLogViewer from "../pages/Admin/AuditLogViewer.jsx";
+import AdminHealth from "../pages/Admin/AdminHealth.jsx";
 import AdminPanel from "../pages/AdminPanel.jsx";
 import Bookmarks from "../pages/Bookmarks.jsx";
 import ActivityFeed from "../pages/ActivityFeed.jsx";
@@ -196,6 +197,18 @@ const ProtectedRoutes = (
       element={
         <ProtectedRoute resource="audit_logs" action="view">
           <AuditLogViewer />
+        </ProtectedRoute>
+      }
+    />
+    <Route
+      path="/admin/health"
+      element={
+        <ProtectedRoute
+          resource="admin_panel"
+          action="view"
+          forbiddenFallback={<AccessDenied />}
+        >
+          <AdminHealth />
         </ProtectedRoute>
       }
     />
