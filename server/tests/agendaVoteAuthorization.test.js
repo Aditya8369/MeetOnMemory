@@ -60,6 +60,12 @@ describe("Agenda Vote & Auto-Sort Authorization Tests (#1667)", () => {
   let agendaItemId1;
   let agendaItemId2;
 
+  beforeAll(async () => {
+    if (mongoose.connection.readyState !== 1) {
+      await mongoose.connect(process.env.TEST_MONGODB_URI);
+    }
+  });
+
   beforeEach(async () => {
     await Meeting.deleteMany({});
     await AgendaVote.deleteMany({});

@@ -134,6 +134,7 @@ export const removeVote = async (req, res) => {
 export const getVoteTally = async (req, res) => {
   try {
     const { meetingId } = req.params;
+    const userId = req.user._id || req.user.id;
 
     const access = await resolveAccessibleMeeting(meetingId, req.user);
     if (access.error) {
@@ -143,7 +144,8 @@ export const getVoteTally = async (req, res) => {
     }
 
     const tally = await agendaVoteService.getVoteTally(meetingId);
-    res.status(200).json({ tally });
+    const userVotes = await agendaVoteService.getUserVotes(meetingId, userId);
+    res.status(200).json({ tally, userVotes });
   } catch (error) {
     console.error("Error fetching vote tally:", error);
     res.status(500).json({ error: "Failed to fetch vote tally" });
