@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from "react";
+import { Link } from "react-router-dom";
 import { toast } from "react-toastify";
 import apiClient from "../services/apiClient";
 import Navbar from "../components/Navbar.jsx";
@@ -45,6 +46,12 @@ const Leaderboard = () => {
           <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6 border border-gray-100 dark:border-gray-700 w-full text-center text-gray-900 dark:text-gray-100">
             No leaderboard data available.
           </div>
+          <Link
+            to="/badges"
+            className="mt-4 text-sm font-medium text-blue-600 hover:text-blue-800 dark:text-blue-400"
+          >
+            Browse badges gallery
+          </Link>
         </div>
       </div>
     );
@@ -55,9 +62,17 @@ const Leaderboard = () => {
       <Navbar />
       <div className="max-w-4xl mx-auto w-full pt-24 pb-20 px-4 sm:px-6">
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6 border border-gray-100 dark:border-gray-700">
-          <h1 className="text-3xl font-bold mb-6 text-gray-900 dark:text-white text-center">
-            🏆 Meeting Hygiene Leaderboard
-          </h1>
+          <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
+            <h1 className="text-3xl font-bold text-gray-900 dark:text-white text-center sm:text-left">
+              🏆 Meeting Hygiene Leaderboard
+            </h1>
+            <Link
+              to="/badges"
+              className="text-sm font-medium text-blue-600 hover:text-blue-800 dark:text-blue-400"
+            >
+              Browse badges gallery
+            </Link>
+          </div>
 
           <div className="bg-gray-50 dark:bg-gray-700 rounded-lg p-6">
             <h2 className="text-xl font-semibold mb-4 text-gray-800 dark:text-gray-200">
@@ -86,8 +101,16 @@ const Leaderboard = () => {
                       {score.user.name}
                     </span>
                   </div>
-                  <div className="text-xl font-bold text-blue-600 dark:text-blue-400">
-                    {score.totalPoints} pts
+                  <div className="flex flex-col items-end gap-1">
+                    <div className="text-xl font-bold text-blue-600 dark:text-blue-400">
+                      {score.totalPoints} pts
+                    </div>
+                    <Link
+                      to="/badges"
+                      className="text-xs font-medium text-blue-600 hover:underline dark:text-blue-400"
+                    >
+                      View badges
+                    </Link>
                   </div>
                 </li>
               ))}
