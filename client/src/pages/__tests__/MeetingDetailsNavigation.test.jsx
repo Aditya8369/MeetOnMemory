@@ -34,6 +34,12 @@ vi.mock("../../components/summaries/RecapStoryViewer.jsx", () => ({
   default: () => null,
 }));
 
+vi.mock("../../components/meeting-details/PollSection.jsx", () => ({
+  default: ({ meetingId }) => (
+    <div data-testid="poll-section">Polls for {meetingId}</div>
+  ),
+}));
+
 vi.mock("../../services", () => ({
   meetingApi: {
     getMeetingById: vi.fn(),

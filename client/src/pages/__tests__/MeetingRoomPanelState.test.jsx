@@ -95,6 +95,18 @@ vi.mock("../../components/meetings/ParkingLotPanel.jsx", () => ({
   default: () => <div data-testid="parking-lot-content">Parking Lot Panel</div>,
 }));
 
+vi.mock("../../components/meeting-details/PollSection.jsx", () => ({
+  default: ({ meetingId, title, socket }) => (
+    <div
+      data-testid="poll-section"
+      data-meeting-id={meetingId}
+      data-has-socket={socket ? "yes" : "no"}
+    >
+      {title}
+    </div>
+  ),
+}));
+
 vi.mock("../../components/meetings/LiveCaptions.jsx", () => ({
   default: () => <div data-testid="captions">Captions</div>,
 }));
@@ -230,16 +242,20 @@ describe("MeetingRoom exclusive panel state (#1648)", () => {
     fireEvent.click(screen.getByRole("button", { name: /^notes$/i }));
     fireEvent.click(screen.getByRole("button", { name: /parking lot/i }));
     fireEvent.click(screen.getByRole("button", { name: /transcript/i }));
+    fireEvent.click(screen.getByRole("button", { name: /^polls$/i }));
 
     const visiblePanels = [
       screen.queryByTestId("meeting-room-notes-panel"),
       screen.queryByTestId("meeting-room-parking-lot-panel"),
       screen.queryByTestId("meeting-room-transcript-panel"),
+      screen.queryByTestId("meeting-room-polls-panel"),
     ].filter(Boolean);
 
     expect(visiblePanels).toHaveLength(1);
-    expect(
-      screen.getByTestId("meeting-room-transcript-panel"),
-    ).toBeInTheDocument();
+    expect(screen.getByTestId("meeting-room-polls-panel")).toBeInTheDocument();
+    const pollSection = screen.getByTestId("poll-section");
+    expect(pollSection).toHaveTextContent("Live Polls");
+    expect(pollSection).toHaveAttribute("data-meeting-id", "room-panel-123");
+    expect(pollSection).toHaveAttribute("data-has-socket", "yes");
   });
 });

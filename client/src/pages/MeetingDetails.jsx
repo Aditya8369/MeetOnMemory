@@ -35,6 +35,7 @@ import { getBriefing } from "../services/briefingApi";
 import GuestAccessManager from "../components/meetings/GuestAccessManager";
 import MeetingReadiness from "../components/MeetingReadiness";
 import FollowUpThreads from "../components/meeting-details/FollowUpThreads";
+import PollSection from "../components/meeting-details/PollSection";
 import MeetingRisksPanel from "../components/meetings/MeetingRisksPanel";
 import { Award } from "lucide-react";
 
@@ -374,6 +375,10 @@ const MeetingDetails = () => {
 
           <div className="mt-6 mb-6">
             <FollowUpThreads meetingId={meeting._id} />
+          </div>
+
+          <div className="mt-6 mb-6">
+            <PollSection meetingId={meeting._id} title="Polls" />
           </div>
 
           <div className="mt-6 mb-6">

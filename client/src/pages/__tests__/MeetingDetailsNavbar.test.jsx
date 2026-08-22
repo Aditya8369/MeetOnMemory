@@ -106,6 +106,11 @@ vi.mock("../../components/meetings/AgendaBuilder", () => ({
 vi.mock("../../components/meetings/GuestAccessManager", () => ({
   default: () => null,
 }));
+vi.mock("../../components/meeting-details/PollSection", () => ({
+  default: ({ meetingId }) => (
+    <div data-testid="poll-section">Polls for {meetingId}</div>
+  ),
+}));
 
 import { meetingApi } from "../../services";
 
@@ -152,6 +157,9 @@ describe("MeetingDetails Navbar Integration (#1637)", () => {
     expect(await screen.findByTestId("app-navbar")).toBeInTheDocument();
     expect(screen.getByTestId("meeting-header")).toHaveTextContent(
       "Quarterly Planning",
+    );
+    expect(screen.getByTestId("poll-section")).toHaveTextContent(
+      "Polls for 123",
     );
   });
 
