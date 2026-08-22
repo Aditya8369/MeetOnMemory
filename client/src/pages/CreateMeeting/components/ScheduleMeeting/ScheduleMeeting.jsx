@@ -26,6 +26,7 @@ const ScheduleMeeting = ({ hookProps, loadingDuplicate = false }) => {
     handleScheduleChange,
     addParticipant,
     removeParticipant,
+    importParticipants,
     addAgendaItem,
     removeAgendaItem,
     reorderAgendaItem,
@@ -93,6 +94,7 @@ const ScheduleMeeting = ({ hookProps, loadingDuplicate = false }) => {
           setNewParticipant={setNewParticipant}
           addParticipant={addParticipant}
           removeParticipant={removeParticipant}
+          importParticipants={importParticipants}
         />
 
         {templates && templates.length > 0 && (
