@@ -272,5 +272,7 @@ import actionItemSlaRoutes from "./actionItemSlaRoutes.js";
 router.use("/api/action-item-sla", actionItemSlaRoutes);
 
 router.use("/api/team-availability", teamAvailabilityRoutes);
+import actionItemTemplateRoutes from "./actionItemTemplateRoutes.js";
+router.use("/api/action-item-templates", actionItemTemplateRoutes);
 
 export default router;

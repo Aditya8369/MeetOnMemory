@@ -142,6 +142,15 @@ export const initListeners = (io) => {
   on("meeting.created", async ({ meeting, membersToNotify = [] }) => {
     if (!meeting) return;
 
+    // Apply any automatic action item templates based on meetingType or series
+    try {
+      const { applyAutomaticTemplates } =
+        await import("../services/actionItemTemplateService.js");
+      await applyAutomaticTemplates(meeting._id, meeting.uploadedBy);
+    } catch (err) {
+      console.error("Failed to apply automatic action item templates:", err);
+    }
+
     // One preference query and one insert for the whole organization, instead
     // of two queries per member awaited in sequence.
     const recipients = membersToNotify

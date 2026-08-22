@@ -24,6 +24,11 @@ const BadgeNotification = () => {
           draggable: true,
           progress: undefined,
           theme: "colored",
+          onClick: () => {
+            window.location.assign(
+              badge._id ? `/badges#badge-${badge._id}` : "/badges",
+            );
+          },
         });
       });
     });

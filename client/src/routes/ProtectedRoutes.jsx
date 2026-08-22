@@ -67,6 +67,7 @@ import ConflictResolution from "../pages/ConflictResolution.jsx";
 import SpeakingTimeTrends from "../pages/SpeakingTimeTrends.jsx";
 import SpeakingTimeCompare from "../pages/SpeakingTimeCompare.jsx";
 import Leaderboard from "../pages/Leaderboard.jsx";
+import Badges from "../pages/Badges.jsx";
 import ParticipantEngagement from "../pages/ParticipantEngagement.jsx";
 import ActionItemAnalytics from "../pages/ActionItemAnalytics.jsx";
 import ActionItemsDashboard from "../pages/ActionItemsDashboard.jsx";
@@ -82,6 +83,7 @@ import Glossary from "../pages/Glossary.jsx";
 import StandupReports from "../pages/StandupReports.jsx";
 import SlaCompliance from "../pages/SlaCompliance.jsx";
 import TeamAvailability from "../pages/TeamAvailability.jsx";
+import ActionItemTemplates from "../pages/ActionItemTemplates.jsx";
 
 const ProtectedRoutes = (
   <React.Fragment>
@@ -580,6 +582,14 @@ const ProtectedRoutes = (
       }
     />
     <Route
+      path="/action-item-templates"
+      element={
+        <ProtectedRoute resource="reports" action="view">
+          <ActionItemTemplates />
+        </ProtectedRoute>
+      }
+    />
+    <Route
       path="/settings"
       element={
         <ProtectedRoute>
@@ -693,6 +703,14 @@ const ProtectedRoutes = (
       element={
         <ProtectedRoute>
           <Leaderboard />
+        </ProtectedRoute>
+      }
+    />
+    <Route
+      path="/badges"
+      element={
+        <ProtectedRoute>
+          <Badges />
         </ProtectedRoute>
       }
     />
