@@ -147,9 +147,9 @@ const Contact = () => {
             <LocationCards locations={locations} />
           </div>
 
-          {/* Right Column: Live Chat Bot & Support FAQs */}
+          {/* Right Column: Automated support bot & Support FAQs */}
           <div className="lg:col-span-5 space-y-8">
-            {/* Live Chat Simulator Box */}
+            {/* Automated support bot */}
             <LiveChatWidget
               chatInput={chatInput}
               setChatInput={setChatInput}
