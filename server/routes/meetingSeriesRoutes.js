@@ -6,6 +6,9 @@ import {
   getSeriesById,
   getSeriesMeetings,
   cancelSeries,
+  listSeries,
+  pauseSeries,
+  resumeSeries,
 } from "../controllers/meetingSeriesController.js";
 import seriesRetrospectiveRoutes from "./seriesRetrospectiveRoutes.js";
 import {
@@ -23,6 +26,9 @@ router.use(requireOrgMembership);
 
 router.post("/", requirePermission("meetings", "create"), createSeries);
 
+// Static collection route must precede "/:id" (Issue #2036).
+router.get("/", requirePermission("meetings", "view"), listSeries);
+
 router.get("/:id", requirePermission("meetings", "view"), getSeriesById);
 
 router.get(
@@ -35,6 +41,14 @@ router.patch(
   "/:id/cancel",
   requirePermission("meetings", "edit"),
   cancelSeries,
+);
+
+router.patch("/:id/pause", requirePermission("meetings", "edit"), pauseSeries);
+
+router.patch(
+  "/:id/resume",
+  requirePermission("meetings", "edit"),
+  resumeSeries,
 );
 
 router.use(
