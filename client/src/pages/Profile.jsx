@@ -1,4 +1,5 @@
 import React, { useState, useContext, useEffect } from "react";
+import { Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import axios from "axios";
 import Navbar from "../components/Navbar.jsx";
@@ -302,28 +303,58 @@ const Profile = () => {
                 </p>
               </div>
 
-              {/* Gamification section */}
+              {/* Gamification section — top badge showcase (#2066) */}
               {gamificationData && (
                 <div className="pt-6 border-t border-slate-100 dark:border-slate-800 space-y-4">
-                  <div className="text-[11px] text-slate-400 dark:text-slate-500 font-bold uppercase tracking-wider">
-                    {t("profile.trophyCase")}
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="text-[11px] text-slate-400 dark:text-slate-500 font-bold uppercase tracking-wider">
+                      {t("profile.trophyCase")}
+                    </div>
+                    <Link
+                      to="/badges"
+                      className="text-xs font-medium text-blue-600 hover:text-blue-800 dark:text-blue-400"
+                    >
+                      View all badges
+                    </Link>
                   </div>
                   <div className="flex items-center gap-4">
                     <div className="bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 px-4 py-2 rounded-lg font-bold">
                       {gamificationData.totalPoints} {t("profile.points")}
                     </div>
                   </div>
-                  {gamificationData.unlockedBadges?.length > 0 && (
+                  {gamificationData.unlockedBadges?.length > 0 ? (
                     <div className="flex flex-wrap gap-2 mt-2">
-                      {gamificationData.unlockedBadges.map((ub, idx) => (
-                        <div
-                          key={idx}
-                          className="bg-yellow-100 dark:bg-yellow-900/30 text-yellow-800 dark:text-yellow-200 text-xs px-3 py-1 rounded-full font-medium flex items-center gap-1 border border-yellow-200 dark:border-yellow-700/50"
-                        >
-                          🏅 {ub.badge?.name || t("profile.badge")}
-                        </div>
-                      ))}
+                      {[...gamificationData.unlockedBadges]
+                        .sort(
+                          (a, b) =>
+                            new Date(b.unlockedAt || 0) -
+                            new Date(a.unlockedAt || 0),
+                        )
+                        .slice(0, 3)
+                        .map((ub, idx) => (
+                          <Link
+                            key={ub.badge?._id || idx}
+                            to={
+                              ub.badge?._id
+                                ? `/badges#badge-${ub.badge._id}`
+                                : "/badges"
+                            }
+                            className="bg-yellow-100 dark:bg-yellow-900/30 text-yellow-800 dark:text-yellow-200 text-xs px-3 py-1 rounded-full font-medium flex items-center gap-1 border border-yellow-200 dark:border-yellow-700/50 hover:ring-2 hover:ring-yellow-300/60"
+                          >
+                            🏅 {ub.badge?.name || t("profile.badge")}
+                          </Link>
+                        ))}
                     </div>
+                  ) : (
+                    <p className="text-xs text-slate-500 dark:text-slate-400">
+                      No badges yet —{" "}
+                      <Link
+                        to="/badges"
+                        className="text-blue-600 hover:underline dark:text-blue-400"
+                      >
+                        browse the gallery
+                      </Link>
+                    </p>
                   )}
                 </div>
               )}

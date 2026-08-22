@@ -67,6 +67,7 @@ import ConflictResolution from "../pages/ConflictResolution.jsx";
 import SpeakingTimeTrends from "../pages/SpeakingTimeTrends.jsx";
 import SpeakingTimeCompare from "../pages/SpeakingTimeCompare.jsx";
 import Leaderboard from "../pages/Leaderboard.jsx";
+import Badges from "../pages/Badges.jsx";
 import ParticipantEngagement from "../pages/ParticipantEngagement.jsx";
 import ActionItemAnalytics from "../pages/ActionItemAnalytics.jsx";
 import ActionItemsDashboard from "../pages/ActionItemsDashboard.jsx";
@@ -692,6 +693,14 @@ const ProtectedRoutes = (
       element={
         <ProtectedRoute>
           <Leaderboard />
+        </ProtectedRoute>
+      }
+    />
+    <Route
+      path="/badges"
+      element={
+        <ProtectedRoute>
+          <Badges />
         </ProtectedRoute>
       }
     />
