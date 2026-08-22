@@ -22,6 +22,13 @@ const recapScheduleSchema = new mongoose.Schema(
       enum: ["email", "webhook", "in_app"],
       default: "in_app",
     },
+    /** Required when deliveryChannel is webhook (Issue #2069). */
+    webhookUrl: {
+      type: String,
+      default: null,
+      maxlength: 2048,
+      trim: true,
+    },
     preferredTime: {
       type: String,
       default: "09:00",
