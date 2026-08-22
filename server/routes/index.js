@@ -95,6 +95,7 @@ import gamificationRoutes from "./gamificationRoutes.js";
 import actionItemsRoutes from "./actionItems.routes.js";
 import workloadRoutes from "./workloadRoutes.js";
 import minutesApprovalRoutes from "./minutesApprovalRoutes.js";
+import teamAvailabilityRoutes from "./teamAvailabilityRoutes.js";
 
 const router = express.Router();
 
@@ -269,5 +270,7 @@ router.use("/api/meeting-risks", meetingRiskRoutes);
 
 import actionItemSlaRoutes from "./actionItemSlaRoutes.js";
 router.use("/api/action-item-sla", actionItemSlaRoutes);
+
+router.use("/api/team-availability", teamAvailabilityRoutes);
 
 export default router;

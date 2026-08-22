@@ -21,6 +21,7 @@ const SharedQuietHours = ({ onQuietHoursChange }) => {
 
   useEffect(() => {
     fetchQuietHours();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const fetchQuietHours = async () => {
