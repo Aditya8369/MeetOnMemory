@@ -1,7 +1,7 @@
 import cron from "node-cron";
 import ActionItem from "../models/actionItemModel.js";
 import Meeting from "../models/meetingModel.js";
-import emailService from "./emailService.js";
+import EmailService from "./EmailService.js";
 import { createNotification } from "./notificationService.js";
 import { checkQuietHours } from "../utils/quietHours.js";
 
@@ -207,16 +207,17 @@ class ReminderScheduler {
           },
         });
 
-        await emailService.send({
+        await EmailService.sendMail({
+          from: process.env.SENDER_EMAIL || "no-reply@meetonmemory.com",
           to: recipient.email,
           subject,
-          template: "meetingReminder",
-          data: {
-            userName: recipient.name,
-            meetingTitle,
-            reminderMinutes,
-            meetingDate: meetingDateTime,
-          },
+          html: `
+            <div style="font-family: sans-serif; padding: 20px; color: #333;">
+              <p>Hi ${recipient.name || "there"},</p>
+              <p>Your meeting <strong>${meetingTitle}</strong> starts in ${reminderMinutes} minutes.</p>
+              <p><strong>When:</strong> ${meetingDateTime.toLocaleString()}</p>
+            </div>
+          `,
         });
       } catch (error) {
         console.error(
@@ -339,15 +340,17 @@ class ReminderScheduler {
       title: subjectMap[type],
     });
 
-    await emailService.send({
+    await EmailService.sendMail({
+      from: process.env.SENDER_EMAIL || "no-reply@meetonmemory.com",
       to: item.assignee.email,
       subject: subjectMap[type],
-      template: "actionItemReminder",
-      data: {
-        userName: item.assignee.name,
-        taskTitle,
-        type,
-      },
+      html: `
+        <div style="font-family: sans-serif; padding: 20px; color: #333;">
+          <p>Hi ${item.assignee.name || "there"},</p>
+          <p>${subjectMap[type]}</p>
+          <p>Task: <strong>${taskTitle}</strong></p>
+        </div>
+      `,
     });
 
     await ActionItem.updateOne(

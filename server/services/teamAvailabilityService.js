@@ -108,7 +108,6 @@ class TeamAvailabilityService {
       if (!meeting.duration || meeting.duration <= 0) return;
 
       const mDate = new Date(meeting.date);
-      const mDateStr = mDate.toISOString().split("T")[0];
 
       // Basic time parsing assuming time is "HH:mm" and matches date (UTC)
       let startHour = mDate.getUTCHours();

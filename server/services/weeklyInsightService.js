@@ -2,7 +2,6 @@ import Meeting from "../models/meetingModel.js";
 import ActionItem from "../models/actionItemModel.js";
 import WeeklyInsight from "../models/weeklyInsightModel.js";
 import { generateText, parseJsonOutput } from "./GenerativeAIService.js";
-import { NotFoundError } from "../utils/errors.js";
 
 /**
  * Generates a weekly insight for a given organization.

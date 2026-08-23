@@ -1,27 +1,51 @@
 import React, { useState, useMemo } from "react";
 import {
-  Brain, Filter, RotateCcw, Download, Users, Clock,
-  CheckCircle, DollarSign, Zap, BarChart3, TrendingUp,
-  AlertTriangle, Sparkles, ChevronDown,
+  Brain,
+  Filter,
+  RotateCcw,
+  Download,
+  Users,
+  Clock,
+  CheckCircle,
+  DollarSign,
+  Zap,
+  BarChart3,
+  TrendingUp,
+  AlertTriangle,
+  Sparkles,
+  ChevronDown,
 } from "lucide-react";
 import {
-  InsightCategory, CATEGORY_CONFIG, TrendDirection,
+  InsightCategory,
+  CATEGORY_CONFIG,
+  TrendDirection,
 } from "./meetingInsightsTypes";
 import {
-  generateMockInsights, generateMockAttendanceTrend,
-  generateMockEngagementData, generateMockMeetingTypeBreakdown,
-  generateMockWeeklyMetrics, generateMockSentimentTimeline,
-  generateMockActionItemStats, generateMockMeetingEfficiency,
+  generateMockInsights,
+  generateMockAttendanceTrend,
+  generateMockEngagementData,
+  generateMockMeetingTypeBreakdown,
+  generateMockWeeklyMetrics,
+  generateMockSentimentTimeline,
+  generateMockActionItemStats,
+  generateMockMeetingEfficiency,
   generateMockStats,
 } from "./meetingInsightsData";
 import {
-  MetricCard, InsightCard, MemberCard, ActionItemStatCard,
+  MetricCard,
+  InsightCard,
+  MemberCard,
+  ActionItemStatCard,
 } from "./MeetingInsightCards";
 import {
-  AttendanceTrendChart, MeetingTypeBreakdownChart,
-  SentimentTimelineChart, WeeklyMetricsChart,
-  EngagementRadarChart, EfficiencyBarChart,
-  ActionItemsDonutChart, CostTrendChart,
+  AttendanceTrendChart,
+  MeetingTypeBreakdownChart,
+  SentimentTimelineChart,
+  WeeklyMetricsChart,
+  EngagementRadarChart,
+  EfficiencyBarChart,
+  ActionItemsDonutChart,
+  CostTrendChart,
 } from "./MeetingInsightCharts";
 
 const TABS = [
@@ -36,7 +60,7 @@ const TABS = [
 const MeetingInsightsDashboard = () => {
   const [activeTab, setActiveTab] = useState("overview");
   const [selectedCategory, setSelectedCategory] = useState("all");
-  const [selectedTimeRange, setSelectedTimeRange] = useState("month");
+  const [, setSelectedTimeRange] = useState("month");
 
   // Generate data
   const stats = useMemo(() => generateMockStats(), []);
@@ -45,14 +69,18 @@ const MeetingInsightsDashboard = () => {
   const engagementData = useMemo(() => generateMockEngagementData(), []);
   const meetingTypes = useMemo(() => generateMockMeetingTypeBreakdown(), []);
   const weeklyMetrics = useMemo(() => generateMockWeeklyMetrics(8), []);
-  const sentimentTimeline = useMemo(() => generateMockSentimentTimeline(30), []);
+  const sentimentTimeline = useMemo(
+    () => generateMockSentimentTimeline(30),
+    [],
+  );
   const actionStats = useMemo(() => generateMockActionItemStats(), []);
   const efficiencyData = useMemo(() => generateMockMeetingEfficiency(), []);
 
   // Filter insights
   const filteredInsights = useMemo(() => {
     return insights.filter((insight) => {
-      if (selectedCategory !== "all" && insight.category !== selectedCategory) return false;
+      if (selectedCategory !== "all" && insight.category !== selectedCategory)
+        return false;
       return true;
     });
   }, [insights, selectedCategory]);
@@ -97,12 +125,48 @@ const MeetingInsightsDashboard = () => {
 
         {/* Stats Row */}
         <section className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 mb-6 sm:mb-8">
-          <MetricCard icon={BarChart3} label="Total Meetings" value={stats.totalMeetings} subtitle="this month" color="#22c55e" />
-          <MetricCard icon={Clock} label="Total Hours" value={`${stats.totalHours.toFixed(0)}h`} subtitle="in meetings" color="#0ea5e9" />
-          <MetricCard icon={CheckCircle} label="Decisions" value={stats.totalDecisions} subtitle="made this month" color="#8b5cf6" />
-          <MetricCard icon={Users} label="Avg Attendance" value={`${stats.avgAttendance.toFixed(0)}%`} subtitle={`${stats.activeMembers} active members`} color="#f59e0b" />
-          <MetricCard icon={TrendingUp} label="Efficiency" value={`${stats.efficiencyScore}/100`} subtitle="meeting score" color="#14b8a6" />
-          <MetricCard icon={DollarSign} label="Total Cost" value={`$${(stats.totalCost / 1000).toFixed(1)}k`} subtitle="meeting investment" color="#6366f1" />
+          <MetricCard
+            icon={BarChart3}
+            label="Total Meetings"
+            value={stats.totalMeetings}
+            subtitle="this month"
+            color="#22c55e"
+          />
+          <MetricCard
+            icon={Clock}
+            label="Total Hours"
+            value={`${stats.totalHours.toFixed(0)}h`}
+            subtitle="in meetings"
+            color="#0ea5e9"
+          />
+          <MetricCard
+            icon={CheckCircle}
+            label="Decisions"
+            value={stats.totalDecisions}
+            subtitle="made this month"
+            color="#8b5cf6"
+          />
+          <MetricCard
+            icon={Users}
+            label="Avg Attendance"
+            value={`${stats.avgAttendance.toFixed(0)}%`}
+            subtitle={`${stats.activeMembers} active members`}
+            color="#f59e0b"
+          />
+          <MetricCard
+            icon={TrendingUp}
+            label="Efficiency"
+            value={`${stats.efficiencyScore}/100`}
+            subtitle="meeting score"
+            color="#14b8a6"
+          />
+          <MetricCard
+            icon={DollarSign}
+            label="Total Cost"
+            value={`$${(stats.totalCost / 1000).toFixed(1)}k`}
+            subtitle="meeting investment"
+            color="#6366f1"
+          />
         </section>
 
         {/* Tabs */}
@@ -147,7 +211,9 @@ const MeetingInsightsDashboard = () => {
             <div className="flex flex-wrap items-center gap-3 p-4 bg-white dark:bg-gray-800 rounded-xl border border-slate-200/80 dark:border-gray-700 shadow-sm">
               <div className="flex items-center gap-2">
                 <Filter className="h-4 w-4 text-slate-400" />
-                <span className="text-xs font-semibold text-slate-500">Filter:</span>
+                <span className="text-xs font-semibold text-slate-500">
+                  Filter:
+                </span>
               </div>
               <select
                 value={selectedCategory}
@@ -156,13 +222,20 @@ const MeetingInsightsDashboard = () => {
               >
                 <option value="all">All Categories</option>
                 {Object.entries(CATEGORY_CONFIG).map(([key, config]) => (
-                  <option key={key} value={key}>{config.label}</option>
+                  <option key={key} value={key}>
+                    {config.label}
+                  </option>
                 ))}
               </select>
-              <button onClick={resetFilters} className="p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-gray-700 transition">
+              <button
+                onClick={resetFilters}
+                className="p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-gray-700 transition"
+              >
                 <RotateCcw className="h-3.5 w-3.5 text-slate-400" />
               </button>
-              <span className="ml-auto text-[11px] text-slate-400">{filteredInsights.length} insights</span>
+              <span className="ml-auto text-[11px] text-slate-400">
+                {filteredInsights.length} insights
+              </span>
             </div>
 
             {/* Insight Cards */}
@@ -182,7 +255,9 @@ const MeetingInsightsDashboard = () => {
               <EfficiencyBarChart data={efficiencyData} />
             </div>
             <div>
-              <h3 className="text-sm font-semibold text-slate-900 dark:text-gray-100 mb-3">Team Members</h3>
+              <h3 className="text-sm font-semibold text-slate-900 dark:text-gray-100 mb-3">
+                Team Members
+              </h3>
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
                 {engagementData.map((member) => (
                   <MemberCard key={member.id} member={member} />
@@ -201,22 +276,43 @@ const MeetingInsightsDashboard = () => {
             <div className="lg:col-span-2">
               <ActionItemsDonutChart stats={actionStats} />
               <div className="mt-4 rounded-xl border border-slate-200/80 dark:border-gray-700 bg-white dark:bg-gray-800 p-4 shadow-sm">
-                <h3 className="text-sm font-semibold text-slate-900 dark:text-gray-100 mb-3">Priority Breakdown</h3>
-                {Object.entries(actionStats.byPriority).map(([priority, data]) => {
-                  const rate = Math.round((data.completed / data.total) * 100);
-                  const color = priority === "high" ? "#ef4444" : priority === "medium" ? "#f59e0b" : "#22c55e";
-                  return (
-                    <div key={priority} className="mb-3">
-                      <div className="flex items-center justify-between text-xs mb-1">
-                        <span className="font-semibold capitalize text-slate-700 dark:text-gray-300">{priority}</span>
-                        <span className="text-slate-500">{data.completed}/{data.total} ({rate}%)</span>
+                <h3 className="text-sm font-semibold text-slate-900 dark:text-gray-100 mb-3">
+                  Priority Breakdown
+                </h3>
+                {Object.entries(actionStats.byPriority).map(
+                  ([priority, data]) => {
+                    const rate = Math.round(
+                      (data.completed / data.total) * 100,
+                    );
+                    const color =
+                      priority === "high"
+                        ? "#ef4444"
+                        : priority === "medium"
+                          ? "#f59e0b"
+                          : "#22c55e";
+                    return (
+                      <div key={priority} className="mb-3">
+                        <div className="flex items-center justify-between text-xs mb-1">
+                          <span className="font-semibold capitalize text-slate-700 dark:text-gray-300">
+                            {priority}
+                          </span>
+                          <span className="text-slate-500">
+                            {data.completed}/{data.total} ({rate}%)
+                          </span>
+                        </div>
+                        <div className="w-full h-2 bg-slate-100 dark:bg-gray-700 rounded-full overflow-hidden">
+                          <div
+                            className="h-full rounded-full transition-all duration-500"
+                            style={{
+                              width: `${rate}%`,
+                              backgroundColor: color,
+                            }}
+                          />
+                        </div>
                       </div>
-                      <div className="w-full h-2 bg-slate-100 dark:bg-gray-700 rounded-full overflow-hidden">
-                        <div className="h-full rounded-full transition-all duration-500" style={{ width: `${rate}%`, backgroundColor: color }} />
-                      </div>
-                    </div>
-                  );
-                })}
+                    );
+                  },
+                )}
               </div>
             </div>
           </div>
@@ -236,7 +332,8 @@ const MeetingInsightsDashboard = () => {
         {/* Footer */}
         <div className="mt-8 pt-6 border-t border-slate-200 dark:border-gray-700 text-center">
           <p className="text-xs text-slate-400 dark:text-gray-500">
-            Meeting Insights Dashboard · Powered by AI Analysis · Data refreshes in real-time
+            Meeting Insights Dashboard · Powered by AI Analysis · Data refreshes
+            in real-time
           </p>
         </div>
       </div>

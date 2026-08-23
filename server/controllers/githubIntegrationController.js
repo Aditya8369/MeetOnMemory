@@ -1,7 +1,7 @@
 import GithubIntegration from "../models/githubIntegrationModel.js";
 import ActionItem from "../models/actionItemModel.js";
 import { syncActionItemToGitHub } from "../services/githubSyncService.js";
-import { encryptToken, decryptToken } from "../utils/crypto.js";
+import { encryptToken } from "../utils/crypto.js";
 import { sendSuccess, sendError } from "../utils/responseHandler.js";
 import { ValidationError } from "../utils/errors.js";
 import axios from "axios";

@@ -94,7 +94,7 @@ router.get(
         success: true,
         repositories: [],
       });
-    } catch (err) {
+    } catch (_err) {
       return res.status(500).json({
         success: false,
         message: "Internal server error fetching GitHub repositories.",

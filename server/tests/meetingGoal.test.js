@@ -215,7 +215,6 @@ describe("Meeting Goal API", () => {
 
   describe("Multi-tenant Organization Isolation", () => {
     let otherOrgId;
-    let otherOrgToken;
     let otherOrgMeeting;
 
     beforeEach(async () => {
@@ -226,15 +225,6 @@ describe("Meeting Goal API", () => {
         slug: "other-org-" + Date.now(),
         owner: new mongoose.Types.ObjectId(),
       });
-
-      otherOrgToken = jwt.sign(
-        {
-          id: new mongoose.Types.ObjectId(),
-          role: "user",
-          organization: otherOrgId,
-        },
-        process.env.JWT_SECRET,
-      );
 
       otherOrgMeeting = await Meeting.create({
         title: "Other Org Meeting",

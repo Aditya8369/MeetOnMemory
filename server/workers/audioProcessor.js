@@ -71,7 +71,7 @@ const audioWorker = new Worker(
   { connection },
 );
 
-audioWorker.on("completed", (job, returnvalue) => {
+audioWorker.on("completed", (job, _returnvalue) => {
   console.log(`[AudioWorker] Job ${job.id} has completed!`);
 });
 

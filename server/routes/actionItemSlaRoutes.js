@@ -1,7 +1,6 @@
 import express from "express";
 import actionItemSlaController from "../controllers/actionItemSlaController.js";
 import { requireAuth } from "../middleware/authMiddleware.js";
-import { checkRole } from "../middleware/roleMiddleware.js"; // if it exists, otherwise just requireAuth
 
 const router = express.Router();
 

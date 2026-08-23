@@ -1,6 +1,4 @@
-import mongoose from "mongoose";
 import ActionItem from "../models/actionItemModel.js";
-import User from "../models/userModel.js";
 import Membership from "../models/membershipModel.js";
 import GenerativeAIService from "./GenerativeAIService.js";
 import { logActivity } from "./activityService.js";

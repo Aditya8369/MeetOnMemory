@@ -2,17 +2,11 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import mongoose from "mongoose";
 import {
   calculateScore,
-  getMeetingQualityEndpoint,
   getOrganizationQualityEndpoint,
   getRecommendations,
 } from "../meetingQualityController.js";
 import Meeting from "../../models/meetingModel.js";
-import {
-  calculateMeetingQuality,
-  getMeetingQuality,
-  getOrganizationQuality,
-} from "../../services/meetingQualityService.js";
-import { generateUserRecommendations } from "../../services/recommendationEngine.js";
+import { calculateMeetingQuality } from "../../services/meetingQualityService.js";
 
 vi.mock("../../models/meetingModel.js");
 vi.mock("../../services/meetingQualityService.js");

@@ -118,7 +118,7 @@ export const evaluateEscalations = async () => {
   }
 };
 
-const executeStepAction = async (step, item, policy) => {
+const executeStepAction = async (step, item, _policy) => {
   // Determine target users to notify or reassign
   let targetUserIds = [];
 

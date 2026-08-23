@@ -21,7 +21,7 @@ import { validateRedirect } from "../../utils/validateRedirect.js";
 const CalendarSyncPanel = ({ onSyncComplete, isCompact = false }) => {
   const navigate = useNavigate();
   const [integrations, setIntegrations] = useState([]);
-  const [setLoading] = useState(true);
+  const [, setLoading] = useState(true);
   const [resyncing, setResyncing] = useState({});
 
   const fetchIntegrations = useCallback(async () => {
@@ -36,7 +36,7 @@ const CalendarSyncPanel = ({ onSyncComplete, isCompact = false }) => {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [setLoading]);
 
   useEffect(() => {
     fetchIntegrations();

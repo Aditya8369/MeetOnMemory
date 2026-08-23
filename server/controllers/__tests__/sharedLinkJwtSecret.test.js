@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import { getSharedLinkJwtSecret } from "../sharedLinkController.js";
 
 describe("Shared Link JWT Secret Configuration (#1675)", () => {

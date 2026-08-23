@@ -24,8 +24,12 @@ export const getConfig = async (req, res) => {
     }
 
     // Don't send tokens back to the client
-    const { accessToken, refreshToken, webhookSecret, ...safeData } =
-      integration.toObject();
+    const {
+      accessToken: _accessToken,
+      refreshToken: _refreshToken,
+      webhookSecret: _webhookSecret,
+      ...safeData
+    } = integration.toObject();
 
     res.status(200).json({ success: true, data: safeData });
   } catch (error) {
