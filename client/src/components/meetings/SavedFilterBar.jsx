@@ -8,6 +8,8 @@ import {
   Users,
   X,
   Pin,
+  AlertCircle,
+  RefreshCw,
 } from "lucide-react";
 import { savedFilterApi } from "../../services";
 import { toast } from "react-toastify";
@@ -22,10 +24,33 @@ const ICONS = {
 };
 
 export default function SavedFilterBar({
-  savedFilters,
+  savedFilters = [],
+  error = null,
   onApplyFilter,
   fetchFilters,
+  onRetry,
 }) {
+  if (error) {
+    return (
+      <div
+        className="flex items-center gap-2 px-4 py-2 bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-800 rounded-xl text-xs text-red-600 dark:text-red-400 mb-6 shadow-xs"
+        role="alert"
+        data-testid="saved-filter-bar-error"
+      >
+        <AlertCircle className="w-4 h-4 shrink-0" />
+        <span className="font-medium">{error}</span>
+        {onRetry && (
+          <button
+            onClick={onRetry}
+            className="ml-auto inline-flex items-center gap-1 text-xs font-bold text-red-700 dark:text-red-300 hover:underline cursor-pointer"
+          >
+            <RefreshCw className="w-3 h-3" /> Retry
+          </button>
+        )}
+      </div>
+    );
+  }
+
   if (!savedFilters || savedFilters.length === 0) {
     return null;
   }
@@ -33,7 +58,15 @@ export default function SavedFilterBar({
   const pinnedFilters = savedFilters.filter((f) => f.isPinned);
 
   if (pinnedFilters.length === 0) {
-    return null;
+    return (
+      <div className="flex items-center gap-2 mb-6 text-xs text-slate-500 dark:text-slate-400">
+        <Pin className="w-3.5 h-3.5" />
+        <span>
+          {savedFilters.length} saved view(s) available. Pin a view to access it
+          directly here.
+        </span>
+      </div>
+    );
   }
 
   const handleTogglePin = async (e, filter) => {
