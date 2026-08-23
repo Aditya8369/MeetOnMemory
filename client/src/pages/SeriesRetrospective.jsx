@@ -26,6 +26,7 @@ const SeriesRetrospective = () => {
   const { seriesId } = useParams();
   const [activeTab, setActiveTab] = useState("overview");
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState("");
   const [data, setData] = useState({
     overview: null,
     topics: null,
@@ -38,10 +39,15 @@ const SeriesRetrospective = () => {
   useEffect(() => {
     const loadData = async () => {
       setLoading(true);
+      setLoadError("");
       try {
         // Load overview immediately
         const overviewRes = await getSeriesRetrospectiveOverview(seriesId);
         setData((prev) => ({ ...prev, overview: overviewRes }));
+
+        if (overviewRes?.insufficientHistory) {
+          return;
+        }
 
         // Load others in background
         Promise.all([
@@ -66,7 +72,11 @@ const SeriesRetrospective = () => {
           });
       } catch (err) {
         console.error(err);
-        toast.error("Failed to load retrospective overview");
+        const message =
+          err?.response?.data?.message ||
+          "Failed to load retrospective overview";
+        setLoadError(message);
+        toast.error(message);
       } finally {
         setLoading(false);
       }
@@ -99,8 +109,66 @@ const SeriesRetrospective = () => {
     );
   }
 
+  if (loadError) {
+    return (
+      <div className="mx-auto max-w-3xl px-4 py-16 text-center">
+        <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
+          Could not load retrospective
+        </h1>
+        <p className="mt-2 text-sm text-gray-600 dark:text-gray-400">
+          {loadError}
+        </p>
+        <div className="mt-6 flex flex-wrap justify-center gap-3">
+          <Link
+            to="/meeting-series"
+            className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700"
+          >
+            Back to series list
+          </Link>
+          <Link
+            to="/dashboard"
+            className="rounded-lg border border-gray-300 px-4 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50 dark:border-gray-600 dark:text-gray-200"
+          >
+            Dashboard
+          </Link>
+        </div>
+      </div>
+    );
+  }
+
+  if (data.overview?.insufficientHistory) {
+    return (
+      <div className="mx-auto max-w-3xl px-4 py-16 text-center">
+        <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
+          Series Retrospective
+        </h1>
+        <p className="mt-3 text-sm text-gray-600 dark:text-gray-400">
+          {data.overview.summary ||
+            "This series does not have enough meeting history yet."}
+        </p>
+        <p className="mt-2 text-xs text-gray-500">
+          Meetings recorded: {data.overview.metricsData?.totalMeetings ?? 0}
+        </p>
+        <div className="mt-6 flex flex-wrap justify-center gap-3">
+          <Link
+            to="/meeting-series"
+            className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700"
+          >
+            Back to series list
+          </Link>
+        </div>
+      </div>
+    );
+  }
+
   const renderOverview = () => {
-    if (!data.overview) return null;
+    if (!data.overview) {
+      return (
+        <div className="rounded-lg border border-gray-200 bg-white p-6 text-sm text-gray-600">
+          No overview data available for this series.
+        </div>
+      );
+    }
     const { summary, metricsData } = data.overview;
     return (
       <div className="space-y-6">
@@ -118,7 +186,7 @@ const SeriesRetrospective = () => {
               Total Meetings
             </h3>
             <p className="mt-1 text-2xl font-semibold text-gray-900">
-              {metricsData.totalMeetings}
+              {metricsData?.totalMeetings ?? 0}
             </p>
           </div>
           <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-200">
@@ -126,7 +194,7 @@ const SeriesRetrospective = () => {
               Action Item Completion
             </h3>
             <p className="mt-1 text-2xl font-semibold text-gray-900">
-              {metricsData.actionItemCompletionRate.toFixed(1)}%
+              {(metricsData?.actionItemCompletionRate ?? 0).toFixed(1)}%
             </p>
           </div>
           <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-200">
@@ -134,7 +202,7 @@ const SeriesRetrospective = () => {
               Avg. Attendance
             </h3>
             <p className="mt-1 text-2xl font-semibold text-gray-900">
-              {metricsData.averageAttendance.toFixed(1)}%
+              {(metricsData?.averageAttendance ?? 0).toFixed(1)}%
             </p>
           </div>
           <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-200">
@@ -142,7 +210,7 @@ const SeriesRetrospective = () => {
               Decision Follow-through
             </h3>
             <p className="mt-1 text-2xl font-semibold text-gray-900">
-              {metricsData.decisionFollowThroughRate.toFixed(1)}%
+              {(metricsData?.decisionFollowThroughRate ?? 0).toFixed(1)}%
             </p>
           </div>
         </div>
@@ -436,10 +504,10 @@ const SeriesRetrospective = () => {
           </p>
         </div>
         <Link
-          to="/dashboard"
+          to="/meeting-series"
           className="text-sm text-blue-600 hover:text-blue-800"
         >
-          Back to Dashboard
+          Back to series list
         </Link>
       </div>
 

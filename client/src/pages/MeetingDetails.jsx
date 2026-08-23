@@ -4,6 +4,7 @@ import { toast } from "react-toastify";
 import AppContent from "../context/AppContent";
 import { meetingApi } from "../services";
 import MeetingHeader from "../components/meeting-details/MeetingHeader";
+import SeriesNavigation from "../components/meeting-details/SeriesNavigation";
 import MeetingSummary from "../components/meeting-details/MeetingSummary";
 import MinutesApproval from "../components/meetings/MinutesApproval";
 import MeetingCollaborativeNotes from "../components/meeting-details/MeetingCollaborativeNotes";
@@ -327,6 +328,7 @@ const MeetingDetails = () => {
             onShare={() => setShareModalOpen(true)}
             onPresent={() => setIsPresentModeOpen(true)}
           />
+          <SeriesNavigation meeting={meeting} />
 
           <div className="p-6 bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 shadow-sm mt-6 mb-6">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
