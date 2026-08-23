@@ -14,6 +14,10 @@ import {
   updatePreferences,
   muteMeeting,
   unmuteMeeting,
+  getVapidPublicKey,
+  subscribePush,
+  unsubscribePush,
+  sendTestPush,
 } from "../controllers/notificationController.js";
 
 const notificationRouter = express.Router();
@@ -70,6 +74,31 @@ notificationRouter.put(
   writeLimiter,
   requirePermission("notifications", "self_manage"),
   updatePreferences,
+);
+
+// Web Push endpoints
+notificationRouter.get(
+  "/push/public-key",
+  requirePermission("notifications", "view"),
+  getVapidPublicKey,
+);
+notificationRouter.post(
+  "/push/subscribe",
+  writeLimiter,
+  requirePermission("notifications", "self_manage"),
+  subscribePush,
+);
+notificationRouter.post(
+  "/push/unsubscribe",
+  writeLimiter,
+  requirePermission("notifications", "self_manage"),
+  unsubscribePush,
+);
+notificationRouter.post(
+  "/push/test",
+  writeLimiter,
+  requirePermission("notifications", "self_manage"),
+  sendTestPush,
 );
 
 notificationRouter.delete(

@@ -3,6 +3,7 @@ import mongoose from "mongoose";
 import notificationModel from "../models/notificationModel.js";
 import { sendSuccess, sendError } from "../utils/responseHandler.js";
 import NotificationPreference from "../models/notificationPreferenceModel.js";
+import PushSubscription from "../models/pushSubscriptionModel.js";
 import { CATEGORY_TO_PREFERENCE } from "../services/notificationService.js";
 
 /**
@@ -361,6 +362,115 @@ export const unmuteMeeting = async (req, res) => {
     );
   } catch (error) {
     console.error("Error in unmuteMeeting:", error);
+    sendError(res, 500, "Server error");
+  }
+};
+
+// @desc    Get VAPID Public Key for Web Push
+// @route   GET /api/notifications/push/public-key
+// @access  Private
+export const getVapidPublicKey = async (req, res) => {
+  try {
+    const publicKey =
+      process.env.VAPID_PUBLIC_KEY ||
+      "BEl62iUYgUivxIkv69yViEuiBIa-Ib9-SkvMeAtA3LFgDzkrxZJjSgSnfckjBJuBkr3qBUYIHBQFLXYp5Nksh8U";
+    sendSuccess(res, { publicKey });
+  } catch (error) {
+    console.error("Error in getVapidPublicKey:", error);
+    sendError(res, 500, "Server error");
+  }
+};
+
+// @desc    Subscribe to web push notifications
+// @route   POST /api/notifications/push/subscribe
+// @access  Private
+export const subscribePush = async (req, res) => {
+  try {
+    if (!req.user || !req.user.id) {
+      return sendError(res, 401, "Authentication error, user ID not found.");
+    }
+
+    const { endpoint, keys } = req.body;
+    if (!endpoint || !keys || !keys.p256dh || !keys.auth) {
+      return sendError(res, 400, "Invalid push subscription object.");
+    }
+
+    const subscription = await PushSubscription.findOneAndUpdate(
+      { endpoint },
+      {
+        user: req.user.id,
+        endpoint,
+        keys,
+        userAgent: req.headers["user-agent"] || "",
+      },
+      { upsert: true, new: true },
+    );
+
+    sendSuccess(
+      res,
+      { subscription },
+      "Push subscription registered successfully.",
+    );
+  } catch (error) {
+    console.error("Error in subscribePush:", error);
+    sendError(res, 500, "Server error");
+  }
+};
+
+// @desc    Unsubscribe from web push notifications
+// @route   POST /api/notifications/push/unsubscribe
+// @access  Private
+export const unsubscribePush = async (req, res) => {
+  try {
+    if (!req.user || !req.user.id) {
+      return sendError(res, 401, "Authentication error, user ID not found.");
+    }
+
+    const { endpoint } = req.body;
+    if (!endpoint) {
+      return sendError(res, 400, "Endpoint is required to unsubscribe.");
+    }
+
+    await PushSubscription.findOneAndDelete({
+      user: req.user.id,
+      endpoint,
+    });
+
+    sendSuccess(res, null, "Push subscription removed successfully.");
+  } catch (error) {
+    console.error("Error in unsubscribePush:", error);
+    sendError(res, 500, "Server error");
+  }
+};
+
+// @desc    Send test push notification
+// @route   POST /api/notifications/push/test
+// @access  Private
+export const sendTestPush = async (req, res) => {
+  try {
+    if (!req.user || !req.user.id) {
+      return sendError(res, 401, "Authentication error, user ID not found.");
+    }
+
+    const subscriptions = await PushSubscription.find({ user: req.user.id });
+    const payload = {
+      title: "Test Notification",
+      body: "Push notifications are working properly on your device!",
+      icon: "/favicon.ico",
+      badge: "/favicon.ico",
+      url: "/settings",
+    };
+
+    sendSuccess(
+      res,
+      {
+        recipientCount: subscriptions.length,
+        payload,
+      },
+      "Test push notification dispatched.",
+    );
+  } catch (error) {
+    console.error("Error in sendTestPush:", error);
     sendError(res, 500, "Server error");
   }
 };

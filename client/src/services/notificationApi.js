@@ -15,4 +15,12 @@ export const notificationApi = {
   getPreferences: () => apiClient.get("/api/notifications/preferences"),
   updatePreferences: (data) =>
     apiClient.put("/api/notifications/preferences", data),
+  getVapidPublicKey: () => apiClient.get("/api/notifications/push/public-key"),
+  subscribePush: (subscription) =>
+    apiClient.post("/api/notifications/push/subscribe", subscription),
+  unsubscribePush: (endpoint) =>
+    apiClient.post("/api/notifications/push/unsubscribe", { endpoint }),
+  sendTestPush: () => apiClient.post("/api/notifications/push/test"),
 };
+
+export default notificationApi;

@@ -19,7 +19,9 @@ import { io } from "socket.io-client";
 import { createClerkSocketOptions } from "../services/apiClient.js";
 import LanguageSwitcher from "./LanguageSwitcher.jsx";
 import BrandLogo from "./branding/BrandLogo.jsx";
+import PwaInstallButton from "./pwa/PwaInstallButton.jsx";
 import { useUser } from "@clerk/clerk-react";
+
 import {
   Menu,
   X,
@@ -802,6 +804,9 @@ const Navbar = () => {
                     </div>
                   )}
                 </div>
+
+                {/* PWA Install Button */}
+                <PwaInstallButton className="hidden md:inline-flex shrink-0" />
 
                 {/* Desktop Notification Area */}
                 <div
