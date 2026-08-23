@@ -11,6 +11,7 @@ import {
   Lightbulb,
   DoorOpen,
   BarChart3,
+  Timer,
   ShieldAlert,
 } from "lucide-react";
 
@@ -40,6 +41,7 @@ export default function MeetingHeader({
   const isTranscriptOpen = activePanel === "transcript";
   const isBreakoutRoomsOpen = activePanel === "breakoutRooms";
   const isPollsOpen = activePanel === "polls";
+  const isAgendaOpen = activePanel === "agenda";
 
   return (
     <header
@@ -156,6 +158,24 @@ export default function MeetingHeader({
           <BarChart3 size={16} />
           <span className="hidden sm:inline">
             {isPollsOpen ? "Hide Polls" : "Polls"}
+          </span>
+        </button>
+
+        {/* Agenda Timer Toggle */}
+        <button
+          type="button"
+          onClick={() => onTogglePanel("agenda")}
+          aria-pressed={isAgendaOpen}
+          className={`flex items-center gap-1.5 text-sm font-semibold px-4 py-2 rounded-xl transition-all cursor-pointer ${
+            isAgendaOpen
+              ? "bg-indigo-600 text-white hover:bg-indigo-700"
+              : "bg-gray-800 text-gray-300 hover:text-white hover:bg-gray-700"
+          }`}
+          title={isAgendaOpen ? "Hide live agenda" : "Open live agenda"}
+        >
+          <Timer size={16} />
+          <span className="hidden sm:inline">
+            {isAgendaOpen ? "Hide Agenda" : "Agenda"}
           </span>
         </button>
 

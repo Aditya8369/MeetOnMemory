@@ -39,6 +39,7 @@ import MeetingReadiness from "../components/MeetingReadiness";
 import FollowUpThreads from "../components/meeting-details/FollowUpThreads";
 import PollSection from "../components/meeting-details/PollSection";
 import FeedbackForm from "../components/meeting-details/FeedbackForm";
+import AgendaTimer from "../components/meeting-details/AgendaTimer";
 import MeetingRisksPanel from "../components/meetings/MeetingRisksPanel";
 import { Award, ShieldAlert } from "lucide-react";
 
@@ -510,6 +511,9 @@ const MeetingDetails = () => {
           />
 
           <MeetingAgenda meeting={meeting} />
+          <div className="mt-6 mb-6">
+            <AgendaTimer meeting={meeting} readOnly />
+          </div>
           <MeetingMetadata meeting={meeting} />
           {currentUser?.publicMetadata?.dbUserId === meeting.uploadedBy && (
             <GuestAccessManager meetingId={meeting._id} />

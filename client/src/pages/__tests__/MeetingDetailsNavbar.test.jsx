@@ -122,6 +122,17 @@ vi.mock("../../components/meeting-details/FeedbackForm", () => ({
     </div>
   ),
 }));
+vi.mock("../../components/meeting-details/AgendaTimer", () => ({
+  default: ({ meeting, readOnly }) => (
+    <div
+      data-testid="agenda-timer"
+      data-meeting-id={meeting?._id}
+      data-readonly={readOnly ? "yes" : "no"}
+    >
+      Agenda for {meeting?._id}
+    </div>
+  ),
+}));
 
 import { meetingApi } from "../../services";
 
@@ -177,6 +188,10 @@ describe("MeetingDetails Navbar Integration (#1637)", () => {
     expect(feedbackForm).toHaveTextContent("Feedback for 123");
     expect(feedbackForm).toHaveAttribute("data-meeting-id", "123");
     expect(feedbackForm).toHaveAttribute("data-organization-id", "org-42");
+    const agendaTimer = screen.getByTestId("agenda-timer");
+    expect(agendaTimer).toHaveTextContent("Agenda for 123");
+    expect(agendaTimer).toHaveAttribute("data-meeting-id", "123");
+    expect(agendaTimer).toHaveAttribute("data-readonly", "yes");
   });
 
   it("renders Navbar in error state", async () => {

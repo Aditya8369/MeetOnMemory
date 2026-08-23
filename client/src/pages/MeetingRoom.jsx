@@ -16,6 +16,7 @@ import CollaborativeEditor from "../components/meetings/CollaborativeEditor.jsx"
 import ParkingLotPanel from "../components/meetings/ParkingLotPanel.jsx";
 import BreakoutRoomPanel from "../components/meeting-room/BreakoutRoomPanel.jsx";
 import PollSection from "../components/meeting-details/PollSection.jsx";
+import AgendaTimer from "../components/meeting-details/AgendaTimer.jsx";
 import PeerVideo from "../components/meetings/PeerVideo.jsx";
 import MeetingHeader from "../components/meetings/MeetingHeader.jsx";
 import MeetingControlBar from "../components/meetings/MeetingControlBar.jsx";
@@ -60,6 +61,7 @@ const MEETING_ROOM_PANELS = {
   TRANSCRIPT: "transcript",
   BREAKOUT_ROOMS: "breakoutRooms",
   POLLS: "polls",
+  AGENDA: "agenda",
 };
 
 const MeetingRoom = () => {
@@ -114,6 +116,7 @@ const MeetingRoom = () => {
   const showTranscript = activePanel === MEETING_ROOM_PANELS.TRANSCRIPT;
   const showBreakoutRooms = activePanel === MEETING_ROOM_PANELS.BREAKOUT_ROOMS;
   const showPolls = activePanel === MEETING_ROOM_PANELS.POLLS;
+  const showAgenda = activePanel === MEETING_ROOM_PANELS.AGENDA;
 
   // Transcription state
   const [showCaptions] = useState(true);
@@ -566,15 +569,21 @@ const MeetingRoom = () => {
 
       {/* ---------- ACTIVE MEETING SCREEN ---------- */}
       {joined && !meetingEnded && userRole === "facilitator" && meeting && (
-        <FacilitatorDashboard
-          meeting={meeting}
-          onAdvanceAgenda={() => {
-            // emit socket event to advance agenda
-          }}
-          onNudgeParticipant={() => {
-            toast.success("Nudge sent to participant");
-          }}
-        />
+        <div className="flex-1 flex flex-col min-h-0">
+          <AgendaTimer
+            meeting={meeting}
+            socket={socketRef?.current || socket}
+          />
+          <FacilitatorDashboard
+            meeting={meeting}
+            onAdvanceAgenda={() => {
+              // emit socket event to advance agenda
+            }}
+            onNudgeParticipant={() => {
+              toast.success("Nudge sent to participant");
+            }}
+          />
+        </div>
       )}
 
       {joined && !meetingEnded && userRole !== "facilitator" && (
@@ -590,6 +599,14 @@ const MeetingRoom = () => {
             toggleTranscription={toggleTranscription}
           />
           <ReactionOverlay reactions={reactions} />
+
+          {meeting && (
+            <AgendaTimer
+              meeting={meeting}
+              socket={socketRef?.current || socket}
+              compact
+            />
+          )}
 
           {/* Main content area: video grid + notes panel */}
           <div className="flex-1 flex min-h-0 overflow-hidden">
@@ -717,6 +734,20 @@ const MeetingRoom = () => {
                   socket={socketRef?.current || socket}
                   title="Live Polls"
                 />
+              </div>
+            )}
+
+            {showAgenda && (
+              <div
+                data-testid="meeting-room-agenda-panel"
+                className="w-full md:w-[360px] lg:w-[400px] shrink-0 p-4 bg-gray-950 border-l border-gray-800 overflow-y-auto flex flex-col transition-all duration-300"
+              >
+                {meeting ? (
+                  <AgendaTimer
+                    meeting={meeting}
+                    socket={socketRef?.current || socket}
+                  />
+                ) : null}
               </div>
             )}
 
