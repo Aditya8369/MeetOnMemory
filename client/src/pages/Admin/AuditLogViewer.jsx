@@ -13,6 +13,11 @@ import {
   ChevronLeft,
   ChevronRight,
   Activity,
+  Download,
+  FileSpreadsheet,
+  AlertCircle,
+  CheckCircle2,
+  X,
 } from "lucide-react";
 
 const ACTION_COLORS = {
@@ -35,11 +40,15 @@ const ACTION_COLORS = {
 const AuditLogViewer = () => {
   const { userData } = useContext(AppContent);
   const orgId = userData?.organization?._id || userData?.organization;
+  const userRole = userData?.role || userData?.organizationRole || "member";
+  const canExport = ["admin", "owner"].includes(userRole);
 
   const [logs, setLogs] = useState([]);
   const [pagination, setPagination] = useState({ page: 1, total: 0, pages: 1 });
   const [pageSize, setPageSize] = useState(15);
   const [loading, setLoading] = useState(true);
+  const [exportingFormat, setExportingFormat] = useState(null); // 'csv' | 'xlsx' | null
+  const [asyncExport, setAsyncExport] = useState(null); // { id, status, format, error } | null
 
   const [filters, setFilters] = useState({
     action: "",
@@ -84,6 +93,134 @@ const AuditLogViewer = () => {
     loadLogs(1, pageSize);
   }, [loadLogs, pageSize]);
 
+  // Polling for large asynchronous exports (#2034)
+  useEffect(() => {
+    if (
+      !asyncExport?.id ||
+      !orgId ||
+      asyncExport.status === "completed" ||
+      asyncExport.status === "failed"
+    ) {
+      return;
+    }
+
+    const intervalId = setInterval(async () => {
+      try {
+        const res = await organizationApi.getAuditLogExport(
+          orgId,
+          asyncExport.id,
+        );
+        if (res.data?.success && res.data.export) {
+          const { status, error } = res.data.export;
+          setAsyncExport((prev) => ({ ...prev, status, error }));
+
+          if (status === "completed") {
+            clearInterval(intervalId);
+            toast.success("Audit log export ready! Downloading...");
+            const fileRes = await organizationApi.downloadAuditLogExport(
+              orgId,
+              asyncExport.id,
+            );
+            const blob = new Blob([fileRes.data]);
+            const timestamp = new Date().toISOString().slice(0, 10);
+            triggerDownloadBlob(
+              blob,
+              `audit-logs-${timestamp}.${asyncExport.format}`,
+            );
+          } else if (status === "failed") {
+            clearInterval(intervalId);
+            toast.error(error || "Audit log background export failed.");
+          }
+        }
+      } catch (pollErr) {
+        console.error("Error polling audit log export status:", pollErr);
+      }
+    }, 2000);
+
+    return () => clearInterval(intervalId);
+  }, [asyncExport?.id, asyncExport?.status, asyncExport?.format, orgId]);
+
+  const triggerDownloadBlob = (blob, filename) => {
+    const url = window.URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = filename;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    window.URL.revokeObjectURL(url);
+  };
+
+  const handleExport = async (format) => {
+    if (!orgId) return;
+    if (!canExport) {
+      toast.error(
+        "Only administrators and organization owners can export audit logs.",
+      );
+      return;
+    }
+
+    setExportingFormat(format);
+    try {
+      const res = await organizationApi.exportAuditLogs(orgId, {
+        format,
+        action: filters.action || undefined,
+        startDate: filters.startDate || undefined,
+        endDate: filters.endDate || undefined,
+      });
+
+      // Check if response is JSON (202 async queued export)
+      const contentType = res.headers?.["content-type"] || "";
+      if (
+        contentType.includes("application/json") ||
+        res.status === 202 ||
+        (res.data instanceof Blob &&
+          res.data.type?.includes("application/json"))
+      ) {
+        let json;
+        if (res.data instanceof Blob) {
+          const text = await res.data.text();
+          json = JSON.parse(text);
+        } else {
+          json = res.data;
+        }
+
+        if (json.data?.export?.id) {
+          setAsyncExport({
+            id: json.data.export.id,
+            status: json.data.export.status || "pending",
+            format,
+          });
+          toast.info(
+            "Large audit log export queued in background. Tracking progress...",
+          );
+          return;
+        }
+      }
+
+      // Direct file download
+      const blob = new Blob([res.data], {
+        type:
+          format === "csv"
+            ? "text/csv;charset=utf-8;"
+            : "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+      });
+      const timestamp = new Date().toISOString().slice(0, 10);
+      triggerDownloadBlob(blob, `audit-logs-${timestamp}.${format}`);
+      toast.success(
+        `Audit logs exported as ${format.toUpperCase()} successfully.`,
+      );
+    } catch (err) {
+      console.error(`Failed to export audit logs as ${format}:`, err);
+      toast.error(
+        err.response?.data?.message ||
+          `Failed to export audit logs as ${format.toUpperCase()}.`,
+      );
+    } finally {
+      setExportingFormat(null);
+    }
+  };
+
   const handleFilterChange = (e) => {
     const { name, value } = e.target;
     setFilters((prev) => ({ ...prev, [name]: value }));
@@ -106,15 +243,100 @@ const AuditLogViewer = () => {
             </p>
           </div>
 
-          <button
-            type="button"
-            onClick={() => loadLogs(pagination.page, pageSize)}
-            className="inline-flex items-center gap-2 px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-sm font-medium hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer"
-          >
-            <RefreshCw className="w-4 h-4" />
-            Refresh
-          </button>
+          <div className="flex items-center gap-2.5 flex-wrap">
+            {/* Export CSV CTA */}
+            <button
+              type="button"
+              data-testid="export-csv-btn"
+              disabled={!canExport || exportingFormat !== null}
+              onClick={() => handleExport("csv")}
+              title={
+                canExport
+                  ? "Export filtered audit logs as CSV"
+                  : "Admin permissions required to export"
+              }
+              className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-xs font-semibold text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-xs cursor-pointer"
+            >
+              {exportingFormat === "csv" ? (
+                <Loader2 className="w-3.5 h-3.5 animate-spin text-blue-600" />
+              ) : (
+                <Download className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
+              )}
+              <span>Export CSV</span>
+            </button>
+
+            {/* Export XLSX CTA */}
+            <button
+              type="button"
+              data-testid="export-xlsx-btn"
+              disabled={!canExport || exportingFormat !== null}
+              onClick={() => handleExport("xlsx")}
+              title={
+                canExport
+                  ? "Export filtered audit logs as Excel (XLSX)"
+                  : "Admin permissions required to export"
+              }
+              className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-xs font-semibold text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-xs cursor-pointer"
+            >
+              {exportingFormat === "xlsx" ? (
+                <Loader2 className="w-3.5 h-3.5 animate-spin text-emerald-600" />
+              ) : (
+                <FileSpreadsheet className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
+              )}
+              <span>Export XLSX</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => loadLogs(pagination.page, pageSize)}
+              className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-xs font-medium hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer"
+            >
+              <RefreshCw className="w-3.5 h-3.5" />
+              Refresh
+            </button>
+          </div>
         </div>
+
+        {/* Async Export Progress Card (#2034) */}
+        {asyncExport && (
+          <div
+            data-testid="async-export-tracker"
+            className="p-4 rounded-xl bg-blue-50/80 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-800 flex items-center justify-between gap-3 text-xs"
+          >
+            <div className="flex items-center gap-3">
+              {asyncExport.status === "completed" ? (
+                <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+              ) : asyncExport.status === "failed" ? (
+                <AlertCircle className="w-4 h-4 text-red-600 shrink-0" />
+              ) : (
+                <Loader2 className="w-4 h-4 text-blue-600 animate-spin shrink-0" />
+              )}
+              <div>
+                <p className="font-bold text-slate-900 dark:text-white">
+                  {asyncExport.status === "completed"
+                    ? `Audit log ${asyncExport.format?.toUpperCase()} export completed!`
+                    : asyncExport.status === "failed"
+                      ? `Export failed: ${asyncExport.error || "Unknown error"}`
+                      : `Preparing large audit log ${asyncExport.format?.toUpperCase()} export in background...`}
+                </p>
+                <p className="text-slate-500 dark:text-slate-400 mt-0.5">
+                  {asyncExport.status === "completed"
+                    ? "Your download should begin automatically."
+                    : "You can continue working. The export file will download as soon as it is processed."}
+                </p>
+              </div>
+            </div>
+
+            <button
+              type="button"
+              onClick={() => setAsyncExport(null)}
+              className="p-1 rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-white dark:hover:bg-slate-800 cursor-pointer"
+              title="Dismiss notification"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+        )}
 
         {/* Filter Controls */}
         <div className="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-4 grid grid-cols-1 md:grid-cols-3 gap-4">
