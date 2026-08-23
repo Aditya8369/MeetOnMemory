@@ -6,6 +6,8 @@ import {
   Search,
   X,
   ChevronDown,
+  Edit2,
+  Download,
 } from "lucide-react";
 
 /**
@@ -23,6 +25,7 @@ const ChatSessionSidebar = ({
   onSelectSession,
   onNewSession,
   onDeleteSession,
+  onRenameSession,
 }) => {
   const [searchQuery, setSearchQuery] = useState("");
   const [showSearch, setShowSearch] = useState(false);
@@ -31,10 +34,15 @@ const ChatSessionSidebar = ({
   const filteredSessions = sessions.filter((session) => {
     if (!searchQuery.trim()) return true;
     const query = searchQuery.toLowerCase();
-    return (
-      session.title?.toLowerCase().includes(query) ||
-      session.id?.toLowerCase().includes(query)
+    const inTitle = session.title?.toLowerCase().includes(query);
+    const inId =
+      session.id?.toLowerCase().includes(query) ||
+      session._id?.toLowerCase().includes(query);
+    const inMessages = session.messages?.some((m) =>
+      m.content?.toLowerCase().includes(query),
     );
+
+    return inTitle || inId || inMessages;
   });
 
   // Group sessions by date for better organization
@@ -77,50 +85,120 @@ const ChatSessionSidebar = ({
   /**
    * Render session item with clean non-nested interactive elements (#1229)
    */
-  const SessionItem = ({ session }) => (
-    <div
-      role="button"
-      tabIndex={0}
-      onClick={() => onSelectSession(session.id)}
-      onKeyDown={(e) => {
-        if (e.key === "Enter" || e.key === " ") {
-          e.preventDefault();
-          onSelectSession(session.id);
-        }
-      }}
-      className={`group relative flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-left text-sm transition-all duration-150 cursor-pointer ${
-        currentSessionId === session.id
-          ? "bg-indigo-50 text-indigo-900 dark:bg-indigo-950/50 dark:text-indigo-100"
-          : "text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-800/70"
-      }`}
-    >
-      <MessageSquare className="h-3.5 w-3.5 shrink-0 opacity-60" />
-      <span className="flex-1 truncate font-medium">
-        {session.title || "Untitled Chat"}
-      </span>
-      <button
-        type="button"
-        onClick={(e) => {
-          e.stopPropagation();
-          if (
-            window.confirm("Are you sure you want to delete this conversation?")
-          ) {
-            onDeleteSession(session.id);
-          }
-        }}
-        onKeyDown={(e) => {
-          if (e.key === "Enter" || e.key === " ") {
-            e.stopPropagation();
-          }
-        }}
-        className="shrink-0 rounded p-1 opacity-0 transition-opacity hover:bg-red-50 hover:text-red-600 group-hover:opacity-100 dark:hover:bg-red-950/40 cursor-pointer"
-        aria-label="Delete conversation"
-        title="Delete conversation"
+  const SessionItem = ({ session }) => {
+    const [isEditing, setIsEditing] = useState(false);
+    const [editTitle, setEditTitle] = useState(session.title || "");
+    const sessionId = session.id || session._id;
+
+    const handleExport = (e) => {
+      e.stopPropagation();
+      const transcript =
+        session.messages
+          ?.map(
+            (m) =>
+              `**${m.role === "user" ? "You" : "Assistant"}**: ${m.content}`,
+          )
+          .join("\n\n") || "No messages";
+      const blob = new Blob([transcript], { type: "text/markdown" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `chat-${sessionId}.md`;
+      a.click();
+      URL.revokeObjectURL(url);
+    };
+
+    const submitRename = () => {
+      if (editTitle.trim() && editTitle !== session.title && onRenameSession) {
+        onRenameSession(sessionId, editTitle.trim());
+      }
+      setIsEditing(false);
+    };
+
+    return (
+      <div
+        className={`group relative flex w-full items-center gap-1 rounded-lg pr-1 text-left text-sm transition-all duration-150 ${
+          currentSessionId === sessionId
+            ? "bg-indigo-50 text-indigo-900 dark:bg-indigo-950/50 dark:text-indigo-100"
+            : "text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-800/70"
+        }`}
       >
-        <Trash2 className="h-3 w-3" />
-      </button>
-    </div>
-  );
+        <button
+          type="button"
+          onClick={() => onSelectSession(sessionId)}
+          className="flex flex-1 items-center gap-2 overflow-hidden py-2 pl-2.5 cursor-pointer text-left focus:outline-none"
+        >
+          <MessageSquare className="h-3.5 w-3.5 shrink-0 opacity-60" />
+          {isEditing ? (
+            <input
+              type="text"
+              value={editTitle}
+              onChange={(e) => setEditTitle(e.target.value)}
+              onBlur={submitRename}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") submitRename();
+                if (e.key === "Escape") {
+                  setEditTitle(session.title || "");
+                  setIsEditing(false);
+                }
+              }}
+              onClick={(e) => e.stopPropagation()}
+              autoFocus
+              className="flex-1 min-w-0 bg-white dark:bg-gray-800 border border-indigo-300 dark:border-indigo-500 rounded px-1 py-0.5 text-xs text-gray-900 dark:text-white"
+            />
+          ) : (
+            <span className="flex-1 truncate font-medium">
+              {session.title || "Untitled Chat"}
+            </span>
+          )}
+        </button>
+
+        {!isEditing && (
+          <div className="flex shrink-0 items-center gap-0.5 opacity-0 transition-opacity group-hover:opacity-100">
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                setIsEditing(true);
+              }}
+              className="rounded p-1 text-gray-400 hover:bg-indigo-50 hover:text-indigo-600 dark:hover:bg-indigo-950/40 cursor-pointer"
+              aria-label="Rename conversation"
+              title="Rename conversation"
+            >
+              <Edit2 className="h-3 w-3" />
+            </button>
+            <button
+              type="button"
+              onClick={handleExport}
+              className="rounded p-1 text-gray-400 hover:bg-indigo-50 hover:text-indigo-600 dark:hover:bg-indigo-950/40 cursor-pointer"
+              aria-label="Export conversation"
+              title="Export conversation"
+            >
+              <Download className="h-3 w-3" />
+            </button>
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                if (
+                  window.confirm(
+                    "Are you sure you want to delete this conversation?",
+                  )
+                ) {
+                  onDeleteSession(sessionId);
+                }
+              }}
+              className="rounded p-1 text-gray-400 hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-950/40 cursor-pointer"
+              aria-label="Delete conversation"
+              title="Delete conversation"
+            >
+              <Trash2 className="h-3 w-3" />
+            </button>
+          </div>
+        )}
+      </div>
+    );
+  };
 
   /**
    * Render session group with collapsible header

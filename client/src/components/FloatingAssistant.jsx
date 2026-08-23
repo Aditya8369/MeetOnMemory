@@ -50,6 +50,7 @@ const FloatingAssistant = () => {
     handleSelectSession,
     handleNewSession,
     handleDeleteSession,
+    handleRenameSession,
     handleSendMessage,
     handleUnpinContext,
   } = useAssistant();
@@ -286,6 +287,7 @@ const FloatingAssistant = () => {
                     setShowSidebar(false);
                   }}
                   onDeleteSession={handleDeleteSession}
+                  onRenameSession={handleRenameSession}
                 />
               </div>
             </div>
@@ -574,6 +576,7 @@ const FloatingAssistant = () => {
               onSelectSession={handleSelectSession}
               onNewSession={handleNewSession}
               onDeleteSession={handleDeleteSession}
+              onRenameSession={handleRenameSession}
             />
           </div>
         )}
