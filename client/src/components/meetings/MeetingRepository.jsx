@@ -107,6 +107,8 @@ const MeetingRepository = () => {
     selectedMeetings,
     toggleSelection,
     isProcessing,
+    errorMessage,
+    clearError,
     handleBulkArchive,
     handleBulkTag,
     handleBulkSoftDelete,
@@ -453,11 +455,13 @@ const MeetingRepository = () => {
         <BulkActionBar
           selectedCount={selectedMeetings.size}
           isProcessing={isProcessing}
+          errorMessage={errorMessage}
           onArchive={handleBulkArchive}
           onDelete={handleBulkSoftDelete}
           onExport={handleBulkExport}
           onTag={handleBulkTag}
           onCancel={toggleBulkMode}
+          onClearError={clearError}
         />
       )}
     </div>

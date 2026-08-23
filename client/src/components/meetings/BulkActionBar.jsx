@@ -1,14 +1,24 @@
 import React, { useState } from "react";
-import { Archive, Trash2, Download, Tag, X, Check } from "lucide-react";
+import {
+  Archive,
+  Trash2,
+  Download,
+  Tag,
+  X,
+  Check,
+  AlertCircle,
+} from "lucide-react";
 
 const BulkActionBar = ({
   selectedCount,
   isProcessing,
+  errorMessage,
   onArchive,
   onDelete,
   onExport,
   onTag,
   onCancel,
+  onClearError,
 }) => {
   const [isTagging, setIsTagging] = useState(false);
   const [tagInput, setTagInput] = useState("");
@@ -28,7 +38,26 @@ const BulkActionBar = ({
   };
 
   return (
-    <div className="fixed bottom-6 left-1/2 transform -translate-x-1/2 z-50 animate-in slide-in-from-bottom-10 fade-in duration-300">
+    <div className="fixed bottom-6 left-1/2 transform -translate-x-1/2 z-50 animate-in slide-in-from-bottom-10 fade-in duration-300 flex flex-col items-center gap-2">
+      {errorMessage && (
+        <div
+          className="flex items-center gap-2 bg-red-100 dark:bg-red-900/80 text-red-700 dark:text-red-200 text-xs font-medium px-4 py-1.5 rounded-full border border-red-300 dark:border-red-700 shadow-md"
+          role="alert"
+          data-testid="bulk-action-bar-error"
+        >
+          <AlertCircle className="w-4 h-4 shrink-0" />
+          <span className="truncate max-w-sm">{errorMessage}</span>
+          {onClearError && (
+            <button
+              onClick={onClearError}
+              className="text-red-500 hover:text-red-700 dark:hover:text-red-100 ml-1 p-0.5 rounded-full"
+              title="Dismiss error"
+            >
+              <X className="w-3.5 h-3.5" />
+            </button>
+          )}
+        </div>
+      )}
       <div className="bg-white dark:bg-gray-800 shadow-2xl rounded-full border border-gray-200 dark:border-gray-700 px-6 py-3 flex items-center gap-6">
         {/* Count Indicator */}
         <div className="flex items-center gap-2">
