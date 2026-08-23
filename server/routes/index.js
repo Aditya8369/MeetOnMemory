@@ -206,6 +206,8 @@ import adminImportanceRoutes from "./adminImportanceRoutes.js";
 router.use("/api/admin/importance", adminImportanceRoutes);
 import adminHealthRoutes from "./adminHealthRoutes.js";
 router.use("/api/admin/health", adminHealthRoutes);
+import adminRbacRoutes from "./adminRbacRoutes.js";
+router.use("/api/admin/rbac", adminRbacRoutes);
 router.use("/api/alerts/keywords", keywordAlertRoutes);
 router.use("/api/integrations/notion", notionIntegrationRoutes);
 
