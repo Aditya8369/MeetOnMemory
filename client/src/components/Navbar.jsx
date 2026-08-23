@@ -680,9 +680,24 @@ const Navbar = () => {
                       <p className="text-xs font-bold text-gray-800 dark:text-gray-100 truncate">
                         {userData.organization?.name || "Select Org"}
                       </p>
-                      <p className="text-[9px] text-gray-400 dark:text-gray-500 uppercase tracking-wider font-semibold">
-                        {userData.role || "Member"}
-                      </p>
+                      <div className="flex items-center gap-1">
+                        <p
+                          className={`text-[9px] uppercase tracking-wider font-semibold ${
+                            userData.role === "viewer" ||
+                            userData.role === "guest"
+                              ? "text-amber-600 dark:text-amber-400 font-bold"
+                              : "text-gray-400 dark:text-gray-500"
+                          }`}
+                        >
+                          {userData.role || "Member"}
+                        </p>
+                        {(userData.role === "viewer" ||
+                          userData.role === "guest") && (
+                          <span className="text-[8px] bg-amber-100 dark:bg-amber-900/40 text-amber-800 dark:text-amber-300 font-bold px-1 rounded">
+                            READ-ONLY
+                          </span>
+                        )}
+                      </div>
                     </div>
                     <ChevronDown
                       className={`w-3.5 h-3.5 text-gray-500 transition-transform duration-200 shrink-0 ${
@@ -913,9 +928,20 @@ const Navbar = () => {
                           email={userData?.email}
                           className="text-xs text-gray-500 dark:text-gray-400 truncate mt-0.5"
                         />
-                        <div className="mt-2.5 flex flex-wrap gap-1.5">
-                          <span className="text-[10px] font-bold text-gray-600 dark:text-gray-300 bg-gray-100 dark:bg-gray-600 px-2 py-0.5 rounded-full capitalize">
-                            {userData?.role || "Member"}
+                        <div className="mt-2.5 flex flex-wrap gap-1.5 items-center">
+                          <span
+                            className={`text-[10px] font-bold px-2 py-0.5 rounded-full capitalize ${
+                              userData?.role === "viewer" ||
+                              userData?.role === "guest"
+                                ? "bg-amber-100 text-amber-800 dark:bg-amber-900/50 dark:text-amber-300 border border-amber-300 dark:border-amber-700"
+                                : "text-gray-600 dark:text-gray-300 bg-gray-100 dark:bg-gray-600"
+                            }`}
+                          >
+                            {userData?.role || "Member"}{" "}
+                            {userData?.role === "viewer" ||
+                            userData?.role === "guest"
+                              ? "(Read-Only)"
+                              : ""}
                           </span>
                           {userData?.organization?.name && (
                             <span className="text-[10px] font-bold text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/30 px-2 py-0.5 rounded-full truncate max-w-[120px] uppercase">
@@ -1115,9 +1141,24 @@ const Navbar = () => {
                         <p className="text-xs font-bold text-gray-800 dark:text-gray-100 truncate">
                           {userData.organization?.name || "Select Org"}
                         </p>
-                        <p className="text-[9px] text-gray-400 dark:text-gray-500 uppercase tracking-wider font-semibold">
-                          Current: {userData.role || "Member"}
-                        </p>
+                        <div className="flex items-center gap-1">
+                          <p
+                            className={`text-[9px] uppercase tracking-wider font-semibold ${
+                              userData.role === "viewer" ||
+                              userData.role === "guest"
+                                ? "text-amber-600 dark:text-amber-400 font-bold"
+                                : "text-gray-400 dark:text-gray-500"
+                            }`}
+                          >
+                            Current: {userData.role || "Member"}
+                          </p>
+                          {(userData.role === "viewer" ||
+                            userData.role === "guest") && (
+                            <span className="text-[8px] bg-amber-100 dark:bg-amber-900/40 text-amber-800 dark:text-amber-300 font-bold px-1 rounded">
+                              READ-ONLY
+                            </span>
+                          )}
+                        </div>
                       </div>
                     </div>
                   </div>
