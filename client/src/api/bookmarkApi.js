@@ -36,6 +36,14 @@ export const deleteCollectionAPI = async (name) => {
   return response.data;
 };
 
+export const updateCollectionAPI = async (name, data) => {
+  const response = await apiClient.put(
+    `/api/bookmarks/collections/${encodeURIComponent(name)}`,
+    data,
+  );
+  return response.data;
+};
+
 export const getBookmarkStatusAPI = async (meetingId) => {
   const response = await apiClient.get(`/api/meetings/${meetingId}/bookmark`);
   return response.data;
