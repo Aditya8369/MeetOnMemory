@@ -124,11 +124,27 @@ export default async function exportDataJob(job, _app) {
     await transporter.sendMail(mailOptions);
     console.log(`📧 Notification email sent to ${email}`);
 
-    eventBus.emit("export.ready", { userId, downloadUrl });
+    // Update user document with completed export record
+    await userModel.findByIdAndUpdate(userId, {
+      lastExportFile: fileName,
+      lastExportStatus: "completed",
+      lastExportError: null,
+    });
+
+    eventBus.emit("export.ready", { userId, downloadUrl, fileName });
 
     return { success: true, fileName };
   } catch (error) {
     console.error(`❌ Data export failed for user ${userId}:`, error.message);
+    try {
+      await userModel.findByIdAndUpdate(userId, {
+        lastExportStatus: "failed",
+        lastExportError: error.message || "Failed to generate data export",
+      });
+    } catch (dbErr) {
+      console.error("Failed to update user export failure status:", dbErr);
+    }
     throw error;
   }
 }
+
