@@ -1,4 +1,4 @@
-const mongoose = require("mongoose");
+import mongoose from "mongoose";
 
 /**
  * @desc Mongoose schema for storing CRDT state and metadata for collaborative meeting notes.
@@ -53,4 +53,4 @@ const collaborativeNoteSchema = new mongoose.Schema(
 // Index for fast retrieval by meeting ID
 collaborativeNoteSchema.index({ meetingId: 1 });
 
-module.exports = mongoose.model("CollaborativeNote", collaborativeNoteSchema);
+export default mongoose.model("CollaborativeNote", collaborativeNoteSchema);

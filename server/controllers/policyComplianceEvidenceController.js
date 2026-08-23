@@ -1,6 +1,6 @@
 import mongoose from "mongoose";
 import PDFDocument from "pdfkit";
-import archiver from "archiver";
+import { createRequire } from "module";
 import PolicyCompliance from "../models/policyComplianceModel.js";
 import Policy from "../models/policyModel.js";
 import Decision from "../models/decisionModel.js";
@@ -8,6 +8,8 @@ import Meeting from "../models/meetingModel.js";
 import { sendError } from "../utils/responseHandler.js";
 
 const isValidId = (id) => mongoose.Types.ObjectId.isValid(id);
+const require = createRequire(import.meta.url);
+const archiver = require("archiver");
 
 const toPlain = (value) =>
   value && typeof value.toObject === "function" ? value.toObject() : value;

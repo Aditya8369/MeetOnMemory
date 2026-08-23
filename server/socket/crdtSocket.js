@@ -4,9 +4,9 @@
  * Integrates with Yjs/Automerge style CRDT updates (mocked/simplified).
  */
 
-const { Server } = require("socket.io");
+import { Server } from "socket.io";
 
-module.exports = function initializeCRDTSocket(server) {
+export default function initializeCRDTSocket(server) {
   const io = new Server(server, {
     cors: {
       origin: "*",
@@ -42,4 +42,4 @@ module.exports = function initializeCRDTSocket(server) {
   });
 
   return io;
-};
+}

@@ -4,8 +4,8 @@
  * Simulates handing off an audio file to a Python microservice for processing.
  */
 
-const { Worker } = require("bullmq");
-const IORedis = require("ioredis");
+import { Worker } from "bullmq";
+import IORedis from "ioredis";
 
 // Initialize Redis connection for the queue
 const connection = new IORedis(
@@ -79,4 +79,4 @@ audioWorker.on("failed", (job, err) => {
   console.log(`[AudioWorker] Job ${job.id} has failed with ${err.message}`);
 });
 
-module.exports = audioWorker;
+export default audioWorker;

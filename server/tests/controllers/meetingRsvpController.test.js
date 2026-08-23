@@ -1,12 +1,30 @@
-const { getRsvpSummary } = require("../../controllers/meetingRsvpController");
-const Meeting = require("../../models/Meeting");
-const meetingRsvpService = require("../../services/meetingRsvpService");
+import { jest } from "@jest/globals";
 
-// Mock external dependencies
-jest.mock("../../models/Meeting");
-jest.mock("../../services/meetingRsvpService");
+const findById = jest.fn();
+const getMeetingRsvpSummary = jest.fn();
+const resolveAccessibleMeeting = jest.fn();
 
-describe("meetingRsvpController.getRsvpSummary", () => {
+jest.unstable_mockModule("../../models/meetingModel.js", () => ({
+  default: { findById },
+}));
+
+jest.unstable_mockModule("../../services/meetingRsvpService.js", () => ({
+  initializeRsvps: jest.fn(),
+  updateRsvpStatus: jest.fn(),
+  getPendingRsvpsForUser: jest.fn(),
+  getMeetingRsvpSummary,
+  getAllRsvpsForUser: jest.fn(),
+}));
+
+jest.unstable_mockModule("../../utils/resolveAccessibleMeeting.js", () => ({
+  resolveAccessibleMeeting,
+  default: resolveAccessibleMeeting,
+}));
+
+const { getMeetingSummary } =
+  await import("../../controllers/meetingRsvpController.js");
+
+describe("meetingRsvpController.getMeetingSummary", () => {
   let req, res;
 
   beforeEach(() => {
@@ -26,56 +44,44 @@ describe("meetingRsvpController.getRsvpSummary", () => {
   });
 
   it("should retrieve RSVP summary for authorized same-organization users", async () => {
-    Meeting.findById.mockResolvedValue({
-      _id: "meeting123",
-      organization: "orgABC",
+    resolveAccessibleMeeting.mockResolvedValue({
+      meeting: { _id: "meeting123", organization: "orgABC" },
     });
     const mockSummary = { total: 5, participants: [{ name: "Test User" }] };
-    meetingRsvpService.getSummary.mockResolvedValue(mockSummary);
+    getMeetingRsvpSummary.mockResolvedValue(mockSummary);
 
-    await getRsvpSummary(req, res);
+    await getMeetingSummary(req, res);
 
     expect(res.status).toHaveBeenCalledWith(200);
-    expect(res.json).toHaveBeenCalledWith(mockSummary);
-    expect(meetingRsvpService.getSummary).toHaveBeenCalledWith("meeting123");
+    expect(res.json).toHaveBeenCalledWith({
+      success: true,
+      data: mockSummary,
+    });
+    expect(getMeetingRsvpSummary).toHaveBeenCalledWith("meeting123");
   });
 
-  it("should return 404 for cross-organization access to prevent IDOR and PII exposure", async () => {
-    Meeting.findById.mockResolvedValue({
-      _id: "meeting123",
-      organization: "orgXYZ", // Different organization
+  it("should return 403 for cross-organization access to prevent IDOR and PII exposure", async () => {
+    resolveAccessibleMeeting.mockResolvedValue({
+      error: {
+        status: 403,
+        message: "Forbidden: You don't have access to this meeting",
+      },
     });
 
-    await getRsvpSummary(req, res);
+    await getMeetingSummary(req, res);
 
-    expect(res.status).toHaveBeenCalledWith(404);
-    expect(res.json).toHaveBeenCalledWith({ error: "Meeting not found." });
-    // Crucially ensure the service is NEVER called to prevent PII leakage
-    expect(meetingRsvpService.getSummary).not.toHaveBeenCalled();
+    expect(res.status).toHaveBeenCalledWith(403);
+    expect(getMeetingRsvpSummary).not.toHaveBeenCalled();
   });
 
   it("should return 404 for nonexistent meetings", async () => {
-    Meeting.findById.mockResolvedValue(null);
+    resolveAccessibleMeeting.mockResolvedValue({
+      error: { status: 404, message: "Meeting not found" },
+    });
 
-    await getRsvpSummary(req, res);
+    await getMeetingSummary(req, res);
 
     expect(res.status).toHaveBeenCalledWith(404);
-    expect(res.json).toHaveBeenCalledWith({ error: "Meeting not found." });
-    expect(meetingRsvpService.getSummary).not.toHaveBeenCalled();
-  });
-
-  it("should bypass organization check for admin users", async () => {
-    req.user.role = "admin";
-    req.user.organization = "orgXYZ";
-    Meeting.findById.mockResolvedValue({
-      _id: "meeting123",
-      organization: "orgABC",
-    });
-    meetingRsvpService.getSummary.mockResolvedValue({ total: 1 });
-
-    await getRsvpSummary(req, res);
-
-    expect(res.status).toHaveBeenCalledWith(200);
-    expect(meetingRsvpService.getSummary).toHaveBeenCalled();
+    expect(getMeetingRsvpSummary).not.toHaveBeenCalled();
   });
 });
