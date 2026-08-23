@@ -82,6 +82,7 @@ import EscalationDashboard from "../pages/EscalationDashboard.jsx";
 import Glossary from "../pages/Glossary.jsx";
 import StandupReports from "../pages/StandupReports.jsx";
 import SlaCompliance from "../pages/SlaCompliance.jsx";
+import TeamAvailability from "../pages/TeamAvailability.jsx";
 import ActionItemTemplates from "../pages/ActionItemTemplates.jsx";
 
 const ProtectedRoutes = (
@@ -734,6 +735,14 @@ const ProtectedRoutes = (
       element={
         <ProtectedRoute resource="reports" action="view">
           <StandupReports />
+        </ProtectedRoute>
+      }
+    />
+    <Route
+      path="/team-availability"
+      element={
+        <ProtectedRoute resource="reports" action="view">
+          <TeamAvailability />
         </ProtectedRoute>
       }
     />
