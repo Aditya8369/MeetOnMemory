@@ -187,8 +187,9 @@ const DataExportSection = () => {
                   What is included in your export package?
                 </p>
                 <p className="text-slate-500 dark:text-slate-400">
-                  In compliance with GDPR Article 20 (Right to data portability),
-                  your export archive contains structured JSON files including:
+                  In compliance with GDPR Article 20 (Right to data
+                  portability), your export archive contains structured JSON
+                  files including:
                 </p>
               </div>
             </div>
@@ -222,7 +223,8 @@ const DataExportSection = () => {
                     Preparing Data Export Archive...
                   </p>
                   <p className="text-[11px] text-blue-700 dark:text-blue-300 mt-0.5">
-                    Your meetings, transcripts, and profile data are being packaged. This usually takes under a minute.
+                    Your meetings, transcripts, and profile data are being
+                    packaged. This usually takes under a minute.
                   </p>
                 </div>
               </div>
@@ -244,7 +246,8 @@ const DataExportSection = () => {
                     Download your full account archive (.zip).
                     {exportStatus.expiresAt && (
                       <span className="block sm:inline sm:ml-1 font-medium">
-                        Expires on {formatExpiryTime(exportStatus.expiresAt)} (24h retention).
+                        Expires on {formatExpiryTime(exportStatus.expiresAt)}{" "}
+                        (24h retention).
                       </span>
                     )}
                   </p>
@@ -273,7 +276,8 @@ const DataExportSection = () => {
                   Data Export Generation Failed
                 </p>
                 <p className="text-[11px] text-red-700 dark:text-red-300 mt-0.5">
-                  {exportStatus.error || "An unexpected error occurred while compiling your data package."}
+                  {exportStatus.error ||
+                    "An unexpected error occurred while compiling your data package."}
                 </p>
               </div>
             </div>
@@ -284,19 +288,28 @@ const DataExportSection = () => {
             <div className="text-[11px] text-slate-500 dark:text-slate-400 space-y-1">
               <div className="flex items-center gap-1.5">
                 <Clock className="w-3.5 h-3.5 text-slate-400 shrink-0" />
-                <span>Exports are retained securely for 24 hours. Rate limited to 1 request per 24 hours.</span>
+                <span>
+                  Exports are retained securely for 24 hours. Rate limited to 1
+                  request per 24 hours.
+                </span>
               </div>
-              {!exportStatus.canRequest && exportStatus.cooldownHoursRemaining > 0 && (
-                <p className="text-amber-600 dark:text-amber-400 font-medium">
-                  Next export request available in approximately {exportStatus.cooldownHoursRemaining} hour(s).
-                </p>
-              )}
+              {!exportStatus.canRequest &&
+                exportStatus.cooldownHoursRemaining > 0 && (
+                  <p className="text-amber-600 dark:text-amber-400 font-medium">
+                    Next export request available in approximately{" "}
+                    {exportStatus.cooldownHoursRemaining} hour(s).
+                  </p>
+                )}
             </div>
 
             <button
               type="button"
               data-testid="request-export-btn"
-              disabled={!exportStatus.canRequest || exportStatus.status === "processing" || isRequesting}
+              disabled={
+                !exportStatus.canRequest ||
+                exportStatus.status === "processing" ||
+                isRequesting
+              }
               onClick={() => setIsConfirmModalOpen(true)}
               className="inline-flex items-center justify-center gap-2 px-4 py-2.5 text-xs font-semibold text-white bg-blue-600 hover:bg-blue-700 disabled:bg-slate-300 dark:disabled:bg-slate-800 disabled:text-slate-500 disabled:cursor-not-allowed rounded-xl transition-all shadow-xs cursor-pointer shrink-0"
             >

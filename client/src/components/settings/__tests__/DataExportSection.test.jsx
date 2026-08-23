@@ -97,7 +97,9 @@ describe("DataExportSection (#2033)", () => {
       ).toBeInTheDocument();
     });
 
-    const confirmBtn = screen.getByRole("button", { name: /^Request Export$/i });
+    const confirmBtn = screen.getByRole("button", {
+      name: /^Request Export$/i,
+    });
     fireEvent.click(confirmBtn);
 
     await waitFor(() => {

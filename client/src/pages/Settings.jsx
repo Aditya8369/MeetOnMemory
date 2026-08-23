@@ -44,7 +44,6 @@ import DataExportSection from "../components/settings/DataExportSection.jsx";
 
 const clerkPubKey = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY;
 
-
 /**
  * How long to watch a calendar OAuth popup before giving up (Issue #1455).
  *
@@ -1029,7 +1028,6 @@ const Settings = () => {
 
           {/* Preferences Section */}
           <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-2xl p-6 shadow-sm fade-in-up stagger-6">
-
             <div className="flex items-center gap-3 mb-6">
               <div className="p-2 bg-green-50 dark:bg-green-900/30 rounded-xl">
                 <Globe className="w-5 h-5 text-green-600 dark:text-green-400" />

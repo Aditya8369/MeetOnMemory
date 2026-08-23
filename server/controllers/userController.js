@@ -352,8 +352,15 @@ export const downloadExport = async (req, res) => {
     }
 
     // Verify fileName structure conforms to user export naming
-    if (!fileName.startsWith(`export_${userId}_`) || !fileName.endsWith(".zip")) {
-      return sendError(res, 403, "Unauthorized access to requested export file.");
+    if (
+      !fileName.startsWith(`export_${userId}_`) ||
+      !fileName.endsWith(".zip")
+    ) {
+      return sendError(
+        res,
+        403,
+        "Unauthorized access to requested export file.",
+      );
     }
 
     const exportDir = path.join(__dirname, "..", "uploads", "exports");
@@ -381,4 +388,3 @@ export const downloadExport = async (req, res) => {
     sendError(res, 500, "Server error");
   }
 };
-

@@ -147,4 +147,3 @@ export default async function exportDataJob(job, _app) {
     throw error;
   }
 }
-

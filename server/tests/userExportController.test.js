@@ -1,7 +1,6 @@
 import { jest } from "@jest/globals";
 import jwt from "jsonwebtoken";
 
-
 // Mock userModel
 jest.unstable_mockModule("../models/userModel.js", () => ({
   default: {
@@ -19,11 +18,8 @@ jest.unstable_mockModule("../queues/dataExportQueue.js", () => ({
 
 const userModel = (await import("../models/userModel.js")).default;
 const dataExportQueue = (await import("../queues/dataExportQueue.js")).default;
-const {
-  requestDataExport,
-  getDataExportStatus,
-  downloadExport,
-} = await import("../controllers/userController.js");
+const { requestDataExport, getDataExportStatus, downloadExport } =
+  await import("../controllers/userController.js");
 
 describe("User Data Export Controller (#2033)", () => {
   let req, res;
