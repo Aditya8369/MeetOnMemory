@@ -17,6 +17,11 @@ import { toast } from "react-toastify";
 import { toggleBookmarkAPI, getBookmarkStatusAPI } from "../../api/bookmarkApi";
 import { askAssistantAbout } from "../../utils/askAssistant.js";
 import { notificationApi } from "../../services/notificationApi.js";
+import {
+  generateICS,
+  getGoogleCalendarUrl,
+  getOutlookCalendarUrl,
+} from "../../utils/calendarExport.js";
 
 const MeetingHeader = ({ meeting, onShare, onShareInvite, onPresent }) => {
   const navigate = useNavigate();
@@ -27,6 +32,7 @@ const MeetingHeader = ({ meeting, onShare, onShareInvite, onPresent }) => {
   const [isLoadingBookmark, setIsLoadingBookmark] = useState(false);
   const [isMuted, setIsMuted] = useState(false);
   const [muteLoading, setMuteLoading] = useState(false);
+  const [showCalendarMenu, setShowCalendarMenu] = useState(false);
 
   useEffect(() => {
     if (meeting?._id) {
@@ -262,6 +268,58 @@ const MeetingHeader = ({ meeting, onShare, onShareInvite, onPresent }) => {
           >
             <Share2 className="w-4 h-4" /> Share
           </button>
+          <div className="relative">
+            <button
+              onClick={() => setShowCalendarMenu(!showCalendarMenu)}
+              className="flex items-center gap-2 px-3 py-1.5 bg-gray-50 text-gray-700 hover:bg-gray-100 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700 rounded-lg text-sm font-medium transition-colors"
+            >
+              <svg
+                className="w-4 h-4"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"
+                />
+              </svg>
+              Add to Calendar
+            </button>
+            {showCalendarMenu && (
+              <div className="absolute right-0 top-full mt-2 w-48 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg z-10 overflow-hidden">
+                <button
+                  onClick={() => {
+                    setShowCalendarMenu(false);
+                    generateICS(meeting);
+                  }}
+                  className="w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+                >
+                  Download ICS
+                </button>
+                <a
+                  href={getGoogleCalendarUrl(meeting)}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  onClick={() => setShowCalendarMenu(false)}
+                  className="block w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+                >
+                  Google Calendar
+                </a>
+                <a
+                  href={getOutlookCalendarUrl(meeting)}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  onClick={() => setShowCalendarMenu(false)}
+                  className="block w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+                >
+                  Outlook Web
+                </a>
+              </div>
+            )}
+          </div>
         </div>
       </div>
 

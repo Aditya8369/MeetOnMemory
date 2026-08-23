@@ -7,6 +7,7 @@ import CalendarNotice from "./CalendarNotice";
 import DraftRecoveryBanner from "./DraftRecoveryBanner";
 import SmartAgendaGenerator from "../../../../components/meetings/SmartAgendaGenerator";
 import CustomFieldsEditor from "../../../../components/meetings/CustomFieldsEditor";
+import ConflictWarning from "./ConflictWarning";
 
 const ScheduleMeeting = ({ hookProps, loadingDuplicate = false }) => {
   const {
@@ -44,6 +45,12 @@ const ScheduleMeeting = ({ hookProps, loadingDuplicate = false }) => {
     customFields,
     setCustomFields,
     userData,
+    focusConflicts,
+    busyParticipants,
+    checkingConflicts,
+    conflictCheckError,
+    conflictMode,
+    setConflictMode,
   } = hookProps;
 
   return (
@@ -78,6 +85,23 @@ const ScheduleMeeting = ({ hookProps, loadingDuplicate = false }) => {
           onRestore={restoreDraft}
           onDiscard={discardDraft}
         />
+        <ConflictWarning
+          focusConflicts={focusConflicts}
+          busyParticipants={busyParticipants}
+          loading={checkingConflicts}
+          mode={conflictMode}
+          onModeChange={setConflictMode}
+          enabled={Boolean(scheduleData.date && scheduleData.time)}
+        />
+        {conflictCheckError && (
+          <p
+            className="mb-6 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-xs text-amber-800 dark:border-amber-900/60 dark:bg-amber-950/30 dark:text-amber-300"
+            role="status"
+          >
+            {conflictCheckError}
+          </p>
+        )}
+
         <MeetingInformationForm
           scheduleData={scheduleData}
           setScheduleData={setScheduleData}

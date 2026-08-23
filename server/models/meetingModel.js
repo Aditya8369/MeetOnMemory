@@ -277,6 +277,10 @@ const meetingSchema = new mongoose.Schema(
       lastError: { type: String, default: null, maxlength: 500 },
       lastJobId: { type: String, default: null },
     },
+    auditNote: {
+      type: String,
+      default: "",
+    },
   },
   { timestamps: true },
 );

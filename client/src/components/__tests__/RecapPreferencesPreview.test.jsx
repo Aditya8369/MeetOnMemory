@@ -13,6 +13,13 @@ vi.mock("../../services/recapApi", () => ({
   previewRecapEmail: vi.fn(),
 }));
 
+vi.mock("../../services/notificationApi", () => ({
+  notificationApi: {
+    getPreferences: vi.fn().mockResolvedValue({ data: { preferences: {} } }),
+    updatePreferences: vi.fn(),
+  },
+}));
+
 vi.mock("react-toastify", () => ({
   toast: {
     success: vi.fn(),

@@ -48,6 +48,29 @@ const keywordAlertSchema = new mongoose.Schema(
       type: Boolean,
       default: true,
     },
+    deliveryHistory: [
+      {
+        channel: {
+          type: String,
+          enum: ["app", "email", "test"],
+          required: true,
+        },
+        matchedKeywords: [{ type: String }],
+        meetingId: {
+          type: mongoose.Schema.Types.ObjectId,
+          ref: "Meeting",
+        },
+        meetingTitle: { type: String, default: "Meeting" },
+        recipientEmail: { type: String },
+        status: {
+          type: String,
+          enum: ["delivered", "failed", "simulated"],
+          default: "delivered",
+        },
+        summary: { type: String },
+        sentAt: { type: Date, default: Date.now },
+      },
+    ],
   },
   {
     timestamps: true,

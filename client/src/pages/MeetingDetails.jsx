@@ -7,6 +7,7 @@ import MeetingHeader from "../components/meeting-details/MeetingHeader";
 import MeetingSummary from "../components/meeting-details/MeetingSummary";
 import MinutesApproval from "../components/meetings/MinutesApproval";
 import MeetingCollaborativeNotes from "../components/meeting-details/MeetingCollaborativeNotes";
+import PersonalNotes from "../components/meeting-details/PersonalNotes";
 import MeetingTranscript from "../components/meeting-details/MeetingTranscript";
 import MeetingParticipants from "../components/meeting-details/MeetingParticipants";
 import MeetingAgenda from "../components/meeting-details/MeetingAgenda";
@@ -309,7 +310,12 @@ const MeetingDetails = () => {
           <DuplicateDetectionPanel meetingId={meeting._id} />
           <MeetingFollowUpBanner meeting={meeting} />
           <div className="mt-6 mb-6">
-            <MeetingReadiness meetingId={meeting._id} />
+            <MeetingReadiness
+              meetingId={meeting._id}
+              meeting={meeting}
+              briefingStatus={briefingStatus}
+              currentUser={currentUser}
+            />
           </div>
           <MeetingHeader
             meeting={meeting}
@@ -376,6 +382,10 @@ const MeetingDetails = () => {
           <MeetingSummary meeting={meeting} />
           <MinutesApproval meeting={meeting} />
           <MeetingCollaborativeNotes meeting={meeting} />
+
+          <div className="mt-6 mb-6">
+            <PersonalNotes meeting={meeting} />
+          </div>
 
           <div className="mt-6 mb-6">
             <MeetingTimeline meetingId={meeting._id} meeting={meeting} />

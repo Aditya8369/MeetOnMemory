@@ -1,7 +1,8 @@
 // components/organization/DangerZone.jsx
-import React, { useState, useCallback, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { toast } from 'react-toastify';
+import React, { useState, useCallback, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
+import { toast } from "react-toastify";
+import { organizationApi } from "../../services/organizationApi";
 import {
   AlertTriangle,
   UserMinus,
@@ -43,8 +44,11 @@ import {
   Award,
   Medal,
   Trophy,
-  Crown as CrownIcon
-} from 'lucide-react';
+  Crown as CrownIcon,
+  Settings,
+  X,
+  Database,
+} from "lucide-react";
 
 // Confirmation Modal with Typed Confirmation
 const ConfirmModal = ({
@@ -55,17 +59,16 @@ const ConfirmModal = ({
   message,
   confirmText,
   confirmKeyword,
-  actionType = 'danger',
+  actionType = "danger",
   isLoading = false,
-  children
+  children,
 }) => {
-  const [typedText, setTypedText] = useState('');
-  const [showPassword, setShowPassword] = useState(false);
+  const [typedText, setTypedText] = useState("");
   const inputRef = React.useRef(null);
 
   useEffect(() => {
     if (isOpen) {
-      setTypedText('');
+      setTypedText("");
       setTimeout(() => {
         if (inputRef.current) {
           inputRef.current.focus();
@@ -81,10 +84,10 @@ const ConfirmModal = ({
   };
 
   const handleKeyDown = (e) => {
-    if (e.key === 'Enter' && typedText.trim() === confirmKeyword) {
+    if (e.key === "Enter" && typedText.trim() === confirmKeyword) {
       handleConfirm();
     }
-    if (e.key === 'Escape') {
+    if (e.key === "Escape") {
       onClose();
     }
   };
@@ -95,37 +98,37 @@ const ConfirmModal = ({
 
   const getActionStyles = () => {
     switch (actionType) {
-      case 'danger':
+      case "danger":
         return {
-          border: 'border-red-500/50 dark:border-red-500/30',
-          bg: 'bg-red-50 dark:bg-red-950/30',
-          icon: 'text-red-600 dark:text-red-400',
-          button: 'bg-red-600 hover:bg-red-700 focus:ring-red-500',
-          text: 'text-red-600 dark:text-red-400'
+          border: "border-red-500/50 dark:border-red-500/30",
+          bg: "bg-red-50 dark:bg-red-950/30",
+          icon: "text-red-600 dark:text-red-400",
+          button: "bg-red-600 hover:bg-red-700 focus:ring-red-500",
+          text: "text-red-600 dark:text-red-400",
         };
-      case 'warning':
+      case "warning":
         return {
-          border: 'border-yellow-500/50 dark:border-yellow-500/30',
-          bg: 'bg-yellow-50 dark:bg-yellow-950/30',
-          icon: 'text-yellow-600 dark:text-yellow-400',
-          button: 'bg-yellow-600 hover:bg-yellow-700 focus:ring-yellow-500',
-          text: 'text-yellow-600 dark:text-yellow-400'
+          border: "border-yellow-500/50 dark:border-yellow-500/30",
+          bg: "bg-yellow-50 dark:bg-yellow-950/30",
+          icon: "text-yellow-600 dark:text-yellow-400",
+          button: "bg-yellow-600 hover:bg-yellow-700 focus:ring-yellow-500",
+          text: "text-yellow-600 dark:text-yellow-400",
         };
-      case 'info':
+      case "info":
         return {
-          border: 'border-blue-500/50 dark:border-blue-500/30',
-          bg: 'bg-blue-50 dark:bg-blue-950/30',
-          icon: 'text-blue-600 dark:text-blue-400',
-          button: 'bg-blue-600 hover:bg-blue-700 focus:ring-blue-500',
-          text: 'text-blue-600 dark:text-blue-400'
+          border: "border-blue-500/50 dark:border-blue-500/30",
+          bg: "bg-blue-50 dark:bg-blue-950/30",
+          icon: "text-blue-600 dark:text-blue-400",
+          button: "bg-blue-600 hover:bg-blue-700 focus:ring-blue-500",
+          text: "text-blue-600 dark:text-blue-400",
         };
       default:
         return {
-          border: 'border-slate-500/50 dark:border-slate-500/30',
-          bg: 'bg-slate-50 dark:bg-slate-950/30',
-          icon: 'text-slate-600 dark:text-slate-400',
-          button: 'bg-slate-600 hover:bg-slate-700 focus:ring-slate-500',
-          text: 'text-slate-600 dark:text-slate-400'
+          border: "border-slate-500/50 dark:border-slate-500/30",
+          bg: "bg-slate-50 dark:bg-slate-950/30",
+          icon: "text-slate-600 dark:text-slate-400",
+          button: "bg-slate-600 hover:bg-slate-700 focus:ring-slate-500",
+          text: "text-slate-600 dark:text-slate-400",
         };
     }
   };
@@ -134,16 +137,18 @@ const ConfirmModal = ({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-in fade-in duration-200">
-      <div 
+      <div
         className={`bg-white dark:bg-slate-900 rounded-2xl max-w-lg w-full shadow-2xl border ${styles.border} max-h-[90vh] overflow-y-auto`}
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
-        <div className={`flex items-center gap-3 p-6 border-b ${styles.border}`}>
+        <div
+          className={`flex items-center gap-3 p-6 border-b ${styles.border}`}
+        >
           <div className={`p-2 rounded-xl ${styles.bg}`}>
-            {actionType === 'danger' ? (
+            {actionType === "danger" ? (
               <AlertOctagon className={`w-6 h-6 ${styles.icon}`} />
-            ) : actionType === 'warning' ? (
+            ) : actionType === "warning" ? (
               <AlertTriangle className={`w-6 h-6 ${styles.icon}`} />
             ) : (
               <AlertCircle className={`w-6 h-6 ${styles.icon}`} />
@@ -174,7 +179,11 @@ const ConfirmModal = ({
           {/* Confirmation Input */}
           <div>
             <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
-              Type <span className="font-mono font-bold text-red-600 dark:text-red-400">{confirmKeyword}</span> to confirm
+              Type{" "}
+              <span className="font-mono font-bold text-red-600 dark:text-red-400">
+                {confirmKeyword}
+              </span>{" "}
+              to confirm
             </label>
             <div className="relative">
               <input
@@ -215,7 +224,7 @@ const ConfirmModal = ({
             className={`px-6 py-2.5 text-sm font-bold text-white rounded-xl transition-all ${
               isConfirmEnabled && !isLoading
                 ? `${styles.button} shadow-lg shadow-red-500/20`
-                : 'bg-slate-300 dark:bg-slate-700 cursor-not-allowed'
+                : "bg-slate-300 dark:bg-slate-700 cursor-not-allowed"
             }`}
           >
             {isLoading ? (
@@ -224,7 +233,7 @@ const ConfirmModal = ({
                 Processing...
               </>
             ) : (
-              confirmText || 'Confirm'
+              confirmText || "Confirm"
             )}
           </button>
         </div>
@@ -240,37 +249,37 @@ const TransferOwnershipModal = ({
   onTransfer,
   members,
   currentOwnerId,
-  isLoading = false
+  isLoading = false,
 }) => {
-  const [selectedMemberId, setSelectedMemberId] = useState('');
-  const [typedText, setTypedText] = useState('');
-  const [error, setError] = useState('');
+  const [selectedMemberId, setSelectedMemberId] = useState("");
+  const [typedText, setTypedText] = useState("");
+  const [error, setError] = useState("");
 
   useEffect(() => {
     if (isOpen) {
-      setSelectedMemberId('');
-      setTypedText('');
-      setError('');
+      setSelectedMemberId("");
+      setTypedText("");
+      setError("");
     }
   }, [isOpen]);
 
   const handleTransfer = () => {
     if (!selectedMemberId) {
-      setError('Please select a member to transfer ownership to');
+      setError("Please select a member to transfer ownership to");
       return;
     }
     if (selectedMemberId === currentOwnerId) {
-      setError('Cannot transfer ownership to yourself');
+      setError("Cannot transfer ownership to yourself");
       return;
     }
-    if (typedText.trim() !== 'transfer') {
+    if (typedText.trim() !== "transfer") {
       setError('Please type "transfer" to confirm');
       return;
     }
     onTransfer(selectedMemberId);
   };
 
-  const selectedMember = members.find(m => m._id === selectedMemberId);
+  const selectedMember = members.find((m) => m._id === selectedMemberId);
 
   if (!isOpen) return null;
 
@@ -309,8 +318,9 @@ const TransferOwnershipModal = ({
                   Important: Ownership Transfer
                 </p>
                 <p className="text-xs text-amber-700 dark:text-amber-400 mt-0.5">
-                  Transferring ownership will give the new owner full control over the organization. 
-                  You will lose administrative privileges and cannot undo this action.
+                  Transferring ownership will give the new owner full control
+                  over the organization. You will lose administrative privileges
+                  and cannot undo this action.
                 </p>
               </div>
             </div>
@@ -325,16 +335,17 @@ const TransferOwnershipModal = ({
               value={selectedMemberId}
               onChange={(e) => {
                 setSelectedMemberId(e.target.value);
-                setError('');
+                setError("");
               }}
               className="w-full px-4 py-2.5 text-sm rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-600 focus:outline-none focus:ring-2 focus:ring-blue-500 text-slate-900 dark:text-white transition-all"
             >
               <option value="">Select a member...</option>
               {members
-                .filter(m => m._id !== currentOwnerId)
+                .filter((m) => m._id !== currentOwnerId)
                 .map((member) => (
                   <option key={member._id} value={member._id}>
-                    {member.name || member.email} {member.role === 'admin' && '(Admin)'}
+                    {member.name || member.email}{" "}
+                    {member.role === "admin" && "(Admin)"}
                   </option>
                 ))}
             </select>
@@ -346,10 +357,11 @@ const TransferOwnershipModal = ({
                   </div>
                   <div>
                     <p className="text-sm font-medium text-slate-900 dark:text-white">
-                      {selectedMember.name || 'Unnamed Member'}
+                      {selectedMember.name || "Unnamed Member"}
                     </p>
                     <p className="text-xs text-slate-500 dark:text-slate-400">
-                      {selectedMember.email} • Role: {selectedMember.role || 'member'}
+                      {selectedMember.email} • Role:{" "}
+                      {selectedMember.role || "member"}
                     </p>
                   </div>
                 </div>
@@ -366,14 +378,18 @@ const TransferOwnershipModal = ({
           {/* Confirmation Input */}
           <div>
             <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
-              Type <span className="font-mono font-bold text-blue-600 dark:text-blue-400">transfer</span> to confirm
+              Type{" "}
+              <span className="font-mono font-bold text-blue-600 dark:text-blue-400">
+                transfer
+              </span>{" "}
+              to confirm
             </label>
             <input
               type="text"
               value={typedText}
               onChange={(e) => {
                 setTypedText(e.target.value);
-                setError('');
+                setError("");
               }}
               placeholder='Type "transfer" here...'
               className="w-full px-4 py-2.5 text-sm rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-600 focus:outline-none focus:ring-2 focus:ring-blue-500 text-slate-900 dark:text-white transition-all"
@@ -394,11 +410,13 @@ const TransferOwnershipModal = ({
           </button>
           <button
             onClick={handleTransfer}
-            disabled={!selectedMemberId || typedText.trim() !== 'transfer' || isLoading}
+            disabled={
+              !selectedMemberId || typedText.trim() !== "transfer" || isLoading
+            }
             className={`px-6 py-2.5 text-sm font-bold text-white rounded-xl transition-all ${
-              selectedMemberId && typedText.trim() === 'transfer' && !isLoading
-                ? 'bg-blue-600 hover:bg-blue-700 shadow-lg shadow-blue-500/20'
-                : 'bg-slate-300 dark:bg-slate-700 cursor-not-allowed'
+              selectedMemberId && typedText.trim() === "transfer" && !isLoading
+                ? "bg-blue-600 hover:bg-blue-700 shadow-lg shadow-blue-500/20"
+                : "bg-slate-300 dark:bg-slate-700 cursor-not-allowed"
             }`}
           >
             {isLoading ? (
@@ -407,7 +425,7 @@ const TransferOwnershipModal = ({
                 Transferring...
               </>
             ) : (
-              'Transfer Ownership'
+              "Transfer Ownership"
             )}
           </button>
         </div>
@@ -422,20 +440,17 @@ const DangerZone = ({
   members,
   currentUser,
   userRole,
-  canEdit,
-  onRefresh
+  onRefresh,
 }) => {
   const navigate = useNavigate();
   const [expanded, setExpanded] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [action, setAction] = useState(null); // 'leave', 'delete', 'transfer'
   const [showLeaveConfirm, setShowLeaveConfirm] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [showTransferModal, setShowTransferModal] = useState(false);
-  const [organizationName, setOrganizationName] = useState('');
+  const [organizationName, setOrganizationName] = useState("");
 
-  const isOwner = userRole === 'owner';
-  const isAdmin = userRole === 'admin' || userRole === 'owner';
+  const isOwner = userRole === "owner";
 
   // Leave Organization
   const handleLeave = useCallback(async () => {
@@ -443,32 +458,37 @@ const DangerZone = ({
 
     setLoading(true);
     try {
-      const response = await organizationApi.leaveOrganization(organization._id);
-      
+      const response = await organizationApi.leaveOrganization(
+        organization._id,
+      );
+
       if (response.data.success) {
-        toast.success('You have left the organization successfully');
-        
+        toast.success("You have left the organization successfully");
+
         // Audit log
-        console.log('Audit: User left organization', {
+        console.log("Audit: User left organization", {
           userId: currentUser?.id,
           organizationId: organization._id,
-          timestamp: new Date()
+          timestamp: new Date(),
         });
 
         // Redirect to dashboard
         setTimeout(() => {
-          navigate('/dashboard');
+          navigate("/dashboard");
         }, 500);
       } else {
-        throw new Error(response.data.message || 'Failed to leave organization');
+        throw new Error(
+          response.data.message || "Failed to leave organization",
+        );
       }
     } catch (error) {
-      console.error('Error leaving organization:', error);
-      toast.error(error.message || 'Failed to leave organization. Please try again.');
+      console.error("Error leaving organization:", error);
+      toast.error(
+        error.message || "Failed to leave organization. Please try again.",
+      );
     } finally {
       setLoading(false);
       setShowLeaveConfirm(false);
-      setAction(null);
     }
   }, [organization, navigate, currentUser]);
 
@@ -476,93 +496,110 @@ const DangerZone = ({
   const handleDelete = useCallback(async () => {
     if (!organization?._id) return;
     if (organizationName !== organization.name) {
-      toast.error('Organization name does not match');
+      toast.error("Organization name does not match");
       return;
     }
 
     setLoading(true);
     try {
-      const response = await organizationApi.deleteOrganization(organization._id);
-      
+      const response = await organizationApi.deleteOrganization(
+        organization._id,
+      );
+
       if (response.data.success) {
-        toast.success('Organization has been permanently deleted');
-        
+        toast.success("Organization has been permanently deleted");
+
         // Audit log
-        console.log('Audit: Organization deleted', {
+        console.log("Audit: Organization deleted", {
           userId: currentUser?.id,
           organizationId: organization._id,
           organizationName: organization.name,
-          timestamp: new Date()
+          timestamp: new Date(),
         });
 
         // Redirect to dashboard
         setTimeout(() => {
-          navigate('/dashboard');
+          navigate("/dashboard");
         }, 500);
       } else {
-        throw new Error(response.data.message || 'Failed to delete organization');
+        throw new Error(
+          response.data.message || "Failed to delete organization",
+        );
       }
     } catch (error) {
-      console.error('Error deleting organization:', error);
-      toast.error(error.message || 'Failed to delete organization. Please try again.');
+      console.error("Error deleting organization:", error);
+      toast.error(
+        error.message || "Failed to delete organization. Please try again.",
+      );
     } finally {
       setLoading(false);
       setShowDeleteConfirm(false);
-      setAction(null);
-      setOrganizationName('');
+      setOrganizationName("");
     }
   }, [organization, navigate, currentUser, organizationName]);
 
   // Transfer Ownership
-  const handleTransfer = useCallback(async (newOwnerId) => {
-    if (!organization?._id || !newOwnerId) return;
+  const handleTransfer = useCallback(
+    async (newOwnerId) => {
+      if (!organization?._id || !newOwnerId) return;
 
-    setLoading(true);
-    try {
-      const response = await organizationApi.transferOwnership(organization._id, {
-        newOwnerId
-      });
-      
-      if (response.data.success) {
-        toast.success(`Ownership transferred to ${response.data.newOwner?.name || 'new owner'}`);
-        
-        // Audit log
-        console.log('Audit: Ownership transferred', {
-          userId: currentUser?.id,
-          organizationId: organization._id,
-          previousOwner: currentUser?.id,
-          newOwner: newOwnerId,
-          timestamp: new Date()
-        });
+      setLoading(true);
+      try {
+        const response = await organizationApi.transferOwnership(
+          organization._id,
+          {
+            newOwnerId,
+          },
+        );
 
-        // Refresh organization data
-        if (onRefresh) {
-          await onRefresh();
+        if (response.data.success) {
+          toast.success(
+            `Ownership transferred to ${response.data.newOwner?.name || "new owner"}`,
+          );
+
+          // Audit log
+          console.log("Audit: Ownership transferred", {
+            userId: currentUser?.id,
+            organizationId: organization._id,
+            previousOwner: currentUser?.id,
+            newOwner: newOwnerId,
+            timestamp: new Date(),
+          });
+
+          // Refresh organization data
+          if (onRefresh) {
+            await onRefresh();
+          }
+        } else {
+          throw new Error(
+            response.data.message || "Failed to transfer ownership",
+          );
         }
-      } else {
-        throw new Error(response.data.message || 'Failed to transfer ownership');
+      } catch (error) {
+        console.error("Error transferring ownership:", error);
+        toast.error(
+          error.message || "Failed to transfer ownership. Please try again.",
+        );
+      } finally {
+        setLoading(false);
+        setShowTransferModal(false);
       }
-    } catch (error) {
-      console.error('Error transferring ownership:', error);
-      toast.error(error.message || 'Failed to transfer ownership. Please try again.');
-    } finally {
-      setLoading(false);
-      setShowTransferModal(false);
-      setAction(null);
-    }
-  }, [organization, currentUser, onRefresh]);
+    },
+    [organization, currentUser, onRefresh],
+  );
 
   // Get eligible members for transfer
-  const transferMembers = members?.filter(m => 
-    m._id !== currentUser?.id && 
-    (m.role === 'admin' || m.role === 'owner')
-  ) || [];
+  const transferMembers =
+    members?.filter(
+      (m) =>
+        m._id !== currentUser?.id && (m.role === "admin" || m.role === "owner"),
+    ) || [];
 
   // Render Danger Zone
   return (
     <div className="bg-white dark:bg-slate-900 border-2 border-red-200/80 dark:border-red-800/60 rounded-2xl shadow-sm overflow-hidden">
       {/* Header - Always visible */}
-      <div 
+      <div
         className="flex items-center justify-between p-6 cursor-pointer hover:bg-red-50/50 dark:hover:bg-red-950/20 transition-colors"
         onClick={() => setExpanded(!expanded)}
       >
@@ -605,8 +642,9 @@ const DangerZone = ({
                   This section contains destructive actions
                 </p>
                 <p className="text-xs text-red-700 dark:text-red-400">
-                  These actions cannot be undone. Please proceed with extreme caution.
-                  All actions are logged for security and compliance purposes.
+                  These actions cannot be undone. Please proceed with extreme
+                  caution. All actions are logged for security and compliance
+                  purposes.
                 </p>
               </div>
             </div>
@@ -625,8 +663,8 @@ const DangerZone = ({
                       Leave Organization
                     </h4>
                     <p className="text-xs text-slate-500 dark:text-slate-400">
-                      You will lose access to all organization data and resources.
-                      You can rejoin if invited again.
+                      You will lose access to all organization data and
+                      resources. You can rejoin if invited again.
                     </p>
                     <div className="flex items-center gap-4 mt-2">
                       <span className="inline-flex items-center gap-1 text-xs text-slate-500 dark:text-slate-400">
@@ -646,7 +684,6 @@ const DangerZone = ({
                 </div>
                 <button
                   onClick={() => {
-                    setAction('leave');
                     setShowLeaveConfirm(true);
                   }}
                   disabled={loading}
@@ -672,8 +709,9 @@ const DangerZone = ({
                       Transfer Ownership
                     </h4>
                     <p className="text-xs text-slate-500 dark:text-slate-400">
-                      Transfer full control to another member. You will become a regular member.
-                      You can only transfer to another admin or owner.
+                      Transfer full control to another member. You will become a
+                      regular member. You can only transfer to another admin or
+                      owner.
                     </p>
                     <div className="flex items-center gap-4 mt-2">
                       <span className="inline-flex items-center gap-1 text-xs text-slate-500 dark:text-slate-400">
@@ -689,7 +727,6 @@ const DangerZone = ({
                 </div>
                 <button
                   onClick={() => {
-                    setAction('transfer');
                     setShowTransferModal(true);
                   }}
                   disabled={loading}
@@ -712,7 +749,7 @@ const DangerZone = ({
                     No Eligible Members for Transfer
                   </p>
                   <p className="text-xs text-amber-700 dark:text-amber-400">
-                    You need at least one admin or owner to transfer ownership. 
+                    You need at least one admin or owner to transfer ownership.
                     Please promote a member to admin first.
                   </p>
                 </div>
@@ -733,8 +770,9 @@ const DangerZone = ({
                       Delete Organization
                     </h4>
                     <p className="text-xs text-red-600/80 dark:text-red-400/80">
-                      Permanently delete this organization and all associated data.
-                      This action cannot be undone and will remove all members.
+                      Permanently delete this organization and all associated
+                      data. This action cannot be undone and will remove all
+                      members.
                     </p>
                     <div className="flex flex-wrap items-center gap-4 mt-2">
                       <span className="inline-flex items-center gap-1 text-xs text-red-600 dark:text-red-400">
@@ -758,9 +796,8 @@ const DangerZone = ({
                 </div>
                 <button
                   onClick={() => {
-                    setAction('delete');
                     setShowDeleteConfirm(true);
-                    setOrganizationName('');
+                    setOrganizationName("");
                   }}
                   disabled={loading}
                   className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white text-sm font-bold rounded-xl transition-colors shadow-lg shadow-red-500/30 disabled:opacity-50 flex items-center gap-2"
@@ -777,7 +814,7 @@ const DangerZone = ({
             <div className="flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
               <Shield className="w-3.5 h-3.5" />
               <span>
-                All destructive actions are logged for security compliance. 
+                All destructive actions are logged for security compliance.
                 Audit logs include user, action, timestamp, and organization.
               </span>
             </div>
@@ -790,11 +827,10 @@ const DangerZone = ({
         isOpen={showLeaveConfirm}
         onClose={() => {
           setShowLeaveConfirm(false);
-          setAction(null);
         }}
         onConfirm={handleLeave}
         title="Leave Organization"
-        message={`You are about to leave "${organization?.name || 'this organization'}". You will lose access to all data and resources.`}
+        message={`You are about to leave "${organization?.name || "this organization"}". You will lose access to all data and resources.`}
         confirmText="Leave Organization"
         confirmKeyword="leave"
         actionType="warning"
@@ -822,12 +858,11 @@ const DangerZone = ({
         isOpen={showDeleteConfirm}
         onClose={() => {
           setShowDeleteConfirm(false);
-          setAction(null);
-          setOrganizationName('');
+          setOrganizationName("");
         }}
         onConfirm={handleDelete}
         title="Delete Organization"
-        message={`You are about to permanently delete "${organization?.name || 'this organization'}". This action cannot be undone.`}
+        message={`You are about to permanently delete "${organization?.name || "this organization"}". This action cannot be undone.`}
         confirmText="Delete Organization"
         confirmKeyword="delete"
         actionType="danger"
@@ -885,7 +920,6 @@ const DangerZone = ({
         isOpen={showTransferModal}
         onClose={() => {
           setShowTransferModal(false);
-          setAction(null);
         }}
         onTransfer={handleTransfer}
         members={members || []}
@@ -894,29 +928,6 @@ const DangerZone = ({
       />
     </div>
   );
-};
-
-// Organization API service extensions (add to organizationApi.js)
-const organizationApiExtensions = {
-  // Leave organization
-  leaveOrganization: (organizationId) => {
-    return api.post(`/api/organizations/${organizationId}/leave`);
-  },
-
-  // Delete organization
-  deleteOrganization: (organizationId) => {
-    return api.delete(`/api/organizations/${organizationId}`);
-  },
-
-  // Transfer ownership
-  transferOwnership: (organizationId, data) => {
-    return api.post(`/api/organizations/${organizationId}/transfer-ownership`, data);
-  },
-
-  // Get organization members (for transfer dropdown)
-  getOrganizationMembers: (organizationId) => {
-    return api.get(`/api/organizations/${organizationId}/members`);
-  }
 };
 
 export default DangerZone;

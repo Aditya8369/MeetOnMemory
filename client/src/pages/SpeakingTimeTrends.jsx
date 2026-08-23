@@ -12,6 +12,7 @@ import {
 } from "recharts";
 import { speakingTimeApi } from "../services";
 import { toast } from "react-toastify";
+import { useRBAC } from "../hooks/useRBAC.js";
 
 const formatDuration = (seconds) => {
   const m = Math.floor(seconds / 60);
@@ -48,6 +49,8 @@ const CustomTooltip = ({ active, payload }) => {
 const SpeakingTimeTrends = () => {
   const [trends, setTrends] = useState([]);
   const [loading, setLoading] = useState(true);
+  const { hasPermission } = useRBAC();
+  const canCompare = hasPermission("reports", "view");
 
   useEffect(() => {
     const fetchTrends = async () => {
@@ -97,6 +100,14 @@ const SpeakingTimeTrends = () => {
               Analyze your participation across recent meetings
             </p>
           </div>
+          {canCompare && (
+            <Link
+              to="/speaking-time-compare"
+              className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold rounded-lg shadow transition-colors"
+            >
+              Compare Team Speaking Time
+            </Link>
+          )}
         </div>
 
         {trends.length === 0 ? (

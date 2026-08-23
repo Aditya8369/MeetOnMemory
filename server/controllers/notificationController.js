@@ -236,11 +236,14 @@ export const updatePreferences = async (req, res) => {
       "pushOrganizationUpdates",
       "pushPolicyUpdates",
       "pushReportUpdates",
+      "quietHoursStart",
+      "quietHoursEnd",
+      "timezone",
     ];
 
     const updates = {};
     for (const field of allowedFields) {
-      if (typeof req.body[field] === "boolean") {
+      if (req.body[field] !== undefined) {
         updates[field] = req.body[field];
       }
     }

@@ -67,6 +67,10 @@ import {
   startStandupReportJob,
   stopStandupReportJob,
 } from "./jobs/standupReportJob.js";
+import {
+  startActionItemSlaJob,
+  stopActionItemSlaJob,
+} from "./jobs/actionItemSlaJob.js";
 import { createClient } from "redis"; // eslint-disable-line no-unused-vars
 import {
   initDataExportWorker, // eslint-disable-line no-unused-vars
@@ -198,6 +202,9 @@ if (process.env.NODE_ENV !== "test") {
 
   // Start standup report job
   startStandupReportJob();
+
+  // Start Action Item SLA background job
+  startActionItemSlaJob();
 }
 
 // (AI, Data Export, and Webhook workers are initialized inside server.listen callback)
@@ -215,6 +222,7 @@ const gracefulShutdown = createGracefulShutdown({
     stopMeetingNudgeJob();
     stopWeeklyInsightJob();
     stopStandupReportJob();
+    stopActionItemSlaJob();
   },
   closeQueues: shutdownQueues,
   closeDatabase: () => mongoose.connection.close(),

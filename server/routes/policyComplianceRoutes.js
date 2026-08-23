@@ -9,11 +9,15 @@ import {
   updateFlagStatus,
   reEvaluateCompliance,
 } from "../controllers/policyComplianceController.js";
+import {
+  exportComplianceEvidence,
+  getPolicyVersionDeepLink,
+} from "../controllers/policyComplianceEvidenceController.js";
 
 const router = express.Router();
 router.use(apiLimiter);
 router.use(userAuth);
-router.use(requireOrgMembership); // compliance data only exists within an organization
+router.use(requireOrgMembership);
 
 router.get(
   "/decisions/:decisionId",
@@ -24,6 +28,16 @@ router.get(
   "/policies/:policyId/related-decisions",
   requirePermission("policies", "view"),
   getPolicyRelatedDecisions,
+);
+router.get(
+  "/policies/:policyId/versions/:version",
+  requirePermission("policies", "view"),
+  getPolicyVersionDeepLink,
+);
+router.get(
+  "/flags/:id/export",
+  requirePermission("policies", "view"),
+  exportComplianceEvidence,
 );
 router.get("/flags", requirePermission("policies", "view"), getComplianceFlags);
 router.patch(

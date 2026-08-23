@@ -1,5 +1,6 @@
 import { render, screen, waitFor } from "@testing-library/react";
 import React from "react";
+import { MemoryRouter } from "react-router-dom";
 import { describe, expect, it, vi } from "vitest";
 import Leaderboard from "../Leaderboard.jsx";
 import apiClient from "../../services/apiClient";
@@ -20,11 +21,18 @@ vi.mock("react-toastify", () => ({
   },
 }));
 
+const renderLeaderboard = () =>
+  render(
+    <MemoryRouter>
+      <Leaderboard />
+    </MemoryRouter>,
+  );
+
 describe("Leaderboard Page (#1799)", () => {
   it("renders Navbar and loading indicator with dark mode classes initially", async () => {
     apiClient.get.mockReturnValue(new Promise(() => {})); // Never resolves
 
-    render(<Leaderboard />);
+    renderLeaderboard();
 
     expect(screen.getByTestId("mock-navbar")).toBeInTheDocument();
 
@@ -53,7 +61,7 @@ describe("Leaderboard Page (#1799)", () => {
 
     apiClient.get.mockResolvedValue({ data: mockData });
 
-    render(<Leaderboard />);
+    renderLeaderboard();
 
     await waitFor(() => {
       expect(apiClient.get).toHaveBeenCalledWith(
@@ -61,18 +69,24 @@ describe("Leaderboard Page (#1799)", () => {
       );
       expect(screen.getByText("Alice")).toBeInTheDocument();
       expect(screen.getByText("120 pts")).toBeInTheDocument();
+      expect(
+        screen.getByRole("link", { name: /browse badges gallery/i }),
+      ).toHaveAttribute("href", "/badges");
     });
   });
 
   it("handles empty/missing leaderboard data gracefully", async () => {
     apiClient.get.mockResolvedValue({ data: { success: true, data: null } });
 
-    render(<Leaderboard />);
+    renderLeaderboard();
 
     await waitFor(() => {
       expect(
         screen.getByText("No leaderboard data available."),
       ).toBeInTheDocument();
+      expect(
+        screen.getByRole("link", { name: /browse badges gallery/i }),
+      ).toHaveAttribute("href", "/badges");
     });
   });
 });

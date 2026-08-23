@@ -41,6 +41,11 @@ describe("API Services Endpoint Prefix (#803)", () => {
       });
     });
 
+    it("should call /api/meeting-series for listSeries", async () => {
+      meetingSeriesApi.listSeries();
+      expect(api.get).toHaveBeenCalledWith("/api/meeting-series");
+    });
+
     it("should call /api/meeting-series/:id for getSeriesById", async () => {
       meetingSeriesApi.getSeriesById("s1");
       expect(api.get).toHaveBeenCalledWith("/api/meeting-series/s1");
