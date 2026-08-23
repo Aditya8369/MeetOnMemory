@@ -40,6 +40,8 @@ import {
 } from "../utils/validateCalendarOAuthRedirect.js";
 import { validateRedirect } from "../utils/validateRedirect.js";
 import { usePolling } from "../hooks/usePolling.js";
+import PushNotificationManager from "../components/notifications/PushNotificationManager.jsx";
+import PwaInstallButton from "../components/pwa/PwaInstallButton.jsx";
 
 const clerkPubKey = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY;
 
@@ -431,6 +433,9 @@ const Settings = () => {
           </p>
         </div>
 
+        {/* PWA Install Banner */}
+        <PwaInstallButton variant="banner" className="mb-6" />
+
         <div className="space-y-6">
           {/* Account Settings Section */}
           <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-2xl p-6 shadow-sm fade-in-up stagger-2">
@@ -756,6 +761,11 @@ const Settings = () => {
                 </>
               )}
             </div>
+          </div>
+
+          {/* Web Push Notifications Section */}
+          <div className="fade-in-up stagger-4">
+            <PushNotificationManager />
           </div>
 
           {/* Keyword Watchlist Section */}
