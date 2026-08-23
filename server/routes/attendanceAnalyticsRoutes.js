@@ -6,6 +6,7 @@ import {
   getAttendanceHeatmap,
   getAttendanceTrends,
   getMeetingTypeBreakdown,
+  exportAttendanceAnalytics,
 } from "../controllers/attendanceAnalyticsController.js";
 
 const router = express.Router();
@@ -21,5 +22,6 @@ router.get("/stats", getMemberAttendanceStats);
 router.get("/heatmap", getAttendanceHeatmap);
 router.get("/trends", getAttendanceTrends);
 router.get("/types", getMeetingTypeBreakdown);
+router.get("/export", exportAttendanceAnalytics);
 
 export default router;

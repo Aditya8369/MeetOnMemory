@@ -27,3 +27,11 @@ export const getMeetingTypeBreakdown = async (params) => {
   });
   return data;
 };
+
+export const exportAttendanceCSV = async (params) => {
+  const response = await apiClient.get("/api/attendance-analytics/export", {
+    params,
+    responseType: "blob",
+  });
+  return response.data;
+};
