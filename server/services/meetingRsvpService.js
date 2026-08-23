@@ -79,6 +79,30 @@ export const getPendingRsvpsForUser = async (userId) => {
 };
 
 /**
+ * Retrieves all RSVPs (pending and past) for a given user
+ * @param {string} userId - The user's ID
+ * @returns {Promise<Array>} List of mapped RSVPs matching the frontend template
+ */
+export const getAllRsvpsForUser = async (userId) => {
+  const rsvps = await MeetingRsvp.find({ userId })
+    .populate({
+      path: "meetingId",
+      select: "title date time location",
+    })
+    .sort({ createdAt: -1 });
+
+  return rsvps.map((r) => ({
+    id: r._id,
+    meetingId: r.meetingId?._id,
+    meetingTitle: r.meetingId?.title || "Untitled Shared Workspace Sync",
+    meetingDate: r.meetingId?.date,
+    meetingTime: r.meetingId?.time,
+    status: r.status.toUpperCase(),
+    userNotes: r.availabilityNote || r.declineReason || "",
+  }));
+};
+
+/**
  * Retrieves an RSVP summary for a specific meeting
  * @param {string} meetingId - The ID of the meeting
  * @returns {Promise<Object>} Summary of RSVP statuses
