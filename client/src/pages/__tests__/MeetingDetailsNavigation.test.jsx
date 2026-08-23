@@ -52,6 +52,18 @@ vi.mock("../../components/meeting-details/FeedbackForm.jsx", () => ({
   ),
 }));
 
+vi.mock("../../components/meeting-details/HealthScoreCard.jsx", () => ({
+  default: ({ meetingId, organizationId }) => (
+    <div
+      data-testid="meeting-health-score-card"
+      data-meeting-id={meetingId}
+      data-organization-id={organizationId || ""}
+    >
+      Health for {meetingId}
+    </div>
+  ),
+}));
+
 vi.mock("../../services", () => ({
   meetingApi: {
     getMeetingById: vi.fn(),

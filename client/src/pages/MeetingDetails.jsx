@@ -39,6 +39,7 @@ import MeetingReadiness from "../components/MeetingReadiness";
 import FollowUpThreads from "../components/meeting-details/FollowUpThreads";
 import PollSection from "../components/meeting-details/PollSection";
 import FeedbackForm from "../components/meeting-details/FeedbackForm";
+import HealthScoreCard from "../components/meeting-details/HealthScoreCard";
 import MeetingRisksPanel from "../components/meetings/MeetingRisksPanel";
 import { Award, ShieldAlert } from "lucide-react";
 
@@ -380,6 +381,14 @@ const MeetingDetails = () => {
             </div>
           </div>
           <MeetingSummary meeting={meeting} />
+          <div className="mt-6 mb-6">
+            <HealthScoreCard
+              meetingId={meeting._id}
+              organizationId={
+                meeting.organization?._id || meeting.organization || undefined
+              }
+            />
+          </div>
           <MinutesApproval meeting={meeting} />
           <MeetingCollaborativeNotes meeting={meeting} />
 
