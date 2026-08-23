@@ -9,22 +9,22 @@ MeetOnMemory webhooks use the authenticated organization webhook API:
 
 ## Supported event catalog
 
-| Event | Description |
-|---|---|
-| `meeting.created` | Fired when a meeting is created. |
-| `meeting.updated` | Fired when meeting details or processing state changes. |
-| `meeting.soft_deleted` | Fired when a meeting is moved to the recycle bin. |
-| `meeting.restored` | Fired when a deleted meeting is restored. |
-| `meeting.permanently_deleted` | Fired when a meeting is permanently removed. |
-| `meeting.ended` | Fired when all agenda items are completed or skipped. |
-| `mom.generated` | Fired when AI finishes generating structured MoM. |
-| `policy.created` | Fired when a new organization policy is uploaded. |
-| `policy.updated` | Fired when a policy is modified or re-analyzed. |
-| `actionItem.completed` | Fired when an action item is completed or resolved. |
-| `organization.joined` | Fired when a user joins an organization. |
-| `export.ready` | Fired when a requested data export is ready for download. |
-| `live_meeting.notified` | Fired when participants are invited to a live meeting. |
-| `gamification.badgesUnlocked` | Fired when a user unlocks one or more badges. |
+| Event                         | Description                                               |
+| ----------------------------- | --------------------------------------------------------- |
+| `meeting.created`             | Fired when a meeting is created.                          |
+| `meeting.updated`             | Fired when meeting details or processing state changes.   |
+| `meeting.soft_deleted`        | Fired when a meeting is moved to the recycle bin.         |
+| `meeting.restored`            | Fired when a deleted meeting is restored.                 |
+| `meeting.permanently_deleted` | Fired when a meeting is permanently removed.              |
+| `meeting.ended`               | Fired when all agenda items are completed or skipped.     |
+| `mom.generated`               | Fired when AI finishes generating structured MoM.         |
+| `policy.created`              | Fired when a new organization policy is uploaded.         |
+| `policy.updated`              | Fired when a policy is modified or re-analyzed.           |
+| `actionItem.completed`        | Fired when an action item is completed or resolved.       |
+| `organization.joined`         | Fired when a user joins an organization.                  |
+| `export.ready`                | Fired when a requested data export is ready for download. |
+| `live_meeting.notified`       | Fired when participants are invited to a live meeting.    |
+| `gamification.badgesUnlocked` | Fired when a user unlocks one or more badges.             |
 
 Each delivery uses the existing signed webhook envelope:
 
