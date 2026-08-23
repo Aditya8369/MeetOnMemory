@@ -151,6 +151,17 @@ vi.mock("../../components/meeting-details/AgendaPacingReport", () => ({
     </div>
   ),
 }));
+vi.mock("../../components/meeting-details/ClipManager", () => ({
+  default: ({ meetingId, canManage }) => (
+    <div
+      data-testid="clip-manager"
+      data-meeting-id={meetingId}
+      data-can-manage={canManage ? "yes" : "no"}
+    >
+      Clips for {meetingId}
+    </div>
+  ),
+}));
 
 import { meetingApi } from "../../services";
 

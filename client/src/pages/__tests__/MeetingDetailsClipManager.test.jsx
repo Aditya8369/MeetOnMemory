@@ -137,16 +137,21 @@ vi.mock("../../components/meetings/MeetingRisksPanel", () => ({
 vi.mock("../../components/MeetingReadiness", () => ({
   default: () => null,
 }));
-
 vi.mock("../../components/meeting-details/AgendaPacingReport", () => ({
-  default: ({ meetingId }) => (
-    <div data-testid="agenda-pacing-report" data-meeting-id={meetingId}>
-      Pacing for {meetingId}
+  default: () => null,
+}));
+
+vi.mock("../../components/meeting-details/ClipManager", () => ({
+  default: ({ meetingId, meeting, canManage }) => (
+    <div
+      data-testid="clip-manager"
+      data-meeting-id={meetingId}
+      data-has-meeting={meeting?._id ? "yes" : "no"}
+      data-can-manage={canManage ? "yes" : "no"}
+    >
+      Clips for {meetingId}
     </div>
   ),
-}));
-vi.mock("../../components/meeting-details/ClipManager", () => ({
-  default: () => null,
 }));
 
 const renderDetails = () =>
@@ -158,19 +163,18 @@ const renderDetails = () =>
     </MemoryRouter>,
   );
 
-describe("Meeting Details AgendaPacingReport mount (#1986)", () => {
+describe("Meeting Details ClipManager mount (#1987)", () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });
 
-  it("renders the pacing report for a completed meeting with the meeting id", async () => {
+  it("mounts ClipManager with the meeting id and writable context", async () => {
     meetingApi.getMeetingById.mockResolvedValue({
       data: {
         success: true,
         meeting: {
           _id: "123",
           title: "Quarterly Planning",
-          status: "completed",
           uploadedBy: "db_123",
           participants: [],
         },
@@ -179,58 +183,10 @@ describe("Meeting Details AgendaPacingReport mount (#1986)", () => {
 
     renderDetails();
 
-    const report = await screen.findByTestId("agenda-pacing-report");
-    expect(report).toHaveTextContent("Pacing for 123");
-    expect(report).toHaveAttribute("data-meeting-id", "123");
-  });
-
-  it("renders the pacing report after the scheduled meeting window has ended", async () => {
-    meetingApi.getMeetingById.mockResolvedValue({
-      data: {
-        success: true,
-        meeting: {
-          _id: "123",
-          title: "Past Sync",
-          status: "uploaded",
-          date: "2020-01-01T10:00:00.000Z",
-          duration: 60,
-          uploadedBy: "db_123",
-          participants: [],
-        },
-      },
-    });
-
-    renderDetails();
-
-    expect(await screen.findByTestId("agenda-pacing-report")).toHaveAttribute(
-      "data-meeting-id",
-      "123",
-    );
-  });
-
-  it("does not show the post-meeting report for an upcoming meeting", async () => {
-    meetingApi.getMeetingById.mockResolvedValue({
-      data: {
-        success: true,
-        meeting: {
-          _id: "123",
-          title: "Upcoming Sync",
-          status: "uploaded",
-          date: "2099-01-01T10:00:00.000Z",
-          duration: 60,
-          uploadedBy: "db_123",
-          participants: [],
-        },
-      },
-    });
-
-    renderDetails();
-
-    expect(await screen.findByTestId("meeting-header")).toHaveTextContent(
-      "Upcoming Sync",
-    );
-    expect(
-      screen.queryByTestId("agenda-pacing-report"),
-    ).not.toBeInTheDocument();
+    const manager = await screen.findByTestId("clip-manager");
+    expect(manager).toHaveTextContent("Clips for 123");
+    expect(manager).toHaveAttribute("data-meeting-id", "123");
+    expect(manager).toHaveAttribute("data-has-meeting", "yes");
+    expect(manager).toHaveAttribute("data-can-manage", "yes");
   });
 });
