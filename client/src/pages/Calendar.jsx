@@ -43,6 +43,7 @@ const Calendar = () => {
     uniqueOrgs,
     hasMore,
     loadMoreMeetings,
+    focusBlocks,
   } = useCalendarEvents();
 
   // Handle outside click to close modal
@@ -318,6 +319,7 @@ const Calendar = () => {
               currentDate={currentDate}
               filteredMeetings={filteredMeetings}
               setSelectedMeeting={setSelectedMeeting}
+              focusBlocks={focusBlocks}
             />
 
             {/* Load More Button - Issue #1234 */}

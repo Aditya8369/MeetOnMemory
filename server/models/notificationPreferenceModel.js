@@ -93,6 +93,22 @@ const notificationPreferenceSchema = new mongoose.Schema(
       type: Boolean,
       default: false,
     },
+    quietHoursStart: {
+      type: Number,
+      min: 0,
+      max: 23,
+      default: null,
+    },
+    quietHoursEnd: {
+      type: Number,
+      min: 0,
+      max: 23,
+      default: null,
+    },
+    timezone: {
+      type: String,
+      default: "UTC",
+    },
   },
   { timestamps: true },
 );

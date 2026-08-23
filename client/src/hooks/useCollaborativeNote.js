@@ -2,6 +2,12 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import { useAuth } from "@clerk/clerk-react";
 import { io } from "socket.io-client";
 import * as Y from "yjs";
+import { toast } from "react-toastify";
+import {
+  createClerkSocketOptions,
+  getClerkBearerToken,
+} from "../services/apiClient.js";
+import { getBackendUrl } from "../config/backendConfig.js";
 
 /**
  * @desc Custom hook to manage the WebSocket connection, Yjs document state,
@@ -32,32 +38,67 @@ export const useCollaborativeNote = (meetingId, isReadOnly = false) => {
     const initializeSocket = async () => {
       const token = await getToken();
 
-      if (!isActive || !token) {
+      if (!isActive) {
         setIsLoading(false);
         return;
       }
 
-      // Initialize Socket.io connection to the /notes namespace
-      const socket = io(`${import.meta.env.VITE_API_URL}/notes`, {
-        auth: { token },
-        transports: ["websocket"],
+      // Initialize Socket.io connection using shared Clerk options & backend URL config
+      const opts = await createClerkSocketOptions({
+        transports: ["websocket", "polling"],
       });
+      if (!isActive) return;
+
+      if (token && (!opts.auth || !opts.auth.token)) {
+        opts.auth = { token };
+      }
+
+      const backendUrl = getBackendUrl();
+      const socket = io(`${backendUrl}/notes`, opts);
       socketRef.current = socket;
+
+      socket.on("connect_error", (err) => {
+        console.error("[CollabNote] Socket connection error:", err);
+        const errorMsg =
+          err?.message || "Failed to connect to collaborative notes server";
+        setError(errorMsg);
+        setIsConnected(false);
+        setIsLoading(false);
+        toast.error(`Collaborative notes connection error: ${errorMsg}`);
+      });
+
+      socket.on("reconnect_attempt", async () => {
+        try {
+          const freshToken =
+            (await getClerkBearerToken()) || (await getToken());
+          if (socket.auth) {
+            socket.auth.token = freshToken;
+          } else {
+            socket.auth = { token: freshToken };
+          }
+        } catch (err) {
+          console.warn(
+            "[CollabNote] Failed to refresh token for reconnect",
+            err,
+          );
+        }
+      });
 
       socket.on("connect", () => {
         console.log("[CollabNote] Socket connected");
         setIsConnected(true);
+        setError(null);
 
         // Join the meeting room and fetch initial state
         socket.emit("join-meeting", { meetingId }, async (response) => {
-          if (response.success) {
+          if (!isActive) return;
+          if (response?.success) {
             userColorRef.current = response.userColor;
             setActiveUsers(response.activeUsers || []);
-
-            // Server can send a state vector for future sync logic, but the
-            // current flow relies on the server to provide the full state on join.
           } else {
-            setError(response.error || "Failed to join meeting");
+            const errorMsg = response?.error || "Failed to join meeting";
+            setError(errorMsg);
+            toast.error(errorMsg);
           }
           setIsLoading(false);
         });
@@ -122,13 +163,11 @@ export const useCollaborativeNote = (meetingId, isReadOnly = false) => {
       });
 
       socket.on("snapshot-created", (snapshot) => {
-        // Could trigger a toast notification here
         console.log("[CollabNote] New snapshot created:", snapshot);
       });
 
       // Observe local Yjs document changes to broadcast to server
       const updateHandler = (update, origin) => {
-        // Only broadcast if the change originated locally (not from 'remote-update')
         if (origin !== "remote" && !isReadOnly) {
           socket.emit("sync-update", {
             meetingId,

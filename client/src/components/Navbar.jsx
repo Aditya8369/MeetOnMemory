@@ -406,6 +406,9 @@ const Navbar = () => {
         currentPath === "/policies"
       );
     }
+    if (tabPath === "/meeting-series") {
+      return currentPath.startsWith("/meeting-series");
+    }
     if (tabPath === "/organizations") {
       return (
         currentPath === "/organizations" ||
@@ -427,6 +430,12 @@ const Navbar = () => {
       label: t("navbar.meetings"),
       href: "/meetings",
       icon: Calendar,
+      permission: { resource: "meetings", action: "view" },
+    },
+    {
+      label: "Meeting Series",
+      href: "/meeting-series",
+      icon: CalendarDays,
       permission: { resource: "meetings", action: "view" },
     },
     {
@@ -495,6 +504,12 @@ const Navbar = () => {
       href: "/policy-compliance",
       icon: ShieldAlert,
       permission: { resource: "policies", action: "view" },
+    },
+    {
+      label: "SLA Compliance",
+      href: "/sla-compliance",
+      icon: ShieldAlert,
+      permission: { resource: "reports", action: "view" },
     },
     {
       label: t("navbar.calendar"),

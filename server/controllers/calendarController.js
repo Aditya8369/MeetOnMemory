@@ -32,6 +32,8 @@ const rejectOAuthState = (res, isGetRequest, redirectPath, error) => {
   });
 };
 
+const lastResultAt = (entry) => entry?.at || entry?.createdAt || null;
+
 /**
  * Get calendar connection status for a user
  */
@@ -48,13 +50,43 @@ export const getConnectionStatus = async (req, res) => {
         ) || null,
     };
 
-    const integrations = connections.map((c) => ({
-      provider: c.provider,
-      syncStatus: c.syncStatus,
-      syncEnabled: c.syncStatus === "connected",
-      lastSyncedAt: c.lastSyncAt || c.updatedAt,
-      externalCalendarId: c.providerData?.calendarId || "primary",
-    }));
+    const integrations = connections.map((c) => {
+      const history = Array.isArray(c.syncHistory) ? c.syncHistory : [];
+      const lastResult = history[0]
+        ? {
+            at: lastResultAt(history[0]),
+            status: history[0].status,
+            message: history[0].message,
+            syncedCount: history[0].syncedCount || 0,
+            trigger: history[0].trigger || "cron",
+          }
+        : c.syncError
+          ? {
+              at: c.updatedAt,
+              status: "error",
+              message: c.syncError,
+              syncedCount: 0,
+              trigger: "cron",
+            }
+          : null;
+
+      return {
+        provider: c.provider,
+        syncStatus: c.syncStatus,
+        syncEnabled: c.syncStatus === "connected",
+        lastSyncedAt: c.lastSyncAt || c.updatedAt,
+        syncError: c.syncError || null,
+        lastResult,
+        syncHistory: history.slice(0, 10).map((h) => ({
+          at: lastResultAt(h),
+          status: h.status,
+          message: h.message,
+          syncedCount: h.syncedCount || 0,
+          trigger: h.trigger || "cron",
+        })),
+        externalCalendarId: c.providerData?.calendarId || "primary",
+      };
+    });
 
     res.json({ success: true, status, integrations });
   } catch (error) {
@@ -384,24 +416,64 @@ export const resyncCalendar = async (req, res) => {
     await connection.save();
 
     const providerKey = provider === "google" ? "google" : "microsoft";
-    await triggerManualSync(userId, providerKey);
+    const result = await triggerManualSync(userId, providerKey);
 
-    connection.syncStatus = "connected";
-    connection.lastSyncAt = new Date();
-    await connection.save();
+    const refreshed = await CalendarConnection.findOne({
+      user: userId,
+      provider: { $in: providersToMatch },
+    });
 
     res.json({
       success: true,
-      message: `${provider.charAt(0).toUpperCase() + provider.slice(1)} Calendar synced successfully`,
+      message:
+        result?.syncedCount != null
+          ? `Synced ${result.syncedCount} event(s) successfully`
+          : `${provider} calendar synced successfully`,
       connection: {
-        provider: connection.provider,
-        syncStatus: connection.syncStatus,
-        lastSyncAt: connection.lastSyncAt,
+        provider: refreshed?.provider || connection.provider,
+        syncStatus: refreshed?.syncStatus || "connected",
+        lastSyncAt: refreshed?.lastSyncAt,
+        lastSyncedAt: refreshed?.lastSyncAt,
+        syncError: refreshed?.syncError || null,
+        lastResult: refreshed?.syncHistory?.[0]
+          ? {
+              at: lastResultAt(refreshed.syncHistory[0]),
+              status: refreshed.syncHistory[0].status,
+              message: refreshed.syncHistory[0].message,
+              syncedCount: refreshed.syncHistory[0].syncedCount || 0,
+              trigger: refreshed.syncHistory[0].trigger || "manual",
+            }
+          : null,
+        syncHistory: (refreshed?.syncHistory || []).slice(0, 10),
       },
     });
   } catch (error) {
     console.error("Error resyncing calendar:", error.message);
-    res.status(500).json({ success: false, message: error.message });
+    const providersToMatch =
+      req.params.provider === "google" ? ["google"] : ["microsoft", "outlook"];
+    const refreshed = await CalendarConnection.findOne({
+      user: req.user.id || req.user._id,
+      provider: { $in: providersToMatch },
+    }).catch(() => null);
+
+    res.status(500).json({
+      success: false,
+      message:
+        refreshed?.syncError ||
+        error.message ||
+        "Calendar sync failed. Try again or reconnect.",
+      connection: refreshed
+        ? {
+            provider: refreshed.provider,
+            syncStatus: refreshed.syncStatus,
+            lastSyncAt: refreshed.lastSyncAt,
+            lastSyncedAt: refreshed.lastSyncAt,
+            syncError: refreshed.syncError,
+            lastResult: refreshed.syncHistory?.[0] || null,
+            syncHistory: (refreshed.syncHistory || []).slice(0, 10),
+          }
+        : null,
+    });
   }
 };
 

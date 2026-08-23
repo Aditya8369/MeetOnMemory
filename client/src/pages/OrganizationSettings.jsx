@@ -59,7 +59,6 @@ import {
   FlipHorizontal,
   FlipVertical,
   Contrast,
-  Brightness,
   Sliders,
   Palette,
   Crop,
@@ -139,11 +138,8 @@ import {
   Cloudy,
   Thermometer,
   Activity,
-  Pulse,
   HeartPulse,
   Brain,
-  CpuChip,
-  Memory,
   MonitorSmartphone,
   TabletSmartphone,
   LaptopMinimal,
@@ -166,12 +162,8 @@ import {
   CloudHail,
   CloudFog,
   CloudDrizzle,
-  CloudSnowflake,
   CloudSunRain,
   CloudMoonRain,
-  CloudLightningRain,
-  CloudSnowRain,
-  CloudFogRain,
 } from "lucide-react";
 import Navbar from "../components/Navbar.jsx";
 import AppContent from "../context/AppContent";
@@ -183,6 +175,8 @@ import NotionConnectPanel from "../components/integrations/NotionConnectPanel.js
 import GitHubConnectPanel from "../components/integrations/GitHubConnectPanel.jsx";
 import IssueTrackerConfig from "../components/integrations/IssueTrackerConfig.jsx";
 import OrgCustomFieldsSection from "../components/organization/OrgCustomFieldsSection.jsx";
+import CostConfigSettings from "../components/organization/CostConfigSettings.jsx";
+import SlaConfigPanel from "../components/organization/SlaConfigPanel.jsx";
 
 // Image editor component
 const ImageEditor = ({ imageUrl, onSave, onCancel, onClose }) => {
@@ -2254,10 +2248,16 @@ const OrganizationSettings = () => {
         </form>
 
         {canEdit && metadata._id ? (
-          <div className="mt-8">
+          <div className="mt-8 space-y-8">
             <OrgCustomFieldsSection orgId={metadata._id} />
+            <SlaConfigPanel organizationId={metadata._id} />
+            <CostConfigSettings canEdit={canEdit} />
           </div>
-        ) : null}
+        ) : (
+          <div className="mt-8">
+            <CostConfigSettings canEdit={canEdit} />
+          </div>
+        )}
       </div>
     </div>
   );
