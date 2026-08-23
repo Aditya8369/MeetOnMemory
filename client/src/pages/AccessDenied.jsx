@@ -1,7 +1,12 @@
 import React from "react";
 import { useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
-import { ShieldAlert, ArrowLeft, LayoutDashboard } from "lucide-react";
+import {
+  ShieldAlert,
+  ArrowLeft,
+  LayoutDashboard,
+  ShieldCheck,
+} from "lucide-react";
 
 const AccessDenied = ({ fullPage = true }) => {
   const navigate = useNavigate();
@@ -39,6 +44,14 @@ const AccessDenied = ({ fullPage = true }) => {
         >
           <LayoutDashboard className="w-4 h-4" />
           {t("accessDenied.returnDashboard")}
+        </button>
+        <button
+          type="button"
+          onClick={() => navigate("/admin-panel?module=permissions")}
+          className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl border border-purple-200 dark:border-purple-800/60 bg-purple-50 dark:bg-purple-950/40 text-purple-700 dark:text-purple-300 text-sm font-semibold hover:bg-purple-100 dark:hover:bg-purple-900/50 transition-all cursor-pointer"
+        >
+          <ShieldCheck className="w-4 h-4" />
+          Why was I blocked?
         </button>
       </div>
     </div>

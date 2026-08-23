@@ -205,3 +205,65 @@ export const getMeetingTypeBreakdown = async (req, res) => {
     res.status(500).json({ message: "Server error fetching meeting types" });
   }
 };
+
+/**
+ * @desc    Export attendance analytics CSV (member rates & trends)
+ * @route   GET /api/attendance-analytics/export
+ * @access  Private
+ */
+export const exportAttendanceAnalytics = async (req, res) => {
+  try {
+    const orgId = req.user.organization;
+    const { startDate, endDate } = req.query;
+
+    const matchQuery = { organization: orgId };
+    if (startDate && endDate) {
+      matchQuery.date = { $gte: new Date(startDate), $lte: new Date(endDate) };
+    }
+
+    const [totalMeetings, memberAgg] = await Promise.all([
+      Meeting.countDocuments(matchQuery),
+      Meeting.aggregate([
+        { $match: matchQuery },
+        { $unwind: "$participants" },
+        {
+          $group: {
+            _id: {
+              $ifNull: ["$participants.email", "$participants.name"],
+            },
+            name: { $first: "$participants.name" },
+            email: { $first: "$participants.email" },
+            attended: { $sum: 1 },
+          },
+        },
+        { $sort: { attended: -1 } },
+      ]),
+    ]);
+
+    const csvHeaders =
+      "Rank,Member Name,Member Email,Meetings Attended,Total Meetings in Period,Attendance Rate (%)\n";
+    const csvRows = memberAgg
+      .map((member, index) => {
+        const rate =
+          totalMeetings > 0
+            ? ((member.attended / totalMeetings) * 100).toFixed(1)
+            : "0.0";
+        const name = (member.name || "Unknown").replace(/"/g, '""');
+        const email = (member.email || "N/A").replace(/"/g, '""');
+        return `${index + 1},"${name}","${email}",${member.attended},${totalMeetings},${rate}`;
+      })
+      .join("\n");
+
+    const csvContent = csvHeaders + csvRows;
+
+    res.setHeader("Content-Type", "text/csv");
+    res.setHeader(
+      "Content-Disposition",
+      `attachment; filename=attendance_analytics_${Date.now()}.csv`,
+    );
+    res.status(200).send(csvContent);
+  } catch (error) {
+    console.error("Error exporting attendance CSV:", error);
+    res.status(500).json({ message: "Server error exporting attendance CSV" });
+  }
+};
