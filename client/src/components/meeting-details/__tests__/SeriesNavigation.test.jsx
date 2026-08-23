@@ -105,6 +105,56 @@ describe("SeriesNavigation Component (Issue #915)", () => {
     expect(mockNavigate).toHaveBeenCalledWith("/meeting/meeting-106");
   });
 
+  it("hides cleanly when the meeting is not part of a series (#1994)", async () => {
+    const { container } = render(
+      <MemoryRouter>
+        <SeriesNavigation meeting={{ _id: "solo-meeting", title: "Ad-hoc" }} />
+      </MemoryRouter>,
+    );
+
+    expect(meetingSeriesApi.getSeriesById).not.toHaveBeenCalled();
+    expect(container.firstChild).toBeNull();
+  });
+
+  it("supports seriesId alias and occurrence list navigation (#1994)", async () => {
+    const mockSeriesId = "series-xyz";
+    meetingSeriesApi.getSeriesById.mockResolvedValueOnce({
+      data: {
+        success: true,
+        series: { _id: mockSeriesId, title: "Standup" },
+      },
+    });
+    meetingSeriesApi.getSeriesMeetings.mockResolvedValueOnce({
+      data: {
+        success: true,
+        meetings: [
+          { _id: "m1", seriesOccurrence: 1 },
+          { _id: "m2", seriesOccurrence: 2 },
+        ],
+        pagination: { total: 2 },
+      },
+    });
+
+    render(
+      <MemoryRouter>
+        <SeriesNavigation
+          meeting={{ _id: "m1", seriesId: mockSeriesId, seriesOccurrence: 1 }}
+        />
+      </MemoryRouter>,
+    );
+
+    await waitFor(() => {
+      expect(
+        screen.getByLabelText(/jump to series occurrence/i),
+      ).toBeInTheDocument();
+    });
+
+    fireEvent.change(screen.getByLabelText(/jump to series occurrence/i), {
+      target: { value: "m2" },
+    });
+    expect(mockNavigate).toHaveBeenCalledWith("/meeting/m2");
+  });
+
   it("links to series retrospective from a series meeting (Issue #2005)", async () => {
     const mockSeriesId = "series-abc";
     meetingSeriesApi.getSeriesById.mockResolvedValueOnce({
