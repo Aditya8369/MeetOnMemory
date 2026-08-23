@@ -10,6 +10,14 @@ const meetingRsvpApi = {
   },
 
   /**
+   * Get all RSVPs for the logged-in user
+   * @returns {Promise<Object>} Response data
+   */
+  getAllRsvps: async () => {
+    return await api.get("/api/rsvps");
+  },
+
+  /**
    * Get the RSVP summary for a specific meeting
    * @param {string} meetingId - Meeting ID
    * @returns {Promise<Object>} Response data
