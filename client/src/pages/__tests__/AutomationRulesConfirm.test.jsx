@@ -18,7 +18,7 @@ vi.mock("../../services/automationRuleApi.js", () => ({
   createRule: vi.fn(),
 }));
 
-vi.mock("../components/Navbar.jsx", () => ({
+vi.mock("../../components/Navbar.jsx", () => ({
   default: () => <div data-testid="mock-navbar">Navbar</div>,
 }));
 
