@@ -29,6 +29,7 @@ export * from "./parkingLotApi";
 export * from "./statusApi";
 export * from "./adminJobsApi";
 export * from "./adminEmbeddingsApi";
+export * from "./adminAiUsageApi";
 export { default as sentimentTimelineApi } from "./sentimentTimelineApi";
 export { default as carryForwardApi } from "./carryForwardApi";
 export { default as bulkMeetingApi } from "./bulkMeetingApi";
