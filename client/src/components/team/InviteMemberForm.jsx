@@ -2,7 +2,7 @@ import React, { useState } from "react";
 import { Mail, X, Send } from "lucide-react";
 import { toast } from "react-toastify";
 
-const InviteMemberForm = ({ onClose, onSendInvite }) => {
+const InviteMemberForm = ({ onClose, onSendInvite, onOpenBulkImport }) => {
   const [inviteEmail, setInviteEmail] = useState("");
   const [inviteRole, setInviteRole] = useState("member");
   const [inviteExpiresIn, setInviteExpiresIn] = useState(7);
@@ -145,10 +145,26 @@ const InviteMemberForm = ({ onClose, onSendInvite }) => {
               Send Invitation
             </button>
           </div>
+
+          {onOpenBulkImport && (
+            <div className="text-center pt-2 border-t border-slate-100 dark:border-slate-800/80">
+              <button
+                type="button"
+                onClick={() => {
+                  onClose();
+                  onOpenBulkImport();
+                }}
+                className="text-xs font-semibold text-blue-600 dark:text-blue-400 hover:underline cursor-pointer"
+              >
+                Need to invite multiple members? Import CSV
+              </button>
+            </div>
+          )}
         </form>
       </div>
     </div>
   );
 };
+
 
 export default InviteMemberForm;

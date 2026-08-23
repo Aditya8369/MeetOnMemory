@@ -124,6 +124,48 @@ export const useTeamManagement = (activeTab) => {
     }
   };
 
+  const handleBulkInvite = async (formData, onSuccess) => {
+    const orgId = userData?.organization?._id || userData?.organization;
+    if (!orgId) {
+      toast.error("No active organization selected");
+      throw new Error("No active organization selected");
+    }
+
+    let payload = formData;
+    if (formData instanceof FormData) {
+      if (!formData.has("organizationId")) {
+        formData.append("organizationId", orgId);
+      }
+    } else if (formData && !(formData instanceof FormData)) {
+      payload = new FormData();
+      if (formData.file) {
+        payload.append("file", formData.file);
+      }
+      payload.append("organizationId", orgId);
+    }
+
+    try {
+      const { data } = await invitationApi.bulkImportInvitations(payload);
+      if (data.success) {
+        if (activeTab === "invitations") {
+          fetchInvitations();
+        }
+        fetchMembers();
+        if (onSuccess) onSuccess(data);
+        return data;
+      }
+      return data;
+    } catch (err) {
+      console.error("Error importing bulk invitations:", err);
+      toast.error(
+        err.response?.data?.message ||
+          err.message ||
+          "Failed to import bulk invitations",
+      );
+      throw err;
+    }
+  };
+
   return {
     members,
     invitations,
@@ -134,10 +176,12 @@ export const useTeamManagement = (activeTab) => {
     fetchMembers,
     fetchInvitations,
     handleSendInvite,
+    handleBulkInvite,
     handleResendInvite,
     handleCancelInvite,
     handleExpireInvite,
   };
 };
+
 
 export default useTeamManagement;

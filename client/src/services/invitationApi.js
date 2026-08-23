@@ -15,4 +15,9 @@ export const invitationApi = {
   resendInvitation: (id) => apiClient.post(`/api/invitation/${id}/resend`),
   expireInvitation: (id) => apiClient.post(`/api/invitation/${id}/expire`),
   getInvitationByToken: (token) => apiClient.get(`/api/invitation/${token}`),
+  bulkImportInvitations: (formData) =>
+    apiClient.post("/api/invitations/bulk", formData, {
+      headers: { "Content-Type": "multipart/form-data" },
+    }),
 };
+

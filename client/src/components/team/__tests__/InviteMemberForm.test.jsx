@@ -99,4 +99,23 @@ describe("InviteMemberForm", () => {
       );
     });
   });
+
+  it("calls onOpenBulkImport and onClose when clicking bulk import link", () => {
+    const mockOnOpenBulkImport = vi.fn();
+    render(
+      <InviteMemberForm
+        onClose={mockOnClose}
+        onSendInvite={mockOnSendInvite}
+        onOpenBulkImport={mockOnOpenBulkImport}
+      />,
+    );
+
+    const bulkBtn = screen.getByText(/need to invite multiple members\? import csv/i);
+    expect(bulkBtn).toBeInTheDocument();
+    fireEvent.click(bulkBtn);
+
+    expect(mockOnClose).toHaveBeenCalledTimes(1);
+    expect(mockOnOpenBulkImport).toHaveBeenCalledTimes(1);
+  });
 });
+

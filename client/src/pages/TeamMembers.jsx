@@ -16,9 +16,11 @@ import {
   Send,
   Ban,
   AlertTriangle,
+  Upload,
 } from "lucide-react";
 import { useTeamManagement } from "../hooks/useTeamManagement";
 import InviteMemberForm from "../components/team/InviteMemberForm";
+import BulkInviteModal from "../components/team/BulkInviteModal";
 import TeamMemberTable from "../components/team/TeamMemberTable";
 
 const TeamMembers = () => {
@@ -33,6 +35,7 @@ const TeamMembers = () => {
     isAdmin,
     fetchMembers,
     handleSendInvite,
+    handleBulkInvite,
     handleResendInvite,
     handleCancelInvite,
     handleExpireInvite,
@@ -46,6 +49,8 @@ const TeamMembers = () => {
   const [roleFilter, setRoleFilter] = useState("all");
 
   const [showInviteModal, setShowInviteModal] = useState(false);
+  const [showBulkInviteModal, setShowBulkInviteModal] = useState(false);
+
 
   const applyFiltersAndSort = useCallback(() => {
     let result = [...members];
@@ -158,13 +163,22 @@ const TeamMembers = () => {
             </div>
           </div>
           {isAdmin && (
-            <button
-              onClick={() => setShowInviteModal(true)}
-              className="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-blue-600 text-white font-semibold hover:bg-blue-700 active:scale-95 transition-all shadow-md shadow-blue-600/20 cursor-pointer"
-            >
-              <Plus className="h-4 w-4" />
-              Invite Member
-            </button>
+            <div className="flex flex-wrap items-center gap-2">
+              <button
+                onClick={() => setShowBulkInviteModal(true)}
+                className="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-200 font-semibold hover:bg-slate-50 dark:hover:bg-slate-800 active:scale-95 transition-all shadow-2xs cursor-pointer text-sm"
+              >
+                <Upload className="h-4 w-4" />
+                Import CSV
+              </button>
+              <button
+                onClick={() => setShowInviteModal(true)}
+                className="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-blue-600 text-white font-semibold hover:bg-blue-700 active:scale-95 transition-all shadow-md shadow-blue-600/20 cursor-pointer text-sm"
+              >
+                <Plus className="h-4 w-4" />
+                Invite Member
+              </button>
+            </div>
           )}
         </div>
 
@@ -260,12 +274,24 @@ const TeamMembers = () => {
                   Invite members by email to onboard them into your
                   organization.
                 </p>
-                <button
-                  onClick={() => setShowInviteModal(true)}
-                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors cursor-pointer font-semibold shadow-md shadow-blue-600/10 active:scale-95"
-                >
-                  Send Invitation
-                </button>
+                {isAdmin && (
+                  <div className="flex flex-wrap items-center justify-center gap-3">
+                    <button
+                      onClick={() => setShowBulkInviteModal(true)}
+                      className="px-4 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-750 transition-colors cursor-pointer font-semibold shadow-2xs active:scale-95 flex items-center gap-2 text-sm"
+                    >
+                      <Upload className="h-4 w-4" />
+                      Bulk Import CSV
+                    </button>
+                    <button
+                      onClick={() => setShowInviteModal(true)}
+                      className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors cursor-pointer font-semibold shadow-md shadow-blue-600/10 active:scale-95 flex items-center gap-2 text-sm"
+                    >
+                      <Plus className="h-4 w-4" />
+                      Send Invitation
+                    </button>
+                  </div>
+                )}
               </div>
             ) : (
               <div className="space-y-3 animate-in fade-in duration-200">
@@ -376,10 +402,29 @@ const TeamMembers = () => {
         <InviteMemberForm
           onClose={() => setShowInviteModal(false)}
           onSendInvite={handleSendInvite}
+          onOpenBulkImport={() => {
+            setShowInviteModal(false);
+            setShowBulkInviteModal(true);
+          }}
+        />
+      )}
+
+      {showBulkInviteModal && (
+        <BulkInviteModal
+          onClose={() => setShowBulkInviteModal(false)}
+          onBulkInvite={handleBulkInvite}
+          onSwitchToSingle={() => {
+            setShowBulkInviteModal(false);
+            setShowInviteModal(true);
+          }}
         />
       )}
     </div>
   );
 };
 
+
 export default TeamMembers;
+
+
+
