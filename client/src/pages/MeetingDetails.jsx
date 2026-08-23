@@ -37,6 +37,7 @@ import { getBriefing } from "../services/briefingApi";
 import GuestAccessManager from "../components/meetings/GuestAccessManager";
 import MeetingReadiness from "../components/MeetingReadiness";
 import FollowUpThreads from "../components/meeting-details/FollowUpThreads";
+import CommentSection from "../components/meeting-details/CommentSection";
 import PollSection from "../components/meeting-details/PollSection";
 import FeedbackForm from "../components/meeting-details/FeedbackForm";
 import AgendaTimer from "../components/meeting-details/AgendaTimer";
@@ -424,6 +425,10 @@ const MeetingDetails = () => {
 
           <div className="mt-6 mb-6">
             <FollowUpThreads meetingId={meeting._id} />
+          </div>
+
+          <div className="mt-6 mb-6">
+            <CommentSection meetingId={meeting._id} />
           </div>
 
           <div className="mt-6 mb-6">
