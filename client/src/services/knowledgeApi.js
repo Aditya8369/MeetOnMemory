@@ -33,19 +33,26 @@ export const knowledgeApi = {
     return apiClient.get(url);
   },
   /**
-   * Unified archived decisions + action items with correct combined pagination (#901).
+   * Unified archived decisions + action items with correct combined pagination
+   * and server-side tag facets (#2072).
    */
   getArchivedMemories: (options = {}) => {
     const params = new URLSearchParams();
     if (options.type) params.append("type", options.type);
     if (options.search) params.append("search", options.search);
+    if (options.tag && options.tag !== "all") params.append("tag", options.tag);
     if (options.page) params.append("page", String(options.page));
     if (options.limit) params.append("limit", String(options.limit));
     const query = params.toString();
     return apiClient.get(`/api/knowledge/archive${query ? `?${query}` : ""}`);
   },
+  bulkRestoreArchivedMemories: (items, reason) =>
+    apiClient.post("/api/knowledge/archive/restore", {
+      items,
+      ...(reason?.trim() ? { reason: reason.trim() } : {}),
+    }),
   /**
-   * Unified Memory Lifecycle list with server-side pagination (#1552).
+   * Unified Memory Lifecycle list with server-side pagination.
    */
   getLifecycleMemories: (options = {}) => {
     const params = new URLSearchParams();
@@ -64,7 +71,7 @@ export const knowledgeApi = {
     apiClient.patch(`/api/knowledge/${type}/${id}/feedback`, { rating }),
   recalculateImportance: () =>
     apiClient.post(`/api/knowledge/importance/recalculate`),
-  // Memory Lifecycle Management (#377, #716)
+  // Memory Lifecycle Management
   runLifecycleSweep: () => apiClient.post(`/api/knowledge/lifecycle/run`),
   updateMemoryLifecycleState: (type, id, state, reason) =>
     apiClient.patch(`/api/knowledge/${type}/${id}/lifecycle`, {
@@ -89,7 +96,6 @@ export const knowledgeApi = {
     if (page) params.append("page", page);
     return apiClient.get(`/api/knowledge/graph/snapshots?${params.toString()}`);
   },
-
   getGraphSnapshot: (id) =>
     apiClient.get(`/api/knowledge/graph/snapshots/${id}`),
   exportGraphSnapshot: (id) =>
@@ -100,7 +106,7 @@ export const knowledgeApi = {
     ),
   createGraphSnapshot: (force = false) =>
     apiClient.post(`/api/knowledge/graph/snapshots`, { force }),
-  // AI-Powered Contradiction Detection & Conflict Resolution (#375, #715)
+  // AI-Powered Contradiction Detection & Conflict Resolution
   scanForConflicts: ({
     dryRun = false,
     models,
