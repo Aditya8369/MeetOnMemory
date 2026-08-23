@@ -1,5 +1,6 @@
 import React from "react";
 import { render, screen, fireEvent, waitFor } from "@testing-library/react";
+import { MemoryRouter } from "react-router-dom";
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import AttendanceAnalytics from "../AttendanceAnalytics.jsx";
 import * as attendanceApi from "../../services/attendanceApi.js";
@@ -8,11 +9,16 @@ vi.mock("../../context/useTheme.jsx", () => ({
   default: () => ({ resolvedTheme: "light" }),
 }));
 
+vi.mock("../../components/Navbar.jsx", () => ({
+  default: () => <div data-testid="navbar">Navbar</div>,
+}));
+
 vi.mock("../../services/attendanceApi.js", () => ({
   getAttendanceStats: vi.fn(),
   getAttendanceHeatmap: vi.fn(),
   getAttendanceTrends: vi.fn(),
   getMeetingTypeBreakdown: vi.fn(),
+  exportAttendanceCSV: vi.fn(),
 }));
 
 describe("AttendanceAnalytics Date Range Validation (#1367)", () => {
@@ -28,7 +34,11 @@ describe("AttendanceAnalytics Date Range Validation (#1367)", () => {
   });
 
   it("renders role=alert inline error when start date is after end date", async () => {
-    render(<AttendanceAnalytics />);
+    render(
+      <MemoryRouter>
+        <AttendanceAnalytics />
+      </MemoryRouter>,
+    );
 
     const inputs = screen.getAllByDisplayValue(/\d{4}-\d{2}-\d{2}/);
     const startDateInput = inputs[0];
