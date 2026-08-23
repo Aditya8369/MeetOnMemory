@@ -226,7 +226,34 @@ export const getRetrospectiveOverview = async (seriesId, organizationId) => {
   const meetingIds = meetings.map((m) => m._id);
 
   if (meetingIds.length === 0) {
-    return { summary: "No meetings found for this series yet.", data: {} };
+    return {
+      summary: "No meetings found for this series yet.",
+      metricsData: {
+        totalMeetings: 0,
+        topTopics: [],
+        actionItemCompletionRate: 0,
+        averageAttendance: 0,
+        sentimentTrend: [],
+        decisionFollowThroughRate: 0,
+      },
+      insufficientHistory: true,
+    };
+  }
+
+  if (meetingIds.length < 2) {
+    return {
+      summary:
+        "This series needs more meeting history for a useful retrospective. Hold at least two occurrences, then reopen this page.",
+      metricsData: {
+        totalMeetings: meetings.length,
+        topTopics: [],
+        actionItemCompletionRate: 0,
+        averageAttendance: 0,
+        sentimentTrend: [],
+        decisionFollowThroughRate: 0,
+      },
+      insufficientHistory: true,
+    };
   }
 
   const [
@@ -273,5 +300,6 @@ export const getRetrospectiveOverview = async (seriesId, organizationId) => {
   return {
     summary,
     metricsData,
+    insufficientHistory: false,
   };
 };

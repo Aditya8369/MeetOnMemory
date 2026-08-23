@@ -104,4 +104,41 @@ describe("SeriesNavigation Component (Issue #915)", () => {
     fireEvent.click(nextButton);
     expect(mockNavigate).toHaveBeenCalledWith("/meeting/meeting-106");
   });
+
+  it("links to series retrospective from a series meeting (Issue #2005)", async () => {
+    const mockSeriesId = "series-abc";
+    meetingSeriesApi.getSeriesById.mockResolvedValueOnce({
+      data: {
+        success: true,
+        series: { _id: mockSeriesId, title: "Weekly Sync" },
+      },
+    });
+    meetingSeriesApi.getSeriesMeetings.mockResolvedValueOnce({
+      data: {
+        success: true,
+        meetings: [
+          { _id: "m1", seriesOccurrence: 1 },
+          { _id: "m2", seriesOccurrence: 2 },
+        ],
+        pagination: { total: 2 },
+      },
+    });
+
+    render(
+      <MemoryRouter>
+        <SeriesNavigation
+          meeting={{ _id: "m2", series: mockSeriesId, seriesOccurrence: 2 }}
+        />
+      </MemoryRouter>,
+    );
+
+    await waitFor(() => {
+      expect(
+        screen.getByRole("link", { name: /series retrospective/i }),
+      ).toHaveAttribute(
+        "href",
+        `/meeting-series/${mockSeriesId}/retrospective`,
+      );
+    });
+  });
 });
