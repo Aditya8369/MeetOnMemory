@@ -1,8 +1,12 @@
 import mongoose from "mongoose";
+import crypto from "crypto";
 import { z } from "zod";
 import Webhook from "../models/Webhook.js";
 import WebhookDelivery from "../models/WebhookDelivery.js";
-import { redeliverWebhookDelivery } from "../services/webhookDispatcherService.js";
+import {
+  redeliverWebhookDelivery,
+  performDispatch,
+} from "../services/webhookDispatcherService.js";
 import Membership from "../models/membershipModel.js";
 import Organization from "../models/organizationModel.js";
 import {
@@ -419,6 +423,90 @@ export const redeliverWebhookPayload = async (req, res, next) => {
       res,
       { delivery: newDelivery },
       "Webhook payload redelivered successfully.",
+    );
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * Rotate webhook signing secret
+ * POST /api/webhooks/:id/rotate-secret
+ */
+export const rotateWebhookSecret = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const userId = getUserId(req);
+
+    if (!id || !mongoose.Types.ObjectId.isValid(id)) {
+      throw new ValidationError("Valid Webhook ID is required.");
+    }
+
+    const webhook = await Webhook.findById(id).select("+secret");
+    if (!webhook) {
+      throw new NotFoundError("Webhook subscription not found.");
+    }
+
+    const isAuthorized = await hasAdminPermission(
+      userId,
+      webhook.organizationId,
+    );
+    if (!isAuthorized) {
+      throw new ForbiddenError(
+        "Forbidden. Only organization owners and admins can rotate webhook secrets.",
+      );
+    }
+
+    webhook.secret = crypto.randomBytes(32).toString("hex");
+    await webhook.save();
+
+    return sendSuccess(
+      res,
+      { secret: webhook.secret },
+      "Webhook secret rotated successfully.",
+    );
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * Send a test ping event to a webhook subscription
+ * POST /api/webhooks/:id/ping
+ */
+export const pingWebhook = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const userId = getUserId(req);
+
+    if (!id || !mongoose.Types.ObjectId.isValid(id)) {
+      throw new ValidationError("Valid Webhook ID is required.");
+    }
+
+    const webhook = await Webhook.findById(id);
+    if (!webhook) {
+      throw new NotFoundError("Webhook subscription not found.");
+    }
+
+    const isAuthorized = await hasAdminPermission(
+      userId,
+      webhook.organizationId,
+    );
+    if (!isAuthorized) {
+      throw new ForbiddenError(
+        "Forbidden. Only organization owners and admins can ping webhooks.",
+      );
+    }
+
+    const delivery = await performDispatch(id, {
+      event: "webhook.ping",
+      data: { message: "Test ping from MeetOnMemory" },
+    });
+
+    return sendSuccess(
+      res,
+      { delivery },
+      "Webhook ping dispatched successfully.",
     );
   } catch (error) {
     next(error);

@@ -1,6 +1,6 @@
 import ActionItem from "../models/actionItemModel.js";
 import Membership from "../models/membershipModel.js";
-import GenerativeAIService from "./GenerativeAIService.js";
+import { generateText } from "./GenerativeAIService.js";
 import { logActivity } from "./activityService.js";
 
 class WorkloadService {
@@ -109,10 +109,7 @@ Respond with ONLY valid JSON array. Do not include markdown formatting or extra 
 `;
 
     try {
-      const responseText = await GenerativeAIService.generateText(
-        prompt,
-        "system",
-      );
+      const responseText = await generateText(prompt, "system");
 
       let suggestions = [];
       try {

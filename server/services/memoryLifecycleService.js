@@ -225,9 +225,58 @@ export async function runLifecycleSweep({
   return summary;
 }
 
+/**
+ * Manually transitions a batch of memories to a target lifecycle state.
+ */
+export async function bulkTransitionLifecycleStates({
+  organization,
+  items,
+  toState,
+  reason = "",
+  triggeredBy = "system",
+}) {
+  const summary = {
+    requested: items.length,
+    found: 0,
+    transitioned: 0,
+    skipped: 0,
+    errors: [],
+  };
+
+  for (const { type, id } of items) {
+    try {
+      const Model = resolveModel(type);
+      const document = await Model.findOne({ _id: id, organization });
+      if (!document) {
+        summary.errors.push({ type, id, error: "Not found" });
+        continue;
+      }
+
+      summary.found += 1;
+
+      const fromState = document.lifecycleState || "active";
+      if (fromState === toState) {
+        summary.skipped += 1;
+        continue;
+      }
+
+      await transitionLifecycleState(document, toState, {
+        reason,
+        triggeredBy,
+      });
+      summary.transitioned += 1;
+    } catch (err) {
+      summary.errors.push({ type, id, error: err.message });
+    }
+  }
+
+  return summary;
+}
+
 export default {
   evaluateLifecycleState,
   transitionLifecycleState,
   restoreMemory,
   runLifecycleSweep,
+  bulkTransitionLifecycleStates,
 };
