@@ -76,12 +76,14 @@ import MyDelegations from "../pages/MyDelegations.jsx";
 import MeetingPatterns from "../pages/MeetingPatterns.jsx";
 import FocusTime from "../pages/FocusTime.jsx";
 import SeriesRetrospective from "../pages/SeriesRetrospective.jsx";
+import MeetingSeriesList from "../pages/MeetingSeriesList.jsx";
 import DataRetentionSettings from "../pages/DataRetentionSettings.jsx";
 import FollowUpDashboard from "../pages/FollowUpDashboard.jsx";
 import EscalationDashboard from "../pages/EscalationDashboard.jsx";
 import Glossary from "../pages/Glossary.jsx";
 import StandupReports from "../pages/StandupReports.jsx";
 import SlaCompliance from "../pages/SlaCompliance.jsx";
+import TeamAvailability from "../pages/TeamAvailability.jsx";
 import ActionItemTemplates from "../pages/ActionItemTemplates.jsx";
 
 const ProtectedRoutes = (
@@ -107,6 +109,14 @@ const ProtectedRoutes = (
       element={
         <ProtectedRoute resource="meetings" action="view">
           <CompareMeetings />
+        </ProtectedRoute>
+      }
+    />
+    <Route
+      path="/meeting-series"
+      element={
+        <ProtectedRoute resource="meetings" action="view">
+          <MeetingSeriesList />
         </ProtectedRoute>
       }
     />
@@ -734,6 +744,14 @@ const ProtectedRoutes = (
       element={
         <ProtectedRoute resource="reports" action="view">
           <StandupReports />
+        </ProtectedRoute>
+      }
+    />
+    <Route
+      path="/team-availability"
+      element={
+        <ProtectedRoute resource="reports" action="view">
+          <TeamAvailability />
         </ProtectedRoute>
       }
     />

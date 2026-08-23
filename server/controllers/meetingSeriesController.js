@@ -222,6 +222,136 @@ export const getSeriesById = async (req, res) => {
   }
 };
 
+/**
+ * List org meeting series for the manage page (Issue #2036).
+ */
+export const listSeries = async (req, res) => {
+  try {
+    const orgId = req.user?.organization || req.user?.organizationId;
+    if (!orgId) {
+      return res.status(403).json({
+        success: false,
+        message: "Organization membership required",
+      });
+    }
+
+    const seriesList = await MeetingSeries.find({ organization: orgId })
+      .sort({ updatedAt: -1 })
+      .lean();
+
+    const now = new Date();
+    const enriched = await Promise.all(
+      seriesList.map(async (series) => {
+        const [nextMeeting, occurrenceCount] = await Promise.all([
+          Meeting.findOne({
+            series: series._id,
+            organization: orgId,
+            date: { $gte: now },
+          })
+            .sort({ date: 1 })
+            .select("date time title seriesOccurrence")
+            .lean(),
+          Meeting.countDocuments({ series: series._id, organization: orgId }),
+        ]);
+
+        return {
+          ...series,
+          status: series.isActive ? "active" : "paused",
+          occurrenceCount,
+          nextOccurrence: nextMeeting
+            ? {
+                date: nextMeeting.date,
+                time: nextMeeting.time,
+                title: nextMeeting.title,
+                seriesOccurrence: nextMeeting.seriesOccurrence,
+              }
+            : null,
+        };
+      }),
+    );
+
+    res.json({ success: true, series: enriched });
+  } catch (error) {
+    console.error("Error listing meeting series:", error);
+    res.status(500).json({
+      success: false,
+      message: "Server error listing meeting series",
+    });
+  }
+};
+
+/**
+ * Pause a series without deleting future meetings (Issue #2036).
+ */
+export const pauseSeries = async (req, res) => {
+  try {
+    const series = await MeetingSeries.findOneAndUpdate(
+      {
+        _id: req.params.id,
+        organization: req.user.organization,
+        isActive: true,
+      },
+      { isActive: false },
+      { new: true },
+    );
+
+    if (!series) {
+      return res.status(404).json({
+        success: false,
+        message: "Active series not found",
+      });
+    }
+
+    res.json({
+      success: true,
+      message: "Series paused successfully",
+      series,
+    });
+  } catch (error) {
+    console.error("Error pausing meeting series:", error);
+    res.status(500).json({
+      success: false,
+      message: "Server error pausing meeting series",
+    });
+  }
+};
+
+/**
+ * Resume a paused series (Issue #2036).
+ */
+export const resumeSeries = async (req, res) => {
+  try {
+    const series = await MeetingSeries.findOneAndUpdate(
+      {
+        _id: req.params.id,
+        organization: req.user.organization,
+        isActive: false,
+      },
+      { isActive: true },
+      { new: true },
+    );
+
+    if (!series) {
+      return res.status(404).json({
+        success: false,
+        message: "Paused series not found",
+      });
+    }
+
+    res.json({
+      success: true,
+      message: "Series resumed successfully",
+      series,
+    });
+  } catch (error) {
+    console.error("Error resuming meeting series:", error);
+    res.status(500).json({
+      success: false,
+      message: "Server error resuming meeting series",
+    });
+  }
+};
+
 export const getSeriesMeetings = async (req, res) => {
   try {
     // `limit=0` / `limit=all` is the deliberate "give me the whole series"

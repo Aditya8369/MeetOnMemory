@@ -79,6 +79,7 @@ describe("Route Consolidation and Registration", () => {
       "/api/testimonials",
       "/api/admin/jobs",
       "/api/admin/embeddings",
+      "/api/admin/rbac",
     ];
 
     for (const prefix of standaloneRoutePrefixes) {
@@ -158,6 +159,7 @@ describe("Route Consolidation and Registration", () => {
       "/api/admin/testimonials",
       "/api/admin/jobs",
       "/api/admin/embeddings",
+      "/api/admin/rbac",
     ];
 
     for (const routePath of expectedRoutes) {
