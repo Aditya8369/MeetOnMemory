@@ -9,7 +9,8 @@ const SeriesNavigation = ({ meeting }) => {
   const [totalCount, setTotalCount] = useState(0);
   const [loading, setLoading] = useState(true);
 
-  const seriesId = meeting?.series?._id || meeting?.series;
+  const seriesId =
+    meeting?.series?._id || meeting?.series || meeting?.seriesId || null;
 
   useEffect(() => {
     if (!seriesId) return;
@@ -84,7 +85,26 @@ const SeriesNavigation = ({ meeting }) => {
         </div>
       </div>
 
-      <div className="flex flex-wrap gap-2">
+      <div className="flex flex-wrap items-center gap-2">
+        <label className="sr-only" htmlFor="series-occurrence-select">
+          Jump to series occurrence
+        </label>
+        <select
+          id="series-occurrence-select"
+          value={meeting._id}
+          onChange={(e) => {
+            if (e.target.value && e.target.value !== meeting._id) {
+              navigate(`/meeting/${e.target.value}`);
+            }
+          }}
+          className="rounded-lg border border-blue-200 bg-white px-3 py-1.5 text-sm font-medium text-blue-700 dark:border-blue-700 dark:bg-gray-800 dark:text-blue-300"
+        >
+          {meetings.map((m, index) => (
+            <option key={m._id} value={m._id}>
+              Occurrence {m.seriesOccurrence || index + 1}
+            </option>
+          ))}
+        </select>
         <Link
           to={`/meeting-series/${seriesId}/retrospective`}
           className="rounded-lg border border-indigo-200 bg-indigo-600 px-3 py-1.5 text-sm font-medium text-white transition-colors hover:bg-indigo-700 dark:border-indigo-700"
@@ -93,7 +113,7 @@ const SeriesNavigation = ({ meeting }) => {
         </Link>
         <button
           type="button"
-          onClick={() => navigate(`/meeting/${prevMeeting._id}`)}
+          onClick={() => prevMeeting && navigate(`/meeting/${prevMeeting._id}`)}
           disabled={!prevMeeting}
           className="flex cursor-pointer items-center gap-1 rounded-lg border border-blue-200 bg-white px-3 py-1.5 text-sm font-medium text-blue-700 transition-colors hover:bg-blue-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-blue-700 dark:bg-gray-800 dark:text-blue-300 dark:hover:bg-gray-700"
         >
@@ -114,7 +134,7 @@ const SeriesNavigation = ({ meeting }) => {
         </button>
         <button
           type="button"
-          onClick={() => navigate(`/meeting/${nextMeeting._id}`)}
+          onClick={() => nextMeeting && navigate(`/meeting/${nextMeeting._id}`)}
           disabled={!nextMeeting}
           className="flex cursor-pointer items-center gap-1 rounded-lg border border-blue-200 bg-white px-3 py-1.5 text-sm font-medium text-blue-700 transition-colors hover:bg-blue-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-blue-700 dark:bg-gray-800 dark:text-blue-300 dark:hover:bg-gray-700"
         >
