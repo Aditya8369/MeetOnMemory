@@ -255,5 +255,4 @@ const InviteMemberForm = ({ onClose, onSendInvite, onOpenBulkImport }) => {
   );
 };
 
-
 export default InviteMemberForm;

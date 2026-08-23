@@ -63,9 +63,7 @@ export const parseCsv = (csvText) => {
 
   const cleanText = csvText.replace(/^\uFEFF/, "");
   const rawLines = cleanText.split(/\r\n|\n|\r/);
-  const lines = rawLines
-    .map((l) => l.trimEnd())
-    .filter((l) => l.trim() !== "");
+  const lines = rawLines.map((l) => l.trimEnd()).filter((l) => l.trim() !== "");
 
   if (lines.length === 0) {
     throw new Error("CSV file is empty.");
@@ -296,9 +294,10 @@ export const buildStandardCsv = (rows = []) => {
     const role = (r.role || "member").trim().toLowerCase();
     const message = (r.message || "").trim();
 
-    const escapedMessage = message.includes(",") || message.includes('"') || message.includes("\n")
-      ? `"${message.replace(/"/g, '""')}"`
-      : message;
+    const escapedMessage =
+      message.includes(",") || message.includes('"') || message.includes("\n")
+        ? `"${message.replace(/"/g, '""')}"`
+        : message;
 
     return `${email},${role},${escapedMessage}`;
   });

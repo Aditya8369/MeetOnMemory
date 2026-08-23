@@ -105,7 +105,9 @@ describe("InviteMemberForm", () => {
       />,
     );
 
-    const bulkBtn = screen.getByText(/need to invite multiple members\? import csv/i);
+    const bulkBtn = screen.getByText(
+      /need to invite multiple members\? import csv/i,
+    );
     expect(bulkBtn).toBeInTheDocument();
     fireEvent.click(bulkBtn);
 

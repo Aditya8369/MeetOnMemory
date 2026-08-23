@@ -24,11 +24,9 @@ describe("csvParser utility", () => {
     });
 
     it("handles escaped quotes inside quotes", () => {
-      expect(splitCsvLine('test@example.com,"hello ""friend""",member')).toEqual([
-        "test@example.com",
-        'hello "friend"',
-        "member",
-      ]);
+      expect(
+        splitCsvLine('test@example.com,"hello ""friend""",member'),
+      ).toEqual(["test@example.com", 'hello "friend"', "member"]);
     });
 
     it("throws on unmatched quotes", () => {
@@ -40,7 +38,8 @@ describe("csvParser utility", () => {
 
   describe("parseCsv", () => {
     it("parses valid CSV text into headers and rows", () => {
-      const csv = "email,role,message\nalice@example.com,admin,hi\nbob@example.com,member,hello";
+      const csv =
+        "email,role,message\nalice@example.com,admin,hi\nbob@example.com,member,hello";
       const result = parseCsv(csv);
       expect(result.headers).toEqual(["email", "role", "message"]);
       expect(result.rows).toHaveLength(2);
@@ -120,9 +119,17 @@ describe("csvParser utility", () => {
       const rows = [
         { "User Email": "alice@example.com", Role: "admin", Note: "Welcome" },
         { "User Email": "invalid-email", Role: "member", Note: "" },
-        { "User Email": "alice@example.com", Role: "member", Note: "Duplicate" },
+        {
+          "User Email": "alice@example.com",
+          Role: "member",
+          Note: "Duplicate",
+        },
         { "User Email": "bob@example.com", Role: "invalid-role", Note: "" },
-        { "User Email": "charlie@example.com", Role: "", Note: "No role provided" },
+        {
+          "User Email": "charlie@example.com",
+          Role: "",
+          Note: "No role provided",
+        },
       ];
 
       const mapping = {
@@ -139,11 +146,15 @@ describe("csvParser utility", () => {
 
       expect(result.validatedRows[0].isValid).toBe(true);
       expect(result.validatedRows[1].isValid).toBe(false);
-      expect(result.validatedRows[1].errors).toContain("Invalid email address format");
+      expect(result.validatedRows[1].errors).toContain(
+        "Invalid email address format",
+      );
 
       expect(result.validatedRows[2].isValid).toBe(false);
       expect(result.validatedRows[2].isDuplicate).toBe(true);
-      expect(result.validatedRows[2].errors).toContain("Duplicate email in this CSV file");
+      expect(result.validatedRows[2].errors).toContain(
+        "Duplicate email in this CSV file",
+      );
 
       expect(result.validatedRows[3].isValid).toBe(false);
       expect(result.validatedRows[3].errors[0]).toMatch(/invalid role/i);
@@ -162,7 +173,7 @@ describe("csvParser utility", () => {
 
       const output = buildStandardCsv(rows);
       expect(output).toContain("email,role,message");
-      expect(output).toContain("alice@example.com,admin,\"Hi, Alice!\"");
+      expect(output).toContain('alice@example.com,admin,"Hi, Alice!"');
       expect(output).toContain('bob@example.com,member,"Say ""hello"""');
     });
 

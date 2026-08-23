@@ -42,10 +42,7 @@ describe("BulkInviteModal", () => {
 
   it("calls onClose when cancel or close button is clicked", () => {
     render(
-      <BulkInviteModal
-        onClose={mockOnClose}
-        onBulkInvite={mockOnBulkInvite}
-      />,
+      <BulkInviteModal onClose={mockOnClose} onBulkInvite={mockOnBulkInvite} />,
     );
 
     const cancelButton = screen.getByRole("button", { name: "Cancel" });
@@ -85,13 +82,11 @@ describe("BulkInviteModal", () => {
     });
 
     render(
-      <BulkInviteModal
-        onClose={mockOnClose}
-        onBulkInvite={mockOnBulkInvite}
-      />,
+      <BulkInviteModal onClose={mockOnClose} onBulkInvite={mockOnBulkInvite} />,
     );
 
-    const csvContent = "email,role,message\nalice@example.com,member,Hi\nbob@example.com,admin,Hello";
+    const csvContent =
+      "email,role,message\nalice@example.com,member,Hi\nbob@example.com,admin,Hello";
     const file = new File([csvContent], "invites.csv", { type: "text/csv" });
 
     const fileInput = document.querySelector('input[type="file"]');
@@ -154,10 +149,7 @@ describe("BulkInviteModal", () => {
     });
 
     render(
-      <BulkInviteModal
-        onClose={mockOnClose}
-        onBulkInvite={mockOnBulkInvite}
-      />,
+      <BulkInviteModal onClose={mockOnClose} onBulkInvite={mockOnBulkInvite} />,
     );
 
     const csvContent =
@@ -171,7 +163,9 @@ describe("BulkInviteModal", () => {
       expect(screen.getByText("Map CSV Columns")).toBeInTheDocument();
     });
 
-    fireEvent.click(screen.getByRole("button", { name: /preview & validate/i }));
+    fireEvent.click(
+      screen.getByRole("button", { name: /preview & validate/i }),
+    );
 
     await waitFor(() => {
       expect(screen.getByText("valid@example.com")).toBeInTheDocument();
@@ -185,7 +179,9 @@ describe("BulkInviteModal", () => {
       expect(
         screen.getByText("Import Completed with Some Failures"),
       ).toBeInTheDocument();
-      expect(screen.getByText("User is already a member of this organization.")).toBeInTheDocument();
+      expect(
+        screen.getByText("User is already a member of this organization."),
+      ).toBeInTheDocument();
     });
   });
 });

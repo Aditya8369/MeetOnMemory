@@ -20,4 +20,3 @@ export const invitationApi = {
       headers: { "Content-Type": "multipart/form-data" },
     }),
 };
-

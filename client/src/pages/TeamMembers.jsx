@@ -51,7 +51,6 @@ const TeamMembers = () => {
   const [showInviteModal, setShowInviteModal] = useState(false);
   const [showBulkInviteModal, setShowBulkInviteModal] = useState(false);
 
-
   const applyFiltersAndSort = useCallback(() => {
     let result = [...members];
 
@@ -423,8 +422,4 @@ const TeamMembers = () => {
   );
 };
 
-
 export default TeamMembers;
-
-
-

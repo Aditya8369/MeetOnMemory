@@ -388,7 +388,8 @@ const BulkInviteModal = ({ onClose, onBulkInvite, onSwitchToSingle }) => {
                     Map CSV Columns
                   </h3>
                   <p className="text-xs text-slate-500 dark:text-slate-400">
-                    Confirm how your CSV columns correspond to invitation fields.
+                    Confirm how your CSV columns correspond to invitation
+                    fields.
                   </p>
                 </div>
 
@@ -847,7 +848,9 @@ const BulkInviteModal = ({ onClose, onBulkInvite, onSwitchToSingle }) => {
                 className="inline-flex items-center gap-1.5 px-5 py-2 rounded-xl bg-blue-600 text-white font-bold hover:bg-blue-700 disabled:bg-blue-400 transition-all text-xs shadow-md shadow-blue-600/20 cursor-pointer"
               >
                 <Send className="h-3.5 w-3.5" />
-                Send {skipInvalid ? validation.validCount : validation.total}{" "}
+                Send {skipInvalid
+                  ? validation.validCount
+                  : validation.total}{" "}
                 Invitations
               </button>
             </>
