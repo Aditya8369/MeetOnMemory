@@ -1,5 +1,9 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { renameCluster, deleteCluster, mergeClusters } from "../topicController.js";
+import {
+  renameCluster,
+  deleteCluster,
+  mergeClusters,
+} from "../topicController.js";
 import TopicCluster from "../../models/topicClusterModel.js";
 import MeetingTopic from "../../models/meetingTopicModel.js";
 
@@ -72,7 +76,10 @@ describe("Topic Controller Schema Validation (#1490, #2028)", () => {
 
       expect(res.status).toHaveBeenCalledWith(400);
       expect(res.json).toHaveBeenCalledWith(
-        expect.objectContaining({ success: false, error: "Invalid cluster ID" }),
+        expect.objectContaining({
+          success: false,
+          error: "Invalid cluster ID",
+        }),
       );
     });
 
@@ -143,7 +150,8 @@ describe("Topic Controller Schema Validation (#1490, #2028)", () => {
       };
 
       TopicCluster.findOne.mockImplementation(({ _id }) => {
-        if (_id === "507f1f77bcf86cd799439011") return Promise.resolve(sourceCluster);
+        if (_id === "507f1f77bcf86cd799439011")
+          return Promise.resolve(sourceCluster);
         if (_id === targetId) return Promise.resolve(targetCluster);
         return Promise.resolve(null);
       });
@@ -161,4 +169,3 @@ describe("Topic Controller Schema Validation (#1490, #2028)", () => {
     });
   });
 });
-

@@ -32,7 +32,9 @@ vi.mock("../../services/apiClient.js", () => ({
 
 // Mock recharts
 vi.mock("recharts", () => ({
-  ScatterChart: ({ children }) => <div data-testid="scatter-chart">{children}</div>,
+  ScatterChart: ({ children }) => (
+    <div data-testid="scatter-chart">{children}</div>
+  ),
   Scatter: ({ onClick, data }) => (
     <div data-testid="scatter-layer">
       {data?.map((d) => (
@@ -167,10 +169,9 @@ describe("TopicExplorer Extract, Merge, and Delete Actions (#2028)", () => {
     fireEvent.click(renameBtn);
 
     await waitFor(() => {
-      expect(apiClient.put).toHaveBeenCalledWith(
-        "/api/topics/clusters/c_1",
-        { label: "Updated Sprint Planning" },
-      );
+      expect(apiClient.put).toHaveBeenCalledWith("/api/topics/clusters/c_1", {
+        label: "Updated Sprint Planning",
+      });
     });
   });
 
@@ -205,9 +206,7 @@ describe("TopicExplorer Extract, Merge, and Delete Actions (#2028)", () => {
     fireEvent.click(confirmDeleteBtn);
 
     await waitFor(() => {
-      expect(apiClient.delete).toHaveBeenCalledWith(
-        "/api/topics/clusters/c_1",
-      );
+      expect(apiClient.delete).toHaveBeenCalledWith("/api/topics/clusters/c_1");
     });
   });
 
@@ -241,7 +240,9 @@ describe("TopicExplorer Extract, Merge, and Delete Actions (#2028)", () => {
     // Merge Selection Modal appears
     await waitFor(() => {
       expect(screen.getByText("Merge Topic Cluster")).toBeInTheDocument();
-      expect(screen.getByTestId("confirm-merge-proceed-btn")).toBeInTheDocument();
+      expect(
+        screen.getByTestId("confirm-merge-proceed-btn"),
+      ).toBeInTheDocument();
     });
 
     // Click proceed

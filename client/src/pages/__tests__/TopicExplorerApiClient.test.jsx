@@ -54,4 +54,3 @@ describe("TopicExplorer uses Clerk-aware apiClient (#1407)", () => {
     });
   });
 });
-

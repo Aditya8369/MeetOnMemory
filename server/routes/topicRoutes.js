@@ -44,4 +44,3 @@ router.delete("/clusters/:clusterId", deleteCluster);
 router.post("/clusters/:clusterId/merge", mergeClusters);
 
 export default router;
-

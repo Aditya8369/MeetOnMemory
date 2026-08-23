@@ -354,7 +354,9 @@ export const mergeClusters = async (req, res) => {
 
     const uniqueMeetings = new Set(topicsInTarget.map((t) => t.meetingId));
     targetCluster.canonicalTopicNames = canonicalNames;
-    targetCluster.meetingCount = uniqueMeetings.size || (targetCluster.meetingCount + (sourceCluster.meetingCount || 0));
+    targetCluster.meetingCount =
+      uniqueMeetings.size ||
+      targetCluster.meetingCount + (sourceCluster.meetingCount || 0);
 
     // Delete the source cluster
     await TopicCluster.findByIdAndDelete(clusterId);
@@ -383,4 +385,3 @@ export const extractForOrganization = async (req, res) => {
       .json({ success: false, error: "An internal server error occurred" });
   }
 };
-

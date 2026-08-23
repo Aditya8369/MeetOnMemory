@@ -269,4 +269,3 @@ export const extractAllForOrg = async (orgId) => {
   const clusters = await clusterTopics(orgId);
   return { newlyExtracted, clusters };
 };
-

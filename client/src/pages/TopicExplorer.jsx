@@ -102,7 +102,6 @@ const TopicExplorer = () => {
     });
   }, [clusters]);
 
-
   // Extract Topics for Organization CTA
   const handleExtractTopics = async () => {
     if (!orgId) return;
@@ -123,7 +122,8 @@ const TopicExplorer = () => {
     } catch (err) {
       console.error("Error extracting topics", err);
       toast.error(
-        err.response?.data?.error || "Failed to extract topics. Please try again.",
+        err.response?.data?.error ||
+          "Failed to extract topics. Please try again.",
       );
     } finally {
       setExtracting(false);
@@ -133,7 +133,11 @@ const TopicExplorer = () => {
   // Rename Cluster
   const handleRenameCluster = async (clusterId, currentLabel) => {
     const newLabel = window.prompt("Enter new cluster label:", currentLabel);
-    if (!newLabel || newLabel.trim() === "" || newLabel.trim() === currentLabel) {
+    if (
+      !newLabel ||
+      newLabel.trim() === "" ||
+      newLabel.trim() === currentLabel
+    ) {
       return;
     }
 
@@ -147,7 +151,9 @@ const TopicExplorer = () => {
         setClusters((prev) =>
           prev.map((c) => (c._id === clusterId ? updated : c)),
         );
-        setSelectedCluster((prev) => (prev?._id === clusterId ? updated : prev));
+        setSelectedCluster((prev) =>
+          prev?._id === clusterId ? updated : prev,
+        );
       }
     } catch (err) {
       console.error("Error renaming cluster", err);
@@ -250,7 +256,8 @@ const TopicExplorer = () => {
               Topic Explorer
             </h1>
             <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-              Extract, cluster, merge, and curate topics across organization meetings.
+              Extract, cluster, merge, and curate topics across organization
+              meetings.
             </p>
           </div>
           <div className="flex items-center gap-3">
@@ -266,7 +273,9 @@ const TopicExplorer = () => {
               ) : (
                 <Sparkles className="h-4 w-4" />
               )}
-              <span>{extracting ? "Extracting Topics..." : "Extract Topics"}</span>
+              <span>
+                {extracting ? "Extracting Topics..." : "Extract Topics"}
+              </span>
             </button>
           </div>
         </div>
@@ -274,7 +283,9 @@ const TopicExplorer = () => {
         {loading && (
           <div className="p-12 text-center text-gray-500 dark:text-gray-400 flex flex-col items-center justify-center gap-3">
             <RefreshCw className="h-8 w-8 animate-spin text-blue-600" />
-            <span className="text-sm font-medium">Loading Topic Clusters...</span>
+            <span className="text-sm font-medium">
+              Loading Topic Clusters...
+            </span>
           </div>
         )}
 
@@ -350,13 +361,19 @@ const TopicExplorer = () => {
                                   {data.name}
                                 </p>
                                 <p className="text-gray-600 dark:text-gray-400">
-                                  Meetings: <strong className="text-gray-900 dark:text-white">{data.count}</strong>
+                                  Meetings:{" "}
+                                  <strong className="text-gray-900 dark:text-white">
+                                    {data.count}
+                                  </strong>
                                 </p>
-                                {data.canonicalTopicNames && data.canonicalTopicNames.length > 0 && (
-                                  <p className="text-[11px] text-gray-500 mt-1 truncate max-w-xs">
-                                    {data.canonicalTopicNames.slice(0, 3).join(", ")}
-                                  </p>
-                                )}
+                                {data.canonicalTopicNames &&
+                                  data.canonicalTopicNames.length > 0 && (
+                                    <p className="text-[11px] text-gray-500 mt-1 truncate max-w-xs">
+                                      {data.canonicalTopicNames
+                                        .slice(0, 3)
+                                        .join(", ")}
+                                    </p>
+                                  )}
                               </div>
                             );
                           }
@@ -366,7 +383,9 @@ const TopicExplorer = () => {
                       <Scatter
                         name="Topics"
                         data={chartData}
-                        onClick={(e) => e?.payload && setSelectedCluster(e.payload)}
+                        onClick={(e) =>
+                          e?.payload && setSelectedCluster(e.payload)
+                        }
                       >
                         {chartData.map((entry, index) => (
                           <Cell key={`cell-${index}`} fill={entry.fill} />
@@ -399,7 +418,8 @@ const TopicExplorer = () => {
                         {cluster.label}
                       </h3>
                       <span className="bg-blue-50 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300 text-xs px-2.5 py-1 rounded-full font-semibold shrink-0">
-                        {cluster.meetingCount} {cluster.meetingCount === 1 ? "meeting" : "meetings"}
+                        {cluster.meetingCount}{" "}
+                        {cluster.meetingCount === 1 ? "meeting" : "meetings"}
                       </span>
                     </div>
                     <div className="text-xs text-gray-500 dark:text-gray-400 line-clamp-2">
@@ -414,7 +434,8 @@ const TopicExplorer = () => {
                       No topic clusters found.
                     </p>
                     <p className="text-xs">
-                      Click <strong>"Extract Topics"</strong> above to discover topics across your meetings.
+                      Click <strong>"Extract Topics"</strong> above to discover
+                      topics across your meetings.
                     </p>
                   </div>
                 )}
@@ -497,7 +518,8 @@ const TopicExplorer = () => {
                   {/* Canonical Names */}
                   <div>
                     <h4 className="text-xs font-bold uppercase tracking-wider text-gray-700 dark:text-gray-300 mb-2">
-                      Canonical Topics ({selectedCluster.canonicalTopicNames?.length || 0})
+                      Canonical Topics (
+                      {selectedCluster.canonicalTopicNames?.length || 0})
                     </h4>
                     {selectedCluster.canonicalTopicNames &&
                     selectedCluster.canonicalTopicNames.length > 0 ? (
@@ -526,7 +548,8 @@ const TopicExplorer = () => {
                     No cluster selected
                   </p>
                   <p className="text-xs max-w-xs text-gray-400">
-                    Click any bubble in the overview chart or a card in the grid to view canonical subtopics, rename, merge, or delete.
+                    Click any bubble in the overview chart or a card in the grid
+                    to view canonical subtopics, rename, merge, or delete.
                   </p>
                 </div>
               )}
@@ -565,7 +588,10 @@ const TopicExplorer = () => {
             <div className="flex items-center justify-between border-b border-gray-100 dark:border-gray-700 pb-3">
               <div className="flex items-center gap-2">
                 <GitMerge className="h-5 w-5 text-amber-600" />
-                <h3 id="merge-modal-title" className="text-base font-bold text-gray-900 dark:text-white">
+                <h3
+                  id="merge-modal-title"
+                  className="text-base font-bold text-gray-900 dark:text-white"
+                >
                   Merge Topic Cluster
                 </h3>
               </div>
@@ -581,7 +607,9 @@ const TopicExplorer = () => {
 
             <div className="text-xs text-gray-600 dark:text-gray-300 space-y-3">
               <p>
-                Merge <strong>"{selectedCluster?.label}"</strong> into another destination cluster. All meetings referencing this cluster will be reassigned.
+                Merge <strong>"{selectedCluster?.label}"</strong> into another
+                destination cluster. All meetings referencing this cluster will
+                be reassigned.
               </p>
 
               <div>
