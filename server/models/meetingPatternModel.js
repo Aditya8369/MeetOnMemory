@@ -42,6 +42,36 @@ const meetingPatternSchema = new mongoose.Schema(
       default: "active",
       index: true,
     },
+    actionHistory: [
+      {
+        actionType: {
+          type: String,
+          enum: [
+            "task_created",
+            "rule_configured",
+            "acknowledged",
+            "dismissed",
+          ],
+          required: true,
+        },
+        performedBy: {
+          type: mongoose.Schema.Types.ObjectId,
+          ref: "User",
+        },
+        performedByName: {
+          type: String,
+          default: "Admin",
+        },
+        details: {
+          type: mongoose.Schema.Types.Mixed,
+          default: {},
+        },
+        performedAt: {
+          type: Date,
+          default: Date.now,
+        },
+      },
+    ],
     expiresAt: {
       type: Date,
       // The `expires` parameter tells MongoDB to automatically delete documents
