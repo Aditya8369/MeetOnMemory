@@ -232,3 +232,40 @@ export const clusterTopics = async (orgId) => {
 
   return existingClusters;
 };
+
+/**
+ * Extracts topics from unprocessed meetings for an organization and clusters them.
+ */
+export const extractAllForOrg = async (orgId) => {
+  const meetings = await Meeting.find({ organization: orgId });
+  const existingMeetingTopics = await MeetingTopic.find({
+    organization: orgId,
+  }).select("meeting");
+  const extractedMeetingIds = new Set(
+    existingMeetingTopics.map((mt) => mt.meeting?.toString()),
+  );
+
+  const pendingMeetings = meetings.filter(
+    (m) => !extractedMeetingIds.has(m._id.toString()),
+  );
+
+  let newlyExtracted = 0;
+  for (const m of pendingMeetings) {
+    try {
+      const transcript = await Transcript.findOne({ meeting: m._id });
+      if (transcript && transcript.segments && transcript.segments.length > 0) {
+        await extractTopics(m._id, orgId);
+        newlyExtracted++;
+      }
+    } catch (err) {
+      console.warn(
+        `Could not extract topics for meeting ${m._id}:`,
+        err?.message,
+      );
+    }
+  }
+
+  // Trigger clustering across all topics in org
+  const clusters = await clusterTopics(orgId);
+  return { newlyExtracted, clusters };
+};
