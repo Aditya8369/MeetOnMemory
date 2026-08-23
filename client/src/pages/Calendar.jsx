@@ -6,6 +6,7 @@ import { useRBAC } from "../hooks/useRBAC.js";
 import { useCalendarEvents } from "../hooks/useCalendarEvents";
 import CalendarGrid from "../components/calendar/CalendarGrid";
 import MeetingDetailsModal from "../components/calendar/MeetingDetailsModal";
+import CalendarSyncPanel from "../components/calendar/CalendarSyncPanel.jsx";
 import { getWeekDays } from "../components/calendar/calendarUtils";
 import {
   Calendar as CalendarIcon,
@@ -43,6 +44,7 @@ const Calendar = () => {
     uniqueOrgs,
     hasMore,
     loadMoreMeetings,
+    invalidateCache,
     focusBlocks,
   } = useCalendarEvents();
 
@@ -130,14 +132,8 @@ const Calendar = () => {
             </p>
           </div>
 
-          <div className="flex items-center gap-3 w-full md:w-auto">
-            <button
-              onClick={() => navigate("/settings")}
-              className="inline-flex items-center gap-2 px-4 py-2 text-xs font-bold text-slate-700 bg-white dark:bg-slate-800 dark:text-slate-200 border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700 active:bg-slate-100 rounded-xl transition-all shadow-xs cursor-pointer w-full md:w-auto justify-center"
-            >
-              <CalendarIcon className="w-4 h-4 text-blue-600 dark:text-blue-400" />
-              Calendar Integrations
-            </button>
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full md:w-auto">
+            <CalendarSyncPanel onSyncComplete={invalidateCache} isCompact />
             <RoleGate resource="meetings" action="create">
               <button
                 onClick={() => navigate("/create-meeting")}
@@ -290,27 +286,36 @@ const Calendar = () => {
           </div>
         ) : filteredMeetings.length === 0 ? (
           /* Empty State */
-          <div className="flex-1 min-h-[400px] flex flex-col justify-center items-center bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-2xl p-8 text-center shadow-xs">
-            <div className="w-16 h-16 bg-slate-50 dark:bg-slate-800 rounded-full flex items-center justify-center mb-4 border border-slate-100 dark:border-slate-700">
-              <Inbox className="w-7 h-7 text-slate-400" />
+          <div className="flex-1 min-h-[400px] flex flex-col justify-center items-center bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-2xl p-8 text-center shadow-xs space-y-6">
+            <div className="flex flex-col items-center">
+              <div className="w-16 h-16 bg-slate-50 dark:bg-slate-800 rounded-full flex items-center justify-center mb-4 border border-slate-100 dark:border-slate-700">
+                <Inbox className="w-7 h-7 text-slate-400" />
+              </div>
+              <h3 className="text-lg font-bold text-slate-800 dark:text-white">
+                No Scheduled Meetings Found
+              </h3>
+              <p className="text-slate-500 dark:text-slate-400 text-xs sm:text-sm mt-1 max-w-md">
+                {canCreateMeeting
+                  ? "There are no meetings scheduled matching the selected filters. Connect your Google or Outlook calendar to auto-sync events, change your filters, or schedule a new meeting."
+                  : "There are no meetings scheduled matching the selected filters. Connect your Google or Outlook calendar or adjust your filters."}
+              </p>
+              <div className="mt-4 flex flex-wrap items-center justify-center gap-3">
+                <RoleGate resource="meetings" action="create">
+                  <button
+                    onClick={() => navigate("/create-meeting")}
+                    className="inline-flex items-center gap-2 px-4 py-2 text-xs font-bold text-white bg-blue-600 hover:bg-blue-500 active:bg-blue-700 rounded-xl transition-all shadow-xs cursor-pointer"
+                  >
+                    <Plus className="w-4 h-4" />
+                    Schedule New Meeting
+                  </button>
+                </RoleGate>
+              </div>
             </div>
-            <h3 className="text-lg font-bold text-slate-800 dark:text-white">
-              No Scheduled Meetings
-            </h3>
-            <p className="text-slate-500 dark:text-slate-400 text-xs sm:text-sm mt-1 max-w-sm">
-              {canCreateMeeting
-                ? "There are no meetings scheduled matching the selected filters. Change filters or create a new meeting."
-                : "There are no meetings scheduled matching the selected filters. Try adjusting your filters."}
-            </p>
-            <RoleGate resource="meetings" action="create">
-              <button
-                onClick={() => navigate("/create-meeting")}
-                className="mt-5 inline-flex items-center gap-2 px-4 py-2 text-xs font-bold text-white bg-blue-600 hover:bg-blue-500 active:bg-blue-700 rounded-xl transition-all shadow-xs cursor-pointer"
-              >
-                <Plus className="w-4 h-4" />
-                Schedule New Meeting
-              </button>
-            </RoleGate>
+
+            {/* Embedded Calendar Integrations & Connect CTA Panel */}
+            <div className="w-full max-w-2xl text-left">
+              <CalendarSyncPanel onSyncComplete={invalidateCache} />
+            </div>
           </div>
         ) : (
           <>
