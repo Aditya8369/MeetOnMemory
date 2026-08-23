@@ -1,6 +1,6 @@
 import axiosInstance from "./apiClient.js";
 
-const BASE_URL = "/bulk/meetings";
+const BASE_URL = "/api/bulk/meetings";
 
 const bulkMeetingApi = {
   bulkArchive: (meetingIds) =>

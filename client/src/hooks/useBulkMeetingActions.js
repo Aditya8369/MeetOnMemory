@@ -8,10 +8,16 @@ const useBulkMeetingActions = (onSuccess) => {
   const [isBulkMode, setIsBulkMode] = useState(false);
   const [selectedMeetings, setSelectedMeetings] = useState(new Set());
   const [isProcessing, setIsProcessing] = useState(false);
+  const [errorMessage, setErrorMessage] = useState(null);
+
+  const clearError = useCallback(() => {
+    setErrorMessage(null);
+  }, []);
 
   const toggleBulkMode = useCallback(() => {
     setIsBulkMode((prev) => !prev);
     setSelectedMeetings(new Set());
+    setErrorMessage(null);
   }, []);
 
   const toggleSelection = useCallback((meetingId) => {
@@ -34,6 +40,7 @@ const useBulkMeetingActions = (onSuccess) => {
 
   const clearSelection = useCallback(() => {
     setSelectedMeetings(new Set());
+    setErrorMessage(null);
   }, []);
 
   const selectAll = useCallback((meetingIds) => {
@@ -57,6 +64,7 @@ const useBulkMeetingActions = (onSuccess) => {
 
     try {
       setIsProcessing(true);
+      setErrorMessage(null);
       const meetingIds = Array.from(selectedMeetings);
       const response = await actionFn(meetingIds);
 
@@ -71,9 +79,12 @@ const useBulkMeetingActions = (onSuccess) => {
       }
     } catch (err) {
       console.error(`Bulk ${actionName} failed:`, err);
-      toast.error(
-        err.response?.data?.message || `Failed to perform ${actionName}.`,
-      );
+      const message =
+        err.response?.data?.message ||
+        err.message ||
+        `Failed to perform ${actionName}.`;
+      setErrorMessage(message);
+      toast.error(message);
     } finally {
       setIsProcessing(false);
     }
@@ -112,6 +123,7 @@ const useBulkMeetingActions = (onSuccess) => {
 
     try {
       setIsProcessing(true);
+      setErrorMessage(null);
       const meetingIds = Array.from(selectedMeetings);
       const response = await bulkMeetingApi.bulkExport(meetingIds, format);
 
@@ -139,7 +151,12 @@ const useBulkMeetingActions = (onSuccess) => {
       setIsBulkMode(false);
     } catch (err) {
       console.error("Bulk Export failed:", err);
-      toast.error("Failed to export meetings.");
+      const message =
+        err.response?.data?.message ||
+        err.message ||
+        "Failed to export meetings.";
+      setErrorMessage(message);
+      toast.error(message);
     } finally {
       setIsProcessing(false);
     }
@@ -153,6 +170,8 @@ const useBulkMeetingActions = (onSuccess) => {
     clearSelection,
     selectAll,
     isProcessing,
+    errorMessage,
+    clearError,
     handleBulkArchive,
     handleBulkTag,
     handleBulkSoftDelete,
