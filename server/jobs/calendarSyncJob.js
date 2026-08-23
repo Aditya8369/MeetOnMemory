@@ -8,6 +8,11 @@ import {
   getMicrosoftClient, // eslint-disable-line no-unused-vars
 } from "../services/calendarService.js";
 import { google } from "googleapis"; // eslint-disable-line no-unused-vars
+import {
+  formatSyncFailureMessage,
+  isAuthSyncFailure,
+  pushSyncHistory,
+} from "../utils/calendarSyncHistory.js";
 
 /**
  * Background sync job for calendar reconciliation
@@ -22,7 +27,11 @@ let syncIntervalId = null;
 /**
  * Sync external calendar events for a specific user and provider
  */
-const syncUserCalendar = async (userId, provider) => {
+const syncUserCalendar = async (
+  userId,
+  provider,
+  { trigger = "cron" } = {},
+) => {
   try {
     const providersToMatch =
       provider === "google" ? ["google"] : ["microsoft", "outlook"];
@@ -30,12 +39,12 @@ const syncUserCalendar = async (userId, provider) => {
     const connection = await CalendarConnection.findOne({
       user: userId,
       provider: { $in: providersToMatch },
-      syncStatus: "connected",
+      syncStatus: { $in: ["connected", "error", "syncing"] },
     });
 
     if (!connection) {
       console.log(`No active ${provider} connection for user ${userId}`);
-      return;
+      return null;
     }
 
     // Calculate sync window (last 30 days to next 90 days)
@@ -56,7 +65,17 @@ const syncUserCalendar = async (userId, provider) => {
       console.log(
         `No external events found for ${provider} for user ${userId}`,
       );
-      return;
+      connection.lastSyncAt = new Date();
+      connection.syncError = null;
+      connection.syncStatus = "connected";
+      pushSyncHistory(connection, {
+        status: "success",
+        message: "Sync completed — no external events in window.",
+        syncedCount: 0,
+        trigger,
+      });
+      await connection.save();
+      return { syncedCount: 0, conflictCount: 0 };
     }
 
     const events = externalEvents[provider];
@@ -164,6 +183,13 @@ const syncUserCalendar = async (userId, provider) => {
     // Update connection sync status
     connection.lastSyncAt = new Date();
     connection.syncError = null;
+    connection.syncStatus = "connected";
+    pushSyncHistory(connection, {
+      status: "success",
+      message: `Synced ${syncedCount} event(s) successfully.`,
+      syncedCount,
+      trigger,
+    });
     await connection.save();
 
     console.log(
@@ -176,22 +202,36 @@ const syncUserCalendar = async (userId, provider) => {
       error.message,
     );
 
+    const message = formatSyncFailureMessage(error);
+
     // Update connection with error
     try {
+      const providersToMatch =
+        provider === "google" ? ["google"] : ["microsoft", "outlook"];
       const connection = await CalendarConnection.findOne({
         user: userId,
-        provider,
+        provider: { $in: providersToMatch },
       });
       if (connection) {
-        connection.syncStatus = "error";
-        connection.syncError = error.message;
+        connection.syncStatus = isAuthSyncFailure(error)
+          ? "needs_reauth"
+          : "error";
+        connection.syncError = message;
+        pushSyncHistory(connection, {
+          status: "error",
+          message,
+          syncedCount: 0,
+          trigger,
+        });
         await connection.save();
       }
     } catch (updateError) {
       console.error("Error updating connection status:", updateError.message);
     }
 
-    throw error;
+    const wrapped = new Error(message);
+    wrapped.cause = error;
+    throw wrapped;
   }
 };
 
@@ -215,7 +255,11 @@ const syncAllCalendars = async () => {
 
     for (const connection of connections) {
       try {
-        await syncUserCalendar(connection.user, connection.provider);
+        const providerKey =
+          connection.provider === "google" ? "google" : "microsoft";
+        await syncUserCalendar(connection.user, providerKey, {
+          trigger: "cron",
+        });
       } catch (error) {
         console.error(
           `Failed to sync ${connection.provider} for user ${connection.user}:`,
@@ -264,7 +308,7 @@ export const stopCalendarSyncJob = () => {
  */
 export const triggerManualSync = async (userId = null, provider = null) => {
   if (userId && provider) {
-    return await syncUserCalendar(userId, provider);
+    return await syncUserCalendar(userId, provider, { trigger: "manual" });
   } else {
     return await syncAllCalendars();
   }
