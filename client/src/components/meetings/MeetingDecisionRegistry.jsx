@@ -1,7 +1,7 @@
 // src/components/meeting/MeetingDecisionRegistry.jsx
 
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import PropTypes from 'prop-types';
+import React, { useState, useEffect, useCallback, useMemo } from "react";
+import PropTypes from "prop-types";
 
 const MeetingDecisionRegistry = ({
   meetingId,
@@ -24,21 +24,21 @@ const MeetingDecisionRegistry = ({
 
       try {
         const response = await fetch(`/api/meetings/${meetingId}/decisions`, {
-          method: 'GET',
+          method: "GET",
           headers: {
-            'Content-Type': 'application/json',
+            "Content-Type": "application/json",
           },
         });
 
         if (!response.ok) {
-          throw new Error('Failed to fetch meeting decisions');
+          throw new Error("Failed to fetch meeting decisions");
         }
 
         const data = await response.json();
         setDecisions(data);
       } catch (err) {
         setError(err.message);
-        console.error('Fetch decisions error:', err);
+        console.error("Fetch decisions error:", err);
       } finally {
         setLoading(false);
       }
@@ -51,9 +51,9 @@ const MeetingDecisionRegistry = ({
     async (decisionData) => {
       try {
         const response = await fetch(`/api/meetings/${meetingId}/decisions`, {
-          method: 'POST',
+          method: "POST",
           headers: {
-            'Content-Type': 'application/json',
+            "Content-Type": "application/json",
           },
           body: JSON.stringify({
             ...decisionData,
@@ -63,7 +63,7 @@ const MeetingDecisionRegistry = ({
         });
 
         if (!response.ok) {
-          throw new Error('Failed to save decision');
+          throw new Error("Failed to save decision");
         }
 
         const newDecision = await response.json();
@@ -78,31 +78,34 @@ const MeetingDecisionRegistry = ({
         return newDecision;
       } catch (err) {
         setError(err.message);
-        console.error('Save decision error:', err);
+        console.error("Save decision error:", err);
         throw err;
       }
     },
-    [meetingId, decisions, participants, onDecisionChange]
+    [meetingId, decisions, participants, onDecisionChange],
   );
 
   const handleUpdateDecision = useCallback(
     async (decisionId, updates) => {
       try {
-        const response = await fetch(`/api/meetings/${meetingId}/decisions/${decisionId}`, {
-          method: 'PUT',
-          headers: {
-            'Content-Type': 'application/json',
+        const response = await fetch(
+          `/api/meetings/${meetingId}/decisions/${decisionId}`,
+          {
+            method: "PUT",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify(updates),
           },
-          body: JSON.stringify(updates),
-        });
+        );
 
         if (!response.ok) {
-          throw new Error('Failed to update decision');
+          throw new Error("Failed to update decision");
         }
 
         const updatedDecision = await response.json();
         const updatedDecisions = decisions.map((d) =>
-          d.id === decisionId ? updatedDecision : d
+          d.id === decisionId ? updatedDecision : d,
         );
         setDecisions(updatedDecisions);
 
@@ -117,30 +120,33 @@ const MeetingDecisionRegistry = ({
         return updatedDecision;
       } catch (err) {
         setError(err.message);
-        console.error('Update decision error:', err);
+        console.error("Update decision error:", err);
         throw err;
       }
     },
-    [meetingId, decisions, currentDecision, onDecisionChange]
+    [meetingId, decisions, currentDecision, onDecisionChange],
   );
 
   const handleRevertDecision = useCallback(
     async (decisionId) => {
       try {
-        const response = await fetch(`/api/meetings/${meetingId}/decisions/${decisionId}/revert`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
+        const response = await fetch(
+          `/api/meetings/${meetingId}/decisions/${decisionId}/revert`,
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
           },
-        });
+        );
 
         if (!response.ok) {
-          throw new Error('Failed to revert decision');
+          throw new Error("Failed to revert decision");
         }
 
         const revertedDecision = await response.json();
         const updatedDecisions = decisions.map((d) =>
-          d.id === decisionId ? revertedDecision : d
+          d.id === decisionId ? revertedDecision : d,
         );
         setDecisions(updatedDecisions);
 
@@ -155,11 +161,11 @@ const MeetingDecisionRegistry = ({
         return revertedDecision;
       } catch (err) {
         setError(err.message);
-        console.error('Revert decision error:', err);
+        console.error("Revert decision error:", err);
         throw err;
       }
     },
-    [meetingId, decisions, currentDecision, onDecisionChange]
+    [meetingId, decisions, currentDecision, onDecisionChange],
   );
 
   const sortedDecisions = useMemo(() => {
@@ -178,11 +184,11 @@ const MeetingDecisionRegistry = ({
 
   const renderDecisionStatus = (status) => {
     const statusMap = {
-      proposed: { label: 'Proposed', color: '#ffb74d' },
-      approved: { label: 'Approved', color: '#81c784' },
-      rejected: { label: 'Rejected', color: '#e57373' },
-      implemented: { label: 'Implemented', color: '#4fc3f7' },
-      reverted: { label: 'Reverted', color: '#9575cd' },
+      proposed: { label: "Proposed", color: "#ffb74d" },
+      approved: { label: "Approved", color: "#81c784" },
+      rejected: { label: "Rejected", color: "#e57373" },
+      implemented: { label: "Implemented", color: "#4fc3f7" },
+      reverted: { label: "Reverted", color: "#9575cd" },
     };
 
     const statusInfo = statusMap[status] || statusMap.proposed;
@@ -191,11 +197,11 @@ const MeetingDecisionRegistry = ({
         className="decision-status"
         style={{
           backgroundColor: statusInfo.color,
-          padding: '4px 12px',
-          borderRadius: '12px',
-          fontSize: '12px',
-          fontWeight: '500',
-          color: '#fff',
+          padding: "4px 12px",
+          borderRadius: "12px",
+          fontSize: "12px",
+          fontWeight: "500",
+          color: "#fff",
         }}
       >
         {statusInfo.label}
@@ -238,7 +244,7 @@ const MeetingDecisionRegistry = ({
           className="history-toggle"
           onClick={() => setShowHistory(!showHistory)}
         >
-          {showHistory ? 'Hide History' : `View History (${decisions.length})`}
+          {showHistory ? "Hide History" : `View History (${decisions.length})`}
         </button>
       </div>
 
@@ -251,7 +257,9 @@ const MeetingDecisionRegistry = ({
             </div>
             <div className="decision-body">
               <p className="decision-title">{currentDecision.title}</p>
-              <p className="decision-description">{currentDecision.description}</p>
+              <p className="decision-description">
+                {currentDecision.description}
+              </p>
               <div className="decision-meta">
                 <span className="decision-maker">
                   By: {currentDecision.madeBy}
@@ -273,7 +281,9 @@ const MeetingDecisionRegistry = ({
                 type="button"
                 className="action-button approve"
                 onClick={() =>
-                  handleUpdateDecision(currentDecision.id, { status: 'approved' })
+                  handleUpdateDecision(currentDecision.id, {
+                    status: "approved",
+                  })
                 }
               >
                 Approve
@@ -282,7 +292,9 @@ const MeetingDecisionRegistry = ({
                 type="button"
                 className="action-button reject"
                 onClick={() =>
-                  handleUpdateDecision(currentDecision.id, { status: 'rejected' })
+                  handleUpdateDecision(currentDecision.id, {
+                    status: "rejected",
+                  })
                 }
               >
                 Reject
@@ -305,7 +317,7 @@ const MeetingDecisionRegistry = ({
               {decisionHistory.map((decision) => (
                 <div
                   key={decision.id}
-                  className={`history-item ${decision.isLatest ? 'latest' : ''}`}
+                  className={`history-item ${decision.isLatest ? "latest" : ""}`}
                   onClick={() => {
                     setCurrentDecision(decision);
                     setShowHistory(false);
@@ -313,7 +325,7 @@ const MeetingDecisionRegistry = ({
                   role="button"
                   tabIndex={0}
                   onKeyDown={(e) => {
-                    if (e.key === 'Enter') {
+                    if (e.key === "Enter") {
                       setCurrentDecision(decision);
                       setShowHistory(false);
                     }
@@ -346,10 +358,10 @@ const MeetingDecisionRegistry = ({
               e.preventDefault();
               const formData = new FormData(e.target);
               const decisionData = {
-                title: formData.get('title'),
-                description: formData.get('description'),
-                madeBy: formData.get('madeBy') || 'Current User',
-                status: 'proposed',
+                title: formData.get("title"),
+                description: formData.get("description"),
+                madeBy: formData.get("madeBy") || "Current User",
+                status: "proposed",
                 votes: { for: 0, against: 0, abstain: 0 },
               };
               handleAddDecision(decisionData);
@@ -697,7 +709,7 @@ MeetingDecisionRegistry.propTypes = {
     PropTypes.shape({
       email: PropTypes.string.isRequired,
       name: PropTypes.string,
-    })
+    }),
   ),
   onDecisionChange: PropTypes.func,
   initialDecisions: PropTypes.arrayOf(
@@ -705,7 +717,13 @@ MeetingDecisionRegistry.propTypes = {
       id: PropTypes.string,
       title: PropTypes.string,
       description: PropTypes.string,
-      status: PropTypes.oneOf(['proposed', 'approved', 'rejected', 'implemented', 'reverted']),
+      status: PropTypes.oneOf([
+        "proposed",
+        "approved",
+        "rejected",
+        "implemented",
+        "reverted",
+      ]),
       madeBy: PropTypes.string,
       timestamp: PropTypes.string,
       votes: PropTypes.shape({
@@ -713,7 +731,7 @@ MeetingDecisionRegistry.propTypes = {
         against: PropTypes.number,
         abstain: PropTypes.number,
       }),
-    })
+    }),
   ),
 };
 
