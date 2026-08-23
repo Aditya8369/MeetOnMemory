@@ -1,8 +1,7 @@
-import Meeting from '../models/meetingModel.js'
-import User from '../models/userModel.js'
-import EmailService from './EmailService.js'
-import RecapDelivery from '../models/recapDeliveryModel.js'
-import { checkQuietHours } from '../utils/quietHours.js'
+import Meeting from "../models/meetingModel.js";
+import User from "../models/userModel.js";
+import EmailService from "./EmailService.js";
+import { checkQuietHours } from "../utils/quietHours.js";
 
 class MeetingDigestService {
   /**
@@ -11,38 +10,38 @@ class MeetingDigestService {
    * @returns {string} - The HTML content for the email.
    */
   static buildDigestHtml(meeting) {
-    const { title, date, summary, structuredMoM } = meeting
-    const meetingDate = new Date(date).toLocaleString()
+    const { title, date, summary, structuredMoM } = meeting;
+    const meetingDate = new Date(date).toLocaleString();
 
-    let decisionsHtml = ''
+    let decisionsHtml = "";
     if (structuredMoM?.decisions?.length > 0) {
       decisionsHtml = `
         <h3 style="color: #2563eb; margin-top: 20px;">Key Decisions</h3>
         <ul style="padding-left: 20px;">
-          ${structuredMoM.decisions.map((d) => `<li style="margin-bottom: 8px;">${d}</li>`).join('')}
+          ${structuredMoM.decisions.map((d) => `<li style="margin-bottom: 8px;">${d}</li>`).join("")}
         </ul>
-      `
+      `;
     }
 
-    let actionItemsHtml = ''
+    let actionItemsHtml = "";
     if (structuredMoM?.action_items?.length > 0) {
       actionItemsHtml = `
         <h3 style="color: #2563eb; margin-top: 20px;">Action Items</h3>
         <ul style="padding-left: 20px;">
           ${structuredMoM.action_items
             .map((ai) => {
-              const owner = ai.owner || 'Unassigned'
-              const due = ai.due_date ? ` (Due: ${ai.due_date})` : ''
-              return `<li style="margin-bottom: 8px;"><strong>${owner}</strong>: ${ai.task}${due}</li>`
+              const owner = ai.owner || "Unassigned";
+              const due = ai.due_date ? ` (Due: ${ai.due_date})` : "";
+              return `<li style="margin-bottom: 8px;"><strong>${owner}</strong>: ${ai.task}${due}</li>`;
             })
-            .join('')}
+            .join("")}
         </ul>
-      `
+      `;
     }
 
     // Assuming frontend runs on standard port or use env var for base URL
-    const appUrl = process.env.CLIENT_URL || 'http://localhost:5173'
-    const meetingLink = `${appUrl}/meeting/${meeting._id}`
+    const appUrl = process.env.CLIENT_URL || "http://localhost:5173";
+    const meetingLink = `${appUrl}/meeting/${meeting._id}`;
 
     return `
       <div style="font-family: sans-serif; padding: 20px; color: #333; max-width: 600px; margin: auto; border: 1px solid #eee; border-radius: 10px;">
@@ -55,7 +54,7 @@ class MeetingDigestService {
           <h3 style="color: #2563eb; margin-top: 20px;">Summary</h3>
           <p style="line-height: 1.5;">${summary}</p>
         `
-            : ''
+            : ""
         }
         
         ${decisionsHtml}
@@ -71,60 +70,7 @@ class MeetingDigestService {
           You can update your email preferences in your account settings.
         </p>
       </div>
-    `
-  }
-
-  /**
-   * Fetches per-meeting digest delivery status and attempt history (#2022).
-   * @param {string} meetingId - The ID of the meeting.
-   * @returns {Object} - Result with delivery status and history records.
-   */
-  static async getMeetingDigestStatus(meetingId) {
-    try {
-      const meeting = await Meeting.findById(meetingId).select('_id title date status uploadedBy')
-      if (!meeting) {
-        return { success: false, message: 'Meeting not found' }
-      }
-
-      const deliveries = await RecapDelivery.find({ meetingId })
-        .populate('userId', 'name email')
-        .sort({ deliveredAt: -1, createdAt: -1 })
-        .limit(20)
-        .lean()
-
-      const lastAttempt = deliveries[0] || null
-      let lastStatus = 'pending'
-      if (lastAttempt) {
-        lastStatus = lastAttempt.status
-      }
-
-      const totalDelivered = deliveries.filter((d) => d.status === 'delivered').length
-      const totalFailed = deliveries.filter((d) => d.status === 'failed').length
-
-      return {
-        success: true,
-        data: {
-          meetingId,
-          lastStatus,
-          lastDeliveredAt: lastAttempt ? lastAttempt.deliveredAt : null,
-          totalDelivered,
-          totalFailed,
-          history: deliveries.map((d) => ({
-            id: d._id,
-            deliveredAt: d.deliveredAt || d.createdAt,
-            status: d.status,
-            channel: d.channel,
-            errorMessage: d.errorMessage,
-            recipient: d.userId
-              ? { id: d.userId._id, name: d.userId.name, email: d.userId.email }
-              : null,
-          })),
-        },
-      }
-    } catch (error) {
-      console.error('Error fetching meeting digest status:', error)
-      return { success: false, message: error.message }
-    }
+    `;
   }
 
   /**
@@ -134,116 +80,86 @@ class MeetingDigestService {
    */
   static async sendMeetingDigest(meetingId) {
     try {
-      const meeting = await Meeting.findById(meetingId)
+      const meeting = await Meeting.findById(meetingId);
       if (!meeting) {
-        throw new Error('Meeting not found')
+        throw new Error("Meeting not found");
       }
 
       if (!meeting.participants || meeting.participants.length === 0) {
         return {
           success: false,
-          message: 'No participants found for this meeting.',
-        }
+          message: "No participants found for this meeting.",
+        };
       }
 
       // Filter participants who have an email address
       const participantsWithEmail = meeting.participants.filter(
-        (p) => p.email && p.email.trim() !== '',
-      )
+        (p) => p.email && p.email.trim() !== "",
+      );
 
       if (participantsWithEmail.length === 0) {
         return {
           success: false,
-          message: 'No participants with email addresses found.',
-        }
+          message: "No participants with email addresses found.",
+        };
       }
 
       // Get user opt-out status for these emails
-      const emails = participantsWithEmail.map((p) => p.email)
-      const users = await User.find({ email: { $in: emails } }, 'email emailDigestEnabled')
+      const emails = participantsWithEmail.map((p) => p.email);
+      const users = await User.find(
+        { email: { $in: emails } },
+        "email emailDigestEnabled",
+      );
 
       // Map email to emailDigestEnabled status
-      const userPrefs = {}
+      const userPrefs = {};
       users.forEach((u) => {
-        userPrefs[u.email] = u.emailDigestEnabled !== false // defaults to true
-      })
+        userPrefs[u.email] = u.emailDigestEnabled !== false; // defaults to true
+      });
 
       // Filter recipients based on preferences (if user exists, respect preference; if user doesn't exist, send by default)
-      const recipients = emails.filter((email) => userPrefs[email] !== false)
+      const recipients = emails.filter((email) => userPrefs[email] !== false);
 
       if (recipients.length === 0) {
         return {
           success: false,
-          message: 'All participants with emails have opted out of digests.',
-        }
+          message: "All participants with emails have opted out of digests.",
+        };
       }
 
-      const html = this.buildDigestHtml(meeting)
-      const subject = `Meeting Digest: ${meeting.title}`
-      let sentCount = 0
+      const html = this.buildDigestHtml(meeting);
+      const subject = `Meeting Digest: ${meeting.title}`;
 
       // Send emails
       for (const email of recipients) {
-        const userObj = await User.findOne({ email })
+        const userObj = await User.findOne({ email });
         if (userObj) {
-          const inQuietHours = await checkQuietHours(userObj._id)
+          const inQuietHours = await checkQuietHours(userObj._id);
           if (inQuietHours) {
             console.log(
               `[MeetingDigestService] Deferring digest email for ${email} due to quiet hours.`,
-            )
-            continue
+            );
+            continue;
           }
         }
-
-        try {
-          await EmailService.sendMail({
-            from: process.env.SENDER_EMAIL || 'no-reply@meetonmemory.com',
-            to: email,
-            subject,
-            html,
-          })
-
-          sentCount++
-
-          if (userObj) {
-            await RecapDelivery.findOneAndUpdate(
-              { meetingId: meeting._id, userId: userObj._id },
-              {
-                deliveredAt: new Date(),
-                status: 'delivered',
-                channel: 'email',
-                errorMessage: null,
-              },
-              { upsert: true, new: true },
-            )
-          }
-        } catch (mailError) {
-          console.error(`[MeetingDigestService] Error sending to ${email}:`, mailError)
-          if (userObj) {
-            await RecapDelivery.findOneAndUpdate(
-              { meetingId: meeting._id, userId: userObj._id },
-              {
-                deliveredAt: new Date(),
-                status: 'failed',
-                channel: 'email',
-                errorMessage: mailError.message || 'Failed to send email',
-              },
-              { upsert: true, new: true },
-            )
-          }
-        }
+        await EmailService.sendMail({
+          from: process.env.SENDER_EMAIL || "no-reply@meetonmemory.com",
+          to: email,
+          subject,
+          html,
+        });
       }
 
       return {
         success: true,
-        message: `Digest sent to ${sentCount} participant(s).`,
-        recipientsSentTo: sentCount,
-      }
+        message: `Digest sent to ${recipients.length} participant(s).`,
+        recipientsSentTo: recipients.length,
+      };
     } catch (error) {
-      console.error('Error sending meeting digest:', error)
-      return { success: false, message: error.message }
+      console.error("Error sending meeting digest:", error);
+      return { success: false, message: error.message };
     }
   }
 }
 
-export default MeetingDigestService
+export default MeetingDigestService;

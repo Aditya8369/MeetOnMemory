@@ -1,6 +1,6 @@
-import express from 'express'
-import multer from 'multer'
-import Meeting from '../models/meetingModel.js'
+import express from "express";
+import multer from "multer";
+import Meeting from "../models/meetingModel.js";
 import {
   requireOwnerOrAdmin,
   requireOwner,
@@ -8,9 +8,13 @@ import {
   requireAdminOrOwner,
   requirePermission,
   requireOrgMembership,
-} from '../middleware/rbac.js'
-import userAuth from '../middleware/userAuth.js'
-import { apiLimiter, writeLimiter, uploadLimiter } from '../middleware/rateLimiter.js'
+} from "../middleware/rbac.js";
+import userAuth from "../middleware/userAuth.js";
+import {
+  apiLimiter,
+  writeLimiter,
+  uploadLimiter,
+} from "../middleware/rateLimiter.js";
 import {
   createMeeting, // NEW: Schedule meetings from CreateMeeting form
   uploadMeeting, // EXISTING: Upload audio and transcribe
@@ -33,20 +37,22 @@ import {
   regenerateMeetingInvite,
   updateMeetingInvite,
   resolveMeetingInvite,
-} from '../controllers/meetingController.js'
+} from "../controllers/meetingController.js";
 import {
   addMeetingBookmark,
   removeMeetingBookmark,
   getMeetingBookmarkStatus,
   getBookmarkedMeetings,
-} from '../controllers/bookmarkController.js'
+} from "../controllers/bookmarkController.js";
 import {
   resendDigest,
   previewDigest,
-  getMeetingDigestStatus,
-} from '../controllers/digestController.js'
-import { getReactionSummary, getReactionTimeline } from '../controllers/reactionController.js'
-import { exportMeeting } from '../controllers/exportController.js'
+} from "../controllers/digestController.js";
+import {
+  getReactionSummary,
+  getReactionTimeline,
+} from "../controllers/reactionController.js";
+import { exportMeeting } from "../controllers/exportController.js";
 import {
   startRecording,
   stopRecording,
@@ -55,55 +61,56 @@ import {
   retryTranscription,
   uploadTranscriptChunk,
   storeEncryptedTranscript,
-} from '../controllers/transcriptController.js'
-import { getMeetingRoles } from '../controllers/roleRotationController.js'
+} from "../controllers/transcriptController.js";
+import { getMeetingRoles } from "../controllers/roleRotationController.js";
 
-import path from 'path'
-import { ValidationError } from '../utils/errors.js'
+import path from "path";
+import { ValidationError } from "../utils/errors.js";
 
 const ALLOWED_RECORDING_MIME_TYPES = [
-  'audio/mpeg',
-  'audio/mp3',
-  'audio/wav',
-  'audio/x-wav',
-  'audio/m4a',
-  'audio/x-m4a',
-  'audio/ogg',
-  'audio/webm',
-  'audio/flac',
-  'audio/aac',
-  'audio/mp4',
-  'video/mp4',
-  'video/webm',
-  'video/quicktime',
-  'video/x-msvideo',
-  'video/x-matroska',
-  'application/octet-stream',
-]
+  "audio/mpeg",
+  "audio/mp3",
+  "audio/wav",
+  "audio/x-wav",
+  "audio/m4a",
+  "audio/x-m4a",
+  "audio/ogg",
+  "audio/webm",
+  "audio/flac",
+  "audio/aac",
+  "audio/mp4",
+  "video/mp4",
+  "video/webm",
+  "video/quicktime",
+  "video/x-msvideo",
+  "video/x-matroska",
+  "application/octet-stream",
+];
 
 const ALLOWED_RECORDING_EXTENSIONS = [
-  '.mp3',
-  '.wav',
-  '.m4a',
-  '.ogg',
-  '.webm',
-  '.flac',
-  '.aac',
-  '.mp4',
-  '.mov',
-  '.avi',
-  '.mkv',
-]
+  ".mp3",
+  ".wav",
+  ".m4a",
+  ".ogg",
+  ".webm",
+  ".flac",
+  ".aac",
+  ".mp4",
+  ".mov",
+  ".avi",
+  ".mkv",
+];
 
 const meetingRecordingFilter = (req, file, cb) => {
   if (!file) {
-    return cb(null, true)
+    return cb(null, true);
   }
-  const ext = path.extname(file.originalname || '').toLowerCase()
-  const mimeType = file.mimetype
+  const ext = path.extname(file.originalname || "").toLowerCase();
+  const mimeType = file.mimetype;
 
-  const isExtAllowed = ALLOWED_RECORDING_EXTENSIONS.includes(ext)
-  const isMimeAllowed = !mimeType || ALLOWED_RECORDING_MIME_TYPES.includes(mimeType)
+  const isExtAllowed = ALLOWED_RECORDING_EXTENSIONS.includes(ext);
+  const isMimeAllowed =
+    !mimeType || ALLOWED_RECORDING_MIME_TYPES.includes(mimeType);
 
   if (!isExtAllowed || !isMimeAllowed) {
     return cb(
@@ -111,392 +118,394 @@ const meetingRecordingFilter = (req, file, cb) => {
         `Invalid meeting recording file type: ${file.originalname || ext}. Allowed recording formats: MP3, WAV, M4A, OGG, WEBM, FLAC, AAC, MP4, MOV, AVI, MKV`,
       ),
       false,
-    )
+    );
   }
-  cb(null, true)
-}
+  cb(null, true);
+};
 
-const router = express.Router()
+const router = express.Router();
 const upload = multer({
-  dest: 'uploads/',
+  dest: "uploads/",
   fileFilter: meetingRecordingFilter,
-}) // temporary upload directory
+}); // temporary upload directory
 const transcriptUpload = multer({
-  dest: 'uploads/transcripts/',
+  dest: "uploads/transcripts/",
   limits: { fileSize: 100 * 1024 * 1024 }, // 100MB limit
   fileFilter: meetingRecordingFilter,
-})
+});
 const transcriptChunkUpload = multer({
   storage: multer.memoryStorage(),
   limits: { fileSize: 50 * 1024 * 1024 }, // 50MB limit per chunk
-})
+});
 
 // Apply rate limiting to all routes
-router.use(apiLimiter)
+router.use(apiLimiter);
 
 // ========== RECORDING / LIVE TRANSCRIPT (Issue #679 contract) ==========
 // Frontend expects these under /api/meetings/:meetingId/...
 
 // POST /api/meetings/:meetingId/recording/start
 router.post(
-  '/:meetingId/recording/start',
+  "/:meetingId/recording/start",
   userAuth,
   uploadLimiter,
   requireOrgMembership,
-  requirePermission('meetings', 'create'),
+  requirePermission("meetings", "create"),
   startRecording,
-)
+);
 
 // POST /api/meetings/:meetingId/recording/stop
 router.post(
-  '/:meetingId/recording/stop',
+  "/:meetingId/recording/stop",
   userAuth,
   uploadLimiter,
   requireOrgMembership,
-  requirePermission('meetings', 'create'),
+  requirePermission("meetings", "create"),
   stopRecording,
-)
+);
 
 // POST /api/meetings/:meetingId/transcript/upload
 router.post(
-  '/:meetingId/transcript/upload',
+  "/:meetingId/transcript/upload",
   userAuth,
   uploadLimiter,
   requireOrgMembership,
-  requirePermission('meetings', 'create'),
-  transcriptUpload.single('audio'),
+  requirePermission("meetings", "create"),
+  transcriptUpload.single("audio"),
   uploadTranscriptAudio,
-)
+);
 
 // POST /api/meetings/:meetingId/transcript/chunk
 router.post(
-  '/:meetingId/transcript/chunk',
+  "/:meetingId/transcript/chunk",
   userAuth,
   uploadLimiter,
   requireOrgMembership,
-  requirePermission('meetings', 'create'),
-  transcriptChunkUpload.single('audio'),
+  requirePermission("meetings", "create"),
+  transcriptChunkUpload.single("audio"),
   uploadTranscriptChunk,
-)
+);
 
 // GET /api/meetings/:meetingId/transcript
 router.get(
-  '/:meetingId/transcript',
+  "/:meetingId/transcript",
   userAuth,
   requireOrgMembership,
-  requirePermission('meetings', 'view'),
+  requirePermission("meetings", "view"),
   getTranscript,
-)
+);
 
 // POST /api/meetings/:meetingId/transcript/encrypted (Issue #1335 E2EE)
 router.post(
-  '/:meetingId/transcript/encrypted',
+  "/:meetingId/transcript/encrypted",
   userAuth,
   writeLimiter,
   requireOrgMembership,
-  requirePermission('meetings', 'edit'),
+  requirePermission("meetings", "edit"),
   storeEncryptedTranscript,
-)
+);
 
 // POST /api/meetings/:meetingId/transcript/retry
 router.post(
-  '/:meetingId/transcript/retry',
+  "/:meetingId/transcript/retry",
   userAuth,
   uploadLimiter,
   requireOrgMembership,
-  requirePermission('meetings', 'create'),
+  requirePermission("meetings", "create"),
   retryTranscription,
-)
+);
 
 // GET /api/meetings/:meetingId/roles
 router.get(
-  '/:meetingId/roles',
+  "/:meetingId/roles",
   userAuth,
   requireOrgMembership,
-  requirePermission('meetings', 'view'),
+  requirePermission("meetings", "view"),
   getMeetingRoles,
-)
+);
 
 // ========== EXISTING ROUTES (Working) ==========
 
 // ✅ Upload & Transcribe Meeting (from UploadMeetings page) - admin only
 router.post(
-  '/upload',
+  "/upload",
   userAuth,
   requireAdminOrOwner,
   uploadLimiter,
   requireOrgMembership,
-  requirePermission('meetings', 'create'),
-  upload.single('file'),
+  requirePermission("meetings", "create"),
+  upload.single("file"),
   uploadMeeting,
-)
+);
 
 // ✅ Summarize Transcript (send meetingId or transcript)
 router.post(
-  '/summarize',
+  "/summarize",
   userAuth,
   writeLimiter,
   requireOrgMembership,
-  requirePermission('meetings', 'transcribe'),
+  requirePermission("meetings", "transcribe"),
   summarizeMeeting,
-)
+);
 
 // ✅ Fetch All Meetings (for Summaries Page)
 router.get(
-  '/all',
+  "/all",
   userAuth,
   requireOrgMembership,
-  requirePermission('meetings', 'view'),
+  requirePermission("meetings", "view"),
   getAllMeetings,
-)
+);
 
 // ✅ Fetch All Bookmarked Meetings for current user (#1827)
 router.get(
-  '/bookmarked',
+  "/bookmarked",
   userAuth,
   requireOrgMembership,
-  requirePermission('meetings', 'view'),
+  requirePermission("meetings", "view"),
   getBookmarkedMeetings,
-)
+);
 
 // ✅ Meeting bookmark operations (#1827)
 router.post(
-  '/:id/bookmark',
+  "/:id/bookmark",
   userAuth,
   writeLimiter,
   requireOrgMembership,
-  requirePermission('meetings', 'view'),
+  requirePermission("meetings", "view"),
   addMeetingBookmark,
-)
+);
 router.delete(
-  '/:id/bookmark',
+  "/:id/bookmark",
   userAuth,
   writeLimiter,
   requireOrgMembership,
-  requirePermission('meetings', 'view'),
+  requirePermission("meetings", "view"),
   removeMeetingBookmark,
-)
+);
 router.get(
-  '/:id/bookmark',
+  "/:id/bookmark",
   userAuth,
   requireOrgMembership,
-  requirePermission('meetings', 'view'),
+  requirePermission("meetings", "view"),
   getMeetingBookmarkStatus,
-)
+);
 
 // ✅ Resolve shareable meeting invite (must be before /:id)
-router.get('/invite/:code', userAuth, resolveMeetingInvite)
+router.get("/invite/:code", userAuth, resolveMeetingInvite);
 
 // ✅ Meeting invite management (Issue #920)
 router.get(
-  '/:id/invite',
+  "/:id/invite",
   userAuth,
   requireOrgAccess(Meeting),
-  requirePermission('meetings', 'view'),
+  requirePermission("meetings", "view"),
   getMeetingInvite,
-)
+);
 router.post(
-  '/:id/invite/regenerate',
+  "/:id/invite/regenerate",
   userAuth,
   writeLimiter,
   requireOrgAccess(Meeting),
-  requirePermission('meetings', 'edit'),
+  requirePermission("meetings", "edit"),
   regenerateMeetingInvite,
-)
+);
 router.patch(
-  '/:id/invite',
+  "/:id/invite",
   userAuth,
   writeLimiter,
   requireOrgAccess(Meeting),
-  requirePermission('meetings', 'edit'),
+  requirePermission("meetings", "edit"),
   updateMeetingInvite,
-)
+);
 
 // Recycle bin routes must be registered before /:id.
 router.get(
-  '/trash',
+  "/trash",
   userAuth,
   requireOrgMembership,
-  requirePermission('meetings', 'view'),
+  requirePermission("meetings", "view"),
   getDeletedMeetings,
-)
+);
 router.post(
-  '/:id/restore-deleted',
+  "/:id/restore-deleted",
   userAuth,
   writeLimiter,
   requireOrgMembership,
-  requirePermission('meetings', 'edit'),
+  requirePermission("meetings", "edit"),
   restoreDeletedMeeting,
-)
+);
 router.delete(
-  '/:id/permanent',
+  "/:id/permanent",
   userAuth,
   writeLimiter,
   requireAdminOrOwner,
   requireOrgMembership,
   permanentlyDeleteMeeting,
-)
+);
 
 // ✅ Get Single Meeting Details (for Meeting Details Page)
 router.get(
-  '/:id',
+  "/:id",
   userAuth,
   requireOrgAccess(Meeting),
-  requirePermission('meetings', 'view'),
+  requirePermission("meetings", "view"),
   getMeetingById,
-)
+);
 
 // ✅ Update Meeting (for Meeting Details Page - rename)
 router.patch(
-  '/:id',
+  "/:id",
   userAuth,
   requireOwner(Meeting),
-  requirePermission('meetings', 'edit'),
+  requirePermission("meetings", "edit"),
   updateMeeting,
-)
+);
 
 // ✅ Export Meeting
 router.get(
-  '/:id/export',
+  "/:id/export",
   userAuth,
   requireOrgAccess(Meeting),
-  requirePermission('meetings', 'export'),
+  requirePermission("meetings", "export"),
   exportMeeting,
-)
+);
 
 // ✅ Archive Meeting
 router.patch(
-  '/:id/archive',
+  "/:id/archive",
   userAuth,
   writeLimiter,
   requireOwnerOrAdmin(Meeting),
-  requirePermission('meetings', 'edit'),
+  requirePermission("meetings", "edit"),
   archiveMeeting,
-)
+);
 
 // ✅ Restore Meeting
 router.patch(
-  '/:id/restore',
+  "/:id/restore",
   userAuth,
   writeLimiter,
   requireOwnerOrAdmin(Meeting),
-  requirePermission('meetings', 'edit'),
+  requirePermission("meetings", "edit"),
   restoreMeeting,
-)
+);
 
 // ✅ Delete Meeting
 router.delete(
-  '/delete/:id',
+  "/delete/:id",
   userAuth,
   writeLimiter,
   requireOwnerOrAdmin(Meeting),
-  requirePermission('meetings', 'delete'),
+  requirePermission("meetings", "delete"),
   deleteMeeting,
-)
+);
 
 // ========== NEW ROUTES (for CreateMeeting.jsx) ==========
 
 // ✅ Create/Schedule Meeting (from CreateMeeting Schedule section)
 router.post(
-  '/create',
+  "/create",
   userAuth,
   writeLimiter,
   requireOrgMembership,
-  requirePermission('meetings', 'create'),
+  requirePermission("meetings", "create"),
   createMeeting,
-)
+);
 
 // ✅ Upload Audio for existing meeting (from CreateMeeting Upload section) - admin only
 router.post(
-  '/upload-audio',
+  "/upload-audio",
   userAuth,
   requireAdminOrOwner,
   uploadLimiter,
   requireOrgMembership,
-  requirePermission('meetings', 'create'),
-  upload.single('audio'),
+  requirePermission("meetings", "create"),
+  upload.single("audio"),
   uploadAudioForMeeting,
-)
+);
 
 // 🆕 ✅ Voice/Text Search Route (Frontend: Summaries.jsx or Live Search)
 router.post(
-  '/search',
+  "/search",
   userAuth,
   requireOrgMembership,
-  requirePermission('meetings', 'view'),
+  requirePermission("meetings", "view"),
   searchMeetingsByText,
-)
+);
 
 // 🆕 ✅ Update Meeting Route (Frontend: Meeting Repository - rename, etc.)
 router.put(
-  '/:id',
+  "/:id",
   userAuth,
   writeLimiter,
   requireOwner(Meeting),
-  requirePermission('meetings', 'edit'),
+  requirePermission("meetings", "edit"),
   updateMeeting,
-)
+);
 
 // ✅ Notify Live Meeting Participants (from CreateMeeting Live section)
 router.post(
-  '/notify-live',
+  "/notify-live",
   userAuth,
   writeLimiter,
-  requirePermission('meetings', 'create'),
+  requirePermission("meetings", "create"),
   notifyLiveMeeting,
-)
+);
 
 // ✅ Create/Modify Meeting Clip
 router.post(
-  '/:id/clip',
+  "/:id/clip",
   userAuth,
   requireOrgMembership,
   requireOrgAccess(Meeting),
-  requirePermission('meetings', 'edit'),
+  requirePermission("meetings", "edit"),
   handleMeetingClipOperation,
-)
+);
 
 // ✅ View Meeting Clip
 router.get(
-  '/:id/clip/:clipId',
+  "/:id/clip/:clipId",
   userAuth,
   requireOrgMembership,
   requireOrgAccess(Meeting),
-  requirePermission('meetings', 'view'),
+  requirePermission("meetings", "view"),
   getMeetingClip,
-)
+);
 
 // ✅ Resend Meeting Digest
 router.post(
-  '/:id/digest/resend',
+  "/:id/digest/resend",
   userAuth,
   writeLimiter,
   requireOwnerOrAdmin(Meeting),
   resendDigest,
-)
+);
 
 // ✅ Preview Meeting Digest
-router.get('/:id/digest/preview', userAuth, requireOwnerOrAdmin(Meeting), previewDigest)
-
-// ✅ Get Meeting Digest Status and History (#2022)
-router.get('/:id/digest/status', userAuth, requireOrgAccess(Meeting), getMeetingDigestStatus)
+router.get(
+  "/:id/digest/preview",
+  userAuth,
+  requireOwnerOrAdmin(Meeting),
+  previewDigest,
+);
 
 // ✅ Get Reaction Summary
 router.get(
-  '/:id/reactions/summary',
+  "/:id/reactions/summary",
   userAuth,
   requireOrgAccess(Meeting),
-  requirePermission('meetings', 'view'),
+  requirePermission("meetings", "view"),
   getReactionSummary,
-)
+);
 
 // ✅ Get Reaction Timeline
 router.get(
-  '/:id/reactions/timeline',
+  "/:id/reactions/timeline",
   userAuth,
   requireOrgAccess(Meeting),
-  requirePermission('meetings', 'view'),
+  requirePermission("meetings", "view"),
   getReactionTimeline,
-)
+);
 
-export default router
+export default router;
