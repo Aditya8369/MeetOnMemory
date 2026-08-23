@@ -30,6 +30,7 @@ import {
   Database,
   ShieldCheck,
   BrainCircuit,
+  Cpu,
 } from "lucide-react";
 import Navbar from "../components/Navbar.jsx";
 import TemplateBuilder from "../components/admin/TemplateBuilder.jsx";
@@ -38,6 +39,7 @@ import JobsDashboard from "../components/admin/JobsDashboard.jsx";
 import EmbeddingReindexAdmin from "../components/admin/EmbeddingReindexAdmin.jsx";
 import RbacPermissionExplorer from "../components/admin/RbacPermissionExplorer.jsx";
 import ImportanceRecalculationAdmin from "../components/admin/ImportanceRecalculationAdmin.jsx";
+import AiUsageMetrics from "../components/admin/AiUsageMetrics.jsx";
 import MembershipRequests from "../components/organization/MembershipRequests.jsx";
 
 import AppContent from "../context/AppContent.js";
@@ -130,6 +132,14 @@ const MODULES = [
     icon: BrainCircuit,
     iconBg: "bg-indigo-50 dark:bg-indigo-900/30",
     iconColor: "text-indigo-600 dark:text-indigo-400",
+  },
+  {
+    id: "aiUsage",
+    labelKey: "AI Usage",
+    descriptionKey: "Gemini and embedding cost/usage over time",
+    icon: Cpu,
+    iconBg: "bg-violet-50 dark:bg-violet-900/30",
+    iconColor: "text-violet-600 dark:text-violet-400",
   },
   {
     id: "policies",
@@ -341,6 +351,7 @@ const AdminPanel = () => {
       activeModule === "jobs" ||
       activeModule === "embeddings" ||
       activeModule === "importance" ||
+      activeModule === "aiUsage" ||
       activeModule === "joinRequests"
     ) {
       return;
@@ -660,6 +671,8 @@ const AdminPanel = () => {
             <RbacPermissionExplorer />
           ) : activeModule === "importance" ? (
             <ImportanceRecalculationAdmin />
+          ) : activeModule === "aiUsage" ? (
+            <AiUsageMetrics />
           ) : activeModule === "joinRequests" ? (
             <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-2xl p-6 shadow-sm">
               <MembershipRequests organizationId={orgId} />

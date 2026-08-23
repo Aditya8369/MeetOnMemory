@@ -5,6 +5,7 @@ import {
   callWithResilience,
   createCircuitBreaker,
 } from "../utils/aiResilience.js";
+import { recordAiUsageSafe } from "./aiUsageMetricsService.js";
 
 const HUGGINGFACE_API_KEY = process.env.HUGGINGFACE_API_KEY; // eslint-disable-line no-unused-vars
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
@@ -93,31 +94,44 @@ export const resetGeminiClient = () => {
  * @returns {Promise<string>} raw model output text
  */
 export const generateText = async (prompt, label) => {
-  const result = await callWithResilience(
-    async (signal) => {
-      const model = getGenerativeModel();
-      // The SDK forwards requestOptions to fetch, so a well-behaved version
-      // cancels the in-flight request on abort. withTimeout rejects regardless,
-      // so an SDK that ignores the signal still cannot hang us.
-      return await model.generateContent(prompt, { signal });
-    },
-    {
-      label,
-      timeoutMs: GEMINI_TIMEOUT_MS(),
-      retries: GEMINI_MAX_RETRIES(),
-      baseDelayMs: GEMINI_RETRY_BASE_MS(),
-      maxDelayMs: GEMINI_RETRY_MAX_MS(),
-      breaker: geminiBreaker,
-      onRetry: ({ attempt, delayMs, classification }) =>
-        console.warn(
-          `↻ ${label}: attempt ${attempt} failed (${classification.kind}` +
-            `${classification.status ? ` ${classification.status}` : ""}), ` +
-            `retrying in ${delayMs}ms`,
-        ),
-    },
-  );
+  try {
+    const result = await callWithResilience(
+      async (signal) => {
+        const model = getGenerativeModel();
+        // The SDK forwards requestOptions to fetch, so a well-behaved version
+        // cancels the in-flight request on abort. withTimeout rejects regardless,
+        // so an SDK that ignores the signal still cannot hang us.
+        return await model.generateContent(prompt, { signal });
+      },
+      {
+        label,
+        timeoutMs: GEMINI_TIMEOUT_MS(),
+        retries: GEMINI_MAX_RETRIES(),
+        baseDelayMs: GEMINI_RETRY_BASE_MS(),
+        maxDelayMs: GEMINI_RETRY_MAX_MS(),
+        breaker: geminiBreaker,
+        onRetry: ({ attempt, delayMs, classification }) =>
+          console.warn(
+            `↻ ${label}: attempt ${attempt} failed (${classification.kind}` +
+              `${classification.status ? ` ${classification.status}` : ""}), ` +
+              `retrying in ${delayMs}ms`,
+          ),
+      },
+    );
 
-  return result.response.text();
+    const usage = result?.response?.usageMetadata || {};
+    recordAiUsageSafe({
+      kind: "gemini",
+      promptTokens: usage.promptTokenCount,
+      completionTokens: usage.candidatesTokenCount,
+      totalTokens: usage.totalTokenCount,
+    });
+
+    return result.response.text();
+  } catch (err) {
+    recordAiUsageSafe({ kind: "gemini", error: true });
+    throw err;
+  }
 };
 
 /**

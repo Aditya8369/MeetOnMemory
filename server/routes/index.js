@@ -208,6 +208,8 @@ import adminHealthRoutes from "./adminHealthRoutes.js";
 router.use("/api/admin/health", adminHealthRoutes);
 import adminRbacRoutes from "./adminRbacRoutes.js";
 router.use("/api/admin/rbac", adminRbacRoutes);
+import adminAiUsageRoutes from "./adminAiUsageRoutes.js";
+router.use("/api/admin/ai-usage", adminAiUsageRoutes);
 router.use("/api/alerts/keywords", keywordAlertRoutes);
 router.use("/api/integrations/notion", notionIntegrationRoutes);
 

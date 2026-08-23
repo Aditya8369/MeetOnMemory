@@ -8,6 +8,7 @@ import {
   verifyClerkSessionToken,
 } from "../utils/authUtils.js";
 import logger from "../utils/logger.js";
+import { runWithAiUsageContext } from "../services/aiUsageMetricsService.js";
 
 const DIAG = "[SYNC-CLERK-DIAG]";
 
@@ -182,7 +183,8 @@ const userAuth = async (req, res, next) => {
       });
     }
 
-    next();
+    const organizationId = user.organization?._id || user.organization || null;
+    return runWithAiUsageContext({ organizationId }, () => next());
   } catch (error) {
     if (error instanceof AccountMergeError) {
       console.error(`${DIAG} userAuth ACCOUNT MERGE CONFLICT`);
