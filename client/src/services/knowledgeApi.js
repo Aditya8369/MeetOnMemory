@@ -32,9 +32,6 @@ export const knowledgeApi = {
     if (options.limit) url += `&limit=${options.limit}`;
     return apiClient.get(url);
   },
-  /**
-   * Unified archived decisions + action items with correct combined pagination (#901).
-   */
   getArchivedMemories: (options = {}) => {
     const params = new URLSearchParams();
     if (options.type) params.append("type", options.type);
@@ -44,9 +41,6 @@ export const knowledgeApi = {
     const query = params.toString();
     return apiClient.get(`/api/knowledge/archive${query ? `?${query}` : ""}`);
   },
-  /**
-   * Unified Memory Lifecycle list with server-side pagination (#1552).
-   */
   getLifecycleMemories: (options = {}) => {
     const params = new URLSearchParams();
     if (options.type) params.append("type", options.type);
@@ -64,14 +58,18 @@ export const knowledgeApi = {
     apiClient.patch(`/api/knowledge/${type}/${id}/feedback`, { rating }),
   recalculateImportance: () =>
     apiClient.post(`/api/knowledge/importance/recalculate`),
-  // Memory Lifecycle Management (#377, #716)
   runLifecycleSweep: () => apiClient.post(`/api/knowledge/lifecycle/run`),
   updateMemoryLifecycleState: (type, id, state, reason) =>
     apiClient.patch(`/api/knowledge/${type}/${id}/lifecycle`, {
       state,
       reason,
     }),
-  // Memory Consolidation Engine
+  bulkTransitionLifecycle: (items, state, reason = "") =>
+    apiClient.post(`/api/knowledge/lifecycle/bulk`, {
+      items,
+      state,
+      reason,
+    }),
   runConsolidation: ({ dryRun = true, models } = {}) =>
     apiClient.post(`/api/knowledge/consolidate`, {
       dryRun,
@@ -81,7 +79,6 @@ export const knowledgeApi = {
     apiClient.get(
       `/api/knowledge/consolidation/history?model=${model}&limit=${limit}`,
     ),
-  // Memory Graph Snapshot & Time-Travel
   getGraphSnapshots: ({ limit = 20, before, page } = {}) => {
     const params = new URLSearchParams();
     if (limit) params.append("limit", limit);
@@ -89,7 +86,6 @@ export const knowledgeApi = {
     if (page) params.append("page", page);
     return apiClient.get(`/api/knowledge/graph/snapshots?${params.toString()}`);
   },
-
   getGraphSnapshot: (id) =>
     apiClient.get(`/api/knowledge/graph/snapshots/${id}`),
   exportGraphSnapshot: (id) =>
@@ -100,7 +96,6 @@ export const knowledgeApi = {
     ),
   createGraphSnapshot: (force = false) =>
     apiClient.post(`/api/knowledge/graph/snapshots`, { force }),
-  // AI-Powered Contradiction Detection & Conflict Resolution (#375, #715)
   scanForConflicts: ({
     dryRun = false,
     models,
