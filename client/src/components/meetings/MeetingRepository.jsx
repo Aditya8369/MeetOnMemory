@@ -32,16 +32,21 @@ const MeetingRepository = () => {
 
   // Saved Filters
   const [savedFilters, setSavedFilters] = useState([]);
+  const [savedFiltersError, setSavedFiltersError] = useState(null);
   const [isSaveModalOpen, setIsSaveModalOpen] = useState(false);
 
   const fetchSavedFilters = useCallback(async () => {
     try {
+      setSavedFiltersError(null);
       const response = await savedFilterApi.getFilters();
       if (response.data?.success) {
-        setSavedFilters(response.data.filters);
+        setSavedFilters(response.data.filters || []);
       }
     } catch (err) {
       console.error("Failed to fetch saved filters", err);
+      setSavedFiltersError(
+        err.response?.data?.message || "Failed to load saved views",
+      );
     }
   }, []);
 
@@ -331,8 +336,10 @@ const MeetingRepository = () => {
     <div className="space-y-6">
       <SavedFilterBar
         savedFilters={savedFilters}
+        error={savedFiltersError}
         onApplyFilter={handleApplySavedFilter}
         fetchFilters={fetchSavedFilters}
+        onRetry={fetchSavedFilters}
       />
 
       {/* Search and Filters */}
