@@ -55,6 +55,7 @@
     "date-fns-tz": "^3.2.0",
     "diff": "^9.0.0",
     "docx": "^9.7.1",
+    "dompurify": "^3.4.14",
     "dotenv": "^17.2.3",
     "exceljs": "^4.4.0",
     "express": "^5.1.0",
@@ -86,10 +87,13 @@
     "redis": "^6.1.0",
     "socket.io": "^4.8.1",
     "socket.io-client": "^4.8.3",
+    "ws": "^8.21.3",
     "yjs": "^13.6.31",
     "zod": "^3.25.76"
   },
   "devDependencies": {
+    "@jest/globals": "^30.4.1",
+    "chai": "^6.2.2",
     "eslint": "^10.7.0",
     "jest": "^30.4.2",
     "mongodb-memory-server": "^11.2.0",
