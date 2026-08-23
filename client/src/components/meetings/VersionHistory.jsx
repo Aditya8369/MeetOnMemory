@@ -1,11 +1,12 @@
 import React, { useState, useEffect, useCallback } from "react";
+import { toast } from "react-toastify";
 import apiClient from "../../services/apiClient";
 
 /**
- * @desc Sidebar component displaying the version history (snapshots) of the meeting note.
- * Allows users to view past versions and manually trigger new snapshots.
+ * @desc Sidebar listing collaborative-notes snapshots from `/api/note-versions`.
+ * Full restore/diff UI lives in NoteVersionHistory (opened via onOpenFullHistory).
  */
-const VersionHistory = ({ meetingId, onSaveSnapshot }) => {
+const VersionHistory = ({ meetingId, onSaveSnapshot, onOpenFullHistory }) => {
   const [history, setHistory] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
@@ -13,10 +14,30 @@ const VersionHistory = ({ meetingId, onSaveSnapshot }) => {
   const fetchHistory = useCallback(async () => {
     try {
       setIsLoading(true);
-      const { data } = await apiClient.get(`/api/notes/${meetingId}/history`);
-      setHistory(data.data || []);
+      // Align with NoteVersionHistory / noteVersionRoutes (#1995)
+      const { data } = await apiClient.get(
+        `/api/note-versions/${meetingId}/collaborativeNotes/history`,
+      );
+      const versions = data.versions || data.data?.versions || [];
+      setHistory(
+        versions.map((s) => ({
+          _id: s._id,
+          version: s.version,
+          title:
+            s.changeSource === "user_edit"
+              ? "User Edit"
+              : s.changeSource === "ai_processing"
+                ? "AI Processing"
+                : "System Snapshot",
+          createdBy: s.changedBy,
+          createdAt: s.createdAt,
+        })),
+      );
     } catch (error) {
       console.error("Failed to fetch history:", error);
+      toast.error(
+        error.response?.data?.message || "Failed to fetch version history",
+      );
     } finally {
       setIsLoading(false);
     }
@@ -36,10 +57,11 @@ const VersionHistory = ({ meetingId, onSaveSnapshot }) => {
       if (response.success) {
         await fetchHistory(); // Refresh list
       } else {
-        alert("Failed to save snapshot: " + response.error);
+        toast.error("Failed to save snapshot: " + (response.error || ""));
       }
     } catch (error) {
       console.error("Error saving snapshot:", error);
+      toast.error("Failed to save snapshot");
     } finally {
       setIsSaving(false);
     }
@@ -59,52 +81,66 @@ const VersionHistory = ({ meetingId, onSaveSnapshot }) => {
 
   return (
     <div className="flex flex-col h-full">
-      <div className="p-4 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between">
+      <div className="p-4 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between gap-2">
         <h3 className="font-bold text-gray-900 dark:text-white text-sm uppercase tracking-wider">
           Version History
         </h3>
-        <button
-          onClick={handleSaveSnapshot}
-          disabled={isSaving}
-          className="p-1.5 text-gray-500 hover:text-indigo-600 dark:hover:text-indigo-400 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-md transition-colors disabled:opacity-50"
-          title="Save current version"
-        >
-          {isSaving ? (
-            <svg
-              className="animate-spin w-4 h-4"
-              fill="none"
-              viewBox="0 0 24 24"
+        <div className="flex items-center gap-1">
+          {onOpenFullHistory && (
+            <button
+              type="button"
+              onClick={onOpenFullHistory}
+              className="px-2 py-1 text-[10px] font-semibold uppercase tracking-wide text-indigo-600 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-950/40 rounded-md"
+              title="Open restore and diff"
+              data-testid="sidebar-open-note-version-history"
             >
-              <circle
-                className="opacity-25"
-                cx="12"
-                cy="12"
-                r="10"
-                stroke="currentColor"
-                strokeWidth="4"
-              ></circle>
-              <path
-                className="opacity-75"
-                fill="currentColor"
-                d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-              ></path>
-            </svg>
-          ) : (
-            <svg
-              className="w-4 h-4"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M12 6v6m0 0v6m0-6h6m-6 0H6"
-              />
-            </svg>
+              Diff
+            </button>
           )}
-        </button>
+          <button
+            type="button"
+            onClick={handleSaveSnapshot}
+            disabled={isSaving}
+            className="p-1.5 text-gray-500 hover:text-indigo-600 dark:hover:text-indigo-400 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-md transition-colors disabled:opacity-50"
+            title="Save current version"
+          >
+            {isSaving ? (
+              <svg
+                className="animate-spin w-4 h-4"
+                fill="none"
+                viewBox="0 0 24 24"
+              >
+                <circle
+                  className="opacity-25"
+                  cx="12"
+                  cy="12"
+                  r="10"
+                  stroke="currentColor"
+                  strokeWidth="4"
+                ></circle>
+                <path
+                  className="opacity-75"
+                  fill="currentColor"
+                  d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                ></path>
+              </svg>
+            ) : (
+              <svg
+                className="w-4 h-4"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M12 6v6m0 0v6m0-6h6m-6 0H6"
+                />
+              </svg>
+            )}
+          </button>
+        </div>
       </div>
 
       <div className="flex-1 overflow-y-auto custom-scrollbar p-2">
@@ -125,7 +161,9 @@ const VersionHistory = ({ meetingId, onSaveSnapshot }) => {
           <div className="space-y-2">
             {history.map((snapshot) => (
               <button
-                key={snapshot._id}
+                key={snapshot._id || snapshot.version}
+                type="button"
+                onClick={onOpenFullHistory}
                 className="w-full text-left p-3 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700/50 transition-colors group border border-transparent hover:border-gray-200 dark:hover:border-gray-600"
               >
                 <div className="flex items-center justify-between mb-1">
