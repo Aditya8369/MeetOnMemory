@@ -129,3 +129,107 @@ export const toggleAlerts = async (req, res, next) => {
     next(error);
   }
 };
+
+// @desc    Get keyword alert delivery history
+// @route   GET /api/alerts/keywords/history
+// @access  Private
+export const getDeliveryHistory = async (req, res, next) => {
+  try {
+    const userId = req.user._id;
+    const organizationId = req.user.organization;
+
+    if (!organizationId) {
+      return res.status(403).json({ message: "Organization is required" });
+    }
+
+    const alert = await KeywordAlert.findOne({
+      user: userId,
+      organization: organizationId,
+    }).select("deliveryHistory");
+
+    const history = alert?.deliveryHistory || [];
+    // Return newest first
+    const sortedHistory = [...history].sort(
+      (a, b) => new Date(b.sentAt) - new Date(a.sentAt),
+    );
+
+    res.status(200).json({ success: true, history: sortedHistory });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// @desc    Clear keyword alert delivery history
+// @route   DELETE /api/alerts/keywords/history
+// @access  Private
+export const clearDeliveryHistory = async (req, res, next) => {
+  try {
+    const userId = req.user._id;
+    const organizationId = req.user.organization;
+
+    if (!organizationId) {
+      return res.status(403).json({ message: "Organization is required" });
+    }
+
+    await KeywordAlert.findOneAndUpdate(
+      { user: userId, organization: organizationId },
+      { $set: { deliveryHistory: [] } },
+    );
+
+    res
+      .status(200)
+      .json({ success: true, message: "Delivery history cleared" });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// @desc    Test-send simulated keyword alert notification
+// @route   POST /api/alerts/keywords/test-send
+// @access  Private
+export const testSendAlert = async (req, res, next) => {
+  try {
+    const userId = req.user._id;
+    const organizationId = req.user.organization;
+    const { keyword, channel = "app" } = req.body;
+
+    if (!organizationId) {
+      return res.status(403).json({ message: "Organization is required" });
+    }
+
+    const testKeyword = (keyword || "Test-Project").trim();
+    const testMeetingTitle = "Live Simulation Review Meeting";
+
+    const logEntry = {
+      channel: channel === "email" ? "email" : "app",
+      matchedKeywords: [testKeyword],
+      meetingTitle: testMeetingTitle,
+      recipientEmail: req.user.email || "user@meetinmemory.com",
+      status: "simulated",
+      summary: `Test-send alert simulation dispatched via ${channel} for keyword "${testKeyword}".`,
+      sentAt: new Date(),
+    };
+
+    const alert = await KeywordAlert.findOneAndUpdate(
+      { user: userId, organization: organizationId },
+      {
+        $push: {
+          deliveryHistory: {
+            $each: [logEntry],
+            $slice: -50,
+          },
+        },
+      },
+      { new: true, upsert: true },
+    );
+
+    res.status(200).json({
+      success: true,
+      message: `Test alert successfully simulated for keyword "${testKeyword}" via ${channel}`,
+      entry: logEntry,
+      alert,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
