@@ -20,6 +20,7 @@ import {
 import { toast } from "react-toastify";
 import { sanitizeHtml } from "../utils/sanitizeHtml";
 import MeetingSentimentChart from "../components/MeetingSentimentChart";
+import SpeakerAttribution from "../components/meeting-details/SpeakerAttribution";
 import AppContent from "../context/AppContent.js";
 
 const HighlightedText = ({ text, query }) => {
@@ -450,6 +451,13 @@ const TranscriptViewer = () => {
 
         {/* Main Content */}
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+          <div className="mb-6">
+            <SpeakerAttribution
+              meetingId={meetingId}
+              participants={meeting?.participants}
+              onMappingChange={fetchTranscript}
+            />
+          </div>
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             {/* Transcript Content */}
             <div className="lg:col-span-2 space-y-4">

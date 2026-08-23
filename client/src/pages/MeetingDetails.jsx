@@ -10,6 +10,7 @@ import MinutesApproval from "../components/meetings/MinutesApproval";
 import MeetingCollaborativeNotes from "../components/meeting-details/MeetingCollaborativeNotes";
 import PersonalNotes from "../components/meeting-details/PersonalNotes";
 import MeetingTranscript from "../components/meeting-details/MeetingTranscript";
+import SpeakerAttribution from "../components/meeting-details/SpeakerAttribution";
 import MeetingParticipants from "../components/meeting-details/MeetingParticipants";
 import MeetingAgenda from "../components/meeting-details/MeetingAgenda";
 import MeetingMetadata from "../components/meeting-details/MeetingMetadata";
@@ -117,6 +118,17 @@ const MeetingDetails = () => {
 
     fetchMeetingDetails();
   }, [id]);
+
+  const refreshMeeting = async () => {
+    try {
+      const { data } = await meetingApi.getMeetingById(id);
+      if (data.success) {
+        setMeeting(data.meeting);
+      }
+    } catch (err) {
+      console.error("Error refreshing meeting after speaker mapping:", err);
+    }
+  };
 
   const handleBack = () => {
     if (
@@ -413,6 +425,14 @@ const MeetingDetails = () => {
 
           <div className="mt-6 mb-6">
             <HighlightReel meetingId={meeting._id} />
+          </div>
+
+          <div className="mt-6 mb-6">
+            <SpeakerAttribution
+              meetingId={meeting._id}
+              participants={meeting.participants}
+              onMappingChange={refreshMeeting}
+            />
           </div>
 
           <MeetingTranscript meeting={meeting} />
