@@ -14,6 +14,11 @@ import {
   runMemoryLifecycleSweep,
   updateMemoryLifecycleState,
 } from "../controllers/knowledgeController.js";
+import { bulkTransitionMemoryLifecycle } from "../controllers/memoryLifecycleBulkController.js";
+import {
+  getMemoryLifecycleRetentionPolicy,
+  updateMemoryLifecycleRetentionPolicy,
+} from "../controllers/memoryLifecycleRetentionController.js";
 import {
   getArchivedMemoriesWithFacets,
   bulkRestoreArchivedMemories,
@@ -140,6 +145,26 @@ router.get(
   requireOrgMembership,
   requirePermission("knowledge", "view"),
   getLifecycleMemories,
+);
+router.get(
+  "/lifecycle/retention-policy",
+  requireOrgMembership,
+  requirePermission("knowledge", "manage_lifecycle"),
+  getMemoryLifecycleRetentionPolicy,
+);
+router.patch(
+  "/lifecycle/retention-policy",
+  writeLimiter,
+  requireOrgMembership,
+  requirePermission("knowledge", "manage_lifecycle"),
+  updateMemoryLifecycleRetentionPolicy,
+);
+router.post(
+  "/lifecycle/bulk",
+  writeLimiter,
+  requireOrgMembership,
+  requirePermission("knowledge", "manage_lifecycle"),
+  bulkTransitionMemoryLifecycle,
 );
 router.post(
   "/lifecycle/run",

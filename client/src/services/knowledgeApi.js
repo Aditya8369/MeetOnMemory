@@ -78,7 +78,12 @@ export const knowledgeApi = {
       state,
       reason,
     }),
-  // Memory Consolidation Engine
+  bulkTransitionLifecycle: (items, state, reason = "") =>
+    apiClient.post(`/api/knowledge/lifecycle/bulk`, {
+      items,
+      state,
+      reason,
+    }),
   runConsolidation: ({ dryRun = true, models } = {}) =>
     apiClient.post(`/api/knowledge/consolidate`, {
       dryRun,
@@ -88,7 +93,6 @@ export const knowledgeApi = {
     apiClient.get(
       `/api/knowledge/consolidation/history?model=${model}&limit=${limit}`,
     ),
-  // Memory Graph Snapshot & Time-Travel
   getGraphSnapshots: ({ limit = 20, before, page } = {}) => {
     const params = new URLSearchParams();
     if (limit) params.append("limit", limit);
