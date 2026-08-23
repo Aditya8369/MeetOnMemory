@@ -67,6 +67,7 @@ const pollSchema = new mongoose.Schema(
 // Indexes
 pollSchema.index({ meeting: 1, createdAt: -1 });
 pollSchema.index({ isClosed: 1, expiresAt: 1 });
+pollSchema.index({ organization: 1 });
 
 const Poll = mongoose.model("Poll", pollSchema);
 export default Poll;
