@@ -84,6 +84,18 @@ vi.mock("../../components/meeting-details/AgendaPacingReport.jsx", () => ({
   ),
 }));
 
+vi.mock("../../components/meeting-details/ClipManager.jsx", () => ({
+  default: ({ meetingId, canManage }) => (
+    <div
+      data-testid="clip-manager"
+      data-meeting-id={meetingId}
+      data-can-manage={canManage ? "yes" : "no"}
+    >
+      Clips for {meetingId}
+    </div>
+  ),
+}));
+
 vi.mock("../../services", () => ({
   meetingApi: {
     getMeetingById: vi.fn(),
