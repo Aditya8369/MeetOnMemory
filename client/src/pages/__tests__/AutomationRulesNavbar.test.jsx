@@ -3,7 +3,7 @@ import { render, screen } from "@testing-library/react";
 import { describe, it, expect, vi } from "vitest";
 import AutomationRules from "../AutomationRules.jsx";
 
-vi.mock("../components/Navbar.jsx", () => ({
+vi.mock("../../components/Navbar.jsx", () => ({
   default: () => <div data-testid="mock-navbar">Navbar</div>,
 }));
 
