@@ -3,11 +3,14 @@ import { useNavigate } from "react-router-dom";
 import { FileText, ExternalLink, Lock, Shield } from "lucide-react";
 import { toast } from "react-toastify";
 import GlossaryHighlighter from "./GlossaryHighlighter";
+import MeetingKeyManager from "./MeetingKeyManager";
 import { useMeetingTranscriptText } from "../../hooks/useMeetingTranscriptText.js";
+import { loadMeetingKey } from "../../utils/encryption/index.js";
 
 const MeetingTranscript = ({ meeting }) => {
   const [isExpanded, setIsExpanded] = useState(false);
   const [encrypting, setEncrypting] = useState(false);
+  const [keyVersion, setKeyVersion] = useState(0);
   const navigate = useNavigate();
   const {
     plaintext,
@@ -16,7 +19,7 @@ const MeetingTranscript = ({ meeting }) => {
     loading,
     e2eeEnabled,
     encryptAndStore,
-  } = useMeetingTranscriptText(meeting);
+  } = useMeetingTranscriptText(meeting, keyVersion);
 
   if (!meeting) return null;
 
@@ -25,6 +28,8 @@ const MeetingTranscript = ({ meeting }) => {
   const hasEncrypted = Boolean(
     meeting.isTranscriptEncrypted || meeting.encryptedTranscript,
   );
+  const hasLocalKey = Boolean(meeting._id && loadMeetingKey(meeting._id));
+  const missingKey = hasEncrypted && !hasLocalKey;
 
   if (!transcript && !hasEncrypted && !loading) {
     return (
@@ -127,10 +132,19 @@ const MeetingTranscript = ({ meeting }) => {
           Decrypting transcript…
         </p>
       )}
-      {error && (
+      {error && !missingKey && (
         <div className="mb-3 text-sm text-amber-800 dark:text-amber-300 bg-amber-50 dark:bg-amber-900/30 border border-amber-200 dark:border-amber-700 rounded-md p-3">
           {error}
         </div>
+      )}
+
+      {hasEncrypted && (
+        <MeetingKeyManager
+          meetingId={meeting._id}
+          hasLocalKey={hasLocalKey}
+          missingKey={missingKey}
+          onKeyImported={() => setKeyVersion((v) => v + 1)}
+        />
       )}
 
       {transcript ? (
