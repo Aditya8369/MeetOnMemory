@@ -50,7 +50,27 @@ import {
   initAutoBriefingJob,
   stopAutoBriefingJob,
 } from "./jobs/autoBriefingJob.js";
+import {
+  initDataRetentionJob,
+  stopDataRetentionJob,
+} from "./jobs/dataRetentionJob.js";
 import { startEscalationJob, stopEscalationJob } from "./jobs/escalationJob.js";
+import {
+  startMeetingNudgeJob,
+  stopMeetingNudgeJob,
+} from "./jobs/meetingNudgeJob.js";
+import {
+  startWeeklyInsightJob,
+  stopWeeklyInsightJob,
+} from "./jobs/weeklyInsightJob.js";
+import {
+  startStandupReportJob,
+  stopStandupReportJob,
+} from "./jobs/standupReportJob.js";
+import {
+  startActionItemSlaJob,
+  stopActionItemSlaJob,
+} from "./jobs/actionItemSlaJob.js";
 import { createClient } from "redis"; // eslint-disable-line no-unused-vars
 import {
   initDataExportWorker, // eslint-disable-line no-unused-vars
@@ -58,6 +78,7 @@ import {
   shutdownQueues,
 } from "./services/queueService.js";
 import { initWebhookWorker } from "./services/webhookDispatcherService.js"; // eslint-disable-line no-unused-vars
+import reminderScheduler from "./services/reminderScheduler.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -116,7 +137,21 @@ gamificationEngine.init();
 // SERVER START (Skipped during Jest test execution)
 if (process.env.NODE_ENV !== "test") {
   server.listen(PORT, "0.0.0.0", () => {
+    console.log(`==================================================`);
     console.log(`🚀 MeetOnMemory Server running on port ${PORT}`);
+
+    // Fix #1901: Explicitly initialize the cron runner engine on server startup
+    try {
+      console.log(`⏳ Initializing background Cron systems...`);
+      reminderScheduler.start();
+      console.log(`✅ [Service Health]: Meeting Reminder Scheduler active.`);
+    } catch (schedulerError) {
+      console.error(
+        `❌ [Service Error]: Failed to start Reminder Scheduler:`,
+        schedulerError,
+      );
+    }
+    console.log(`==================================================`);
 
     setTimeout(() => {
       startWorkers(app);
@@ -153,8 +188,23 @@ if (process.env.NODE_ENV !== "test") {
   // Start auto pre-meeting briefing job
   initAutoBriefingJob();
 
+  // Start data retention sweep job
+  initDataRetentionJob();
+
   // Start automated escalation job
   startEscalationJob();
+
+  // Start meeting nudge job
+  startMeetingNudgeJob();
+
+  // Start weekly insight job
+  startWeeklyInsightJob();
+
+  // Start standup report job
+  startStandupReportJob();
+
+  // Start Action Item SLA background job
+  startActionItemSlaJob();
 }
 
 // (AI, Data Export, and Webhook workers are initialized inside server.listen callback)
@@ -167,7 +217,12 @@ const gracefulShutdown = createGracefulShutdown({
     stopActionItemReminderJob();
     stopRecapBatchJob();
     stopAutoBriefingJob();
+    stopDataRetentionJob();
     stopEscalationJob();
+    stopMeetingNudgeJob();
+    stopWeeklyInsightJob();
+    stopStandupReportJob();
+    stopActionItemSlaJob();
   },
   closeQueues: shutdownQueues,
   closeDatabase: () => mongoose.connection.close(),

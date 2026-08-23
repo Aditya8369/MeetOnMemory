@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { useActionItems } from "../../hooks/useActionItems";
 import ActionItemCard from "./ActionItemCard";
+import ActionItemsExtractor from "../meetings/ActionItemsExtractor.jsx";
 
 /**
  * @desc Kanban-style board displaying action items grouped by status.
@@ -45,25 +46,33 @@ const ActionItemsList = ({ meetingId }) => {
 
   return (
     <div className="space-y-6">
-      {!meetingId && (
-        <div className="flex gap-2 overflow-x-auto pb-2">
-          <button
-            onClick={() => setFilter("all")}
-            className={`px-4 py-2 rounded-lg text-sm font-medium whitespace-nowrap ${filter === "all" ? "bg-indigo-600 text-white" : "bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300"}`}
-          >
-            All Tasks
-          </button>
-          {columns.map((col) => (
+      <div className="flex items-center justify-between flex-wrap gap-4">
+        {!meetingId && (
+          <div className="flex gap-2 overflow-x-auto pb-2">
             <button
-              key={col.id}
-              onClick={() => setFilter(col.id)}
-              className={`px-4 py-2 rounded-lg text-sm font-medium whitespace-nowrap ${filter === col.id ? "bg-indigo-600 text-white" : "bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300"}`}
+              onClick={() => setFilter("all")}
+              className={`px-4 py-2 rounded-lg text-sm font-medium whitespace-nowrap ${filter === "all" ? "bg-indigo-600 text-white" : "bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300"}`}
             >
-              {col.title}
+              All Tasks
             </button>
-          ))}
-        </div>
-      )}
+            {columns.map((col) => (
+              <button
+                key={col.id}
+                onClick={() => setFilter(col.id)}
+                className={`px-4 py-2 rounded-lg text-sm font-medium whitespace-nowrap ${filter === col.id ? "bg-indigo-600 text-white" : "bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300"}`}
+              >
+                {col.title}
+              </button>
+            ))}
+          </div>
+        )}
+        {meetingId && (
+          <ActionItemsExtractor
+            meetingId={meetingId}
+            onExtracted={() => fetchMeetingItems(meetingId)}
+          />
+        )}
+      </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         {columns.map((column) => {

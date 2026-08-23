@@ -1,3 +1,4 @@
+import mongoose from "mongoose";
 import {
   calculateMeetingQuality,
   getMeetingQuality,
@@ -12,12 +13,16 @@ import {
 } from "../services/recommendationEngine.js";
 import QualityBenchmark from "../models/QualityBenchmark.js";
 import Meeting from "../models/meetingModel.js";
-import mongoose from "mongoose";
+import { canAccessMeetingDoc } from "../middleware/rbac.js";
 
 /**
  * Meeting Quality Controller
  * Handles HTTP requests for quality scoring and benchmarking
  */
+
+const getUserOrgId = (user) => {
+  return (user?.organization?._id || user?.organization)?.toString() || null;
+};
 
 /**
  * @desc Calculate meeting quality score
@@ -38,7 +43,7 @@ export const calculateScore = async (req, res) => {
       return res.status(404).json({ message: "Meeting not found" });
     }
 
-    if (meeting.organization.toString() !== req.user.organization.toString()) {
+    if (!canAccessMeetingDoc(meeting, req.user)) {
       return res
         .status(403)
         .json({ message: "Forbidden: Not part of organization" });
@@ -85,8 +90,13 @@ export const getMeetingQualityEndpoint = async (req, res) => {
       });
     }
 
+    const userOrgId = getUserOrgId(req.user);
+    const scoreOrgId = (
+      score.organization?._id || score.organization
+    )?.toString();
+
     // Check organization access
-    if (score.organization.toString() !== req.user.organization.toString()) {
+    if (!userOrgId || !scoreOrgId || scoreOrgId !== userOrgId) {
       return res
         .status(403)
         .json({ message: "Forbidden: Not part of organization" });
@@ -113,7 +123,8 @@ export const getOrganizationQualityEndpoint = async (req, res) => {
       return res.status(400).json({ message: "Invalid organization ID" });
     }
 
-    if (orgId !== req.user.organization.toString()) {
+    const userOrgId = getUserOrgId(req.user);
+    if (!userOrgId || orgId !== userOrgId) {
       return res
         .status(403)
         .json({ message: "Forbidden: Not part of organization" });
@@ -142,7 +153,8 @@ export const getBenchmarks = async (req, res) => {
       return res.status(400).json({ message: "Invalid organization ID" });
     }
 
-    if (orgId !== req.user.organization.toString()) {
+    const userOrgId = getUserOrgId(req.user);
+    if (!userOrgId || orgId !== userOrgId) {
       return res
         .status(403)
         .json({ message: "Forbidden: Not part of organization" });
@@ -181,14 +193,22 @@ export const getRecommendations = async (req, res) => {
       return res.status(400).json({ message: "Invalid user ID" });
     }
 
+    const currentUserId = (req.user?._id || req.user?.id)?.toString();
+    const userRole = req.user?.role;
+    const userOrgId = getUserOrgId(req.user);
+
     // Users can only get their own recommendations (or admin)
-    if (userId !== req.user._id.toString() && req.user.role !== "admin") {
+    if (userId !== currentUserId && userRole !== "admin") {
       return res.status(403).json({ message: "Forbidden" });
+    }
+
+    if (!userOrgId) {
+      return res.status(400).json({ message: "Organization required" });
     }
 
     const recommendations = await generateUserRecommendations(
       userId,
-      req.user.organization,
+      userOrgId,
     );
 
     res.status(200).json(recommendations);
@@ -212,7 +232,8 @@ export const getLeaderboardEndpoint = async (req, res) => {
       return res.status(400).json({ message: "Invalid organization ID" });
     }
 
-    if (orgId !== req.user.organization.toString()) {
+    const userOrgId = getUserOrgId(req.user);
+    if (!userOrgId || orgId !== userOrgId) {
       return res
         .status(403)
         .json({ message: "Forbidden: Not part of organization" });
@@ -241,7 +262,8 @@ export const getTrends = async (req, res) => {
       return res.status(400).json({ message: "Invalid organization ID" });
     }
 
-    if (orgId !== req.user.organization.toString()) {
+    const userOrgId = getUserOrgId(req.user);
+    if (!userOrgId || orgId !== userOrgId) {
       return res
         .status(403)
         .json({ message: "Forbidden: Not part of organization" });
@@ -270,14 +292,15 @@ export const exportReport = async (req, res) => {
       return res.status(400).json({ message: "Invalid organization ID" });
     }
 
-    if (orgId !== req.user.organization.toString()) {
+    const userOrgId = getUserOrgId(req.user);
+    if (!userOrgId || orgId !== userOrgId) {
       return res
         .status(403)
         .json({ message: "Forbidden: Not part of organization" });
     }
 
     // Check admin access
-    if (req.user.role !== "admin" && req.user.role !== "owner") {
+    if (req.user?.role !== "admin" && req.user?.role !== "owner") {
       return res
         .status(403)
         .json({ message: "Forbidden: Admin access required" });
@@ -315,7 +338,8 @@ export const getBestPracticesEndpoint = async (req, res) => {
       return res.status(400).json({ message: "Invalid organization ID" });
     }
 
-    if (orgId !== req.user.organization.toString()) {
+    const userOrgId = getUserOrgId(req.user);
+    if (!userOrgId || orgId !== userOrgId) {
       return res
         .status(403)
         .json({ message: "Forbidden: Not part of organization" });

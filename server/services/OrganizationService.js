@@ -22,17 +22,11 @@ import {
   ValidationError,
 } from "../utils/errors.js";
 import { normalizeImageUrl } from "../utils/imageUrl.js";
+import { escapeRegex } from "../utils/regex.js";
 
 // ═══════════════════════════════════════════════════════════════
 // Private helpers
 // ═══════════════════════════════════════════════════════════════
-
-/**
- * Escape special regex characters to prevent ReDoS attacks
- */
-const escapeRegex = (string) => {
-  return string.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-};
 
 /**
  * Validate MongoDB ObjectId

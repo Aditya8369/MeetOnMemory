@@ -22,6 +22,13 @@ vi.mock("../../services/apiClient.js", () => ({
   },
 }));
 
+vi.mock("../../services/notificationApi.js", () => ({
+  notificationApi: {
+    getPreferences: vi.fn().mockResolvedValue({ data: { preferences: {} } }),
+    updatePreferences: vi.fn(),
+  },
+}));
+
 describe("DigestPreferences HTML Sanitization (#1339)", () => {
   beforeEach(() => {
     vi.clearAllMocks();

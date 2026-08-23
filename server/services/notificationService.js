@@ -98,6 +98,21 @@ export const isSuppressed = (prefs, category) => {
 };
 
 /**
+ * True when the user has muted in-app notifications for this meeting (Issue #2064).
+ *
+ * @param {object|undefined} prefs
+ * @param {object} [metadata]
+ * @returns {boolean}
+ */
+export const isMeetingMuted = (prefs, metadata = {}) => {
+  if (!prefs?.mutedMeetingIds?.length) return false;
+  const meetingId = metadata?.meetingId;
+  if (!meetingId) return false;
+  const target = String(meetingId);
+  return prefs.mutedMeetingIds.some((id) => String(id) === target);
+};
+
+/**
  * Formats a notification document for API/socket responses.
  *
  * @param {object} notification
@@ -165,14 +180,17 @@ export const createNotifications = async (recipients, payload) => {
   try {
     const prefsByUser = await loadPreferences(uniqueIds);
 
-    const deliverTo = uniqueIds.filter(
-      (userId) => !isSuppressed(prefsByUser.get(userId), category),
-    );
+    const deliverTo = uniqueIds.filter((userId) => {
+      const prefs = prefsByUser.get(userId);
+      if (isSuppressed(prefs, category)) return false;
+      if (isMeetingMuted(prefs, metadata)) return false;
+      return true;
+    });
 
     const suppressedCount = uniqueIds.length - deliverTo.length;
     if (suppressedCount > 0) {
       console.log(
-        `🔇 ${suppressedCount} notification(s) suppressed — category "${category}" disabled in preferences`,
+        `🔇 ${suppressedCount} notification(s) suppressed — category "${category}" disabled or meeting muted`,
       );
     }
 

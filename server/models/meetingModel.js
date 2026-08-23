@@ -265,6 +265,22 @@ const meetingSchema = new mongoose.Schema(
       enum: ["not_started", "in_progress", "completed"],
       default: "not_started",
     },
+
+    // Pinecone embedding index status (Issue #2084)
+    embeddingIndex: {
+      status: {
+        type: String,
+        enum: ["idle", "queued", "running", "succeeded", "failed"],
+        default: "idle",
+      },
+      lastIndexedAt: { type: Date, default: null },
+      lastError: { type: String, default: null, maxlength: 500 },
+      lastJobId: { type: String, default: null },
+    },
+    auditNote: {
+      type: String,
+      default: "",
+    },
   },
   { timestamps: true },
 );

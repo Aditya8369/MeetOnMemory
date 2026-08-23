@@ -185,3 +185,150 @@ export const deleteCollection = async (req, res) => {
     res.status(500).json({ message: "Server error deleting collection" });
   }
 };
+
+// @desc    Add meeting bookmark
+// @route   POST /api/meetings/:id/bookmark
+// @access  Private
+export const addMeetingBookmark = async (req, res) => {
+  try {
+    const meetingId = req.params.id;
+    const userId = req.user._id;
+    const { collectionName, notes, color } = req.body || {};
+
+    if (!mongoose.Types.ObjectId.isValid(meetingId)) {
+      return res.status(400).json({ message: "Invalid meeting ID" });
+    }
+
+    const meeting =
+      await Meeting.findById(meetingId).select("organization _id");
+    if (!meeting) {
+      return res.status(404).json({ message: "Meeting not found" });
+    }
+
+    if (!isSameOrganization(req.user, meeting)) {
+      return res.status(403).json({
+        message: "Meeting does not belong to your organization",
+      });
+    }
+
+    let bookmark = await Bookmark.findOne({
+      user: userId,
+      meeting: meetingId,
+    });
+
+    if (!bookmark) {
+      bookmark = await Bookmark.create({
+        user: userId,
+        meeting: meetingId,
+        collectionName: collectionName || "Uncategorized",
+        notes: notes || "",
+        color: color || "#3b82f6",
+      });
+    }
+
+    return res.status(200).json({
+      message: "Meeting bookmarked successfully",
+      bookmarked: true,
+      data: bookmark,
+    });
+  } catch (error) {
+    console.error("Error adding meeting bookmark:", error);
+    res.status(500).json({ message: "Server error bookmarking meeting" });
+  }
+};
+
+// @desc    Remove meeting bookmark
+// @route   DELETE /api/meetings/:id/bookmark
+// @access  Private
+export const removeMeetingBookmark = async (req, res) => {
+  try {
+    const meetingId = req.params.id;
+    const userId = req.user._id;
+
+    if (!mongoose.Types.ObjectId.isValid(meetingId)) {
+      return res.status(400).json({ message: "Invalid meeting ID" });
+    }
+
+    await Bookmark.deleteOne({ user: userId, meeting: meetingId });
+
+    return res.status(200).json({
+      message: "Bookmark removed successfully",
+      bookmarked: false,
+    });
+  } catch (error) {
+    console.error("Error removing meeting bookmark:", error);
+    res.status(500).json({ message: "Server error removing bookmark" });
+  }
+};
+
+// @desc    Get bookmark status for a meeting
+// @route   GET /api/meetings/:id/bookmark
+// @access  Private
+export const getMeetingBookmarkStatus = async (req, res) => {
+  try {
+    const meetingId = req.params.id;
+    const userId = req.user._id;
+
+    if (!mongoose.Types.ObjectId.isValid(meetingId)) {
+      return res.status(400).json({ message: "Invalid meeting ID" });
+    }
+
+    const bookmark = await Bookmark.findOne({
+      user: userId,
+      meeting: meetingId,
+    });
+
+    return res.status(200).json({
+      bookmarked: Boolean(bookmark),
+      bookmark: bookmark || null,
+    });
+  } catch (error) {
+    console.error("Error getting meeting bookmark status:", error);
+    res.status(500).json({ message: "Server error checking bookmark status" });
+  }
+};
+
+// @desc    Get all bookmarked meetings for current user
+// @route   GET /api/meetings/bookmarked
+// @access  Private
+export const getBookmarkedMeetings = async (req, res) => {
+  try {
+    const userId = req.user._id;
+    const { collectionName } = req.query;
+
+    const query = { user: userId };
+    if (collectionName) {
+      query.collectionName = String(collectionName);
+    }
+
+    const bookmarks = await Bookmark.find(query)
+      .sort({ createdAt: -1 })
+      .populate({
+        path: "meeting",
+        select:
+          "title date time duration meetingType status organization description _id",
+      });
+
+    // Filter out orphaned bookmarks where meeting was deleted
+    const validBookmarks = bookmarks.filter((b) => b.meeting !== null);
+    const meetings = validBookmarks.map((b) => ({
+      ...b.meeting.toObject(),
+      bookmarkId: b._id,
+      collectionName: b.collectionName,
+      bookmarkNotes: b.notes,
+      bookmarkColor: b.color,
+      bookmarkedAt: b.createdAt,
+    }));
+
+    return res.status(200).json({
+      success: true,
+      count: meetings.length,
+      data: meetings,
+    });
+  } catch (error) {
+    console.error("Error fetching bookmarked meetings:", error);
+    res
+      .status(500)
+      .json({ message: "Server error fetching bookmarked meetings" });
+  }
+};

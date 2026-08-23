@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { Star } from "lucide-react";
 import { toast } from "react-toastify";
 import { meetingFeedbackApi } from "../../services";
@@ -11,7 +11,7 @@ const PREDEFINED_TAGS = [
   "Inaccurate Speakers",
 ];
 
-const StarRating = ({ label, value, onChange }) => {
+const StarRating = ({ label, value, onChange, disabled }) => {
   return (
     <div className="flex items-center justify-between py-2">
       <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
@@ -22,8 +22,10 @@ const StarRating = ({ label, value, onChange }) => {
           <button
             key={star}
             type="button"
+            aria-label={`${label} ${star} of 5`}
+            disabled={disabled}
             onClick={() => onChange(star)}
-            className={`p-1 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors ${
+            className={`p-1 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors disabled:opacity-50 disabled:pointer-events-none ${
               star <= value
                 ? "text-yellow-400"
                 : "text-gray-300 dark:text-gray-600"
@@ -40,11 +42,13 @@ const StarRating = ({ label, value, onChange }) => {
   );
 };
 
-const FeedbackForm = ({ meetingId }) => {
+const FeedbackForm = ({ meetingId, organizationId }) => {
   const [feedback, setFeedback] = useState(null);
   const [loading, setLoading] = useState(true);
   const [fetchError, setFetchError] = useState(null);
+  const [forbidden, setForbidden] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const isSubmittingRef = useRef(false);
   const [formData, setFormData] = useState({
     overallRating: 0,
     summaryAccuracy: 0,
@@ -54,10 +58,16 @@ const FeedbackForm = ({ meetingId }) => {
   });
 
   useEffect(() => {
+    if (!meetingId) {
+      setLoading(false);
+      return;
+    }
+
     const fetchFeedback = async () => {
       try {
         setLoading(true);
         setFetchError(null);
+        setForbidden(false);
         const { data } =
           await meetingFeedbackApi.getUserFeedbackForMeeting(meetingId);
         if (data.success && data.feedback) {
@@ -72,7 +82,15 @@ const FeedbackForm = ({ meetingId }) => {
         }
       } catch (error) {
         console.error("Failed to fetch feedback", error);
-        setFetchError("Unable to check previous feedback submission.");
+        if (error.response?.status === 403) {
+          setForbidden(true);
+          setFetchError(
+            error.response?.data?.message ||
+              "You are not authorized to submit feedback for this meeting.",
+          );
+        } else {
+          setFetchError("Unable to check previous feedback submission.");
+        }
       } finally {
         setLoading(false);
       }
@@ -91,6 +109,8 @@ const FeedbackForm = ({ meetingId }) => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (forbidden || isSubmittingRef.current) return;
+
     if (
       !formData.overallRating ||
       !formData.summaryAccuracy ||
@@ -100,11 +120,16 @@ const FeedbackForm = ({ meetingId }) => {
       return;
     }
 
+    isSubmittingRef.current = true;
     setIsSubmitting(true);
     try {
       const { data } = await meetingFeedbackApi.submitFeedback({
         meetingId,
-        ...formData,
+        overallRating: formData.overallRating,
+        summaryAccuracy: formData.summaryAccuracy,
+        transcriptQuality: formData.transcriptQuality,
+        comment: formData.comment,
+        tags: formData.tags,
       });
 
       if (data.success) {
@@ -116,22 +141,63 @@ const FeedbackForm = ({ meetingId }) => {
         setFeedback(data.feedback);
       }
     } catch (error) {
+      if (error.response?.status === 403) {
+        setForbidden(true);
+        setFetchError(
+          error.response?.data?.message ||
+            "You are not authorized to submit feedback for this meeting.",
+        );
+      }
       toast.error(error.response?.data?.message || "Failed to submit feedback");
     } finally {
+      isSubmittingRef.current = false;
       setIsSubmitting(false);
     }
   };
 
   if (loading) {
     return (
-      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6 mt-6 flex justify-center items-center py-10">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 dark:border-blue-400"></div>
+      <div
+        data-testid="meeting-feedback-form"
+        data-meeting-id={meetingId}
+        data-organization-id={organizationId || ""}
+        className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6 mt-6 flex justify-center items-center py-10"
+      >
+        <div
+          role="status"
+          aria-label="Loading feedback form"
+          className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 dark:border-blue-400"
+        />
+      </div>
+    );
+  }
+
+  if (forbidden) {
+    return (
+      <div
+        data-testid="meeting-feedback-forbidden"
+        data-meeting-id={meetingId}
+        data-organization-id={organizationId || ""}
+        className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6 mt-6"
+      >
+        <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
+          Meeting Feedback
+        </h3>
+        <p role="status" className="text-sm text-gray-600 dark:text-gray-400">
+          {fetchError ||
+            "You are not authorized to submit feedback for this meeting."}
+        </p>
       </div>
     );
   }
 
   return (
-    <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6 mt-6">
+    <div
+      data-testid="meeting-feedback-form"
+      data-meeting-id={meetingId}
+      data-organization-id={organizationId || ""}
+      className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6 mt-6"
+    >
       <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
         Meeting Feedback
       </h3>
@@ -153,16 +219,22 @@ const FeedbackForm = ({ meetingId }) => {
           </span>
         </div>
       )}
-      <form onSubmit={handleSubmit} className="space-y-4">
+      <form
+        onSubmit={handleSubmit}
+        aria-label="Meeting feedback"
+        className="space-y-4"
+      >
         <div className="space-y-2">
           <StarRating
             label="Overall Rating"
             value={formData.overallRating}
+            disabled={isSubmitting}
             onChange={(val) => setFormData({ ...formData, overallRating: val })}
           />
           <StarRating
             label="Summary Accuracy"
             value={formData.summaryAccuracy}
+            disabled={isSubmitting}
             onChange={(val) =>
               setFormData({ ...formData, summaryAccuracy: val })
             }
@@ -170,6 +242,7 @@ const FeedbackForm = ({ meetingId }) => {
           <StarRating
             label="Transcript Quality"
             value={formData.transcriptQuality}
+            disabled={isSubmitting}
             onChange={(val) =>
               setFormData({ ...formData, transcriptQuality: val })
             }
@@ -185,8 +258,9 @@ const FeedbackForm = ({ meetingId }) => {
               <button
                 key={tag}
                 type="button"
+                disabled={isSubmitting}
                 onClick={() => handleTagToggle(tag)}
-                className={`px-3 py-1 rounded-full text-xs font-medium transition-colors border ${
+                className={`px-3 py-1 rounded-full text-xs font-medium transition-colors border disabled:opacity-50 ${
                   formData.tags.includes(tag)
                     ? "bg-blue-100 text-blue-700 border-blue-200 dark:bg-blue-900/30 dark:text-blue-300 dark:border-blue-800"
                     : "bg-gray-50 text-gray-600 border-gray-200 hover:bg-gray-100 dark:bg-gray-800 dark:text-gray-400 dark:border-gray-700 dark:hover:bg-gray-700"
@@ -204,10 +278,11 @@ const FeedbackForm = ({ meetingId }) => {
           </label>
           <textarea
             value={formData.comment}
+            disabled={isSubmitting}
             onChange={(e) =>
               setFormData({ ...formData, comment: e.target.value })
             }
-            className="w-full rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 px-3 py-2 text-sm text-gray-900 dark:text-white placeholder-gray-400 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+            className="w-full rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 px-3 py-2 text-sm text-gray-900 dark:text-white placeholder-gray-400 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 disabled:opacity-50"
             rows={3}
             placeholder="Tell us what could be improved..."
           />

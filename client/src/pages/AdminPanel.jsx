@@ -1,5 +1,12 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, {
+  useState,
+  useEffect,
+  useRef,
+  useContext,
+  useCallback,
+} from "react";
 import { useTranslation } from "react-i18next";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import {
   LayoutDashboard,
   Building2,
@@ -15,10 +22,33 @@ import {
   Sparkles,
   ClipboardList,
   MessageSquareQuote,
+  ExternalLink,
+  Loader2,
+  Clock,
+  RefreshCw,
+  ListTodo,
+  Database,
+  ShieldCheck,
+  BrainCircuit,
 } from "lucide-react";
 import Navbar from "../components/Navbar.jsx";
 import TemplateBuilder from "../components/admin/TemplateBuilder.jsx";
 import TestimonialsModeration from "../components/admin/TestimonialsModeration.jsx";
+import JobsDashboard from "../components/admin/JobsDashboard.jsx";
+import EmbeddingReindexAdmin from "../components/admin/EmbeddingReindexAdmin.jsx";
+import RbacPermissionExplorer from "../components/admin/RbacPermissionExplorer.jsx";
+import ImportanceRecalculationAdmin from "../components/admin/ImportanceRecalculationAdmin.jsx";
+import MembershipRequests from "../components/organization/MembershipRequests.jsx";
+
+import AppContent from "../context/AppContent.js";
+import { fetchPlatformStatus } from "../services/statusApi.js";
+import {
+  organizationApi,
+  meetingApi,
+  policyApi,
+  membershipRequestApi,
+  analyticsApi,
+} from "../services";
 
 const MODULES = [
   {
@@ -78,7 +108,32 @@ const MODULES = [
     iconColor: "text-sky-600 dark:text-sky-400",
   },
   {
+    id: "jobs",
+    labelKey: "Jobs",
+    descriptionKey: "Background queues, failures, and retries",
+    icon: ListTodo,
+    iconBg: "bg-teal-50 dark:bg-teal-900/30",
+    iconColor: "text-teal-600 dark:text-teal-400",
+  },
+  {
+    id: "embeddings",
+    labelKey: "Embeddings",
+    descriptionKey: "Pinecone index health and reindex actions",
+    icon: Database,
+    iconBg: "bg-cyan-50 dark:bg-cyan-900/30",
+    iconColor: "text-cyan-600 dark:text-cyan-400",
+  },
+  {
+    id: "importance",
+    labelKey: "Importance Score Engine",
+    descriptionKey: "Trigger score recalculations and view job diagnostics",
+    icon: BrainCircuit,
+    iconBg: "bg-indigo-50 dark:bg-indigo-900/30",
+    iconColor: "text-indigo-600 dark:text-indigo-400",
+  },
+  {
     id: "policies",
+
     labelKey: "adminPanel.policies",
     descriptionKey: "adminPanel.policiesDesc",
     icon: Shield,
@@ -109,13 +164,85 @@ const MODULES = [
     iconBg: "bg-orange-50 dark:bg-orange-900/30",
     iconColor: "text-orange-600 dark:text-orange-400",
   },
+  {
+    id: "health",
+    labelKey: "System Health",
+    descriptionKey: "Live dependency statuses and system diagnostics",
+    icon: Activity,
+    iconBg: "bg-red-50 dark:bg-red-900/30",
+    iconColor: "text-red-600 dark:text-red-400",
+  },
+  {
+    id: "permissions",
+    labelKey: "Permissions Matrix",
+    descriptionKey: "Role × action permission matrix and access explainer",
+    icon: ShieldCheck,
+    iconBg: "bg-purple-50 dark:bg-purple-900/30",
+    iconColor: "text-purple-600 dark:text-purple-400",
+  },
 ];
 
 const AdminPanel = () => {
   const { t } = useTranslation();
-  const [activeModule, setActiveModule] = useState("overview");
+  const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const { userData } = useContext(AppContent) || {};
+  const orgId = userData?.organization?._id || userData?.organization;
+
+  const initialModule = (() => {
+    const requested = searchParams.get("module");
+    if (requested && MODULES.some((m) => m.id === requested)) return requested;
+    return "overview";
+  })();
+
+  const [activeModule, setActiveModule] = useState(initialModule);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const sidebarRef = useRef(null);
+  const [redisDegraded, setRedisDegraded] = useState(false);
+
+  useEffect(() => {
+    const checkRedisStatus = async () => {
+      try {
+        const res = await fetchPlatformStatus();
+        if (res.ok && res.data?.services) {
+          const redisService = res.data.services.find((s) => s.id === "redis");
+          if (
+            redisService &&
+            (redisService.status === "degraded" ||
+              redisService.status === "outage" ||
+              redisService.status === "unknown")
+          ) {
+            setRedisDegraded(true);
+          }
+        }
+      } catch (err) {
+        console.error("Failed to fetch status for Redis check", err);
+      }
+    };
+    checkRedisStatus();
+  }, []);
+
+  // Overview Data
+  const [loadingOverview, setLoadingOverview] = useState(true);
+  const [overviewStats, setOverviewStats] = useState({
+    totalUsers: null,
+    activeOrgs: null,
+    totalMeetings: null,
+    pendingRequests: null,
+  });
+  const [recentActivity, setRecentActivity] = useState([]);
+
+  // Module Specific Data
+  const [moduleData, setModuleData] = useState({
+    members: [],
+    organizations: [],
+    meetings: [],
+    policies: [],
+    auditLogs: [],
+    reports: null,
+    settings: null,
+  });
+  const [loadingModule, setLoadingModule] = useState(false);
 
   useEffect(() => {
     const onMouseDown = (e) => {
@@ -140,17 +267,189 @@ const AdminPanel = () => {
     return () => window.removeEventListener("resize", onResize);
   }, []);
 
+  // Fetch Overview Data
+  const fetchOverviewData = useCallback(async () => {
+    setLoadingOverview(true);
+    try {
+      const [membersRes, orgsRes, meetingsRes, requestsRes, auditRes] =
+        await Promise.allSettled([
+          organizationApi.getMembers(),
+          organizationApi.getUserOrganizations(),
+          meetingApi.getAllMeetings(),
+          orgId
+            ? membershipRequestApi.getOrganizationRequests(orgId, "pending")
+            : Promise.resolve({ data: { requests: [] } }),
+          orgId
+            ? organizationApi.getAuditLogs(orgId, { limit: 5 })
+            : Promise.resolve({ data: { logs: [] } }),
+        ]);
+
+      setOverviewStats({
+        totalUsers:
+          membersRes.status === "fulfilled" && membersRes.value.data?.members
+            ? membersRes.value.data.members.length
+            : membersRes.status === "fulfilled" &&
+                membersRes.value.data?.success
+              ? 0
+              : null,
+        activeOrgs:
+          orgsRes.status === "fulfilled" && orgsRes.value.data?.organizations
+            ? orgsRes.value.data.organizations.length
+            : orgsRes.status === "fulfilled" && orgsRes.value.data?.success
+              ? 1
+              : null,
+        totalMeetings:
+          meetingsRes.status === "fulfilled" &&
+          (meetingsRes.value.data?.meetings ||
+            meetingsRes.value.data?.total !== undefined)
+            ? (meetingsRes.value.data.meetings?.length ??
+              meetingsRes.value.data.total ??
+              0)
+            : meetingsRes.status === "fulfilled" &&
+                meetingsRes.value.data?.success
+              ? 0
+              : null,
+        pendingRequests:
+          requestsRes.status === "fulfilled" && requestsRes.value.data?.requests
+            ? requestsRes.value.data.requests.length
+            : requestsRes.status === "fulfilled" &&
+                requestsRes.value.data?.success
+              ? 0
+              : null,
+      });
+
+      if (auditRes.status === "fulfilled" && auditRes.value.data?.logs) {
+        setRecentActivity(auditRes.value.data.logs.slice(0, 5));
+      }
+    } catch (err) {
+      console.error("Failed to load admin overview data", err);
+    } finally {
+      setLoadingOverview(false);
+    }
+  }, [orgId]);
+
+  useEffect(() => {
+    fetchOverviewData();
+  }, [fetchOverviewData]);
+
+  // Fetch Module Specific Data
+  useEffect(() => {
+    if (
+      activeModule === "overview" ||
+      activeModule === "templates" ||
+      activeModule === "testimonials" ||
+      activeModule === "jobs" ||
+      activeModule === "embeddings" ||
+      activeModule === "importance" ||
+      activeModule === "joinRequests"
+    ) {
+      return;
+    }
+
+    const fetchModuleData = async () => {
+      setLoadingModule(true);
+      try {
+        if (activeModule === "members") {
+          const res = await organizationApi.getMembers();
+          if (res.data?.members) {
+            setModuleData((prev) => ({ ...prev, members: res.data.members }));
+          }
+        } else if (activeModule === "organizations") {
+          const res = await organizationApi.getUserOrganizations();
+          if (res.data?.organizations) {
+            setModuleData((prev) => ({
+              ...prev,
+              organizations: res.data.organizations,
+            }));
+          }
+        } else if (activeModule === "meetings") {
+          const res = await meetingApi.getAllMeetings();
+          if (res.data?.meetings) {
+            setModuleData((prev) => ({ ...prev, meetings: res.data.meetings }));
+          }
+        } else if (activeModule === "policies") {
+          const res = await policyApi.getPolicies();
+          if (res.data?.policies) {
+            setModuleData((prev) => ({ ...prev, policies: res.data.policies }));
+          }
+        } else if (activeModule === "activity") {
+          if (orgId) {
+            const res = await organizationApi.getAuditLogs(orgId, {
+              limit: 20,
+            });
+            if (res.data?.logs) {
+              setModuleData((prev) => ({ ...prev, auditLogs: res.data.logs }));
+            }
+          }
+        } else if (activeModule === "reports") {
+          const res = await analyticsApi.getAnalytics();
+          if (res.data) {
+            setModuleData((prev) => ({ ...prev, reports: res.data }));
+          }
+        } else if (activeModule === "settings") {
+          if (orgId) {
+            const res = await organizationApi.getOrganizationSettings(orgId);
+            if (res.data?.organization || res.data?.settings) {
+              setModuleData((prev) => ({
+                ...prev,
+                settings: res.data.organization || res.data.settings,
+              }));
+            }
+          }
+        }
+      } catch (err) {
+        console.error(`Failed to load data for ${activeModule}`, err);
+      } finally {
+        setLoadingModule(false);
+      }
+    };
+
+    fetchModuleData();
+  }, [activeModule, orgId]);
+
   const active = MODULES.find((m) => m.id === activeModule) || MODULES[0];
   const ActiveIcon = active.icon;
 
   const stats = [
-    { label: t("adminPanel.totalUsers"), value: "—" },
-    { label: t("adminPanel.activeOrgs"), value: "—" },
-    { label: t("adminPanel.totalMeetings"), value: "—" },
-    { label: t("adminPanel.pendingRequests"), value: "—" },
+    {
+      label: t("adminPanel.totalUsers"),
+      value: loadingOverview
+        ? "—"
+        : overviewStats.totalUsers !== null
+          ? overviewStats.totalUsers
+          : "0",
+    },
+    {
+      label: t("adminPanel.activeOrgs"),
+      value: loadingOverview
+        ? "—"
+        : overviewStats.activeOrgs !== null
+          ? overviewStats.activeOrgs
+          : "1",
+    },
+    {
+      label: t("adminPanel.totalMeetings"),
+      value: loadingOverview
+        ? "—"
+        : overviewStats.totalMeetings !== null
+          ? overviewStats.totalMeetings
+          : "0",
+    },
+    {
+      label: t("adminPanel.pendingRequests"),
+      value: loadingOverview
+        ? "—"
+        : overviewStats.pendingRequests !== null
+          ? overviewStats.pendingRequests
+          : "0",
+    },
   ];
 
   const selectModule = (id) => {
+    if (id === "health") {
+      navigate("/admin/health");
+      return;
+    }
     setActiveModule(id);
     setSidebarOpen(false);
   };
@@ -225,6 +524,28 @@ const AdminPanel = () => {
 
         {/* Main content */}
         <div className="flex-1 min-w-0 px-4 sm:px-6 lg:px-8 py-6">
+          {redisDegraded && (
+            <div className="mb-6 p-4 bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-900/40 text-amber-800 dark:text-amber-300 text-sm rounded-2xl flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 shadow-xs">
+              <div className="flex items-start gap-3">
+                <span className="text-lg">⚠️</span>
+                <div>
+                  <strong className="font-bold">
+                    Redis Cache & Real-Time Support is Degraded:
+                  </strong>{" "}
+                  Rate limiting fallback is active and real-time features may
+                  experience lag or cache misses.
+                </div>
+              </div>
+              <a
+                href="https://docs.meetonmemory.com/redis-setup"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-xs font-bold text-amber-700 hover:text-amber-800 dark:text-amber-400 dark:hover:text-amber-300 underline shrink-0 whitespace-nowrap"
+              >
+                Enable Redis in Docs →
+              </a>
+            </div>
+          )}
           <div className="flex items-start gap-3 mb-6">
             <button
               type="button"
@@ -275,18 +596,421 @@ const AdminPanel = () => {
               </div>
 
               <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-2xl p-6 shadow-sm">
-                <h3 className="text-sm font-bold text-slate-900 dark:text-white mb-4">
-                  {t("adminPanel.recentActivity")}
-                </h3>
-                <div className="rounded-xl border border-dashed border-slate-200 dark:border-slate-700 px-4 py-10 text-center text-sm text-slate-400 dark:text-slate-500">
-                  {t("adminPanel.noActivity")}
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-sm font-bold text-slate-900 dark:text-white">
+                    {t("adminPanel.recentActivity")}
+                  </h3>
+                  <button
+                    type="button"
+                    onClick={fetchOverviewData}
+                    className="inline-flex items-center gap-1.5 text-xs text-blue-600 dark:text-blue-400 hover:underline cursor-pointer"
+                  >
+                    <RefreshCw className="w-3.5 h-3.5" />
+                    Refresh
+                  </button>
                 </div>
+
+                {recentActivity.length > 0 ? (
+                  <div className="divide-y divide-slate-100 dark:divide-slate-800">
+                    {recentActivity.map((log, idx) => (
+                      <div
+                        key={log._id || idx}
+                        className="py-3 flex items-center justify-between gap-4 text-sm"
+                      >
+                        <div className="flex items-center gap-3 min-w-0">
+                          <div className="w-8 h-8 rounded-lg bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 flex items-center justify-center shrink-0">
+                            <Activity className="w-4 h-4" />
+                          </div>
+                          <div className="min-w-0">
+                            <p className="font-semibold text-slate-900 dark:text-white truncate">
+                              {log.action?.replace(/_/g, " ") || "Admin Action"}
+                            </p>
+                            <p className="text-xs text-slate-500 dark:text-slate-400 truncate">
+                              {log.user?.name || log.user?.email || "System"} •{" "}
+                              {log.details ||
+                                log.targetType ||
+                                "Action recorded"}
+                            </p>
+                          </div>
+                        </div>
+                        <span className="text-xs text-slate-400 dark:text-slate-500 whitespace-nowrap">
+                          {log.createdAt
+                            ? new Date(log.createdAt).toLocaleDateString()
+                            : ""}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="rounded-xl border border-dashed border-slate-200 dark:border-slate-700 px-4 py-10 text-center text-sm text-slate-400 dark:text-slate-500">
+                    {t("adminPanel.noActivity")}
+                  </div>
+                )}
               </div>
             </div>
           ) : activeModule === "templates" ? (
             <TemplateBuilder />
           ) : activeModule === "testimonials" ? (
             <TestimonialsModeration />
+          ) : activeModule === "jobs" ? (
+            <JobsDashboard />
+          ) : activeModule === "embeddings" ? (
+            <EmbeddingReindexAdmin />
+          ) : activeModule === "permissions" ? (
+            <RbacPermissionExplorer />
+          ) : activeModule === "importance" ? (
+            <ImportanceRecalculationAdmin />
+          ) : activeModule === "joinRequests" ? (
+            <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-2xl p-6 shadow-sm">
+              <MembershipRequests organizationId={orgId} />
+            </div>
+          ) : activeModule === "members" ? (
+            <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-2xl p-6 shadow-sm space-y-4">
+              <div className="flex items-center justify-between">
+                <h3 className="text-lg font-bold text-slate-900 dark:text-white">
+                  Organization Members
+                </h3>
+                <button
+                  type="button"
+                  onClick={() => navigate("/admin/members")}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 hover:bg-blue-100 dark:hover:bg-blue-900/50 cursor-pointer"
+                >
+                  <span>Full Management View</span>
+                  <ExternalLink className="w-3.5 h-3.5" />
+                </button>
+              </div>
+
+              {loadingModule ? (
+                <div className="flex justify-center py-10">
+                  <Loader2 className="w-6 h-6 animate-spin text-blue-600" />
+                </div>
+              ) : moduleData.members.length > 0 ? (
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left text-sm">
+                    <thead>
+                      <tr className="border-b border-slate-100 dark:border-slate-800 text-xs uppercase text-slate-400 dark:text-slate-500">
+                        <th className="pb-3">User</th>
+                        <th className="pb-3">Email</th>
+                        <th className="pb-3">Role</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+                      {moduleData.members.map((m) => (
+                        <tr key={m._id || m.user?._id}>
+                          <td className="py-3 font-semibold text-slate-900 dark:text-white">
+                            {m.user?.name || m.name || "Member"}
+                          </td>
+                          <td className="py-3 text-slate-500 dark:text-slate-400">
+                            {m.user?.email || m.email || "—"}
+                          </td>
+                          <td className="py-3">
+                            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold uppercase bg-violet-50 dark:bg-violet-900/30 text-violet-700 dark:text-violet-300">
+                              {m.role || "member"}
+                            </span>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              ) : (
+                <div className="text-center py-8 text-sm text-slate-400 dark:text-slate-500">
+                  No members found.
+                </div>
+              )}
+            </div>
+          ) : activeModule === "organizations" ? (
+            <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-2xl p-6 shadow-sm space-y-4">
+              <div className="flex items-center justify-between">
+                <h3 className="text-lg font-bold text-slate-900 dark:text-white">
+                  Organizations
+                </h3>
+                <button
+                  type="button"
+                  onClick={() => navigate("/organizations/browse")}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-emerald-50 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-100 dark:hover:bg-emerald-900/50 cursor-pointer"
+                >
+                  <span>Browse All</span>
+                  <ExternalLink className="w-3.5 h-3.5" />
+                </button>
+              </div>
+
+              {loadingModule ? (
+                <div className="flex justify-center py-10">
+                  <Loader2 className="w-6 h-6 animate-spin text-emerald-600" />
+                </div>
+              ) : moduleData.organizations.length > 0 ? (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  {moduleData.organizations.map((org) => (
+                    <div
+                      key={org._id || org.id}
+                      className="border border-slate-200/80 dark:border-slate-800 rounded-xl p-4 flex items-center justify-between"
+                    >
+                      <div>
+                        <h4 className="font-bold text-slate-900 dark:text-white">
+                          {org.name}
+                        </h4>
+                        <p className="text-xs text-slate-400 dark:text-slate-500">
+                          Slug: {org.slug || "—"}
+                        </p>
+                      </div>
+                      <span className="text-xs font-semibold px-2.5 py-1 rounded-full bg-emerald-50 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300">
+                        {org.role || "Active"}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-8 text-sm text-slate-400 dark:text-slate-500">
+                  No organizations found.
+                </div>
+              )}
+            </div>
+          ) : activeModule === "meetings" ? (
+            <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-2xl p-6 shadow-sm space-y-4">
+              <div className="flex items-center justify-between gap-3 flex-wrap">
+                <h3 className="text-lg font-bold text-slate-900 dark:text-white">
+                  Meeting Records
+                </h3>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => selectModule("embeddings")}
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-teal-50 dark:bg-teal-900/30 text-teal-700 dark:text-teal-300 hover:bg-teal-100 dark:hover:bg-teal-900/50 cursor-pointer"
+                  >
+                    <Database className="w-3.5 h-3.5" />
+                    Embedding reindex
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => navigate("/meetings")}
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-rose-50 dark:bg-rose-900/30 text-rose-700 dark:text-rose-300 hover:bg-rose-100 dark:hover:bg-rose-900/50 cursor-pointer"
+                  >
+                    <span>View All Meetings</span>
+                    <ExternalLink className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              </div>
+
+              {loadingModule ? (
+                <div className="flex justify-center py-10">
+                  <Loader2 className="w-6 h-6 animate-spin text-rose-600" />
+                </div>
+              ) : moduleData.meetings.length > 0 ? (
+                <div className="divide-y divide-slate-100 dark:divide-slate-800">
+                  {moduleData.meetings.slice(0, 10).map((m) => (
+                    <div
+                      key={m._id || m.id}
+                      className="py-3 flex items-center justify-between gap-4"
+                    >
+                      <div>
+                        <h4 className="font-semibold text-slate-900 dark:text-white">
+                          {m.title || "Untitled Meeting"}
+                        </h4>
+                        <p className="text-xs text-slate-400 dark:text-slate-500 flex items-center gap-1 mt-0.5">
+                          <Clock className="w-3 h-3" />
+                          {m.date
+                            ? new Date(m.date).toLocaleDateString()
+                            : "No date"}
+                          {m.embeddingIndex?.lastIndexedAt
+                            ? ` · indexed ${new Date(m.embeddingIndex.lastIndexedAt).toLocaleDateString()}`
+                            : ""}
+                          {m.embeddingIndex?.status
+                            ? ` · ${m.embeddingIndex.status}`
+                            : ""}
+                        </p>
+                        {m.embeddingIndex?.lastError ? (
+                          <p className="text-xs text-rose-500 mt-1">
+                            {m.embeddingIndex.lastError}
+                          </p>
+                        ) : null}
+                      </div>
+                      <span className="text-xs font-semibold px-2.5 py-0.5 rounded-full bg-rose-50 dark:bg-rose-900/30 text-rose-700 dark:text-rose-300">
+                        {m.status || "Recorded"}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-8 text-sm text-slate-400 dark:text-slate-500">
+                  No meeting records found.
+                </div>
+              )}
+            </div>
+          ) : activeModule === "policies" ? (
+            <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-2xl p-6 shadow-sm space-y-4">
+              <div className="flex items-center justify-between">
+                <h3 className="text-lg font-bold text-slate-900 dark:text-white">
+                  Compliance & Policies
+                </h3>
+                <button
+                  type="button"
+                  onClick={() => navigate("/policies")}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-cyan-50 dark:bg-cyan-900/30 text-cyan-700 dark:text-cyan-300 hover:bg-cyan-100 dark:hover:bg-cyan-900/50 cursor-pointer"
+                >
+                  <span>Policy Repository</span>
+                  <ExternalLink className="w-3.5 h-3.5" />
+                </button>
+              </div>
+
+              {loadingModule ? (
+                <div className="flex justify-center py-10">
+                  <Loader2 className="w-6 h-6 animate-spin text-cyan-600" />
+                </div>
+              ) : moduleData.policies.length > 0 ? (
+                <div className="divide-y divide-slate-100 dark:divide-slate-800">
+                  {moduleData.policies.slice(0, 10).map((p) => (
+                    <div
+                      key={p._id || p.id}
+                      className="py-3 flex items-center justify-between gap-4"
+                    >
+                      <div>
+                        <h4 className="font-semibold text-slate-900 dark:text-white">
+                          {p.title || "Policy Document"}
+                        </h4>
+                        <p className="text-xs text-slate-400 dark:text-slate-500">
+                          {p.category || "General"} • v{p.version || "1.0"}
+                        </p>
+                      </div>
+                      <span className="text-xs font-semibold px-2.5 py-0.5 rounded-full bg-cyan-50 dark:bg-cyan-900/30 text-cyan-700 dark:text-cyan-300">
+                        {p.status || "Active"}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-8 text-sm text-slate-400 dark:text-slate-500">
+                  No policies found.
+                </div>
+              )}
+            </div>
+          ) : activeModule === "reports" ? (
+            <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-2xl p-6 shadow-sm space-y-4">
+              <div className="flex items-center justify-between">
+                <h3 className="text-lg font-bold text-slate-900 dark:text-white">
+                  Reports & Analytics Hub
+                </h3>
+                <button
+                  type="button"
+                  onClick={() => navigate("/reports")}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-indigo-50 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300 hover:bg-indigo-100 dark:hover:bg-indigo-900/50 cursor-pointer"
+                >
+                  <span>Open Full Reports</span>
+                  <ExternalLink className="w-3.5 h-3.5" />
+                </button>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-2">
+                <div
+                  onClick={() => navigate("/attendance-analytics")}
+                  className="border border-slate-200/80 dark:border-slate-800 rounded-xl p-4 cursor-pointer hover:border-indigo-500 dark:hover:border-indigo-500 transition-colors"
+                >
+                  <h4 className="font-semibold text-slate-900 dark:text-white mb-1">
+                    Attendance Analytics
+                  </h4>
+                  <p className="text-xs text-slate-400 dark:text-slate-500">
+                    Track participant engagement and attendance trends.
+                  </p>
+                </div>
+                <div
+                  onClick={() => navigate("/meeting-cost-analytics")}
+                  className="border border-slate-200/80 dark:border-slate-800 rounded-xl p-4 cursor-pointer hover:border-indigo-500 dark:hover:border-indigo-500 transition-colors"
+                >
+                  <h4 className="font-semibold text-slate-900 dark:text-white mb-1">
+                    Meeting Cost Analytics
+                  </h4>
+                  <p className="text-xs text-slate-400 dark:text-slate-500">
+                    Analyze time and financial investment in meetings.
+                  </p>
+                </div>
+                <div
+                  onClick={() => navigate("/leaderboard")}
+                  className="border border-slate-200/80 dark:border-slate-800 rounded-xl p-4 cursor-pointer hover:border-indigo-500 dark:hover:border-indigo-500 transition-colors"
+                >
+                  <h4 className="font-semibold text-slate-900 dark:text-white mb-1">
+                    Hygiene Leaderboard
+                  </h4>
+                  <p className="text-xs text-slate-400 dark:text-slate-500">
+                    Gamified scores and badges for meeting hygiene.
+                  </p>
+                </div>
+              </div>
+            </div>
+          ) : activeModule === "settings" ? (
+            <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-2xl p-6 shadow-sm space-y-4">
+              <div className="flex items-center justify-between">
+                <h3 className="text-lg font-bold text-slate-900 dark:text-white">
+                  Organization Settings
+                </h3>
+                <button
+                  type="button"
+                  onClick={() => navigate("/organization/settings")}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 cursor-pointer"
+                >
+                  <span>Configure Settings</span>
+                  <ExternalLink className="w-3.5 h-3.5" />
+                </button>
+              </div>
+
+              <div className="border border-slate-200/80 dark:border-slate-800 rounded-xl p-4 space-y-2">
+                <p className="text-sm font-semibold text-slate-900 dark:text-white">
+                  Organization: {userData?.organization?.name || "Default Org"}
+                </p>
+                <p className="text-xs text-slate-400 dark:text-slate-500">
+                  Role: {userData?.role || "Member"}
+                </p>
+              </div>
+            </div>
+          ) : activeModule === "activity" ? (
+            <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-2xl p-6 shadow-sm space-y-4">
+              <div className="flex items-center justify-between">
+                <h3 className="text-lg font-bold text-slate-900 dark:text-white">
+                  Administrative Audit Logs
+                </h3>
+                <button
+                  type="button"
+                  onClick={() => navigate("/admin/audit-logs")}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-orange-50 dark:bg-orange-900/30 text-orange-700 dark:text-orange-300 hover:bg-orange-100 dark:hover:bg-orange-900/50 cursor-pointer"
+                >
+                  <span>Open Audit Log Viewer</span>
+                  <ExternalLink className="w-3.5 h-3.5" />
+                </button>
+              </div>
+
+              {loadingModule ? (
+                <div className="flex justify-center py-10">
+                  <Loader2 className="w-6 h-6 animate-spin text-orange-600" />
+                </div>
+              ) : moduleData.auditLogs.length > 0 ? (
+                <div className="divide-y divide-slate-100 dark:divide-slate-800">
+                  {moduleData.auditLogs.map((log, idx) => (
+                    <div
+                      key={log._id || idx}
+                      className="py-3 flex items-center justify-between gap-4 text-sm"
+                    >
+                      <div className="min-w-0">
+                        <p className="font-semibold text-slate-900 dark:text-white truncate">
+                          {log.action?.replace(/_/g, " ") || "Admin Action"}
+                        </p>
+                        <p className="text-xs text-slate-500 dark:text-slate-400">
+                          {log.user?.name || log.user?.email || "System"} •{" "}
+                          {log.details || log.targetType || "Action recorded"}
+                        </p>
+                      </div>
+                      <span className="text-xs text-slate-400 dark:text-slate-500 whitespace-nowrap">
+                        {log.createdAt
+                          ? new Date(log.createdAt).toLocaleDateString()
+                          : ""}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-8 text-sm text-slate-400 dark:text-slate-500">
+                  No activity logs found.
+                </div>
+              )}
+            </div>
           ) : (
             <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-2xl p-8 shadow-sm text-center">
               <div
@@ -304,9 +1028,6 @@ const AdminPanel = () => {
                   ? t(active.descriptionKey)
                   : active.descriptionKey}
               </p>
-              <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 border border-blue-100 dark:border-blue-800">
-                {t("adminPanel.comingSoon")}
-              </span>
             </div>
           )}
         </div>

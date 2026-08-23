@@ -3,6 +3,7 @@ import {
   updateRsvpStatus,
   getPendingRsvpsForUser,
   getMeetingRsvpSummary,
+  getAllRsvpsForUser,
 } from "../services/meetingRsvpService.js";
 import { resolveAccessibleMeeting } from "../utils/resolveAccessibleMeeting.js";
 import MeetingRsvp from "../models/meetingRsvpModel.js";
@@ -138,6 +139,21 @@ export const getPendingRsvps = async (req, res) => {
     });
   } catch (error) {
     console.error("Error getting pending RSVPs:", error);
+    res.status(500).json({ success: false, message: "server_error" });
+  }
+};
+
+/**
+ * Get all RSVPs (pending and past) for the logged-in user
+ */
+export const getAllRsvps = async (req, res) => {
+  try {
+    const userId = req.user.id || req.user._id;
+    const rsvps = await getAllRsvpsForUser(userId);
+
+    res.status(200).json(rsvps);
+  } catch (error) {
+    console.error("Error getting all RSVPs:", error);
     res.status(500).json({ success: false, message: "server_error" });
   }
 };

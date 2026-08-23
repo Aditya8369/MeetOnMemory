@@ -5,12 +5,16 @@ import {
   respondToRsvp,
   getPendingRsvps,
   getMeetingSummary,
+  getAllRsvps,
 } from "../controllers/meetingRsvpController.js";
 
 const router = express.Router();
 
 // Require authentication for all RSVP routes
 router.use(userAuth);
+
+// Get all RSVPs for the logged-in user
+router.get("/", getAllRsvps);
 
 // Get pending RSVPs for the logged-in user
 router.get("/pending", getPendingRsvps);

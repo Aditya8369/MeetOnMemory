@@ -6,6 +6,8 @@ import {
 } from "../../../services";
 import { useCallback, useContext, useEffect, useMemo, useState } from "react";
 import { customFieldApi } from "../../../api/customFieldApi";
+import { focusTimeApi } from "../../../api/focusTimeApi";
+import { calendarAvailabilityApi } from "../../../api/calendarAvailabilityApi";
 import AppContent from "../../../context/AppContent";
 import {
   buildMeetingDraftKey,
@@ -15,6 +17,20 @@ import {
   moveAgendaItem,
   normalizeAgendaItems,
 } from "../../../utils/agendaOrdering";
+import {
+  buildScheduleSlot,
+  findBusyParticipants,
+  findFocusConflicts,
+} from "../utils/scheduleConflicts";
+
+const CONFLICT_MODE_STORAGE_KEY = "meet-on-memory:schedule-conflict-mode";
+
+const readConflictMode = () => {
+  if (typeof window === "undefined") return "soft";
+  return window.localStorage.getItem(CONFLICT_MODE_STORAGE_KEY) === "hard"
+    ? "hard"
+    : "soft";
+};
 
 export const buildDuplicateScheduleState = (duplicateData = {}) => ({
   scheduleData: {
@@ -86,6 +102,13 @@ export const useScheduleMeeting = ({
     policyDetails: null,
     recordingType: "upload",
   });
+
+  const [focusBlocks, setFocusBlocks] = useState([]);
+  const [focusConflicts, setFocusConflicts] = useState([]);
+  const [busyParticipants, setBusyParticipants] = useState([]);
+  const [checkingConflicts, setCheckingConflicts] = useState(false);
+  const [conflictCheckError, setConflictCheckError] = useState("");
+  const [conflictMode, setConflictModeState] = useState(readConflictMode);
 
   const userId = userData?._id || userData?.id;
   const organizationId =
@@ -177,6 +200,108 @@ export const useScheduleMeeting = ({
       cancelled = true;
     };
   }, [userData, draftValues.selectedAiSummaryTemplateId]);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    focusTimeApi
+      .getBlocks()
+      .then((blocks) => {
+        if (!cancelled) setFocusBlocks(Array.isArray(blocks) ? blocks : []);
+      })
+      .catch((error) => {
+        if (!cancelled) {
+          console.error("Failed to fetch focus time blocks:", error);
+          setFocusBlocks([]);
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    const slot = buildScheduleSlot(
+      scheduleData.date,
+      scheduleData.time,
+      scheduleData.duration,
+    );
+
+    if (!slot) {
+      setFocusConflicts([]);
+      setBusyParticipants([]);
+      setCheckingConflicts(false);
+      setConflictCheckError("");
+      return undefined;
+    }
+
+    setFocusConflicts(findFocusConflicts(focusBlocks, slot));
+
+    const attendeeEmails = participants
+      .map((participant) => participant?.email?.trim())
+      .filter((email) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email));
+
+    if (attendeeEmails.length === 0) {
+      setBusyParticipants([]);
+      setCheckingConflicts(false);
+      setConflictCheckError("");
+      return undefined;
+    }
+
+    let cancelled = false;
+    setCheckingConflicts(true);
+    setConflictCheckError("");
+
+    const timer = window.setTimeout(async () => {
+      try {
+        const response = await calendarAvailabilityApi.getFreeBusy({
+          attendeeEmails: [...new Set(attendeeEmails)],
+          timeMin: slot.start.toISOString(),
+          timeMax: slot.end.toISOString(),
+        });
+
+        if (!cancelled) {
+          setBusyParticipants(
+            findBusyParticipants(
+              response?.data || response,
+              participants,
+              slot,
+            ),
+          );
+        }
+      } catch (error) {
+        if (!cancelled) {
+          console.error("Failed to check participant availability:", error);
+          setBusyParticipants([]);
+          setConflictCheckError(
+            "Participant availability could not be checked. You can still schedule unless hard blocking is enabled.",
+          );
+        }
+      } finally {
+        if (!cancelled) setCheckingConflicts(false);
+      }
+    }, 350);
+
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timer);
+    };
+  }, [
+    focusBlocks,
+    participants,
+    scheduleData.date,
+    scheduleData.time,
+    scheduleData.duration,
+  ]);
+
+  const setConflictMode = useCallback((modeValue) => {
+    const nextMode = modeValue === "hard" ? "hard" : "soft";
+    setConflictModeState(nextMode);
+    if (typeof window !== "undefined") {
+      window.localStorage.setItem(CONFLICT_MODE_STORAGE_KEY, nextMode);
+    }
+  }, []);
 
   const hydrateDuplicateMeeting = useCallback((duplicateData) => {
     const duplicated = buildDuplicateScheduleState(duplicateData);
@@ -271,6 +396,22 @@ export const useScheduleMeeting = ({
       return;
     }
 
+    const hasConflicts =
+      focusConflicts.length > 0 || busyParticipants.length > 0;
+    if (hasConflicts && conflictMode === "hard") {
+      toast.error(
+        "Resolve the schedule conflict or switch Conflict behavior to Warn only.",
+      );
+      return;
+    }
+
+    if (checkingConflicts && conflictMode === "hard") {
+      toast.error(
+        "Please wait for participant availability to finish checking.",
+      );
+      return;
+    }
+
     setLoading(true);
     try {
       const payload = {
@@ -299,12 +440,10 @@ export const useScheduleMeeting = ({
         }
         toast.success("✅ Meeting scheduled and synced to calendars!");
 
-        // Trigger calendar integration
         if (response.data.calendarLinks) {
           toast.info("📅 Calendar invites sent to all participants!");
         }
 
-        // Reset form
         setScheduleData({
           title: "",
           description: "",
@@ -327,6 +466,8 @@ export const useScheduleMeeting = ({
           recordingType: "upload",
         });
         setSelectedTemplateId("");
+        setFocusConflicts([]);
+        setBusyParticipants([]);
         clearDraft();
       } else {
         toast.error(response.data?.message || "Failed to schedule meeting");
@@ -347,6 +488,7 @@ export const useScheduleMeeting = ({
     participants,
     newParticipant,
     setNewParticipant,
+    agendaItems,
     newAgenda,
     setNewAgenda,
     attachments,
@@ -376,5 +518,11 @@ export const useScheduleMeeting = ({
     customFields,
     setCustomFields,
     userData,
+    focusConflicts,
+    busyParticipants,
+    checkingConflicts,
+    conflictCheckError,
+    conflictMode,
+    setConflictMode,
   };
 };

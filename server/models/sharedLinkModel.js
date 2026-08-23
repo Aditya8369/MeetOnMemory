@@ -62,4 +62,8 @@ const sharedLinkSchema = new mongoose.Schema(
   { timestamps: true },
 );
 
+sharedLinkSchema.index({ organizationId: 1 });
+sharedLinkSchema.index({ resourceId: 1 });
+sharedLinkSchema.index({ createdBy: 1 });
+
 export default mongoose.model("SharedLink", sharedLinkSchema);

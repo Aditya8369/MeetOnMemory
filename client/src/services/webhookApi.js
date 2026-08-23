@@ -10,4 +10,6 @@ export const webhookApi = {
     apiClient.get(`/api/webhooks/${id}/deliveries`, { params }),
   redeliverPayload: (deliveryId) =>
     apiClient.post(`/api/webhooks/deliveries/${deliveryId}/redeliver`),
+  rotateSecret: (id) => apiClient.post(`/api/webhooks/${id}/rotate-secret`),
+  ping: (id) => apiClient.post(`/api/webhooks/${id}/ping`),
 };

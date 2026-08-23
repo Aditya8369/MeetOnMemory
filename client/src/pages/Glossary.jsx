@@ -30,7 +30,8 @@ const Glossary = () => {
       setLoading(true);
       setError(null);
       const data = await fetchTerms({ search: searchTerm });
-      setTerms(data || []);
+      const termsList = Array.isArray(data) ? data : data?.terms || [];
+      setTerms(termsList);
     } catch (loadError) {
       console.error("Failed to load glossary terms:", loadError);
       setError("We couldn't load the glossary right now. Please try again.");

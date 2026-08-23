@@ -11,7 +11,26 @@ const MeetingAgenda = ({ meeting }) => {
   const agendaItems = normalizeAgendaItems(meeting?.agendaItems || []);
   if (agendaItems.length === 0) return null;
 
-  const isHost = currentUser?.publicMetadata?.dbUserId === meeting?.uploadedBy;
+  const currentDbUserId = currentUser?.publicMetadata?.dbUserId;
+  const isHost =
+    currentDbUserId &&
+    meeting?.uploadedBy &&
+    currentDbUserId === meeting.uploadedBy;
+
+  const participantDoc = meeting?.participants?.find(
+    (p) =>
+      (p.user &&
+        currentDbUserId &&
+        p.user.toString() === currentDbUserId.toString()) ||
+      (p.email &&
+        currentUser?.emailAddresses?.some(
+          (e) => e.emailAddress.toLowerCase() === p.email.toLowerCase(),
+        )),
+  );
+
+  const isParticipant =
+    isHost || (participantDoc && participantDoc.role !== "guest");
+
   const isPreMeeting =
     meeting?.agendaProgress === "not_started" || !meeting?.agendaProgress;
 
@@ -35,6 +54,7 @@ const MeetingAgenda = ({ meeting }) => {
           onRemoveVote={removeVote}
           onAutoSort={handleAutoSort}
           isHost={isHost}
+          isParticipant={isParticipant}
         />
       )}
       <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6">

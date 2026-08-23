@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useMemo } from "react";
 import { toast } from "react-toastify";
 import { meetingApi } from "../services";
 import apiClient from "../services/apiClient.js";
+import { focusTimeApi } from "../api/focusTimeApi";
 
 /**
  * Custom hook for managing calendar events with server-side pagination
@@ -18,6 +19,7 @@ import apiClient from "../services/apiClient.js";
 export const useCalendarEvents = () => {
   // Core state
   const [meetings, setMeetings] = useState([]);
+  const [focusBlocks, setFocusBlocks] = useState([]);
   const [loading, setLoading] = useState(true);
   const [currentDate, setCurrentDate] = useState(new Date());
   const [view, setView] = useState("month"); // 'month' | 'week' | 'day'
@@ -157,6 +159,14 @@ export const useCalendarEvents = () => {
       });
       setDateRangeCache(newCache);
 
+      // Fetch focus time blocks
+      try {
+        const blocks = await focusTimeApi.getBlocks();
+        setFocusBlocks(blocks || []);
+      } catch (focusErr) {
+        console.error("Focus blocks fetch error:", focusErr);
+      }
+
       setMeetings(allMeetings);
     } catch (err) {
       console.error("Fetch meetings error:", err);
@@ -276,6 +286,7 @@ export const useCalendarEvents = () => {
     hasMore,
     loadMoreMeetings,
     invalidateCache,
+    focusBlocks,
     pagination: {
       page,
       totalPages,

@@ -95,6 +95,31 @@ vi.mock("../../components/meetings/ParkingLotPanel.jsx", () => ({
   default: () => <div data-testid="parking-lot-content">Parking Lot Panel</div>,
 }));
 
+vi.mock("../../components/meeting-details/PollSection.jsx", () => ({
+  default: ({ meetingId, title, socket }) => (
+    <div
+      data-testid="poll-section"
+      data-meeting-id={meetingId}
+      data-has-socket={socket ? "yes" : "no"}
+    >
+      {title}
+    </div>
+  ),
+}));
+
+vi.mock("../../components/meeting-details/AgendaTimer.jsx", () => ({
+  default: ({ meeting, socket, compact, readOnly }) => (
+    <div
+      data-testid={compact ? "agenda-timer-banner" : "agenda-timer"}
+      data-meeting-id={meeting?._id}
+      data-has-socket={socket ? "yes" : "no"}
+      data-readonly={readOnly ? "yes" : "no"}
+    >
+      Agenda for {meeting?._id}
+    </div>
+  ),
+}));
+
 vi.mock("../../components/meetings/LiveCaptions.jsx", () => ({
   default: () => <div data-testid="captions">Captions</div>,
 }));
@@ -230,16 +255,30 @@ describe("MeetingRoom exclusive panel state (#1648)", () => {
     fireEvent.click(screen.getByRole("button", { name: /^notes$/i }));
     fireEvent.click(screen.getByRole("button", { name: /parking lot/i }));
     fireEvent.click(screen.getByRole("button", { name: /transcript/i }));
+    fireEvent.click(screen.getByRole("button", { name: /^polls$/i }));
+    fireEvent.click(screen.getByRole("button", { name: /^agenda$/i }));
 
     const visiblePanels = [
       screen.queryByTestId("meeting-room-notes-panel"),
       screen.queryByTestId("meeting-room-parking-lot-panel"),
       screen.queryByTestId("meeting-room-transcript-panel"),
+      screen.queryByTestId("meeting-room-polls-panel"),
+      screen.queryByTestId("meeting-room-agenda-panel"),
     ].filter(Boolean);
 
     expect(visiblePanels).toHaveLength(1);
+    expect(screen.getByTestId("meeting-room-agenda-panel")).toBeInTheDocument();
+  });
+
+  it("opens the live agenda panel and reuses the meeting socket", async () => {
+    render(<MeetingRoom />, { wrapper });
+    await joinMeeting();
+
+    fireEvent.click(screen.getByRole("button", { name: /^agenda$/i }));
+
+    expect(screen.getByTestId("meeting-room-agenda-panel")).toBeInTheDocument();
     expect(
-      screen.getByTestId("meeting-room-transcript-panel"),
-    ).toBeInTheDocument();
+      screen.queryByTestId("meeting-room-polls-panel"),
+    ).not.toBeInTheDocument();
   });
 });

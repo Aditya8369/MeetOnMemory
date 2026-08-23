@@ -1,4 +1,4 @@
-import api from "./apiClient";
+import api from "./apiClient.js";
 
 const meetingRsvpApi = {
   /**
@@ -6,7 +6,15 @@ const meetingRsvpApi = {
    * @returns {Promise<Object>} Response data
    */
   getPendingRsvps: async () => {
-    return await api.get("/rsvps/pending");
+    return await api.get("/api/rsvps/pending");
+  },
+
+  /**
+   * Get all RSVPs for the logged-in user
+   * @returns {Promise<Object>} Response data
+   */
+  getAllRsvps: async () => {
+    return await api.get("/api/rsvps");
   },
 
   /**
@@ -15,7 +23,7 @@ const meetingRsvpApi = {
    * @returns {Promise<Object>} Response data
    */
   getMeetingSummary: async (meetingId) => {
-    return await api.get(`/rsvps/meeting/${meetingId}`);
+    return await api.get(`/api/rsvps/meeting/${meetingId}`);
   },
 
   /**
@@ -25,7 +33,7 @@ const meetingRsvpApi = {
    * @returns {Promise<Object>} Response data
    */
   sendRsvpRequests: async (meetingId, userIds) => {
-    return await api.post(`/rsvps/send/${meetingId}`, { userIds });
+    return await api.post(`/api/rsvps/send/${meetingId}`, { userIds });
   },
 
   /**
@@ -35,7 +43,7 @@ const meetingRsvpApi = {
    * @returns {Promise<Object>} Response data
    */
   respondToRsvp: async (meetingId, responseData) => {
-    return await api.put(`/rsvps/${meetingId}/respond`, responseData);
+    return await api.put(`/api/rsvps/${meetingId}/respond`, responseData);
   },
 };
 

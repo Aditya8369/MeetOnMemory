@@ -6,7 +6,6 @@ import {
   getDecisionLineageController,
   getOpenActionItems,
   getDecisions,
-  getArchivedMemories,
   getLifecycleMemories,
   submitMemoryFeedback,
   recalculateImportance,
@@ -15,6 +14,15 @@ import {
   runMemoryLifecycleSweep,
   updateMemoryLifecycleState,
 } from "../controllers/knowledgeController.js";
+import { bulkTransitionMemoryLifecycle } from "../controllers/memoryLifecycleBulkController.js";
+import {
+  getMemoryLifecycleRetentionPolicy,
+  updateMemoryLifecycleRetentionPolicy,
+} from "../controllers/memoryLifecycleRetentionController.js";
+import {
+  getArchivedMemoriesWithFacets,
+  bulkRestoreArchivedMemories,
+} from "../controllers/archiveController.js";
 import {
   runConsolidation,
   getConsolidationHistory,
@@ -80,7 +88,14 @@ router.get(
   "/archive",
   requireOrgMembership,
   requirePermission("knowledge", "view"),
-  getArchivedMemories,
+  getArchivedMemoriesWithFacets,
+);
+router.post(
+  "/archive/restore",
+  writeLimiter,
+  requireOrgMembership,
+  requirePermission("knowledge", "manage_lifecycle"),
+  bulkRestoreArchivedMemories,
 );
 router.get(
   "/decisions/:id/lineage",
@@ -124,12 +139,32 @@ router.post(
   recalculateImportance,
 );
 
-// --- Memory Lifecycle Management (#377, #1552) ---
+// --- Memory Lifecycle Management ---
 router.get(
   "/lifecycle",
   requireOrgMembership,
   requirePermission("knowledge", "view"),
   getLifecycleMemories,
+);
+router.get(
+  "/lifecycle/retention-policy",
+  requireOrgMembership,
+  requirePermission("knowledge", "manage_lifecycle"),
+  getMemoryLifecycleRetentionPolicy,
+);
+router.patch(
+  "/lifecycle/retention-policy",
+  writeLimiter,
+  requireOrgMembership,
+  requirePermission("knowledge", "manage_lifecycle"),
+  updateMemoryLifecycleRetentionPolicy,
+);
+router.post(
+  "/lifecycle/bulk",
+  writeLimiter,
+  requireOrgMembership,
+  requirePermission("knowledge", "manage_lifecycle"),
+  bulkTransitionMemoryLifecycle,
 );
 router.post(
   "/lifecycle/run",

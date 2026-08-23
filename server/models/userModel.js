@@ -68,6 +68,9 @@ const userSchema = new mongoose.Schema(
   { timestamps: true },
 );
 
+userSchema.index({ organization: 1 });
+userSchema.index({ organization: 1, role: 1 });
+
 const userModel = mongoose.models.user || mongoose.model("user", userSchema);
 if (!mongoose.models.User) {
   mongoose.model("User", userSchema);

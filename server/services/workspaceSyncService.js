@@ -7,7 +7,7 @@ class WorkspaceSyncService {
   constructor() {
     this.geminiApiKey = process.env.GEMINI_API_KEY;
     this.geminiModel = process.env.GEMINI_MODEL || "gemini-1.5-flash";
-    this.geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${this.geminiModel}:generateContent?key=${this.geminiApiKey}`;
+    this.geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${this.geminiModel}:generateContent`;
   }
 
   /**
@@ -180,7 +180,12 @@ class WorkspaceSyncService {
             responseMimeType: "application/json",
           },
         },
-        { timeout: 10000 },
+        {
+          timeout: 10000,
+          headers: {
+            "x-goog-api-key": this.geminiApiKey,
+          },
+        },
       );
 
       const rawText = response.data.candidates?.[0]?.content?.parts?.[0]?.text;

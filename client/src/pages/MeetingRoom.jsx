@@ -14,12 +14,18 @@ import { toast } from "react-toastify";
 import { Loader2, CheckCircle2 } from "lucide-react";
 import CollaborativeEditor from "../components/meetings/CollaborativeEditor.jsx";
 import ParkingLotPanel from "../components/meetings/ParkingLotPanel.jsx";
+import BreakoutRoomPanel from "../components/meeting-room/BreakoutRoomPanel.jsx";
+import PollSection from "../components/meeting-details/PollSection.jsx";
+import AgendaTimer from "../components/meeting-details/AgendaTimer.jsx";
 import PeerVideo from "../components/meetings/PeerVideo.jsx";
 import MeetingHeader from "../components/meetings/MeetingHeader.jsx";
 import MeetingControlBar from "../components/meetings/MeetingControlBar.jsx";
 import TranscriptPanel from "../components/meetings/TranscriptPanel.jsx";
+import MultiLanguageTranscript from "../components/meeting-room/MultiLanguageTranscript.jsx";
 import LiveCaptions from "../components/meetings/LiveCaptions.jsx";
 import DeviceSetupModal from "../components/meetings/DeviceSetupModal.jsx";
+import axios from "../services/apiClient.js";
+import FacilitatorDashboard from "./FacilitatorDashboard.jsx";
 import useWebRTC from "../hooks/useWebRTC";
 import useDevicePermission from "../hooks/useDevicePermission";
 import useLiveTranscription from "../hooks/useLiveTranscription";
@@ -53,6 +59,9 @@ const MEETING_ROOM_PANELS = {
   NOTES: "notes",
   PARKING_LOT: "parkingLot",
   TRANSCRIPT: "transcript",
+  BREAKOUT_ROOMS: "breakoutRooms",
+  POLLS: "polls",
+  AGENDA: "agenda",
 };
 
 const MeetingRoom = () => {
@@ -61,6 +70,8 @@ const MeetingRoom = () => {
   const { userData } = useContext(AppContent);
   const { isSignedIn, isLoaded, userId } = useAuth();
   const [socket, setSocket] = useState(null);
+  const [meeting, setMeeting] = useState(null);
+  const [userRole, setUserRole] = useState(null);
   const localUserInfo = useMemo(() => buildLocalUserInfo(userData), [userData]);
   const localUserInfoRef = useRef(localUserInfo);
   localUserInfoRef.current = localUserInfo;
@@ -103,6 +114,9 @@ const MeetingRoom = () => {
   const showNotes = activePanel === MEETING_ROOM_PANELS.NOTES;
   const showParkingLot = activePanel === MEETING_ROOM_PANELS.PARKING_LOT;
   const showTranscript = activePanel === MEETING_ROOM_PANELS.TRANSCRIPT;
+  const showBreakoutRooms = activePanel === MEETING_ROOM_PANELS.BREAKOUT_ROOMS;
+  const showPolls = activePanel === MEETING_ROOM_PANELS.POLLS;
+  const showAgenda = activePanel === MEETING_ROOM_PANELS.AGENDA;
 
   // Transcription state
   const [showCaptions] = useState(true);
@@ -150,6 +164,28 @@ const MeetingRoom = () => {
     }
     return () => clearInterval(interval);
   }, [timerState.isRunning, meetingEnded]);
+
+  useEffect(() => {
+    if (!roomId) return;
+    const fetchMeetingData = async () => {
+      try {
+        const [meetingRes, rolesRes] = await Promise.all([
+          axios.get(`/api/meetings/${roomId}`),
+          axios.get(`/api/meetings/${roomId}/roles`),
+        ]);
+        setMeeting(meetingRes.data.meeting);
+        const myRoleObj = rolesRes.data.find(
+          (r) => r.userId?._id === userId || r.userId === userId,
+        );
+        if (myRoleObj) {
+          setUserRole(myRoleObj.role);
+        }
+      } catch (error) {
+        console.error("Failed to fetch meeting data:", error);
+      }
+    };
+    fetchMeetingData();
+  }, [roomId, userId]);
 
   const setupSocketListeners = (activeSocket) => {
     const userInfo = localUserInfoRef.current;
@@ -532,7 +568,25 @@ const MeetingRoom = () => {
       )}
 
       {/* ---------- ACTIVE MEETING SCREEN ---------- */}
-      {joined && !meetingEnded && (
+      {joined && !meetingEnded && userRole === "facilitator" && meeting && (
+        <div className="flex-1 flex flex-col min-h-0">
+          <AgendaTimer
+            meeting={meeting}
+            socket={socketRef?.current || socket}
+          />
+          <FacilitatorDashboard
+            meeting={meeting}
+            onAdvanceAgenda={() => {
+              // emit socket event to advance agenda
+            }}
+            onNudgeParticipant={() => {
+              toast.success("Nudge sent to participant");
+            }}
+          />
+        </div>
+      )}
+
+      {joined && !meetingEnded && userRole !== "facilitator" && (
         <div className="flex-1 flex flex-col min-h-0 bg-gray-900 relative">
           <MeetingHeader
             roomId={roomId}
@@ -545,6 +599,14 @@ const MeetingRoom = () => {
             toggleTranscription={toggleTranscription}
           />
           <ReactionOverlay reactions={reactions} />
+
+          {meeting && (
+            <AgendaTimer
+              meeting={meeting}
+              socket={socketRef?.current || socket}
+              compact
+            />
+          )}
 
           {/* Main content area: video grid + notes panel */}
           <div className="flex-1 flex min-h-0 overflow-hidden">
@@ -588,6 +650,16 @@ const MeetingRoom = () => {
                       className={`w-2 h-2 rounded-full shrink-0 ${micOn ? "bg-green-500" : "bg-red-500"}`}
                     />
                     <span className="truncate">{localUserInfo.name}</span>
+                    {userRole === "scribe" && (
+                      <span className="ml-1 bg-blue-500/20 text-blue-300 text-[10px] px-1.5 py-0.5 rounded border border-blue-500/30">
+                        📝 Scribe
+                      </span>
+                    )}
+                    {userRole === "timekeeper" && (
+                      <span className="ml-1 bg-emerald-500/20 text-emerald-300 text-[10px] px-1.5 py-0.5 rounded border border-emerald-500/30">
+                        ⏱️ Timekeeper
+                      </span>
+                    )}
                     {isScreenSharing && (
                       <span className="text-[10px] sm:text-xs text-indigo-300 shrink-0">
                         Sharing
@@ -633,11 +705,58 @@ const MeetingRoom = () => {
               </div>
             )}
 
+            {/* Breakout Rooms Panel */}
+            {showBreakoutRooms && (
+              <div
+                data-testid="meeting-room-breakout-rooms-panel"
+                className="w-full md:w-[360px] lg:w-[400px] shrink-0 bg-gray-950 border-l border-gray-800 overflow-hidden flex flex-col transition-all duration-300"
+              >
+                <BreakoutRoomPanel
+                  meetingId={roomId}
+                  isHost={
+                    userData?.role === "admin" ||
+                    userData?.role === "host" ||
+                    true
+                  }
+                  currentUserId={userData?._id || userId}
+                  socket={socketRef?.current || socket}
+                />
+              </div>
+            )}
+
+            {showPolls && (
+              <div
+                data-testid="meeting-room-polls-panel"
+                className="w-full md:w-[360px] lg:w-[400px] shrink-0 p-4 bg-gray-950 border-l border-gray-800 overflow-y-auto flex flex-col transition-all duration-300"
+              >
+                <PollSection
+                  meetingId={roomId}
+                  socket={socketRef?.current || socket}
+                  title="Live Polls"
+                />
+              </div>
+            )}
+
+            {showAgenda && (
+              <div
+                data-testid="meeting-room-agenda-panel"
+                className="w-full md:w-[360px] lg:w-[400px] shrink-0 p-4 bg-gray-950 border-l border-gray-800 overflow-y-auto flex flex-col transition-all duration-300"
+              >
+                {meeting ? (
+                  <AgendaTimer
+                    meeting={meeting}
+                    socket={socketRef?.current || socket}
+                  />
+                ) : null}
+              </div>
+            )}
+
             {/* Transcript Panel */}
             <TranscriptPanel
               showTranscript={showTranscript}
               onClose={closePanel}
               transcriptSegments={transcriptSegments}
+              meetingId={roomId}
             />
           </div>
 

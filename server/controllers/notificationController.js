@@ -1,4 +1,5 @@
 // server/controllers/notificationController.js
+import mongoose from "mongoose";
 import notificationModel from "../models/notificationModel.js";
 import { sendSuccess, sendError } from "../utils/responseHandler.js";
 import NotificationPreference from "../models/notificationPreferenceModel.js";
@@ -228,17 +229,21 @@ export const updatePreferences = async (req, res) => {
       "emailMeetingReminders",
       "emailTaskAssignments",
       "emailWeeklyDigest",
+      "emailDailyDigest",
       "pushMeetingReminders",
       "pushTaskAssignments",
       "pushAiProcessingComplete",
       "pushOrganizationUpdates",
       "pushPolicyUpdates",
       "pushReportUpdates",
+      "quietHoursStart",
+      "quietHoursEnd",
+      "timezone",
     ];
 
     const updates = {};
     for (const field of allowedFields) {
-      if (typeof req.body[field] === "boolean") {
+      if (req.body[field] !== undefined) {
         updates[field] = req.body[field];
       }
     }
@@ -256,6 +261,106 @@ export const updatePreferences = async (req, res) => {
     sendSuccess(res, { preferences }, "Preferences updated successfully");
   } catch (error) {
     console.error("Error in updatePreferences:", error);
+    sendError(res, 500, "Server error");
+  }
+};
+
+// @desc    Mark a group of notifications as read (Issue #2064)
+// @route   PATCH /api/notifications/mark-group-read
+// @access  Private
+export const markGroupAsRead = async (req, res) => {
+  try {
+    if (!req.user || !req.user.id) {
+      return sendError(res, 401, "Authentication error, user ID not found.");
+    }
+
+    const ids = Array.isArray(req.body?.ids) ? req.body.ids : [];
+    const cleanIds = ids
+      .filter((id) => typeof id === "string" && mongoose.isValidObjectId(id))
+      .map((id) => id);
+
+    if (cleanIds.length === 0) {
+      return sendError(res, 400, "Provide at least one valid notification id.");
+    }
+
+    const result = await notificationModel.updateMany(
+      {
+        _id: { $in: cleanIds },
+        user: req.user.id,
+        isRead: false,
+      },
+      { isRead: true },
+    );
+
+    sendSuccess(
+      res,
+      { modifiedCount: result.modifiedCount },
+      "Group marked as read",
+    );
+  } catch (error) {
+    console.error("Error in markGroupAsRead:", error);
+    sendError(res, 500, "Server error");
+  }
+};
+
+// @desc    Mute in-app notifications for a meeting (Issue #2064)
+// @route   POST /api/notifications/mute-meeting/:meetingId
+// @access  Private
+export const muteMeeting = async (req, res) => {
+  try {
+    if (!req.user || !req.user.id) {
+      return sendError(res, 401, "Authentication error, user ID not found.");
+    }
+
+    const { meetingId } = req.params;
+    if (!mongoose.isValidObjectId(meetingId)) {
+      return sendError(res, 400, "Invalid meeting id");
+    }
+
+    const preferences = await NotificationPreference.findOneAndUpdate(
+      { user: req.user.id },
+      { $addToSet: { mutedMeetingIds: meetingId } },
+      { new: true, upsert: true },
+    );
+
+    sendSuccess(
+      res,
+      { preferences, muted: true, meetingId },
+      "Meeting notifications muted",
+    );
+  } catch (error) {
+    console.error("Error in muteMeeting:", error);
+    sendError(res, 500, "Server error");
+  }
+};
+
+// @desc    Unmute in-app notifications for a meeting (Issue #2064)
+// @route   DELETE /api/notifications/mute-meeting/:meetingId
+// @access  Private
+export const unmuteMeeting = async (req, res) => {
+  try {
+    if (!req.user || !req.user.id) {
+      return sendError(res, 401, "Authentication error, user ID not found.");
+    }
+
+    const { meetingId } = req.params;
+    if (!mongoose.isValidObjectId(meetingId)) {
+      return sendError(res, 400, "Invalid meeting id");
+    }
+
+    const preferences = await NotificationPreference.findOneAndUpdate(
+      { user: req.user.id },
+      { $pull: { mutedMeetingIds: meetingId } },
+      { new: true, upsert: true },
+    );
+
+    sendSuccess(
+      res,
+      { preferences, muted: false, meetingId },
+      "Meeting notifications unmuted",
+    );
+  } catch (error) {
+    console.error("Error in unmuteMeeting:", error);
     sendError(res, 500, "Server error");
   }
 };

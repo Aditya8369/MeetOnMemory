@@ -9,6 +9,7 @@ import searchRoutes from "./searchRoutes.js";
 import aiRoutes from "./aiRoutes.js";
 import policyRoutes from "./policyRoutes.js";
 import analyticsRoutes from "./analyticsRoutes.js";
+import actionItemAnalyticsRoutes from "./actionItemAnalyticsRoutes.js";
 import geminiRoutes from "./geminiRoutes.js";
 import notesRoutes from "./notes.routes.js";
 import userRoutes from "./userRoutes.js";
@@ -34,6 +35,7 @@ import dashboardRoutes from "./dashboardRoutes.js";
 import agendaTimerRoutes from "./agendaTimerRoutes.js";
 import digestRoutes from "./digestRoutes.js";
 import decisionGraphRoutes from "./decisionGraphRoutes.js";
+import decisionLogRoutes from "./decisionLogRoutes.js";
 import attendanceAnalyticsRoutes from "./attendanceAnalyticsRoutes.js";
 import meetingFeedbackRoutes from "./meetingFeedbackRoutes.js";
 import meetingCostRoutes from "./meetingCostRoutes.js";
@@ -60,6 +62,7 @@ import recapRoutes from "./recapRoutes.js";
 import focusTimeRoutes from "./focusTimeRoutes.js";
 import recapStoryRoutes from "./recapStoryRoutes.js";
 import meetingQualityRoutes from "./meetingQualityRoutes.js";
+import effectivenessRoutes from "./effectivenessRoutes.js";
 import exportRoutes from "./export.routes.js";
 import keyMomentRoutes from "./keyMomentRoutes.js";
 import meetingGoalRoutes from "./meetingGoalRoutes.js";
@@ -90,6 +93,9 @@ import breakoutRoomRoutes from "./breakoutRoomRoutes.js";
 import notionIntegrationRoutes from "./notionIntegrationRoutes.js";
 import gamificationRoutes from "./gamificationRoutes.js";
 import actionItemsRoutes from "./actionItems.routes.js";
+import workloadRoutes from "./workloadRoutes.js";
+import minutesApprovalRoutes from "./minutesApprovalRoutes.js";
+import teamAvailabilityRoutes from "./teamAvailabilityRoutes.js";
 
 const router = express.Router();
 
@@ -118,21 +124,15 @@ router.use("/api/search", searchRoutes);
 router.use("/api/ai", aiRoutes);
 router.use("/api/policies", policyRoutes);
 router.use("/api/analytics", analyticsRoutes);
+router.use("/api/action-item-analytics", actionItemAnalyticsRoutes);
 router.use("/api/gemini", geminiRoutes);
 router.use("/api/notes", notesRoutes);
 router.use("/api/favorites", favoriteRoutes);
 router.use(["/api/user", "/api/users"], userRoutes);
 router.use(["/api/notification", "/api/notifications"], notificationRoutes);
 router.use("/api/knowledge", knowledgeRoutes);
-// The Knowledge Graph page (client/src/pages/KnowledgeGraph.jsx) and the
-// controller's own JSDoc both address this router as /api/graph. It had no
-// registration at all until Issue #1560, so every one of its endpoints 404'd.
 router.use("/api/graph", knowledgeGraphRoutes);
 router.use("/api/calendar", calendarRoutes);
-// client/src/services/policyComplianceApi.js and every @route line in
-// policyComplianceController.js address this router as /api/policy-compliance.
-// It was mounted at /api/compliance, which nothing calls, so the whole
-// compliance dashboard 404'd (Issue #1562).
 router.use("/api/policy-compliance", policyComplianceRoutes);
 router.use("/api/sessions", sessionRoutes);
 router.use("/api/assistant", assistantRoutes);
@@ -146,34 +146,32 @@ router.use("/api/tags", tagRoutes);
 router.use("/api/polls", pollRoutes);
 router.use("/api/meetings/:meetingId/topics", topicRoutes);
 router.use("/api/meetings/:meetingId/breakout-rooms", breakoutRoomRoutes);
+router.use("/api/workload", workloadRoutes);
 router.use("/api/meetings/:meetingId/attachments", attachmentRoutes);
+router.use("/api/meetings/:meetingId/minutes-approval", minutesApprovalRoutes);
 router.use("/api/meeting-series", meetingSeriesRoutes);
 router.use("/api/meeting-series", carryForwardRoutes);
+router.use("/api", carryForwardRoutes);
 router.use("/api/comparison", comparisonRoutes);
 router.use("/api/dashboard", dashboardRoutes);
 router.use("/api/digest-preferences", digestRoutes);
 router.use("/api/decision-graph", decisionGraphRoutes);
+router.use("/api/decision-log", decisionLogRoutes);
 router.use("/api/attendance-analytics", attendanceAnalyticsRoutes);
 router.use("/api/feedback", meetingFeedbackRoutes);
 router.use("/api/meeting-cost", meetingCostRoutes);
 router.use("/api/follow-up-threads", followUpThreadRoutes);
-// Follow-Up Workflow REST API (tasks/reminders/analytics) — Issue #1529.
-// Distinct from /api/follow-up-threads (discussion threads). Frontend uses /api/followup/*.
 router.use("/api/followup", followUpRoutes);
-// Smart Scheduler — propose / retrieve / confirm (Issue #1530)
 router.use("/api/scheduler", schedulerRoutes);
-// Recap schedule + delivery history (GET /history/deliveries) — Issue #1401
 router.use("/api/recap-schedule", recapScheduleRoutes);
 router.use("/api/clips", meetingClipRoutes);
-router.use("/api/speaker-mappings", speakerMappingRoutes);
+router.use(
+  ["/api/speaker-mapping", "/api/speaker-mappings"],
+  speakerMappingRoutes,
+);
 router.use("/api/note-versions", noteVersionRoutes);
 router.use("/api/reports", reportRoutes);
 router.use("/api/agenda-suggestions", agendaSuggestionRoutes);
-// Both spellings are in live use by the client and neither can be dropped
-// without breaking a page: services/translationApi.js calls /api/translations,
-// while MultiLanguageTranscript.jsx and LanguagePreferences.jsx call
-// /api/translation, which was never mounted (Issue #1563). Aliased in the same
-// style as /api/organization and /api/user above.
 router.use(["/api/translation", "/api/translations"], translationRoutes);
 router.use("/api/personal-notes", personalNoteRoutes);
 router.use("/api/template-library", templateLibraryRoutes);
@@ -187,11 +185,8 @@ router.use("/api/workspace", workspaceRoutes);
 router.use("/api/recap", recapRoutes);
 router.use("/api/focus-time", focusTimeRoutes);
 router.use("/api/meetings", recapStoryRoutes);
-// /api/quality is the prefix MeetingQuality.jsx calls and the prefix every
-// @route line in meetingQualityController.js documents. The router was mounted
-// at /api/meeting-quality, which nothing referenced, so the page 404'd on every
-// request (Issue #1561).
 router.use("/api/quality", meetingQualityRoutes);
+router.use("/api/effectiveness", effectivenessRoutes);
 router.use(["/api/export-templates", "/api/exports"], exportRoutes);
 router.use("/api/saved-filters", savedFilterRoutes);
 router.use("/api/key-moments", keyMomentRoutes);
@@ -203,6 +198,16 @@ router.use("/api/sentiment-timeline", sentimentTimelineRoutes);
 router.use("/api/rsvps", meetingRsvpRoutes);
 router.use("/api/testimonials", testimonialRoutes);
 router.use("/api/admin/testimonials", adminTestimonialRouter);
+import adminJobsRoutes from "./adminJobsRoutes.js";
+router.use("/api/admin/jobs", adminJobsRoutes);
+import adminReindexRoutes from "./adminReindexRoutes.js";
+router.use("/api/admin/embeddings", adminReindexRoutes);
+import adminImportanceRoutes from "./adminImportanceRoutes.js";
+router.use("/api/admin/importance", adminImportanceRoutes);
+import adminHealthRoutes from "./adminHealthRoutes.js";
+router.use("/api/admin/health", adminHealthRoutes);
+import adminRbacRoutes from "./adminRbacRoutes.js";
+router.use("/api/admin/rbac", adminRbacRoutes);
 router.use("/api/alerts/keywords", keywordAlertRoutes);
 router.use("/api/integrations/notion", notionIntegrationRoutes);
 
@@ -234,5 +239,24 @@ router.use("/api/patterns", meetingPatternRoutes);
 import guestAccessRoutes from "./guestAccessRoutes.js";
 router.use("/api", guestAccessRoutes);
 router.use("/api/custom-fields", customFieldRoutes);
+
+import meetingNudgeRoutes from "./meetingNudgeRoutes.js";
+router.use("/api/nudges", meetingNudgeRoutes);
+
+import dataRetentionRoutes from "./dataRetentionRoutes.js";
+router.use("/api/data-retention", dataRetentionRoutes);
+import weeklyInsightRoutes from "./weeklyInsightRoutes.js";
+router.use("/api/weekly-insights", weeklyInsightRoutes);
+import standupReportRoutes from "./standupReportRoutes.js";
+router.use("/api/standups", standupReportRoutes);
+import meetingRiskRoutes from "./meetingRiskRoutes.js";
+router.use("/api/meeting-risks", meetingRiskRoutes);
+
+import actionItemSlaRoutes from "./actionItemSlaRoutes.js";
+router.use("/api/action-item-sla", actionItemSlaRoutes);
+
+router.use("/api/team-availability", teamAvailabilityRoutes);
+import actionItemTemplateRoutes from "./actionItemTemplateRoutes.js";
+router.use("/api/action-item-templates", actionItemTemplateRoutes);
 
 export default router;

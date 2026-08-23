@@ -13,6 +13,13 @@ import {
 } from "../utils/errors.js";
 import { sendSuccess } from "../utils/responseHandler.js";
 import { isSafeWebhookUrl } from "../utils/webhookUrlSafety.js";
+import {
+  WEBHOOK_EVENT_NAMES,
+  isSupportedWebhookEvent,
+} from "../config/webhookEvents.js";
+
+// Register the expanded EventBus -> webhook bridge once the controller is loaded.
+import "../services/webhookEventListeners.js";
 
 // Helper to verify user permissions (must be Owner or Admin of the target Organization)
 const hasAdminPermission = async (userId, organizationId) => {
@@ -22,12 +29,10 @@ const hasAdminPermission = async (userId, organizationId) => {
     const org = await Organization.findById(organizationId);
     if (!org) return false;
 
-    // Check if user is the direct owner of the organization
     if (org.owner.toString() === userId.toString()) {
       return true;
     }
 
-    // Check if user has an active admin membership role
     const membership = await Membership.findOne({
       user: userId,
       organization: organizationId,
@@ -46,6 +51,10 @@ const hasAdminPermission = async (userId, organizationId) => {
 // Zod schemas for payload validation
 // ═══════════════════════════════════════════════════════════════
 
+const webhookEventSchema = z.string().refine(isSupportedWebhookEvent, {
+  message: `Unsupported webhook event. Allowed events: ${WEBHOOK_EVENT_NAMES.join(", ")}`,
+});
+
 const createWebhookSchema = z.object({
   targetUrl: z
     .string({ required_error: "Target URL is required." })
@@ -59,7 +68,7 @@ const createWebhookSchema = z.object({
         "Target URL must be a public, safe address. Local/private addresses are not permitted.",
     }),
   events: z
-    .array(z.enum(["meeting.created", "mom.generated", "policy.updated"]), {
+    .array(webhookEventSchema, {
       required_error: "At least one event trigger must be specified.",
     })
     .min(1, "At least one event trigger must be specified."),
@@ -85,14 +94,13 @@ const updateWebhookSchema = z.object({
     })
     .optional(),
   events: z
-    .array(z.enum(["meeting.created", "mom.generated", "policy.updated"]))
+    .array(webhookEventSchema)
     .min(1, "At least one event trigger must be specified.")
     .optional(),
   secret: z.string().trim().min(1, "Secret key cannot be empty.").optional(),
   isActive: z.boolean().optional(),
 });
 
-// Helper to get authenticated user ID
 const getUserId = (req) => {
   const id = req.user?.id || req.user?._id;
   if (!id) throw new UnauthorizedError();
@@ -114,7 +122,6 @@ export const createWebhook = async (req, res, next) => {
       return next(zodErr);
     }
 
-    // Authorization check
     const isAuthorized = await hasAdminPermission(
       userId,
       validated.organizationId,
@@ -139,9 +146,7 @@ export const createWebhook = async (req, res, next) => {
     const webhook = await Webhook.create(webhookData);
 
     const webhookResponse = webhook.toObject();
-    // SECURITY FIX: Ensure secret is never returned in creation response
     delete webhookResponse.secret;
-    // Add metadata flag for UI consistency
     webhookResponse.hasSecret = !!webhook.secret;
 
     return sendSuccess(
@@ -171,7 +176,6 @@ export const getWebhooks = async (req, res, next) => {
       throw new ValidationError("Valid Organization ID is required.");
     }
 
-    // Authorization check
     const isAuthorized = await hasAdminPermission(userId, organizationId);
     if (!isAuthorized) {
       throw new ForbiddenError(
@@ -183,16 +187,10 @@ export const getWebhooks = async (req, res, next) => {
       createdAt: -1,
     });
 
-    // SECURITY FIX: Sanitize the response to prevent secret exposure
     const sanitizedWebhooks = webhooks.map((webhook) => {
       const webhookObj = webhook.toObject();
-
-      // Remove the secret field entirely from the list response
       delete webhookObj.secret;
-
-      // Add a metadata flag to indicate a secret is configured without exposing it
       webhookObj.hasSecret = webhook.secret ? true : false;
-
       return webhookObj;
     });
 
@@ -220,7 +218,6 @@ export const updateWebhook = async (req, res, next) => {
       throw new NotFoundError("Webhook subscription not found.");
     }
 
-    // Authorization check
     const isAuthorized = await hasAdminPermission(
       userId,
       webhook.organizationId,
@@ -254,9 +251,7 @@ export const updateWebhook = async (req, res, next) => {
     await webhook.save();
 
     const webhookResponse = webhook.toObject();
-    // SECURITY FIX: Ensure secret is never returned in update response
     delete webhookResponse.secret;
-    // Add metadata flag for UI consistency
     webhookResponse.hasSecret = !!webhook.secret;
 
     return sendSuccess(
@@ -287,7 +282,6 @@ export const deleteWebhook = async (req, res, next) => {
       throw new NotFoundError("Webhook subscription not found.");
     }
 
-    // Authorization check
     const isAuthorized = await hasAdminPermission(
       userId,
       webhook.organizationId,
@@ -332,7 +326,6 @@ export const getWebhookDeliveries = async (req, res, next) => {
       throw new NotFoundError("Webhook subscription not found.");
     }
 
-    // Authorization check
     const isAuthorized = await hasAdminPermission(
       userId,
       webhook.organizationId,
@@ -346,7 +339,6 @@ export const getWebhookDeliveries = async (req, res, next) => {
     const { page, limit, status, startDate, endDate } =
       getDeliveriesQuerySchema.parse(req.query);
 
-    // Build typed query object avoiding taint flags for static analysis (CodeQL)
     const cleanWebhookId = new mongoose.Types.ObjectId(id);
     const query = { webhookId: cleanWebhookId };
 
@@ -405,7 +397,6 @@ export const redeliverWebhookPayload = async (req, res, next) => {
       throw new NotFoundError("Webhook delivery log record not found.");
     }
 
-    // Authorization check
     const isAuthorized = await hasAdminPermission(
       userId,
       deliveryRecord.organizationId,

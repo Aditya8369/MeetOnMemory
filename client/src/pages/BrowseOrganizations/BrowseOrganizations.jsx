@@ -130,7 +130,7 @@ const BrowseOrganizations = () => {
         }
       }
     },
-    [pagination.limit],
+    [],
   );
 
   // Debounced search

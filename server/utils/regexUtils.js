@@ -1,13 +1,14 @@
 /**
- * Regex helpers (Issue #1157).
+ * Regex helpers (Issue #1157 / #1770).
  *
  * Seven call sites built a `RegExp` by interpolating user-controlled text
  * without escaping it. The helper to prevent that already existed — it just
  * lived in `utils/meetingSoftDelete.js`, which is not somewhere you look when
  * you are writing a tag uniqueness check.
  *
- * It lives here now, next to the other things that operate on patterns, and
- * `meetingSoftDelete.js` re-exports it so existing importers are unaffected.
+ * Literal escaping lives in `utils/regex.js` (`escapeRegex`). This module
+ * re-exports it as `escapeRegExp` so existing importers are unaffected, and
+ * adds the higher-level helpers (equality, word-boundary, `$regex` fragments).
  *
  * Two rules for anything that reaches for this module:
  *
@@ -22,15 +23,19 @@
  *      given a pathological pattern, and it says what it means.
  */
 
+import { escapeRegex } from "./regex.js";
+
 /**
  * Escapes every character that carries meaning inside a regular expression, so
  * the result matches `value` literally.
  *
+ * Alias of `escapeRegex` (Issue #1770) — one implementation, two names.
+ *
  * @param {string} value
  * @returns {string}
  */
-export const escapeRegExp = (value = "") =>
-  String(value).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+export const escapeRegExp = escapeRegex;
+export { escapeRegex };
 
 /**
  * Builds an anchored, case-insensitive regex that matches `value` literally.
@@ -188,6 +193,7 @@ export const literalContainsFilter = (
 };
 
 export default {
+  escapeRegex,
   escapeRegExp,
   literalRegExp,
   caseInsensitiveEquals,

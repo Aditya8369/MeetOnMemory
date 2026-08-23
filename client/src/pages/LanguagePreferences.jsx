@@ -1,13 +1,23 @@
 import React, { useState, useEffect, useCallback } from "react";
 import apiClient from "../services/apiClient.js";
 import Navbar from "../components/Navbar.jsx";
-import { Languages, Save, Plus, Trash2, Globe, Settings } from "lucide-react";
+import {
+  Languages,
+  Save,
+  Plus,
+  Trash2,
+  Globe,
+  Settings,
+  AlertCircle,
+  RefreshCw,
+} from "lucide-react";
 import { toast } from "react-toastify";
 
 const LanguagePreferences = () => {
   const [preferences, setPreferences] = useState(null);
   const [languages, setLanguages] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
   const [saving, setSaving] = useState(false);
   const [newGlossary, setNewGlossary] = useState({
     source: "",
@@ -18,10 +28,12 @@ const LanguagePreferences = () => {
   const fetchPreferences = useCallback(async () => {
     try {
       setLoading(true);
-      const { data } = await apiClient.get("/api/translation/preferences");
-      setPreferences(data);
-    } catch (error) {
-      console.error("Error fetching preferences:", error);
+      setError(null);
+      const { data } = await apiClient.get("/api/translations/preferences");
+      setPreferences(data.preferences || data);
+    } catch (err) {
+      console.error("Error fetching preferences:", err);
+      setError(err.response?.data?.message || "Failed to load preferences");
       toast.error("Failed to load preferences");
     } finally {
       setLoading(false);
@@ -30,10 +42,10 @@ const LanguagePreferences = () => {
 
   const fetchLanguages = useCallback(async () => {
     try {
-      const { data } = await apiClient.get("/api/translation/languages");
+      const { data } = await apiClient.get("/api/translations/languages");
       setLanguages(data.languages || []);
-    } catch (error) {
-      console.error("Error fetching languages:", error);
+    } catch (err) {
+      console.error("Error fetching languages:", err);
     }
   }, []);
 
@@ -46,13 +58,13 @@ const LanguagePreferences = () => {
     try {
       setSaving(true);
       const { data } = await apiClient.put(
-        "/api/translation/preferences",
+        "/api/translations/preferences",
         preferences,
       );
-      setPreferences(data);
+      setPreferences(data.preferences || data);
       toast.success("Preferences saved successfully");
-    } catch (error) {
-      console.error("Error saving preferences:", error);
+    } catch (err) {
+      console.error("Error saving preferences:", err);
       toast.error("Failed to save preferences");
     } finally {
       setSaving(false);
@@ -68,7 +80,7 @@ const LanguagePreferences = () => {
     setPreferences((prev) => ({
       ...prev,
       customGlossary: [
-        ...prev.customGlossary,
+        ...(prev.customGlossary || []),
         { ...newGlossary, addedAt: new Date().toISOString() },
       ],
     }));
@@ -80,7 +92,7 @@ const LanguagePreferences = () => {
   const removeGlossaryEntry = (index) => {
     setPreferences((prev) => ({
       ...prev,
-      customGlossary: prev.customGlossary.filter((_, i) => i !== index),
+      customGlossary: (prev.customGlossary || []).filter((_, i) => i !== index),
     }));
     toast.success("Glossary entry removed");
   };
@@ -103,16 +115,47 @@ const LanguagePreferences = () => {
     });
   };
 
-  if (loading || !preferences) {
+  if (loading) {
     return (
       <div className="min-h-screen bg-slate-50 dark:bg-slate-950">
         <Navbar />
-        <div className="pt-20 flex items-center justify-center">
+        <div className="pt-20 flex items-center justify-center min-h-[60vh]">
           <div className="text-center">
             <Languages className="w-12 h-12 text-blue-600 animate-pulse mx-auto mb-4" />
             <p className="text-slate-600 dark:text-slate-400">
               Loading preferences...
             </p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (error || !preferences) {
+    return (
+      <div className="min-h-screen bg-slate-50 dark:bg-slate-950">
+        <Navbar />
+        <div className="pt-20 max-w-xl mx-auto px-4 py-16 flex items-center justify-center min-h-[60vh]">
+          <div
+            role="alert"
+            className="w-full bg-white dark:bg-slate-900 rounded-2xl shadow-lg border border-red-200 dark:border-red-800 p-8 text-center"
+          >
+            <AlertCircle className="w-12 h-12 text-red-500 mx-auto mb-4" />
+            <h2 className="text-xl font-bold text-slate-900 dark:text-white mb-2">
+              Unable to Load Preferences
+            </h2>
+            <p className="text-slate-600 dark:text-slate-400 mb-6 text-sm">
+              {error ||
+                "An unexpected error occurred while loading your language preferences."}
+            </p>
+            <button
+              type="button"
+              onClick={fetchPreferences}
+              className="inline-flex items-center gap-2 px-5 py-2.5 bg-blue-600 text-white rounded-xl hover:bg-blue-700 font-semibold text-sm transition-colors cursor-pointer"
+            >
+              <RefreshCw className="w-4 h-4" />
+              <span>Retry</span>
+            </button>
           </div>
         </div>
       </div>

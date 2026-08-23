@@ -62,9 +62,20 @@ const PendingRsvpBanner = () => {
             </button>
           ))}
           {pendingRsvps.length > 2 && (
-            <div className="text-xs text-amber-600 font-medium text-center">
-              + {pendingRsvps.length - 2} more
-            </div>
+            <button
+              onClick={() => navigate("/rsvps")}
+              className="text-xs text-amber-700 font-medium text-center hover:underline bg-transparent"
+            >
+              + {pendingRsvps.length - 2} more (View Inbox)
+            </button>
+          )}
+          {pendingRsvps.length <= 2 && pendingRsvps.length > 0 && (
+            <button
+              onClick={() => navigate("/rsvps")}
+              className="text-xs text-amber-700 font-medium text-center hover:underline bg-transparent mt-1"
+            >
+              Open RSVP Inbox
+            </button>
           )}
         </div>
       </div>

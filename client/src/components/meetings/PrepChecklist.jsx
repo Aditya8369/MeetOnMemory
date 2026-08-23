@@ -31,16 +31,20 @@ const PrepChecklist = ({ meeting, currentUser }) => {
   const [itemsToCreate, setItemsToCreate] = useState([]);
   const [isCreating, setIsCreating] = useState(false);
 
+  const isUserOrganizer = React.useCallback((m, u) => {
+    if (!m || !u) return false;
+    const currentId = u.publicMetadata?.dbUserId || u._id || u.id;
+    const ownerId = m.uploadedBy || m.owner;
+    return currentId && ownerId && String(currentId) === String(ownerId);
+  }, []);
+
   const fetchData = React.useCallback(async () => {
     try {
       setLoading(true);
       const res = await meetingChecklistApi.getChecklist(meeting._id);
       if (res.data?.data?.checklist) {
         setChecklist(res.data.data.checklist);
-        if (
-          meeting.owner === currentUser.id ||
-          meeting.owner === currentUser._id
-        ) {
+        if (isUserOrganizer(meeting, currentUser)) {
           const readinessRes = await meetingChecklistApi.getReadiness(
             meeting._id,
           );
@@ -56,16 +60,14 @@ const PrepChecklist = ({ meeting, currentUser }) => {
     } finally {
       setLoading(false);
     }
-  }, [meeting, currentUser]);
+  }, [meeting, currentUser, isUserOrganizer]);
 
   useEffect(() => {
     if (meeting && currentUser) {
-      setIsOrganizer(
-        meeting.owner === currentUser.id || meeting.owner === currentUser._id,
-      );
+      setIsOrganizer(isUserOrganizer(meeting, currentUser));
       fetchData();
     }
-  }, [meeting, currentUser, fetchData]);
+  }, [meeting, currentUser, isUserOrganizer, fetchData]);
 
   const handleAddItem = (e) => {
     e.preventDefault();

@@ -9,17 +9,31 @@ import {
   getGoogleOAuthClient,
 } from "./calendarService.js";
 
-// Encryption setup (kept for backwards compatibility of exported helpers, but internal code uses calendarService crypt)
 const ALGORITHM = "aes-256-gcm";
-const ENCRYPTION_KEY =
-  process.env.TOKEN_ENCRYPTION_KEY || "12345678901234567890123456789012";
+
+/**
+ * Resolve the calendar-sync encryption key (Issue #1768).
+ *
+ * There is no hardcoded fallback. Missing or empty TOKEN_ENCRYPTION_KEY
+ * fails closed so Google/Microsoft OAuth tokens cannot be encrypted with
+ * a well-known default.
+ *
+ * @returns {string}
+ */
+export const getTokenEncryptionKey = () => {
+  const key = process.env.TOKEN_ENCRYPTION_KEY;
+  if (typeof key !== "string" || !key.trim()) {
+    throw new Error("TOKEN_ENCRYPTION_KEY is not configured");
+  }
+  return key;
+};
 
 const encrypt = (text) => {
   if (!text) return text;
   const iv = crypto.randomBytes(16);
   const cipher = crypto.createCipheriv(
     ALGORITHM,
-    Buffer.from(ENCRYPTION_KEY),
+    Buffer.from(getTokenEncryptionKey()),
     iv,
   );
   let encrypted = cipher.update(text, "utf8", "hex");
@@ -35,7 +49,7 @@ const decrypt = (encryptedData) => {
   const [ivHex, encryptedText, authTagHex] = parts;
   const decipher = crypto.createDecipheriv(
     ALGORITHM,
-    Buffer.from(ENCRYPTION_KEY),
+    Buffer.from(getTokenEncryptionKey()),
     Buffer.from(ivHex, "hex"),
   );
   decipher.setAuthTag(Buffer.from(authTagHex, "hex"));

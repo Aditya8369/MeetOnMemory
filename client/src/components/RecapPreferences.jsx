@@ -6,6 +6,9 @@ import {
 } from "../services/recapApi";
 import { Dialog } from "@headlessui/react";
 import { toast } from "react-toastify";
+import SandboxedHtmlPreview from "./SandboxedHtmlPreview";
+import { sanitizeHtml } from "../utils/sanitizeHtml";
+import SharedQuietHours from "./SharedQuietHours.jsx";
 
 const RecapPreferences = () => {
   const [preferences, setPreferences] = useState({
@@ -22,15 +25,6 @@ const RecapPreferences = () => {
   const [saving, setSaving] = useState(false);
   const [previewHtml, setPreviewHtml] = useState("");
   const [isPreviewOpen, setIsPreviewOpen] = useState(false);
-
-  const formatHour = (hour) => {
-    if (hour === 0) return "12:00 AM";
-    if (hour < 12) return `${hour}:00 AM`;
-    if (hour === 12) return "12:00 PM";
-    return `${hour - 12}:00 PM`;
-  };
-
-  const hoursOptions = Array.from({ length: 24 }, (_, i) => i);
 
   const quietHoursError = (() => {
     const { quietHoursStart: start, quietHoursEnd: end } = preferences;
@@ -115,7 +109,7 @@ const RecapPreferences = () => {
             : null,
       };
       const html = await previewRecapEmail(payload);
-      setPreviewHtml(html);
+      setPreviewHtml(sanitizeHtml(html));
       setIsPreviewOpen(true);
     } catch {
       toast.error("Failed to generate preview");
@@ -188,68 +182,22 @@ const RecapPreferences = () => {
         </div>
       </div>
 
-      {/* Quiet Hours */}
-      <div className="mb-6">
-        <h3 className="text-lg font-medium mb-2">Quiet Hours (Optional)</h3>
-        <p className="text-sm text-gray-500 mb-2">
-          Emails won't be sent during these hours. They'll be delayed until the
-          next batch. You can set overnight ranges (e.g. 10:00 PM to 7:00 AM).
-        </p>
-        <div className="flex flex-col sm:flex-row space-y-4 sm:space-y-0 sm:space-x-4 items-start sm:items-center">
-          <div className="w-full sm:w-auto">
-            <label
-              htmlFor="quietHoursStart"
-              className="block text-sm text-gray-700 mb-1"
-            >
-              Start Time
-            </label>
-            <select
-              id="quietHoursStart"
-              name="quietHoursStart"
-              value={preferences.quietHoursStart}
-              onChange={handleChange}
-              className={`w-full sm:w-32 bg-white border rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 ${quietHoursError ? "border-red-500" : "border-gray-300"}`}
-            >
-              <option value="">None</option>
-              {hoursOptions.map((hour) => (
-                <option key={hour} value={hour}>
-                  {formatHour(hour)}
-                </option>
-              ))}
-            </select>
-          </div>
-          <div className="w-full sm:w-auto">
-            <label
-              htmlFor="quietHoursEnd"
-              className="block text-sm text-gray-700 mb-1"
-            >
-              End Time
-            </label>
-            <select
-              id="quietHoursEnd"
-              name="quietHoursEnd"
-              value={preferences.quietHoursEnd}
-              onChange={handleChange}
-              className={`w-full sm:w-32 bg-white border rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 ${quietHoursError ? "border-red-500" : "border-gray-300"}`}
-            >
-              <option value="">None</option>
-              {hoursOptions.map((hour) => (
-                <option key={hour} value={hour}>
-                  {formatHour(hour)}
-                </option>
-              ))}
-            </select>
-          </div>
-        </div>
-        {quietHoursError && (
-          <p className="text-sm text-red-500 mt-2 font-medium">
-            {quietHoursError}
-          </p>
-        )}
-        <p className="text-xs text-gray-500 mt-2">
-          Timezone: {preferences.timezone}
-        </p>
-      </div>
+      <SharedQuietHours
+        onQuietHoursChange={(qh) => {
+          setPreferences((prev) => ({
+            ...prev,
+            quietHoursStart:
+              qh.quietHoursStart !== "" && qh.quietHoursStart !== null
+                ? Number(qh.quietHoursStart)
+                : "",
+            quietHoursEnd:
+              qh.quietHoursEnd !== "" && qh.quietHoursEnd !== null
+                ? Number(qh.quietHoursEnd)
+                : "",
+            timezone: qh.timezone,
+          }));
+        }}
+      />
 
       <div className="flex space-x-4">
         <button
@@ -291,8 +239,11 @@ const RecapPreferences = () => {
                   Email Preview
                 </Dialog.Title>
                 <div className="mt-2 w-full border rounded p-4 max-h-[60vh] overflow-y-auto bg-gray-50">
-                  {/* Dangerously set HTML since we generate it in backend */}
-                  <div dangerouslySetInnerHTML={{ __html: previewHtml }} />
+                  <SandboxedHtmlPreview
+                    htmlContent={previewHtml}
+                    title="Email Preview"
+                    className="min-h-[240px]"
+                  />
                 </div>
               </div>
             </div>

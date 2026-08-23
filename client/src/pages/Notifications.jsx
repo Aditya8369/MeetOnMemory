@@ -12,7 +12,6 @@ import {
   Trash2,
   Filter,
   Calendar,
-  FileText,
   Brain,
   Building2,
   ListChecks,
@@ -24,7 +23,13 @@ import {
   ChevronLeft,
   ChevronRight,
   CheckSquare,
+  Layers,
 } from "lucide-react";
+import {
+  groupNotifications,
+  notificationId,
+} from "../utils/groupNotifications.js";
+import NudgeInbox from "../components/NudgeInbox";
 
 /**
  * Issue #977 & #1214: Category icons mapping for all notification types.
@@ -118,6 +123,9 @@ const Notifications = () => {
   // Filter states
   const [filter, setFilter] = useState("all"); // all, read, unread
   const [categoryFilter, setCategoryFilter] = useState("all"); // all, meetings, tasks, ai_processing, organizations, policies, reports, system
+  const [groupBy, setGroupBy] = useState("day"); // none, day, meeting, type
+  const [dailyDigest, setDailyDigest] = useState(false);
+  const [digestSaving, setDigestSaving] = useState(false);
 
   // Pagination state
   const [page, setPage] = useState(1);
@@ -179,17 +187,35 @@ const Notifications = () => {
     }
   }, [userData, fetchNotifications]);
 
+  useEffect(() => {
+    if (!userData) return undefined;
+    let cancelled = false;
+    (async () => {
+      try {
+        const { data } = await notificationApi.getPreferences();
+        if (!cancelled && data?.success) {
+          setDailyDigest(Boolean(data.preferences?.emailDailyDigest));
+        }
+      } catch {
+        // Preferences are optional for viewing the list
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [userData]);
+
   /**
    * Mark a single notification as read
-   * @param {string} notificationId - ID of notification to mark as read
+   * @param {string} id - ID of notification to mark as read
    */
-  const handleMarkAsRead = async (notificationId) => {
+  const handleMarkAsRead = async (id) => {
     try {
-      const { data } = await notificationApi.markAsRead(notificationId);
+      const { data } = await notificationApi.markAsRead(id);
       if (data.success) {
         setNotifications((prev) =>
           prev.map((n) =>
-            n._id === notificationId ? { ...n, isRead: true } : n,
+            notificationId(n) === String(id) ? { ...n, isRead: true } : n,
           ),
         );
         setUnreadCount((prev) => Math.max(0, prev - 1));
@@ -197,6 +223,57 @@ const Notifications = () => {
     } catch (err) {
       console.error("Error marking as read:", err);
       toast.error("Failed to mark as read");
+    }
+  };
+
+  /**
+   * Mark all notifications in a group as read (Issue #2064)
+   */
+  const handleMarkGroupAsRead = async (items) => {
+    const unreadIds = items
+      .filter((n) => !n.isRead)
+      .map((n) => notificationId(n))
+      .filter(Boolean);
+    if (unreadIds.length === 0) return;
+
+    try {
+      const { data } = await notificationApi.markGroupAsRead(unreadIds);
+      if (data.success) {
+        const idSet = new Set(unreadIds);
+        setNotifications((prev) =>
+          prev.map((n) =>
+            idSet.has(notificationId(n)) ? { ...n, isRead: true } : n,
+          ),
+        );
+        setUnreadCount((prev) => Math.max(0, prev - unreadIds.length));
+        toast.success("Group marked as read");
+      }
+    } catch (err) {
+      console.error("Error marking group as read:", err);
+      toast.error("Failed to mark group as read");
+    }
+  };
+
+  const handleDailyDigestToggle = async () => {
+    const next = !dailyDigest;
+    setDigestSaving(true);
+    try {
+      const { data } = await notificationApi.updatePreferences({
+        emailDailyDigest: next,
+      });
+      if (data.success) {
+        setDailyDigest(next);
+        toast.success(
+          next
+            ? "Daily notification digest enabled"
+            : "Daily notification digest disabled",
+        );
+      }
+    } catch (err) {
+      console.error("Error updating digest preference:", err);
+      toast.error("Failed to update digest preference");
+    } finally {
+      setDigestSaving(false);
     }
   };
 
@@ -221,12 +298,12 @@ const Notifications = () => {
    * Delete a notification
    * @param {string} notificationId - ID of notification to delete
    */
-  const handleDelete = async (notificationId) => {
+  const handleDelete = async (id) => {
     try {
-      const { data } = await notificationApi.deleteNotification(notificationId);
+      const { data } = await notificationApi.deleteNotification(id);
       if (data.success) {
         setNotifications((prev) =>
-          prev.filter((n) => n._id !== notificationId),
+          prev.filter((n) => notificationId(n) !== String(id)),
         );
         toast.success("Notification deleted");
       }
@@ -241,8 +318,9 @@ const Notifications = () => {
    * @param {Object} notification - Notification object
    */
   const handleNotificationClick = (notification) => {
-    if (!notification.isRead) {
-      handleMarkAsRead(notification._id);
+    const id = notificationId(notification);
+    if (!notification.isRead && id) {
+      handleMarkAsRead(id);
     }
     if (notification.actionUrl) {
       const safeUrl = validateRedirect(notification.actionUrl, null);
@@ -253,6 +331,8 @@ const Notifications = () => {
       }
     }
   };
+
+  const groupedNotifications = groupNotifications(notifications, groupBy);
 
   // Redirect to login if not authenticated
   if (!userData) {
@@ -289,7 +369,9 @@ const Notifications = () => {
             )}
           </div>
 
-          {/* Filters Section - Issue #1214: Tasks filter added */}
+          <NudgeInbox organizationId={userData?.currentOrganization} />
+
+          {/* Filters Section - Issue #1214: Tasks filter added; #2064 grouping + digest */}
           <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 p-4 shadow-sm">
             <div className="flex items-center gap-2 mb-3">
               <Filter className="w-4 h-4 text-slate-500 dark:text-slate-400" />
@@ -298,7 +380,7 @@ const Notifications = () => {
               </span>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               {/* Status Filter (Read/Unread) */}
               <div>
                 <label className="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-1.5">
@@ -335,6 +417,35 @@ const Notifications = () => {
                   <option value="system">System</option>
                 </select>
               </div>
+
+              <div>
+                <label className="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-1.5">
+                  Group by
+                </label>
+                <select
+                  value={groupBy}
+                  onChange={(e) => setGroupBy(e.target.value)}
+                  className="w-full px-3 py-2 text-sm bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                >
+                  <option value="day">Day</option>
+                  <option value="meeting">Meeting</option>
+                  <option value="type">Type</option>
+                  <option value="none">None</option>
+                </select>
+              </div>
+            </div>
+
+            <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
+              <label className="inline-flex items-center gap-2 text-sm text-slate-700 dark:text-slate-300 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={dailyDigest}
+                  disabled={digestSaving}
+                  onChange={handleDailyDigestToggle}
+                  className="rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+                />
+                Daily notification digest
+              </label>
             </div>
 
             {/* Active Filter Indicators */}
@@ -434,112 +545,144 @@ const Notifications = () => {
           </div>
         )}
 
-        {/* Notifications List */}
+        {/* Notifications List (grouped — Issue #2064) */}
         {!loading && !error && notifications.length > 0 && (
-          <div className="space-y-3">
-            {notifications.map((notification) => {
-              const IconComponent =
-                CATEGORY_ICONS[notification.category] || AlertCircle;
-              const colorClass =
-                CATEGORY_COLORS[notification.category] ||
-                CATEGORY_COLORS.system;
+          <div className="space-y-6">
+            {groupedNotifications.map((group) => {
+              const unreadInGroup = group.items.filter((n) => !n.isRead).length;
+              const typeLabel =
+                groupBy === "type"
+                  ? CATEGORY_LABELS[group.label] || group.label
+                  : group.label;
 
               return (
-                <div
-                  key={notification._id}
-                  onClick={() => handleNotificationClick(notification)}
-                  className={`group relative bg-white dark:bg-slate-800 rounded-2xl border transition-all cursor-pointer hover:shadow-lg ${
-                    notification.isRead
-                      ? "border-slate-200 dark:border-slate-700"
-                      : "border-blue-300 dark:border-blue-700 shadow-md"
-                  }`}
-                >
-                  <div className="p-5">
-                    <div className="flex items-start gap-4">
-                      {/* Category Icon */}
-                      <div
-                        className={`flex-shrink-0 w-12 h-12 rounded-xl border-2 flex items-center justify-center ${colorClass}`}
-                      >
-                        <IconComponent className="w-6 h-6" />
-                      </div>
-
-                      {/* Content */}
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-start justify-between gap-2 mb-1">
-                          <h3
-                            className={`text-base font-semibold ${
-                              notification.isRead
-                                ? "text-slate-700 dark:text-slate-300"
-                                : "text-slate-900 dark:text-white"
-                            }`}
-                          >
-                            {notification.title}
-                          </h3>
-                          <span className="text-xs text-slate-500 dark:text-slate-400 whitespace-nowrap">
-                            {formatTimeAgo(notification.createdAt)}
-                          </span>
-                        </div>
-
-                        <p className="text-sm text-slate-600 dark:text-slate-400 line-clamp-2 mb-2">
-                          {notification.description}
-                        </p>
-
-                        <div className="flex items-center gap-2">
-                          <span className="inline-flex items-center px-2 py-0.5 rounded-md text-xs font-medium bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300">
-                            {CATEGORY_LABELS[notification.category] || "System"}
-                          </span>
-                          {!notification.isRead && (
-                            <span className="inline-flex items-center px-2 py-0.5 rounded-md text-xs font-medium bg-blue-100 dark:bg-blue-950/30 text-blue-700 dark:text-blue-300">
-                              New
-                            </span>
-                          )}
-                        </div>
-                      </div>
-
-                      {/* Actions */}
-                      <div className="flex-shrink-0 flex items-center gap-1 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 focus-within:opacity-100 transition-opacity duration-200">
-                        {!notification.isRead && (
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleMarkAsRead(notification._id);
-                            }}
-                            aria-label={`Mark "${notification.title}" as read`}
-                            className="p-3 sm:p-2 text-slate-400 hover:text-blue-600 dark:hover:text-blue-400 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:outline-none"
-                            title="Mark as read"
-                          >
-                            <Check className="w-4 h-4" />
-                          </button>
-                        )}
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleDelete(notification._id);
-                          }}
-                          aria-label={`Delete notification "${notification.title}"`}
-                          className="p-3 sm:p-2 text-slate-400 hover:text-red-600 dark:hover:text-red-400 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors focus-visible:ring-2 focus-visible:ring-red-500 focus-visible:outline-none"
-                          title="Delete"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
-                      </div>
-                    </div>
-
-                    {/* Action Button */}
-                    {notification.actionUrl && (
+                <section key={group.key} className="space-y-3">
+                  <div className="flex items-center justify-between gap-3">
+                    <h2 className="text-sm font-semibold text-slate-700 dark:text-slate-300 flex items-center gap-2">
+                      <Layers className="w-4 h-4 text-slate-400" />
+                      {typeLabel}
+                      <span className="text-xs font-medium text-slate-500">
+                        ({group.items.length})
+                      </span>
+                    </h2>
+                    {unreadInGroup > 0 && (
                       <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleNotificationClick(notification);
-                        }}
-                        className="mt-3 inline-flex items-center gap-1 text-sm font-medium text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300"
+                        type="button"
+                        onClick={() => handleMarkGroupAsRead(group.items)}
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/30 hover:bg-blue-100 dark:hover:bg-blue-950/50 rounded-lg transition-colors"
                       >
-                        {notification.actionLabel || "View Details"}
-                        <ArrowRight className="w-4 h-4" />
+                        <CheckSquare className="w-3.5 h-3.5" />
+                        Mark group as read
                       </button>
                     )}
                   </div>
-                </div>
+
+                  <div className="space-y-3">
+                    {group.items.map((notification) => {
+                      const id = notificationId(notification);
+                      const IconComponent =
+                        CATEGORY_ICONS[notification.category] || AlertCircle;
+                      const colorClass =
+                        CATEGORY_COLORS[notification.category] ||
+                        CATEGORY_COLORS.system;
+
+                      return (
+                        <div
+                          key={id}
+                          onClick={() => handleNotificationClick(notification)}
+                          className={`group relative bg-white dark:bg-slate-800 rounded-2xl border transition-all cursor-pointer hover:shadow-lg ${
+                            notification.isRead
+                              ? "border-slate-200 dark:border-slate-700"
+                              : "border-blue-300 dark:border-blue-700 shadow-md"
+                          }`}
+                        >
+                          <div className="p-5">
+                            <div className="flex items-start gap-4">
+                              <div
+                                className={`flex-shrink-0 w-12 h-12 rounded-xl border-2 flex items-center justify-center ${colorClass}`}
+                              >
+                                <IconComponent className="w-6 h-6" />
+                              </div>
+
+                              <div className="flex-1 min-w-0">
+                                <div className="flex items-start justify-between gap-2 mb-1">
+                                  <h3
+                                    className={`text-base font-semibold ${
+                                      notification.isRead
+                                        ? "text-slate-700 dark:text-slate-300"
+                                        : "text-slate-900 dark:text-white"
+                                    }`}
+                                  >
+                                    {notification.title}
+                                  </h3>
+                                  <span className="text-xs text-slate-500 dark:text-slate-400 whitespace-nowrap">
+                                    {formatTimeAgo(notification.createdAt)}
+                                  </span>
+                                </div>
+
+                                <p className="text-sm text-slate-600 dark:text-slate-400 line-clamp-2 mb-2">
+                                  {notification.description}
+                                </p>
+
+                                <div className="flex items-center gap-2">
+                                  <span className="inline-flex items-center px-2 py-0.5 rounded-md text-xs font-medium bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300">
+                                    {CATEGORY_LABELS[notification.category] ||
+                                      "System"}
+                                  </span>
+                                  {!notification.isRead && (
+                                    <span className="inline-flex items-center px-2 py-0.5 rounded-md text-xs font-medium bg-blue-100 dark:bg-blue-950/30 text-blue-700 dark:text-blue-300">
+                                      New
+                                    </span>
+                                  )}
+                                </div>
+                              </div>
+
+                              <div className="flex-shrink-0 flex items-center gap-1 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 focus-within:opacity-100 transition-opacity duration-200">
+                                {!notification.isRead && (
+                                  <button
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handleMarkAsRead(id);
+                                    }}
+                                    aria-label={`Mark "${notification.title}" as read`}
+                                    className="p-3 sm:p-2 text-slate-400 hover:text-blue-600 dark:hover:text-blue-400 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:outline-none"
+                                    title="Mark as read"
+                                  >
+                                    <Check className="w-4 h-4" />
+                                  </button>
+                                )}
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleDelete(id);
+                                  }}
+                                  aria-label={`Delete notification "${notification.title}"`}
+                                  className="p-3 sm:p-2 text-slate-400 hover:text-red-600 dark:hover:text-red-400 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors focus-visible:ring-2 focus-visible:ring-red-500 focus-visible:outline-none"
+                                  title="Delete"
+                                >
+                                  <Trash2 className="w-4 h-4" />
+                                </button>
+                              </div>
+                            </div>
+
+                            {notification.actionUrl && (
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleNotificationClick(notification);
+                                }}
+                                className="mt-3 inline-flex items-center gap-1 text-sm font-medium text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300"
+                              >
+                                {notification.actionLabel || "View Details"}
+                                <ArrowRight className="w-4 h-4" />
+                              </button>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </section>
               );
             })}
           </div>

@@ -17,7 +17,10 @@ export const useAgendaVotes = (meetingId) => {
   const fetchTally = useCallback(async () => {
     try {
       const data = await getVoteTally(meetingId);
-      setTally(data.tally);
+      setTally(data.tally || {});
+      if (data.userVotes) {
+        setUserVotes(data.userVotes);
+      }
     } catch (error) {
       console.error("Failed to fetch vote tally:", error);
     }

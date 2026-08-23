@@ -123,14 +123,20 @@ export const checkRedis = async ({
   const redis = client ?? getRedisClient();
 
   if (!process.env.REDIS_URI && !process.env.REDIS_URL) {
-    return { status: "disabled", required: false, detail: "not configured" };
+    return {
+      status: "disabled",
+      required: false,
+      detail:
+        "Redis is not configured. Rate limiting falls back to in-memory storage, caching is disabled, and real-time sync runs in degraded mode.",
+    };
   }
 
   if (!redis) {
     return {
       status: "degraded",
       required: false,
-      detail: "client unavailable",
+      detail:
+        "Redis client unavailable. Rate limiting falls back to in-memory storage, caching is disabled, and real-time sync runs in degraded mode.",
     };
   }
 
@@ -141,7 +147,12 @@ export const checkRedis = async ({
       if (typeof redis.ping === "function") {
         await redis.ping();
       } else if (redis.isReady === false) {
-        return { status: "degraded", required: false, detail: "not ready" };
+        return {
+          status: "degraded",
+          required: false,
+          detail:
+            "Redis is not ready. Caching and rate limiting are running on in-memory fallbacks.",
+        };
       }
       return {
         status: "up",
@@ -149,14 +160,18 @@ export const checkRedis = async ({
         latencyMs: Date.now() - startedAt,
       };
     } catch (error) {
-      return { status: "degraded", required: false, detail: error.message };
+      return {
+        status: "degraded",
+        required: false,
+        detail: `Redis check failed: ${error.message}. Caching and rate limiting are running on in-memory fallbacks.`,
+      };
     }
   })();
 
   return withDeadline(ping, timeoutMs, {
     status: "degraded",
     required: false,
-    detail: `ping timed out after ${timeoutMs}ms`,
+    detail: `Redis ping timed out after ${timeoutMs}ms. Caching and rate limiting are running on in-memory fallbacks.`,
   });
 };
 

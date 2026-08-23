@@ -6,12 +6,12 @@ import {
   startRoom,
   closeRoom,
 } from "../controllers/breakoutRoomController.js";
-import { requireAuth } from "../middleware/requireAuth.js";
+import userAuth from "../middleware/userAuth.js";
 
 const router = express.Router({ mergeParams: true });
 
-// All routes require authentication
-router.use(requireAuth);
+// All routes require user authentication
+router.use(userAuth);
 
 // Routes for /api/meetings/:meetingId/breakout-rooms
 router.post("/", createRoom);

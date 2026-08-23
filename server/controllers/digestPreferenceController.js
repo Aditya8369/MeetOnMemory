@@ -6,6 +6,7 @@ import User from "../models/userModel.js";
 import Tag from "../models/tagModel.js";
 import transporter from "../config/nodeMailer.js";
 import MeetingDigestService from "../services/MeetingDigestService.js";
+import NotificationPreference from "../models/notificationPreferenceModel.js";
 
 /**
  * In-memory rate limiting store for digest test emails
@@ -126,21 +127,35 @@ const recordRequest = (userId) => {
 export const getPreferences = async (req, res) => {
   try {
     const userId = req.user._id;
-    const preferences = await DigestPreference.findOne({
+    let preferences = await DigestPreference.findOne({
       $or: [{ user: userId }, { userId }],
-    });
+    }).lean();
 
     if (!preferences) {
-      return res.status(200).json({
-        success: true,
-        data: {
-          frequency: "weekly",
-          includeSections: ["decisions", "action-items"],
-          enabled: true,
-          timezone: "UTC",
-          filterByTags: [],
-        },
-      });
+      preferences = {
+        frequency: "weekly",
+        includeSections: ["decisions", "action-items"],
+        enabled: true,
+        timezone: "UTC",
+        filterByTags: [],
+      };
+    }
+
+    // Merge quiet hours and timezone from NotificationPreference
+    const notifPref = await NotificationPreference.findOne({
+      user: userId,
+    }).lean();
+    if (notifPref) {
+      preferences.quietHoursStart =
+        notifPref.quietHoursStart !== undefined
+          ? notifPref.quietHoursStart
+          : null;
+      preferences.quietHoursEnd =
+        notifPref.quietHoursEnd !== undefined ? notifPref.quietHoursEnd : null;
+      preferences.timezone = notifPref.timezone || preferences.timezone;
+    } else {
+      preferences.quietHoursStart = null;
+      preferences.quietHoursEnd = null;
     }
 
     return res.status(200).json({
@@ -173,6 +188,8 @@ export const updatePreferences = async (req, res) => {
       deliveryHour,
       timezone,
       maxItems,
+      quietHoursStart,
+      quietHoursEnd,
     } = req.body;
 
     const userOrgId = req.user.organization;
@@ -234,6 +251,21 @@ export const updatePreferences = async (req, res) => {
       updateFields,
       { new: true, upsert: true, runValidators: true },
     );
+
+    // Sync quiet hours to NotificationPreference
+    const syncFields = {};
+    if (quietHoursStart !== undefined)
+      syncFields.quietHoursStart = quietHoursStart;
+    if (quietHoursEnd !== undefined) syncFields.quietHoursEnd = quietHoursEnd;
+    if (timezone !== undefined) syncFields.timezone = timezone;
+
+    if (Object.keys(syncFields).length > 0) {
+      await NotificationPreference.findOneAndUpdate(
+        { user: userId },
+        { $set: syncFields },
+        { new: true, upsert: true },
+      );
+    }
 
     return res.status(200).json({
       success: true,

@@ -12,11 +12,19 @@ vi.mock("../../components/Navbar.jsx", () => ({
   default: () => <nav>Navbar</nav>,
 }));
 
+vi.mock("react-toastify", () => ({
+  toast: {
+    success: vi.fn(),
+    error: vi.fn(),
+  },
+}));
+
 vi.mock("lucide-react", () => ({
   CopyPlus: () => <span />,
   Star: () => <span />,
   ChevronDown: () => <span />,
   Filter: () => <span />,
+  X: () => <span />,
 }));
 
 vi.mock("../../services/templateLibraryApi", () => ({
@@ -178,6 +186,69 @@ describe("TemplateLibrary duplicate-submission protection (#1525)", () => {
       expect(
         screen.getByRole("button", { name: "Submit Rating" }),
       ).toBeEnabled();
+    });
+  });
+
+  describe("TemplateLibrary accessibility & rating stability (#1803)", () => {
+    it("handles templates with missing or undefined averageRating without crashing", async () => {
+      browseTemplates.mockResolvedValueOnce({
+        templates: [
+          {
+            _id: "template-unrated",
+            name: "Unrated Meeting Template",
+            category: "General",
+            description: "No rating provided",
+            cloneCount: 0,
+            averageRating: undefined,
+          },
+        ],
+      });
+
+      render(<TemplateLibrary />);
+
+      await waitFor(() => {
+        expect(
+          screen.getByText("Unrated Meeting Template"),
+        ).toBeInTheDocument();
+      });
+
+      expect(screen.getByText("N/A")).toBeInTheDocument();
+    });
+
+    it("opens template modal via keyboard navigation (Enter key) and provides dialog semantics", async () => {
+      render(<TemplateLibrary />);
+
+      await waitFor(() => {
+        expect(screen.getByText("Weekly Sync")).toBeInTheDocument();
+      });
+
+      const card = screen.getByRole("button", {
+        name: /view details for weekly sync/i,
+      });
+      fireEvent.keyDown(card, { key: "Enter" });
+
+      const dialog = screen.getByRole("dialog");
+      expect(dialog).toBeInTheDocument();
+      expect(dialog).toHaveAttribute("aria-modal", "true");
+
+      const closeButton = screen.getByRole("button", { name: "Close dialog" });
+      fireEvent.click(closeButton);
+
+      expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    });
+
+    it("closes template modal when Escape key is pressed", async () => {
+      render(<TemplateLibrary />);
+
+      await waitFor(() => {
+        expect(screen.getByText("Weekly Sync")).toBeInTheDocument();
+      });
+
+      fireEvent.click(screen.getByText("Weekly Sync"));
+      expect(screen.getByRole("dialog")).toBeInTheDocument();
+
+      fireEvent.keyDown(window, { key: "Escape" });
+      expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
     });
   });
 });

@@ -32,6 +32,15 @@ const reportApi = {
     });
     return response.data;
   },
+
+  exportReport: async (id, format = "csv", filterOverrides = {}) => {
+    const response = await apiClient.post(
+      `/reports/export/${id}`,
+      { format, filterOverrides },
+      { responseType: "blob" },
+    );
+    return response;
+  },
 };
 
 export default reportApi;

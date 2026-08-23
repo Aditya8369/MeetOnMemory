@@ -7,6 +7,7 @@ import {
   MODEL_REGISTRY,
 } from "../services/conflictDetection/conflictDetectionService.js";
 import { sendSuccess, sendError } from "../utils/responseHandler.js";
+import { parsePagination } from "../utils/pagination.js";
 
 const VALID_MODEL_TYPES = Object.keys(MODEL_REGISTRY);
 const VALID_STATUSES = ["open", "resolved", "dismissed", "all"];
@@ -97,7 +98,7 @@ export const scanForConflicts = async (req, res) => {
 export const getConflicts = async (req, res) => {
   try {
     const organization = req.user.organization || null;
-    const { model, status = "open", limit = 50 } = req.query;
+    const { model, status = "open" } = req.query;
 
     if (model && !VALID_MODEL_TYPES.includes(model)) {
       return sendError(
@@ -114,9 +115,9 @@ export const getConflicts = async (req, res) => {
       );
     }
 
-    const parsedLimit = Number(limit);
-    const safeLimit =
-      Number.isFinite(parsedLimit) && parsedLimit > 0 ? parsedLimit : 50;
+    const { limit: safeLimit } = parsePagination(req.query, {
+      defaultLimit: 50,
+    });
 
     const conflicts = await listConflictSets(model, {
       organization,

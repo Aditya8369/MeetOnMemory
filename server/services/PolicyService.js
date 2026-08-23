@@ -135,9 +135,14 @@ Return ONLY valid JSON (no commentary, no markdown fences). Use a professional, 
 `;
 
     const response = await axios.post(
-      `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${GEMINI_API_KEY}`,
+      `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent`,
       { contents: [{ parts: [{ text: prompt }] }] },
-      { timeout: 30000 },
+      {
+        timeout: 30000,
+        headers: {
+          "x-goog-api-key": GEMINI_API_KEY,
+        },
+      },
     );
 
     const rawText =

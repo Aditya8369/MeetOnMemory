@@ -3,6 +3,7 @@ import ActionItem from "../models/actionItemModel.js";
 import Meeting from "../models/meetingModel.js";
 import emailService from "./emailService.js";
 import { createNotification } from "./notificationService.js";
+import { checkQuietHours } from "../utils/quietHours.js";
 
 class ReminderScheduler {
   constructor() {
@@ -186,6 +187,14 @@ class ReminderScheduler {
 
     for (const recipient of recipients) {
       try {
+        const inQuietHours = await checkQuietHours(recipient.userId);
+        if (inQuietHours) {
+          console.log(
+            `[ReminderScheduler] Suppressing meeting reminder for ${recipient.email} due to quiet hours.`,
+          );
+          continue;
+        }
+
         await createNotification({
           userId: recipient.userId,
           type: "meeting_reminder",
@@ -306,6 +315,14 @@ class ReminderScheduler {
 
   async sendReminder(item, type) {
     if (!item.assignee?.email) return;
+
+    const inQuietHours = await checkQuietHours(item.assignee._id);
+    if (inQuietHours) {
+      console.log(
+        `[ReminderScheduler] Suppressing action item reminder for ${item.assignee.email} due to quiet hours.`,
+      );
+      return;
+    }
 
     const taskTitle = item.title || item.text;
 

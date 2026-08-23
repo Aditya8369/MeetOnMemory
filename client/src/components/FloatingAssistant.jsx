@@ -50,12 +50,16 @@ const FloatingAssistant = () => {
     handleSelectSession,
     handleNewSession,
     handleDeleteSession,
+    handleRenameSession,
     handleSendMessage,
     handleUnpinContext,
   } = useAssistant();
 
   const messagesEndRef = useRef(null);
   const dragRef = useRef(null);
+  const dialogRef = useRef(null);
+  const triggerRef = useRef(null);
+  const initialFocusRef = useRef(null);
   const [showSidebar, setShowSidebar] = useState(true);
   const [isMobile, setIsMobile] = useState(false);
   const [isTablet, setIsTablet] = useState(false);
@@ -77,6 +81,63 @@ const FloatingAssistant = () => {
     window.addEventListener("resize", checkScreenSize);
     return () => window.removeEventListener("resize", checkScreenSize);
   }, []);
+
+  // Dialog Focus Trap and Keyboard Accessibility
+  useEffect(() => {
+    if (ui.isOpen) {
+      triggerRef.current = document.activeElement;
+
+      setTimeout(() => {
+        initialFocusRef.current?.focus();
+      }, 50);
+
+      const handleKeyDown = (e) => {
+        if (e.key === "Escape") {
+          closeAssistant();
+          return;
+        }
+
+        if (e.key === "Tab") {
+          if (!dialogRef.current) return;
+
+          const focusableElements = dialogRef.current.querySelectorAll(
+            'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])',
+          );
+
+          if (focusableElements.length === 0) return;
+
+          const firstElement = focusableElements[0];
+          const lastElement = focusableElements[focusableElements.length - 1];
+
+          if (e.shiftKey) {
+            if (document.activeElement === firstElement) {
+              lastElement.focus();
+              e.preventDefault();
+            }
+          } else {
+            if (document.activeElement === lastElement) {
+              firstElement.focus();
+              e.preventDefault();
+            }
+          }
+        }
+      };
+
+      document.addEventListener("keydown", handleKeyDown);
+
+      if (isMobile) {
+        document.body.style.overflow = "hidden";
+      }
+
+      return () => {
+        document.removeEventListener("keydown", handleKeyDown);
+        if (isMobile) {
+          document.body.style.overflow = "";
+        }
+        triggerRef.current?.focus();
+      };
+    }
+  }, [ui.isOpen, closeAssistant, isMobile]);
 
   // Auto-hide sidebar on mobile when chat is active
   useEffect(() => {
@@ -227,17 +288,29 @@ const FloatingAssistant = () => {
   if (isMobile || isTablet) {
     return (
       <div
+        ref={dialogRef}
         className="fixed inset-0 z-[960] flex flex-col overflow-hidden bg-white dark:bg-gray-900"
         role="dialog"
-        aria-label="AI Assistant workspace"
+        aria-modal="true"
+        aria-labelledby="assistant-dialog-title"
+        aria-describedby="assistant-dialog-desc"
       >
+        <p id="assistant-dialog-desc" className="sr-only">
+          This window allows you to interact with the AI Assistant. Press Escape
+          to close at any time.
+        </p>
         {/* Mobile Header */}
         <div className="flex items-center justify-between gap-2 border-b border-gray-200 bg-gradient-to-r from-gray-50 to-white px-4 py-3 dark:border-gray-700 dark:from-gray-800 dark:to-gray-900">
           <div className="flex items-center gap-2.5 text-gray-700 dark:text-gray-200">
             <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-indigo-100 dark:bg-indigo-950">
               <MessageSquare className="h-4 w-4 text-indigo-600 dark:text-indigo-400" />
             </div>
-            <span className="text-base font-semibold">AI Assistant</span>
+            <span
+              id="assistant-dialog-title"
+              className="text-base font-semibold"
+            >
+              AI Assistant
+            </span>
           </div>
 
           <div className="flex items-center gap-1">
@@ -286,6 +359,7 @@ const FloatingAssistant = () => {
                     setShowSidebar(false);
                   }}
                   onDeleteSession={handleDeleteSession}
+                  onRenameSession={handleRenameSession}
                 />
               </div>
             </div>
@@ -431,6 +505,7 @@ const FloatingAssistant = () => {
                 className="relative flex items-center"
               >
                 <input
+                  ref={initialFocusRef}
                   type="text"
                   id="assistant-input"
                   value={inputValue}
@@ -475,11 +550,18 @@ const FloatingAssistant = () => {
 
   return (
     <div
+      ref={dialogRef}
       className="fixed z-[960] flex flex-col overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-2xl dark:border-gray-700 dark:bg-gray-900"
       style={panelStyle}
       role="dialog"
-      aria-label="AI Assistant workspace"
+      aria-modal="true"
+      aria-labelledby="assistant-dialog-title"
+      aria-describedby="assistant-dialog-desc"
     >
+      <p id="assistant-dialog-desc" className="sr-only">
+        This window allows you to interact with the AI Assistant. Press Escape
+        to close at any time.
+      </p>
       {/* Desktop Header */}
       <div
         ref={dragRef}
@@ -497,7 +579,12 @@ const FloatingAssistant = () => {
           <div className="flex h-6 w-6 items-center justify-center rounded-lg bg-indigo-100 dark:bg-indigo-950">
             <MessageSquare className="h-3.5 w-3.5 text-indigo-600 dark:text-indigo-400" />
           </div>
-          <span className="truncate text-sm font-semibold">AI Assistant</span>
+          <span
+            id="assistant-dialog-title"
+            className="truncate text-sm font-semibold"
+          >
+            AI Assistant
+          </span>
         </div>
 
         <div
@@ -574,6 +661,7 @@ const FloatingAssistant = () => {
               onSelectSession={handleSelectSession}
               onNewSession={handleNewSession}
               onDeleteSession={handleDeleteSession}
+              onRenameSession={handleRenameSession}
             />
           </div>
         )}
@@ -712,6 +800,7 @@ const FloatingAssistant = () => {
 
             <form onSubmit={handleSendMessage} className="relative">
               <textarea
+                ref={initialFocusRef}
                 id="assistant-input"
                 value={inputValue}
                 onChange={(e) => setInputValue(e.target.value)}

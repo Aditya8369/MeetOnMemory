@@ -58,6 +58,7 @@ const commentSchema = new mongoose.Schema(
 // Indexes for quick lookups
 commentSchema.index({ meeting: 1, createdAt: 1 });
 commentSchema.index({ parentComment: 1 });
+commentSchema.index({ organization: 1 });
 
 const Comment = mongoose.model("Comment", commentSchema);
 export default Comment;

@@ -74,6 +74,41 @@ const notificationPreferenceSchema = new mongoose.Schema(
       type: Boolean,
       default: true,
     },
+
+    // ── Mute per meeting (Issue #2064) ───────────────────────────────────
+    // Meeting ids whose in-app notifications should be suppressed.
+    mutedMeetingIds: {
+      type: [
+        {
+          type: mongoose.Schema.Types.ObjectId,
+          ref: "Meeting",
+        },
+      ],
+      default: [],
+    },
+
+    // Optional daily notification digest email toggle (Issue #2064).
+    // Preference is persisted here; digest delivery job may consume it later.
+    emailDailyDigest: {
+      type: Boolean,
+      default: false,
+    },
+    quietHoursStart: {
+      type: Number,
+      min: 0,
+      max: 23,
+      default: null,
+    },
+    quietHoursEnd: {
+      type: Number,
+      min: 0,
+      max: 23,
+      default: null,
+    },
+    timezone: {
+      type: String,
+      default: "UTC",
+    },
   },
   { timestamps: true },
 );

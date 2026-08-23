@@ -1,19 +1,21 @@
 import React from "react";
 import PropTypes from "prop-types";
+import { sanitizeHtml } from "../utils/sanitizeHtml";
 
 /**
  * SandboxedHtmlPreview
  * Securely renders raw HTML (such as email digests or generated previews)
- * by isolating it within an iframe using a restrictive sandbox policy.
- * This prevents XSS attacks by disallowing scripts, same-origin access,
- * top navigation, and form submissions.
+ * by sanitizing first, then isolating the result in an iframe with a
+ * restrictive sandbox policy. Scripts, same-origin access, top navigation,
+ * and form submissions are all disallowed.
  */
 const SandboxedHtmlPreview = ({
   htmlContent,
   className = "",
   title = "Digest Preview",
 }) => {
-  if (!htmlContent) return null;
+  const sanitizedHtml = sanitizeHtml(htmlContent);
+  if (!sanitizedHtml) return null;
 
   return (
     <div
@@ -21,7 +23,7 @@ const SandboxedHtmlPreview = ({
     >
       <iframe
         title={title}
-        srcDoc={htmlContent}
+        srcDoc={sanitizedHtml}
         className="w-full h-full min-h-[400px] border-none"
         // Maximum restriction sandbox:
         // - No 'allow-scripts': prevents JS execution
@@ -30,6 +32,7 @@ const SandboxedHtmlPreview = ({
         // - No 'allow-popups': prevents opening new windows
         // - No 'allow-forms': prevents form submissions
         sandbox=""
+        referrerPolicy="no-referrer"
       />
     </div>
   );
