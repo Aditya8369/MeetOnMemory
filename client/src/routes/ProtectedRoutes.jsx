@@ -76,6 +76,7 @@ import MyDelegations from "../pages/MyDelegations.jsx";
 import MeetingPatterns from "../pages/MeetingPatterns.jsx";
 import FocusTime from "../pages/FocusTime.jsx";
 import SeriesRetrospective from "../pages/SeriesRetrospective.jsx";
+import MeetingSeriesList from "../pages/MeetingSeriesList.jsx";
 import DataRetentionSettings from "../pages/DataRetentionSettings.jsx";
 import FollowUpDashboard from "../pages/FollowUpDashboard.jsx";
 import EscalationDashboard from "../pages/EscalationDashboard.jsx";
@@ -108,6 +109,14 @@ const ProtectedRoutes = (
       element={
         <ProtectedRoute resource="meetings" action="view">
           <CompareMeetings />
+        </ProtectedRoute>
+      }
+    />
+    <Route
+      path="/meeting-series"
+      element={
+        <ProtectedRoute resource="meetings" action="view">
+          <MeetingSeriesList />
         </ProtectedRoute>
       }
     />
