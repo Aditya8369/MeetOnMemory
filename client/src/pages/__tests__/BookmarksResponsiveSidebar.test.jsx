@@ -20,7 +20,9 @@ vi.mock("../../api/bookmarkApi.js", () => ({
   getBookmarksAPI: vi.fn(),
   getCollectionsAPI: vi.fn(),
   deleteCollectionAPI: vi.fn(),
+  updateCollectionAPI: vi.fn(),
   toggleBookmarkAPI: vi.fn(),
+  updateBookmarkAPI: vi.fn(),
 }));
 
 describe("Bookmarks Mobile Responsive Sidebar & Drawer (#1650)", () => {

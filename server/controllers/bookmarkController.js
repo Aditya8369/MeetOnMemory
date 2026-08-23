@@ -186,6 +186,41 @@ export const deleteCollection = async (req, res) => {
   }
 };
 
+// @desc    Rename or update collection color for user
+// @route   PUT /api/bookmarks/collections/:name
+// @access  Private
+export const updateCollection = async (req, res) => {
+  try {
+    const userId = req.user._id;
+    const oldName = String(req.params.name);
+    const { name: newName, color } = req.body;
+
+    if (!newName && !color) {
+      return res
+        .status(400)
+        .json({ message: "New collection name or color is required" });
+    }
+
+    const updateFields = {};
+    if (newName) updateFields.collectionName = newName.trim();
+    if (color) updateFields.color = color;
+
+    const result = await Bookmark.updateMany(
+      { user: userId, collectionName: oldName },
+      { $set: updateFields },
+    );
+
+    return res.status(200).json({
+      success: true,
+      message: `Collection ${oldName} updated`,
+      modifiedCount: result.modifiedCount,
+    });
+  } catch (error) {
+    console.error("Error in updateCollection:", error);
+    res.status(500).json({ message: "Server error updating collection" });
+  }
+};
+
 // @desc    Add meeting bookmark
 // @route   POST /api/meetings/:id/bookmark
 // @access  Private
