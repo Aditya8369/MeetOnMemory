@@ -122,6 +122,17 @@ vi.mock("../../components/meeting-details/FeedbackForm", () => ({
     </div>
   ),
 }));
+vi.mock("../../components/meeting-details/HealthScoreCard", () => ({
+  default: ({ meetingId, organizationId }) => (
+    <div
+      data-testid="meeting-health-score-card"
+      data-meeting-id={meetingId}
+      data-organization-id={organizationId || ""}
+    >
+      Health for {meetingId}
+    </div>
+  ),
+}));
 
 import { meetingApi } from "../../services";
 
@@ -177,6 +188,10 @@ describe("MeetingDetails Navbar Integration (#1637)", () => {
     expect(feedbackForm).toHaveTextContent("Feedback for 123");
     expect(feedbackForm).toHaveAttribute("data-meeting-id", "123");
     expect(feedbackForm).toHaveAttribute("data-organization-id", "org-42");
+    const healthCard = screen.getByTestId("meeting-health-score-card");
+    expect(healthCard).toHaveTextContent("Health for 123");
+    expect(healthCard).toHaveAttribute("data-meeting-id", "123");
+    expect(healthCard).toHaveAttribute("data-organization-id", "org-42");
   });
 
   it("renders Navbar in error state", async () => {
