@@ -1,7 +1,11 @@
-const express = require("express");
+import express from "express";
+import { createRequire } from "module";
+import protect from "../middleware/userAuth.js";
+
+const require = createRequire(import.meta.url);
+const meetingRiskController = require("../controllers/meetingRiskController.js");
+
 const router = express.Router();
-const { protect } = require("../middleware/authMiddleware");
-const meetingRiskController = require("../controllers/meetingRiskController");
 
 router.use(protect);
 
@@ -15,4 +19,4 @@ router.put("/:riskId", meetingRiskController.updateRisk);
 router.delete("/:riskId", meetingRiskController.deleteRisk);
 router.post("/:riskId/action-items", meetingRiskController.linkActionItem);
 
-module.exports = router;
+export default router;

@@ -4,8 +4,8 @@ import {
   getInsightHistory,
   triggerManualGeneration,
 } from "../controllers/weeklyInsightController.js";
-import { userAuth } from "../middleware/userAuth.js";
-import { requireRole } from "../middleware/requireRole.js";
+import userAuth from "../middleware/userAuth.js";
+import { requireRole } from "../middleware/rbac.js";
 
 const router = express.Router();
 

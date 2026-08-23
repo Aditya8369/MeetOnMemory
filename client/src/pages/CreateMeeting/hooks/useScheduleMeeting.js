@@ -1,6 +1,7 @@
 import { toast } from "react-toastify";
 import {
   meetingApi,
+  meetingSeriesApi,
   meetingTemplateApi,
   aiSummaryTemplateApi,
 } from "../../../services";
@@ -26,10 +27,14 @@ import {
 const CONFLICT_MODE_STORAGE_KEY = "meet-on-memory:schedule-conflict-mode";
 
 const readConflictMode = () => {
-  if (typeof window === "undefined") return "soft";
-  return window.localStorage.getItem(CONFLICT_MODE_STORAGE_KEY) === "hard"
-    ? "hard"
-    : "soft";
+  try {
+    if (typeof window === "undefined" || !window.localStorage) return "soft";
+    return window.localStorage.getItem(CONFLICT_MODE_STORAGE_KEY) === "hard"
+      ? "hard"
+      : "soft";
+  } catch {
+    return "soft";
+  }
 };
 
 export const buildDuplicateScheduleState = (duplicateData = {}) => ({
@@ -68,7 +73,7 @@ export const useScheduleMeeting = ({
   meetingId = null,
   serverUpdatedAt = null,
 } = {}) => {
-  const { userData } = useContext(AppContent);
+  const { userData } = useContext(AppContent) ?? {};
   const [scheduleData, setScheduleData] = useState({
     title: "",
     description: "",
@@ -81,6 +86,8 @@ export const useScheduleMeeting = ({
     syncToCalendar: true,
     reminderEnabled: false,
     reminderMinutesBefore: 30,
+    recurrencePattern: "none",
+    endDate: "",
   });
   const [participants, setParticipants] = useState([]);
   const [newParticipant, setNewParticipant] = useState({ name: "", email: "" });
@@ -298,8 +305,12 @@ export const useScheduleMeeting = ({
   const setConflictMode = useCallback((modeValue) => {
     const nextMode = modeValue === "hard" ? "hard" : "soft";
     setConflictModeState(nextMode);
-    if (typeof window !== "undefined") {
-      window.localStorage.setItem(CONFLICT_MODE_STORAGE_KEY, nextMode);
+    try {
+      if (typeof window !== "undefined" && window.localStorage) {
+        window.localStorage.setItem(CONFLICT_MODE_STORAGE_KEY, nextMode);
+      }
+    } catch {
+      // Ignore storage failures (private mode / missing localStorage in tests)
     }
   }, []);
 
@@ -384,6 +395,36 @@ export const useScheduleMeeting = ({
     setAttachments(attachments.filter((_, i) => i !== index));
   };
 
+  const resetScheduleForm = () => {
+    setScheduleData({
+      title: "",
+      description: "",
+      meetingType: "conference",
+      date: "",
+      time: "",
+      duration: "",
+      location: "",
+      venue: "",
+      syncToCalendar: true,
+      reminderEnabled: false,
+      reminderMinutesBefore: 30,
+      recurrencePattern: "none",
+      endDate: "",
+    });
+    setParticipants([]);
+    setAgendaItems([]);
+    setAttachments([]);
+    setDuplicateMetadata({
+      tags: [],
+      policyDetails: null,
+      recordingType: "upload",
+    });
+    setSelectedTemplateId("");
+    setFocusConflicts([]);
+    setBusyParticipants([]);
+    clearDraft();
+  };
+
   const handleScheduleSubmit = async (e) => {
     e.preventDefault();
     if (!scheduleData.title.trim()) {
@@ -394,6 +435,21 @@ export const useScheduleMeeting = ({
     if (!scheduleData.date || !scheduleData.time) {
       toast.error("Date and time are required");
       return;
+    }
+
+    const recurrencePattern = scheduleData.recurrencePattern || "none";
+    const isRecurring =
+      Boolean(recurrencePattern) && recurrencePattern !== "none";
+
+    if (isRecurring) {
+      if (!scheduleData.endDate) {
+        toast.error("End date is required for recurring meetings");
+        return;
+      }
+      if (scheduleData.date > scheduleData.endDate) {
+        toast.error("Start date must be before or equal to end date");
+        return;
+      }
     }
 
     const hasConflicts =
@@ -412,6 +468,25 @@ export const useScheduleMeeting = ({
       return;
     }
 
+    let auditNote;
+    if (focusConflicts.length > 0 && conflictMode !== "hard") {
+      const confirmed = window.confirm(
+        "This meeting overlaps with a focus time block. Schedule anyway?",
+      );
+      if (!confirmed) return;
+
+      const reason = window.prompt(
+        "Please provide a reason for overriding focus time:",
+      );
+      if (!reason || !reason.trim()) {
+        toast.error(
+          "An override reason is required to schedule over focus time",
+        );
+        return;
+      }
+      auditNote = reason.trim();
+    }
+
     setLoading(true);
     try {
       const payload = {
@@ -421,7 +496,30 @@ export const useScheduleMeeting = ({
         policyDetails: duplicateMetadata.policyDetails,
         recordingType: duplicateMetadata.recordingType,
         agendaItems: normalizeAgendaItems(agendaItems),
+        ...(auditNote ? { auditNote } : {}),
       };
+
+      if (isRecurring) {
+        const seriesPayload = {
+          ...payload,
+          startDate: scheduleData.date,
+          endDate: scheduleData.endDate,
+          recurrencePattern,
+        };
+        const response = await meetingSeriesApi.createSeries(seriesPayload);
+        if (response.data?.success) {
+          const count = response.data.meetingsCreated ?? 0;
+          toast.success(
+            `Meeting series created successfully with ${count} occurrence(s)!`,
+          );
+          resetScheduleForm();
+        } else {
+          toast.error(
+            response.data?.message || "Failed to create meeting series",
+          );
+        }
+        return;
+      }
 
       const response = await meetingApi.scheduleMeeting(payload);
 
@@ -444,31 +542,7 @@ export const useScheduleMeeting = ({
           toast.info("📅 Calendar invites sent to all participants!");
         }
 
-        setScheduleData({
-          title: "",
-          description: "",
-          meetingType: "conference",
-          date: "",
-          time: "",
-          duration: "",
-          location: "",
-          venue: "",
-          syncToCalendar: true,
-          reminderEnabled: false,
-          reminderMinutesBefore: 30,
-        });
-        setParticipants([]);
-        setAgendaItems([]);
-        setAttachments([]);
-        setDuplicateMetadata({
-          tags: [],
-          policyDetails: null,
-          recordingType: "upload",
-        });
-        setSelectedTemplateId("");
-        setFocusConflicts([]);
-        setBusyParticipants([]);
-        clearDraft();
+        resetScheduleForm();
       } else {
         toast.error(response.data?.message || "Failed to schedule meeting");
       }

@@ -1,6 +1,6 @@
 import express from "express";
-import { userAuth } from "../middleware/authMiddleware.js";
-import { requireOrgMembership } from "../middleware/organizationMiddleware.js";
+import userAuth from "../middleware/userAuth.js";
+import { requireOrgMembership } from "../middleware/rbac.js";
 import {
   getPreferences,
   updatePreferences,

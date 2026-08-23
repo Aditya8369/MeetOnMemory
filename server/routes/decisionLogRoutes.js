@@ -1,7 +1,7 @@
 import express from "express";
 import * as decisionLogController from "../controllers/decisionLogController.js";
-import { userAuth } from "../middleware/authMiddleware.js";
-import { requirePermission } from "../middleware/rbacMiddleware.js";
+import userAuth from "../middleware/userAuth.js";
+import { requirePermission } from "../middleware/rbac.js";
 
 const router = express.Router();
 

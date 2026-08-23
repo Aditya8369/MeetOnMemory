@@ -1,6 +1,6 @@
 import express from "express";
 import actionItemSlaController from "../controllers/actionItemSlaController.js";
-import { requireAuth } from "../middleware/authMiddleware.js";
+import requireAuth from "../middleware/userAuth.js";
 
 const router = express.Router();
 
