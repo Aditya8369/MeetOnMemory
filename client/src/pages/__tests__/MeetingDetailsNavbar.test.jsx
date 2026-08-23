@@ -130,6 +130,14 @@ vi.mock("../../components/meeting-details/AgendaTimer", () => ({
       data-readonly={readOnly ? "yes" : "no"}
     >
       Agenda for {meeting?._id}
+vi.mock("../../components/meeting-details/HealthScoreCard", () => ({
+  default: ({ meetingId, organizationId }) => (
+    <div
+      data-testid="meeting-health-score-card"
+      data-meeting-id={meetingId}
+      data-organization-id={organizationId || ""}
+    >
+      Health for {meetingId}
     </div>
   ),
 }));
@@ -192,6 +200,10 @@ describe("MeetingDetails Navbar Integration (#1637)", () => {
     expect(agendaTimer).toHaveTextContent("Agenda for 123");
     expect(agendaTimer).toHaveAttribute("data-meeting-id", "123");
     expect(agendaTimer).toHaveAttribute("data-readonly", "yes");
+    const healthCard = screen.getByTestId("meeting-health-score-card");
+    expect(healthCard).toHaveTextContent("Health for 123");
+    expect(healthCard).toHaveAttribute("data-meeting-id", "123");
+    expect(healthCard).toHaveAttribute("data-organization-id", "org-42");
   });
 
   it("renders Navbar in error state", async () => {

@@ -60,6 +60,14 @@ vi.mock("../../components/meeting-details/AgendaTimer.jsx", () => ({
       data-readonly={readOnly ? "yes" : "no"}
     >
       Agenda for {meeting?._id}
+vi.mock("../../components/meeting-details/HealthScoreCard.jsx", () => ({
+  default: ({ meetingId, organizationId }) => (
+    <div
+      data-testid="meeting-health-score-card"
+      data-meeting-id={meetingId}
+      data-organization-id={organizationId || ""}
+    >
+      Health for {meetingId}
     </div>
   ),
 }));
