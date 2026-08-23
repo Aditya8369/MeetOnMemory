@@ -26,13 +26,13 @@ read and update organization-specific lifecycle thresholds.
 
 The effective policy contains:
 
-| Setting | Default |
-| --- | ---: |
-| Dormant after | 30 days |
-| Archive after | 90 days |
-| Expire after | 365 days |
-| Importance protection | 70 |
-| Hard delete expired | false |
+| Setting               |  Default |
+| --------------------- | -------: |
+| Dormant after         |  30 days |
+| Archive after         |  90 days |
+| Expire after          | 365 days |
+| Importance protection |       70 |
+| Hard delete expired   |    false |
 
 Overrides are stored under the existing organization `metadata` document as
 `memoryLifecyclePolicy`; this avoids a schema migration while preserving

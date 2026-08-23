@@ -16,16 +16,10 @@ const toObjectId = (value) => {
 };
 
 /**
- * Builds the $match filter shared by both memory collections for the
- * Knowledge Archive browser.
- *
- * `search` is escaped and length-capped by `literalContainsFilter`
- * (Issue #1451). This match is not evaluated once but three times per request
- * — the decision branch, the `$unionWith` action-item branch, and the `$count`
- * inside `$facet` — so an unescaped pattern ran across both collections on
- * every archive page load.
+ * Builds the shared archive filter. Tag filtering is applied server-side so
+ * the selected facet always describes the same result set that is returned.
  */
-export const buildArchiveMatch = ({ organization, search }) => {
+export const buildArchiveMatch = ({ organization, search, tag }) => {
   const match = {
     organization: toObjectId(organization),
     lifecycleState: "archived",
@@ -34,6 +28,10 @@ export const buildArchiveMatch = ({ organization, search }) => {
   const searchFilter = literalContainsFilter(search);
   if (searchFilter) {
     match.text = searchFilter;
+  }
+
+  if (typeof tag === "string" && tag.trim()) {
+    match.aliases = tag.trim();
   }
 
   return match;
@@ -65,19 +63,19 @@ const meetingLookupStages = [
 ];
 
 /**
- * Builds the aggregation pipeline that returns one correctly paginated page
- * of archived memories. When `type` is `"all"`, decisions and action items
- * are unioned and sorted together before skip/limit so pages never skip or
- * duplicate records the way client-side merging of two independent pages did.
+ * Builds the combined archive aggregation. Tag facets are calculated before
+ * pagination, so counts represent the full matching archive rather than only
+ * the current page.
  */
 export const buildArchivePipeline = ({
   type = "all",
   organization,
   search,
+  tag,
   skip = 0,
   limit = 10,
 }) => {
-  const match = buildArchiveMatch({ organization, search });
+  const match = buildArchiveMatch({ organization, search, tag });
   const actionItemCollection = ActionItem.collection?.name || "actionitems";
 
   const decisionBranch = [{ $match: match }, withTypeAndSortDate("decision")];
@@ -106,20 +104,31 @@ export const buildArchivePipeline = ({
       $facet: {
         metadata: [{ $count: "total" }],
         data: [{ $skip: skip }, { $limit: limit }, ...meetingLookupStages],
+        tags: [
+          { $unwind: "$aliases" },
+          { $match: { aliases: { $type: "string", $ne: "" } } },
+          {
+            $group: {
+              _id: "$aliases",
+              count: { $sum: 1 },
+            },
+          },
+          { $sort: { _id: 1 } },
+        ],
       },
     },
   ];
 };
 
 /**
- * Fetches one page of archived knowledge items with unified pagination.
- *
- * @returns {{ memories: object[], pagination: object }}
+ * Fetches one page of archived knowledge items with unified pagination and
+ * full-result tag facets.
  */
 export const getArchivedMemoriesPage = async ({
   organization,
   type = "all",
   search,
+  tag,
   page,
   limit,
 }) => {
@@ -137,6 +146,12 @@ export const getArchivedMemoriesPage = async ({
     throw err;
   }
 
+  if (tag !== undefined && tag !== null && typeof tag !== "string") {
+    const err = new Error("Invalid tag");
+    err.statusCode = 400;
+    throw err;
+  }
+
   const pagination = parsePagination(
     { page, limit },
     { defaultLimit: 10, maxLimit: 100 },
@@ -146,6 +161,7 @@ export const getArchivedMemoriesPage = async ({
     type,
     organization,
     search,
+    tag,
     skip: pagination.skip,
     limit: pagination.limit,
   });
@@ -155,6 +171,15 @@ export const getArchivedMemoriesPage = async ({
   const memories = facet?.data || [];
   const total = facet?.metadata?.[0]?.total || 0;
 
+  const tags = (facet?.tags || [])
+    .map((entry) => ({
+      value: entry?._id,
+      count: entry?.count || 0,
+    }))
+    .filter(
+      (entry) => typeof entry.value === "string" && entry.value.length > 0,
+    );
+
   return {
     memories,
     pagination: buildPaginationMeta({
@@ -162,6 +187,9 @@ export const getArchivedMemoriesPage = async ({
       page: pagination.page,
       limit: pagination.limit,
     }),
+    facets: {
+      tags,
+    },
   };
 };
 

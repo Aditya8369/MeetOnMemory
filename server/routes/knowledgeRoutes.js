@@ -6,7 +6,6 @@ import {
   getDecisionLineageController,
   getOpenActionItems,
   getDecisions,
-  getArchivedMemories,
   getLifecycleMemories,
   submitMemoryFeedback,
   recalculateImportance,
@@ -20,6 +19,10 @@ import {
   getMemoryLifecycleRetentionPolicy,
   updateMemoryLifecycleRetentionPolicy,
 } from "../controllers/memoryLifecycleRetentionController.js";
+import {
+  getArchivedMemoriesWithFacets,
+  bulkRestoreArchivedMemories,
+} from "../controllers/archiveController.js";
 import {
   runConsolidation,
   getConsolidationHistory,
@@ -85,7 +88,14 @@ router.get(
   "/archive",
   requireOrgMembership,
   requirePermission("knowledge", "view"),
-  getArchivedMemories,
+  getArchivedMemoriesWithFacets,
+);
+router.post(
+  "/archive/restore",
+  writeLimiter,
+  requireOrgMembership,
+  requirePermission("knowledge", "manage_lifecycle"),
+  bulkRestoreArchivedMemories,
 );
 router.get(
   "/decisions/:id/lineage",
@@ -129,7 +139,7 @@ router.post(
   recalculateImportance,
 );
 
-// --- Memory Lifecycle Management (#377, #1552, #2042) ---
+// --- Memory Lifecycle Management ---
 router.get(
   "/lifecycle",
   requireOrgMembership,

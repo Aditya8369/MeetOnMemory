@@ -28,13 +28,18 @@ import {
   RefreshCw,
   ListTodo,
   Database,
+  ShieldCheck,
+  BrainCircuit,
 } from "lucide-react";
 import Navbar from "../components/Navbar.jsx";
 import TemplateBuilder from "../components/admin/TemplateBuilder.jsx";
 import TestimonialsModeration from "../components/admin/TestimonialsModeration.jsx";
 import JobsDashboard from "../components/admin/JobsDashboard.jsx";
 import EmbeddingReindexAdmin from "../components/admin/EmbeddingReindexAdmin.jsx";
+import RbacPermissionExplorer from "../components/admin/RbacPermissionExplorer.jsx";
+import ImportanceRecalculationAdmin from "../components/admin/ImportanceRecalculationAdmin.jsx";
 import MembershipRequests from "../components/organization/MembershipRequests.jsx";
+
 import AppContent from "../context/AppContent.js";
 import { fetchPlatformStatus } from "../services/statusApi.js";
 import {
@@ -119,7 +124,16 @@ const MODULES = [
     iconColor: "text-cyan-600 dark:text-cyan-400",
   },
   {
+    id: "importance",
+    labelKey: "Importance Score Engine",
+    descriptionKey: "Trigger score recalculations and view job diagnostics",
+    icon: BrainCircuit,
+    iconBg: "bg-indigo-50 dark:bg-indigo-900/30",
+    iconColor: "text-indigo-600 dark:text-indigo-400",
+  },
+  {
     id: "policies",
+
     labelKey: "adminPanel.policies",
     descriptionKey: "adminPanel.policiesDesc",
     icon: Shield,
@@ -157,6 +171,14 @@ const MODULES = [
     icon: Activity,
     iconBg: "bg-red-50 dark:bg-red-900/30",
     iconColor: "text-red-600 dark:text-red-400",
+  },
+  {
+    id: "permissions",
+    labelKey: "Permissions Matrix",
+    descriptionKey: "Role × action permission matrix and access explainer",
+    icon: ShieldCheck,
+    iconBg: "bg-purple-50 dark:bg-purple-900/30",
+    iconColor: "text-purple-600 dark:text-purple-400",
   },
 ];
 
@@ -318,6 +340,7 @@ const AdminPanel = () => {
       activeModule === "testimonials" ||
       activeModule === "jobs" ||
       activeModule === "embeddings" ||
+      activeModule === "importance" ||
       activeModule === "joinRequests"
     ) {
       return;
@@ -633,6 +656,10 @@ const AdminPanel = () => {
             <JobsDashboard />
           ) : activeModule === "embeddings" ? (
             <EmbeddingReindexAdmin />
+          ) : activeModule === "permissions" ? (
+            <RbacPermissionExplorer />
+          ) : activeModule === "importance" ? (
+            <ImportanceRecalculationAdmin />
           ) : activeModule === "joinRequests" ? (
             <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-2xl p-6 shadow-sm">
               <MembershipRequests organizationId={orgId} />
