@@ -52,6 +52,18 @@ vi.mock("../../components/meeting-details/FeedbackForm.jsx", () => ({
   ),
 }));
 
+vi.mock("../../components/meeting-details/AgendaTimer.jsx", () => ({
+  default: ({ meeting, readOnly }) => (
+    <div
+      data-testid="agenda-timer"
+      data-meeting-id={meeting?._id}
+      data-readonly={readOnly ? "yes" : "no"}
+    >
+      Agenda for {meeting?._id}
+    </div>
+  ),
+}));
+
 vi.mock("../../components/meeting-details/HealthScoreCard.jsx", () => ({
   default: ({ meetingId, organizationId }) => (
     <div
