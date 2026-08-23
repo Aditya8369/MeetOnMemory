@@ -1,6 +1,9 @@
 import Decision from "../models/decisionModel.js";
+import Meeting from "../models/meetingModel.js";
 import mongoose from "mongoose";
 import { escapeRegex } from "../utils/regex.js";
+
+const DECISION_STATUSES = ["open", "in-progress", "resolved", "superseded"];
 
 /**
  * @desc    Get the decision dependency graph for the current organization
@@ -160,5 +163,147 @@ export const getDecisionNeighbors = async (req, res) => {
     res
       .status(500)
       .json({ message: "Server error fetching decision neighbors" });
+  }
+};
+
+/**
+ * @desc    Create a new decision node in the current organization
+ * @route   POST /api/decision-graph
+ * @access  Private (knowledge:create)
+ */
+export const createDecision = async (req, res) => {
+  try {
+    const orgId = req.user.organization;
+    const { text, owner = "", status = "open", sourceMeetingId } = req.body || {};
+
+    if (!text || typeof text !== "string" || !text.trim()) {
+      return res.status(400).json({ message: "Decision text is required" });
+    }
+    if (status && !DECISION_STATUSES.includes(status)) {
+      return res.status(400).json({ message: "Invalid decision status" });
+    }
+    if (!sourceMeetingId || !mongoose.isValidObjectId(sourceMeetingId)) {
+      return res
+        .status(400)
+        .json({ message: "A valid sourceMeetingId is required" });
+    }
+
+    // The meeting must belong to the caller's organization — prevents attaching
+    // a decision to another org's meeting.
+    const meeting = await Meeting.findOne({
+      _id: sourceMeetingId,
+      organization: orgId,
+    }).select("_id");
+    if (!meeting) {
+      return res
+        .status(404)
+        .json({ message: "Source meeting not found in your organization" });
+    }
+
+    const decision = await Decision.create({
+      text: text.trim(),
+      owner: typeof owner === "string" ? owner : "",
+      status,
+      sourceMeetingId,
+      organization: orgId,
+    });
+
+    return res.status(201).json({
+      decision: {
+        id: decision._id.toString(),
+        label: decision.text,
+        owner: decision.owner,
+        status: decision.status,
+      },
+    });
+  } catch (error) {
+    console.error("Error creating decision:", error);
+    return res.status(500).json({ message: "Server error creating decision" });
+  }
+};
+
+/**
+ * Load two decisions in the caller's org, or return the HTTP error to send.
+ * Guards ownership + existence + self-reference for both link and supersede.
+ */
+const loadEdgePair = async (orgId, sourceId, targetId) => {
+  if (!mongoose.isValidObjectId(sourceId) || !mongoose.isValidObjectId(targetId)) {
+    return { error: { status: 400, message: "Invalid decision ID" } };
+  }
+  if (String(sourceId) === String(targetId)) {
+    return { error: { status: 400, message: "A decision cannot link to itself" } };
+  }
+  const [source, target] = await Promise.all([
+    Decision.findOne({ _id: sourceId, organization: orgId }),
+    Decision.findOne({ _id: targetId, organization: orgId }).select("_id"),
+  ]);
+  if (!source || !target) {
+    return { error: { status: 404, message: "Decision not found in your organization" } };
+  }
+  return { source, target };
+};
+
+/**
+ * @desc    Add a relatesTo edge from :id to a target decision
+ * @route   POST /api/decision-graph/:id/relations
+ * @access  Private (knowledge:edit)
+ */
+export const linkDecisions = async (req, res) => {
+  try {
+    const orgId = req.user.organization;
+    const { id } = req.params;
+    const { targetId, confidence } = req.body || {};
+
+    const { source, error } = await loadEdgePair(orgId, id, targetId);
+    if (error) return res.status(error.status).json({ message: error.message });
+
+    const alreadyLinked = (source.relatesTo || []).some(
+      (rel) => rel.target?.toString() === String(targetId),
+    );
+    if (alreadyLinked) {
+      return res.status(409).json({ message: "These decisions are already linked" });
+    }
+
+    const conf =
+      typeof confidence === "number" && confidence >= 0 && confidence <= 100
+        ? confidence
+        : 100;
+    source.relatesTo.push({ target: targetId, confidence: conf });
+    await source.save();
+
+    return res.status(200).json({
+      edge: { source: String(id), target: String(targetId), type: "relatesTo", confidence: conf },
+    });
+  } catch (error) {
+    console.error("Error linking decisions:", error);
+    return res.status(500).json({ message: "Server error linking decisions" });
+  }
+};
+
+/**
+ * @desc    Mark :id as superseded by a target decision
+ * @route   POST /api/decision-graph/:id/supersede
+ * @access  Private (knowledge:edit)
+ */
+export const supersedeDecision = async (req, res) => {
+  try {
+    const orgId = req.user.organization;
+    const { id } = req.params;
+    const { targetId } = req.body || {};
+
+    const { source, error } = await loadEdgePair(orgId, id, targetId);
+    if (error) return res.status(error.status).json({ message: error.message });
+
+    source.supersededByMemory = targetId;
+    source.status = "superseded";
+    await source.save();
+
+    return res.status(200).json({
+      edge: { source: String(id), target: String(targetId), type: "supersededBy" },
+      status: "superseded",
+    });
+  } catch (error) {
+    console.error("Error superseding decision:", error);
+    return res.status(500).json({ message: "Server error superseding decision" });
   }
 };
