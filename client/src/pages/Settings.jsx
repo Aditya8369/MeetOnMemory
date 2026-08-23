@@ -40,6 +40,7 @@ import {
 } from "../utils/validateCalendarOAuthRedirect.js";
 import { validateRedirect } from "../utils/validateRedirect.js";
 import { usePolling } from "../hooks/usePolling.js";
+import DataExportSection from "../components/settings/DataExportSection.jsx";
 
 const clerkPubKey = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY;
 
@@ -1018,6 +1019,11 @@ const Settings = () => {
                 )}
               </button>
             </div>
+          </div>
+
+          {/* Privacy & GDPR Data Export Section */}
+          <div className="fade-in-up stagger-5">
+            <DataExportSection />
           </div>
 
           {/* Preferences Section */}

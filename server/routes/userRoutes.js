@@ -11,6 +11,7 @@ import {
   getCurrentUser,
   updateUserProfile,
   requestDataExport,
+  getDataExportStatus,
   downloadExport,
   getDashboardPreferences,
   updateDashboardPreferences,
@@ -43,6 +44,13 @@ userRouter.put(
   userAuth,
   writeLimiter,
   updateDashboardPreferences,
+);
+
+userRouter.get(
+  "/data-export-status",
+  userAuth,
+  requirePermission("settings", "self_view"),
+  getDataExportStatus,
 );
 
 userRouter.post(
