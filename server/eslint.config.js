@@ -22,6 +22,7 @@ export default [
         global: "readonly",
         setTimeout: "readonly",
         setInterval: "readonly",
+        setImmediate: "readonly",
         clearTimeout: "readonly",
         clearInterval: "readonly",
         URL: "readonly",

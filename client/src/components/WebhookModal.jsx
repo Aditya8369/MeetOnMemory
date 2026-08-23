@@ -1,35 +1,9 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
-import {
-  X,
-  Globe,
-  Lock,
-  Shield,
-  RefreshCw,
-  Loader2,
-  Activity,
-} from "lucide-react";
+import { X, Globe, Lock, Shield, RefreshCw, Loader2 } from "lucide-react";
 import { toast } from "react-toastify";
 import { webhookApi } from "../services";
+import { WEBHOOK_EVENTS } from "../config/webhookEvents.js";
 
-const AVAILABLE_EVENTS = [
-  {
-    id: "meeting.created",
-    label: "Meeting Created",
-    desc: "Fired when a new meeting is scheduled or uploaded.",
-  },
-  {
-    id: "mom.generated",
-    label: "Minutes of Meeting Ready",
-    desc: "Fired when AI finishes generating structured MoM.",
-  },
-  {
-    id: "policy.updated",
-    label: "Policy Updated",
-    desc: "Fired when organization compliance policies are modified.",
-  },
-];
-
-// Masked placeholder for hidden secrets
 const SECRET_MASK = "••••••••••••••••••••••••••••••••";
 
 const WebhookModal = ({
@@ -41,7 +15,6 @@ const WebhookModal = ({
   triggerRef,
 }) => {
   const isEdit = !!webhook;
-
   const [targetUrl, setTargetUrl] = useState("");
   const [selectedEvents, setSelectedEvents] = useState([
     "meeting.created",
@@ -59,15 +32,7 @@ const WebhookModal = ({
     if (webhook) {
       setTargetUrl(webhook.targetUrl || "");
       setSelectedEvents(webhook.events || ["meeting.created"]);
-
-      // SECURITY FIX: Do NOT pre-fill the actual secret on edit.
-      // Show a masked placeholder if it exists, otherwise generate a new one.
-      if (webhook.hasSecret) {
-        setSecret(SECRET_MASK);
-      } else {
-        setSecret(generateRandomSecret());
-      }
-
+      setSecret(webhook.hasSecret ? SECRET_MASK : generateRandomSecret());
       setIsActive(webhook.isActive !== false);
     } else {
       setTargetUrl("");
@@ -77,117 +42,88 @@ const WebhookModal = ({
     }
   }, [webhook, isOpen]);
 
-  // Store previous active element when modal opens
   useEffect(() => {
     if (isOpen) {
-      // If triggerRef is provided, use it; otherwise store current active element
-      if (triggerRef?.current) {
-        previousActiveElementRef.current = triggerRef.current;
-      } else {
-        previousActiveElementRef.current = document.activeElement;
-      }
+      previousActiveElementRef.current =
+        triggerRef?.current || document.activeElement;
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isOpen]);
+  }, [isOpen, triggerRef]);
 
-  // Handle Escape key
   useEffect(() => {
-    const handleKeyDown = (e) => {
-      if (e.key === "Escape" && isOpen) {
-        onClose();
+    if (!isOpen) return undefined;
+
+    const handleKeyDown = (event) => {
+      if (event.key === "Escape") onClose();
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [isOpen, onClose]);
+
+  useEffect(() => {
+    if (!isOpen) {
+      if (previousActiveElementRef.current) {
+        setTimeout(() => previousActiveElementRef.current?.focus(), 50);
+      }
+      return undefined;
+    }
+
+    if (!modalRef.current) return undefined;
+
+    const modal = modalRef.current;
+    const trapFocus = (event) => {
+      if (event.key !== "Tab") return;
+
+      const focusable = modal.querySelectorAll(
+        'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])',
+      );
+      const first = focusable[0];
+      const last = focusable[focusable.length - 1];
+
+      if (event.shiftKey && document.activeElement === first) {
+        event.preventDefault();
+        last?.focus();
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault();
+        first?.focus();
       }
     };
 
-    if (isOpen) {
-      window.addEventListener("keydown", handleKeyDown);
-      return () => window.removeEventListener("keydown", handleKeyDown);
-    }
-  }, [isOpen, onClose]);
+    const focusable = modal.querySelectorAll(
+      'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])',
+    );
+    setTimeout(() => focusable[0]?.focus(), 50);
+    modal.addEventListener("keydown", trapFocus);
 
-  // Handle backdrop click
+    return () => modal.removeEventListener("keydown", trapFocus);
+  }, [isOpen]);
+
   const handleBackdropClick = useCallback(
-    (e) => {
-      if (e.target === backdropRef.current) {
-        onClose();
-      }
+    (event) => {
+      if (event.target === backdropRef.current) onClose();
     },
     [onClose],
   );
 
-  // Focus trap implementation
-  const trapFocus = useCallback((e) => {
-    if (!modalRef.current) return;
-
-    const focusableElements = modalRef.current.querySelectorAll(
-      'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])',
-    );
-    const firstElement = focusableElements[0];
-    const lastElement = focusableElements[focusableElements.length - 1];
-
-    if (e.key === "Tab") {
-      if (e.shiftKey) {
-        if (document.activeElement === firstElement) {
-          e.preventDefault();
-          lastElement?.focus();
-        }
-      } else {
-        if (document.activeElement === lastElement) {
-          e.preventDefault();
-          firstElement?.focus();
-        }
-      }
-    }
-  }, []);
-
-  // Set up focus trap when modal opens
-  useEffect(() => {
-    if (isOpen && modalRef.current) {
-      const modal = modalRef.current;
-      const focusableElements = modal.querySelectorAll(
-        'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])',
-      );
-      const firstElement = focusableElements[0];
-
-      // Focus first element after a small delay to ensure modal is rendered
-      setTimeout(() => {
-        firstElement?.focus();
-      }, 50);
-
-      modal.addEventListener("keydown", trapFocus);
-      return () => {
-        modal.removeEventListener("keydown", trapFocus);
-      };
-    }
-  }, [isOpen, trapFocus]);
-
-  // Restore focus to previous element when modal closes
-  useEffect(() => {
-    if (!isOpen && previousActiveElementRef.current) {
-      setTimeout(() => {
-        previousActiveElementRef.current?.focus();
-      }, 50);
-    }
-  }, [isOpen]);
-
   function generateRandomSecret() {
     const chars = "abcdef0123456789";
-    let str = "";
-    for (let i = 0; i < 64; i++) {
-      str += chars.charAt(Math.floor(Math.random() * chars.length));
+    let value = "";
+    for (let i = 0; i < 64; i += 1) {
+      value += chars.charAt(Math.floor(Math.random() * chars.length));
     }
-    return str;
+    return value;
   }
 
   const handleToggleEvent = (eventId) => {
-    setSelectedEvents((prev) =>
-      prev.includes(eventId)
-        ? prev.filter((e) => e !== eventId)
-        : [...prev, eventId],
+    setSelectedEvents((current) =>
+      current.includes(eventId)
+        ? current.filter((event) => event !== eventId)
+        : [...current, eventId],
     );
   };
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
+  const handleSubmit = async (event) => {
+    event.preventDefault();
 
     if (!targetUrl.trim()) {
       toast.error("Target URL is required.");
@@ -205,9 +141,8 @@ const WebhookModal = ({
     }
 
     setLoading(true);
+
     try {
-      // SECURITY FIX: Only send the secret if it's not the masked placeholder string
-      // If it is the mask, we leave it undefined so the backend doesn't overwrite the existing secret
       const payloadSecret = secret === SECRET_MASK ? undefined : secret.trim();
 
       const payload = {
@@ -216,7 +151,6 @@ const WebhookModal = ({
         isActive,
       };
 
-      // Only include secret in payload if it's a new webhook OR if the user explicitly changed it
       if (!isEdit || payloadSecret) {
         payload.secret = payloadSecret;
       }
@@ -234,12 +168,12 @@ const WebhookModal = ({
 
       onSuccess?.();
       onClose();
-    } catch (err) {
-      const errMsg =
-        err.response?.data?.message ||
-        err.message ||
+    } catch (error) {
+      const message =
+        error.response?.data?.message ||
+        error.message ||
         "Failed to save webhook subscription.";
-      toast.error(errMsg);
+      toast.error(message);
     } finally {
       setLoading(false);
     }
@@ -259,10 +193,9 @@ const WebhookModal = ({
         aria-modal="true"
         aria-labelledby="webhook-modal-title"
         aria-describedby="webhook-modal-description"
-        onClick={(e) => e.stopPropagation()}
-        className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-2xl max-w-lg w-full overflow-hidden animate-in fade-in zoom-in-95 duration-150"
+        onClick={(event) => event.stopPropagation()}
+        className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-2xl max-w-lg w-full max-h-[90vh] overflow-y-auto"
       >
-        {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200 dark:border-slate-800">
           <div className="flex items-center gap-3">
             <div className="p-2 rounded-xl bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400">
@@ -284,80 +217,77 @@ const WebhookModal = ({
             </div>
           </div>
           <button
+            type="button"
             onClick={onClose}
+            aria-label="Close webhook dialog"
             className="p-1 rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
           >
             <X className="w-5 h-5" />
           </button>
         </div>
 
-        {/* Body Form */}
         <form onSubmit={handleSubmit} className="p-6 space-y-5">
-          {/* Target URL */}
           <div>
             <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-2">
               Target Payload URL <span className="text-red-500">*</span>
             </label>
             <div className="relative">
-              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
-                <Globe className="w-4 h-4" />
-              </div>
+              <Globe className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
               <input
                 type="url"
                 required
                 value={targetUrl}
-                onChange={(e) => setTargetUrl(e.target.value)}
+                onChange={(event) => setTargetUrl(event.target.value)}
                 placeholder="https://api.yourcompany.com/webhooks"
-                className="w-full pl-10 pr-4 py-2.5 bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-900 dark:text-white text-sm focus:outline-hidden focus:ring-2 focus:ring-blue-500 transition-all"
+                className="w-full pl-10 pr-4 py-2.5 bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-900 dark:text-white text-sm focus:outline-hidden focus:ring-2 focus:ring-blue-500"
               />
             </div>
           </div>
 
-          {/* Event Selection */}
-          <div>
-            <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-2">
+          <fieldset>
+            <legend className="block text-xs font-semibold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-2">
               Event Triggers <span className="text-red-500">*</span>
-            </label>
+            </legend>
             <div className="space-y-2">
-              {AVAILABLE_EVENTS.map((evt) => {
-                const isChecked = selectedEvents.includes(evt.id);
+              {WEBHOOK_EVENTS.map((eventDefinition) => {
+                const checked = selectedEvents.includes(eventDefinition.id);
                 return (
-                  <div
-                    key={evt.id}
-                    onClick={() => handleToggleEvent(evt.id)}
+                  <label
+                    key={eventDefinition.id}
                     className={`flex items-start gap-3 p-3 rounded-xl border cursor-pointer transition-all ${
-                      isChecked
+                      checked
                         ? "bg-blue-50/50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800/60"
                         : "bg-slate-50/50 dark:bg-slate-800/40 border-slate-200 dark:border-slate-700/60 hover:bg-slate-100/60 dark:hover:bg-slate-800"
                     }`}
                   >
                     <input
                       type="checkbox"
-                      checked={isChecked}
-                      onChange={() => {}}
+                      checked={checked}
+                      onChange={() => handleToggleEvent(eventDefinition.id)}
                       className="mt-0.5 rounded text-blue-600 focus:ring-blue-500"
                     />
-                    <div>
-                      <div className="text-sm font-medium text-slate-900 dark:text-white">
-                        {evt.label}
-                      </div>
-                      <div className="text-xs text-slate-500 dark:text-slate-400">
-                        {evt.desc}
-                      </div>
-                    </div>
-                  </div>
+                    <span>
+                      <span className="block text-sm font-medium text-slate-900 dark:text-white">
+                        {eventDefinition.label}
+                      </span>
+                      <span className="block text-xs text-slate-500 dark:text-slate-400">
+                        {eventDefinition.desc}
+                      </span>
+                      <code className="block mt-1 text-[10px] text-slate-400 font-mono">
+                        {eventDefinition.id}
+                      </code>
+                    </span>
+                  </label>
                 );
               })}
             </div>
-          </div>
+          </fieldset>
 
-          {/* Secret Key - Updated for Security */}
           <div>
             <div className="flex items-center justify-between mb-2">
               <label className="text-xs font-semibold text-slate-700 dark:text-slate-300 uppercase tracking-wider">
                 HMAC Secret Key
               </label>
-              {/* Only allow regeneration if it's a new webhook or the user has already cleared the mask */}
               {!isEdit || secret !== SECRET_MASK ? (
                 <button
                   type="button"
@@ -373,32 +303,28 @@ const WebhookModal = ({
               )}
             </div>
             <div className="relative">
-              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
-                <Lock className="w-4 h-4" />
-              </div>
+              <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
               <input
                 type="text"
                 value={secret}
-                onChange={(e) => setSecret(e.target.value)}
+                onChange={(event) => setSecret(event.target.value)}
                 placeholder={
                   isEdit && webhook?.hasSecret
                     ? "Enter new secret to overwrite (or leave hidden)"
                     : "Secret key for signing payloads"
                 }
-                className="w-full pl-10 pr-4 py-2.5 bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-900 dark:text-white text-xs font-mono focus:outline-hidden focus:ring-2 focus:ring-blue-500 transition-all"
-                // Disable copy-paste of the masked value to prevent confusion
+                className="w-full pl-10 pr-4 py-2.5 bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-900 dark:text-white text-xs font-mono focus:outline-hidden focus:ring-2 focus:ring-blue-500"
                 readOnly={isEdit && secret === SECRET_MASK}
               />
             </div>
             <p className="mt-1 text-[11px] text-slate-500 dark:text-slate-400">
-              Used to compute signature header{" "}
+              Used to compute{" "}
               <code className="text-slate-700 dark:text-slate-300 font-mono">
                 x-meetonmemory-signature
               </code>
             </p>
           </div>
 
-          {/* Active Switch (for Edit mode) */}
           {isEdit && (
             <div className="flex items-center justify-between p-3 rounded-xl bg-slate-50 dark:bg-slate-800/40 border border-slate-200 dark:border-slate-700">
               <div className="flex items-center gap-2">
@@ -410,25 +336,24 @@ const WebhookModal = ({
               <input
                 type="checkbox"
                 checked={isActive}
-                onChange={(e) => setIsActive(e.target.checked)}
+                onChange={(event) => setIsActive(event.target.checked)}
                 className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500 cursor-pointer"
               />
             </div>
           )}
 
-          {/* Footer buttons */}
           <div className="flex items-center justify-end gap-3 pt-2">
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-2 text-sm font-medium text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition-colors"
+              className="px-4 py-2 text-sm font-medium text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
             >
               Cancel
             </button>
             <button
               type="submit"
               disabled={loading}
-              className="flex items-center gap-2 px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-xl shadow-lg shadow-blue-500/25 transition-all disabled:opacity-50"
+              className="flex items-center gap-2 px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-xl shadow-lg disabled:opacity-50"
             >
               {loading && <Loader2 className="w-4 h-4 animate-spin" />}
               {isEdit ? "Save Changes" : "Register Webhook"}
