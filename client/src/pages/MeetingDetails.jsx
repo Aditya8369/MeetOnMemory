@@ -48,7 +48,8 @@ import ClipManager from "../components/meeting-details/ClipManager";
 import HealthScoreCard from "../components/meeting-details/HealthScoreCard";
 import { isMeetingEnded } from "../utils/meetingLifecycle";
 import MeetingRisksPanel from "../components/meetings/MeetingRisksPanel";
-import { Award, ShieldAlert } from "lucide-react";
+import { Award, ShieldAlert, FileText } from "lucide-react";
+import ExportDialog from "../components/export/ExportDialog";
 
 const MeetingDetails = () => {
   const { id } = useParams();
@@ -64,6 +65,7 @@ const MeetingDetails = () => {
   const [isPresentModeOpen, setIsPresentModeOpen] = useState(false);
   const [isAnalyticsExpanded, setIsAnalyticsExpanded] = useState(false);
   const [isStoryViewerOpen, setIsStoryViewerOpen] = useState(false);
+  const [isExportDialogOpen, setIsExportDialogOpen] = useState(false);
   const [briefingStatus, setBriefingStatus] = useState("idle");
 
   const handleGenerateBriefing = async () => {
@@ -290,10 +292,18 @@ const MeetingDetails = () => {
             </div>
           )}
 
-          <div className="mb-4 flex justify-end">
+          <div className="mb-4 flex justify-end gap-3">
+            <button
+              onClick={() => setIsExportDialogOpen(true)}
+              className="flex items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg font-medium shadow-sm transition-colors text-sm"
+              data-testid="open-export-dialog-btn"
+            >
+              <FileText className="w-4 h-4" />
+              Export Minutes
+            </button>
             <button
               onClick={() => setIsStoryViewerOpen(true)}
-              className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-purple-500 to-pink-500 text-white rounded-lg font-medium shadow-sm hover:opacity-90 transition-opacity"
+              className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-purple-500 to-pink-500 text-white rounded-lg font-medium shadow-sm hover:opacity-90 transition-opacity text-sm"
             >
               <svg
                 className="w-5 h-5"
@@ -598,6 +608,13 @@ const MeetingDetails = () => {
         <RecapStoryViewer
           meetingId={meeting._id}
           onClose={() => setIsStoryViewerOpen(false)}
+        />
+      )}
+
+      {isExportDialogOpen && (
+        <ExportDialog
+          meetingId={meeting._id}
+          onClose={() => setIsExportDialogOpen(false)}
         />
       )}
     </div>

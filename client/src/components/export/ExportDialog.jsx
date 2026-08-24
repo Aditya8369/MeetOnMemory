@@ -1,5 +1,6 @@
-import React, { useState, useEffect } from "react";
-import api from "../../services/api";
+import React, { useState, useEffect, useCallback } from "react";
+import exportTemplateApi from "../../services/exportTemplateApi";
+import TemplateEditor from "./TemplateEditor";
 
 /**
  * @desc Modal dialog for selecting an export template, configuring sections,
@@ -10,25 +11,34 @@ const ExportDialog = ({ meetingId, onClose }) => {
   const [selectedTemplateId, setSelectedTemplateId] = useState("");
   const [format, setFormat] = useState("pdf");
   const [isGenerating, setIsGenerating] = useState(false);
+  const [isLoadingTemplates, setIsLoadingTemplates] = useState(true);
   const [error, setError] = useState(null);
   const [sectionOverrides, setSectionOverrides] = useState({});
+  const [isEditorOpen, setIsEditorOpen] = useState(false);
+  const [editingTemplate, setEditingTemplate] = useState(null);
+
+  const fetchTemplates = useCallback(async () => {
+    try {
+      setIsLoadingTemplates(true);
+      setError(null);
+      const res = await exportTemplateApi.getTemplates();
+      const fetchedTemplates = res.data || [];
+      setTemplates(fetchedTemplates);
+      if (fetchedTemplates.length > 0 && !selectedTemplateId) {
+        setSelectedTemplateId(fetchedTemplates[0]._id);
+        setSectionOverrides(fetchedTemplates[0].sections || {});
+      }
+    } catch (err) {
+      console.error("Failed to fetch export templates:", err);
+      setError("Failed to load export templates.");
+    } finally {
+      setIsLoadingTemplates(false);
+    }
+  }, [selectedTemplateId]);
 
   useEffect(() => {
-    const fetchTemplates = async () => {
-      try {
-        const { data } = await api.get("/export/templates");
-        const fetchedTemplates = data.data || [];
-        setTemplates(fetchedTemplates);
-        if (fetchedTemplates.length > 0) {
-          setSelectedTemplateId(fetchedTemplates[0]._id);
-          setSectionOverrides(fetchedTemplates[0].sections || {});
-        }
-      } catch (err) {
-        console.error("Failed to fetch templates:", err);
-      }
-    };
     fetchTemplates();
-  }, []);
+  }, [fetchTemplates]);
 
   // Update section overrides when the selected template changes
   useEffect(() => {
@@ -52,17 +62,13 @@ const ExportDialog = ({ meetingId, onClose }) => {
     setError(null);
 
     try {
-      const response = await api.post(
-        `/export/meeting/${meetingId}`,
-        {
-          templateId: selectedTemplateId,
-          format,
-          sectionOverrides, // Send the toggled sections to the backend
-        },
-        { responseType: "blob" }, // Important for file downloads
-      );
+      const response = await exportTemplateApi.exportMeeting(meetingId, {
+        templateId: selectedTemplateId,
+        format,
+        sectionOverrides, // Send the toggled sections to the backend
+      });
 
-      // Create download link
+      // Create download link from blob
       const blob = new Blob([response.data]);
       const url = window.URL.createObjectURL(blob);
       const link = document.createElement("a");
@@ -75,7 +81,7 @@ const ExportDialog = ({ meetingId, onClose }) => {
 
       onClose();
     } catch (err) {
-      setError("Failed to generate export. Please try again.");
+      setError("Failed to generate export document. Please try again.");
       console.error("Export error:", err);
     } finally {
       setIsGenerating(false);
@@ -85,15 +91,24 @@ const ExportDialog = ({ meetingId, onClose }) => {
   const selectedTemplate = templates.find((t) => t._id === selectedTemplateId);
 
   return (
-    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+    <div
+      className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4"
+      data-testid="export-dialog-modal"
+    >
       <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl w-full max-w-2xl overflow-hidden flex flex-col max-h-[90vh]">
         {/* Header */}
         <div className="p-6 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between">
-          <h2 className="text-2xl font-bold text-gray-900 dark:text-white">
-            Export Meeting Minutes
-          </h2>
+          <div>
+            <h2 className="text-2xl font-bold text-gray-900 dark:text-white">
+              Export Meeting Minutes
+            </h2>
+            <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+              Generate custom branded PDF, DOCX, or HTML export files
+            </p>
+          </div>
           <button
             onClick={onClose}
+            aria-label="Close export dialog"
             className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200"
           >
             <svg
@@ -115,52 +130,103 @@ const ExportDialog = ({ meetingId, onClose }) => {
         {/* Content */}
         <div className="flex-1 overflow-y-auto p-6 space-y-6">
           {error && (
-            <div className="p-3 bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 rounded-lg text-sm">
+            <div className="p-3 bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 rounded-lg text-sm font-medium">
               {error}
             </div>
           )}
 
-          {/* Template Selector */}
+          {/* Template Selector Header & Action */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-              Select Template
-            </label>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-              {templates.map((template) => (
-                <button
-                  key={template._id}
-                  onClick={() => setSelectedTemplateId(template._id)}
-                  className={`p-4 border rounded-xl text-left transition-all ${
-                    selectedTemplateId === template._id
-                      ? "border-indigo-500 bg-indigo-50 dark:bg-indigo-900/20 ring-2 ring-indigo-500"
-                      : "border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600"
-                  }`}
-                >
-                  <h3 className="font-bold text-gray-900 dark:text-white">
-                    {template.name}
-                  </h3>
-                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-1 line-clamp-2">
-                    {template.description || "Custom template"}
-                  </p>
-                  <span className="inline-block mt-2 px-2 py-0.5 text-[10px] font-bold uppercase bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 rounded-full">
-                    {template.type}
-                  </span>
-                </button>
-              ))}
+            <div className="flex items-center justify-between mb-2">
+              <label className="block text-sm font-bold text-gray-700 dark:text-gray-300">
+                Select Template
+              </label>
+              <button
+                type="button"
+                onClick={() => {
+                  setEditingTemplate(null);
+                  setIsEditorOpen(true);
+                }}
+                className="text-xs font-bold text-indigo-600 dark:text-indigo-400 hover:underline"
+              >
+                + Create Custom Template
+              </button>
             </div>
+
+            {isLoadingTemplates ? (
+              <div className="p-8 text-center text-gray-500 dark:text-gray-400 text-sm">
+                Loading templates...
+              </div>
+            ) : templates.length === 0 ? (
+              <div className="p-6 text-center border border-dashed border-gray-300 dark:border-gray-700 rounded-xl">
+                <p className="text-sm text-gray-500 dark:text-gray-400 mb-2">
+                  No export templates found.
+                </p>
+                <button
+                  onClick={() => {
+                    setEditingTemplate(null);
+                    setIsEditorOpen(true);
+                  }}
+                  className="px-3 py-1.5 bg-indigo-600 text-white text-xs font-bold rounded-lg hover:bg-indigo-700"
+                >
+                  Create First Template
+                </button>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                {templates.map((template) => (
+                  <div
+                    key={template._id}
+                    className={`p-4 border rounded-xl text-left transition-all relative ${
+                      selectedTemplateId === template._id
+                        ? "border-indigo-500 bg-indigo-50 dark:bg-indigo-900/20 ring-2 ring-indigo-500"
+                        : "border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600"
+                    }`}
+                  >
+                    <button
+                      type="button"
+                      onClick={() => setSelectedTemplateId(template._id)}
+                      className="w-full text-left"
+                    >
+                      <h3 className="font-bold text-gray-900 dark:text-white pr-6">
+                        {template.name}
+                      </h3>
+                      <p className="text-xs text-gray-500 dark:text-gray-400 mt-1 line-clamp-2">
+                        {template.description || "Custom export template"}
+                      </p>
+                      <span className="inline-block mt-2 px-2 py-0.5 text-[10px] font-bold uppercase bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 rounded-full">
+                        {template.type || "custom"}
+                      </span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setEditingTemplate(template);
+                        setIsEditorOpen(true);
+                      }}
+                      title="Edit template"
+                      className="absolute top-3 right-3 text-xs text-gray-400 hover:text-indigo-600 dark:hover:text-indigo-400"
+                    >
+                      ✏️
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
 
           {/* Format Selector */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+            <label className="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-2">
               Export Format
             </label>
             <div className="flex gap-3">
               {["pdf", "docx", "html"].map((fmt) => (
                 <button
                   key={fmt}
+                  type="button"
                   onClick={() => setFormat(fmt)}
-                  className={`flex-1 py-3 rounded-lg font-medium uppercase text-sm transition-all ${
+                  className={`flex-1 py-3 rounded-lg font-bold uppercase text-sm transition-all ${
                     format === fmt
                       ? "bg-indigo-600 text-white shadow-md"
                       : "bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600"
@@ -175,7 +241,7 @@ const ExportDialog = ({ meetingId, onClose }) => {
           {/* Section Toggles */}
           {selectedTemplate && selectedTemplate.sections && (
             <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
+              <label className="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-3">
                 Include Sections
               </label>
               <div className="space-y-2">
@@ -212,6 +278,7 @@ const ExportDialog = ({ meetingId, onClose }) => {
         {/* Footer Actions */}
         <div className="p-6 border-t border-gray-200 dark:border-gray-700 flex gap-3">
           <button
+            type="button"
             onClick={onClose}
             disabled={isGenerating}
             className="flex-1 px-4 py-3 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-200 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors disabled:opacity-50 font-medium"
@@ -219,6 +286,7 @@ const ExportDialog = ({ meetingId, onClose }) => {
             Cancel
           </button>
           <button
+            type="button"
             onClick={handleExport}
             disabled={isGenerating || !selectedTemplateId}
             className="flex-1 px-4 py-3 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed font-bold flex items-center justify-center gap-2 shadow-md"
@@ -267,6 +335,14 @@ const ExportDialog = ({ meetingId, onClose }) => {
           </button>
         </div>
       </div>
+
+      {isEditorOpen && (
+        <TemplateEditor
+          template={editingTemplate}
+          onClose={() => setIsEditorOpen(false)}
+          onSave={() => fetchTemplates()}
+        />
+      )}
     </div>
   );
 };
