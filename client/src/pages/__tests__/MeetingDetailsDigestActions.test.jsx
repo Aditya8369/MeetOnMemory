@@ -159,6 +159,9 @@ vi.mock("../../components/meeting-details/DigestActions", () => ({
     </div>
   ),
 }));
+vi.mock("../../components/meeting-details/TopicSummary", () => ({
+  default: () => null,
+}));
 
 const renderDetails = (userData = { _id: "db_123", role: "member" }) =>
   render(
