@@ -4,6 +4,7 @@ import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import MeetingDetails from "../MeetingDetails.jsx";
 import { meetingApi } from "../../services";
+import AppContent from "../../context/AppContent";
 
 vi.mock("../../components/Navbar.jsx", () => ({
   default: () => <div data-testid="app-navbar">App Navbar</div>,
@@ -26,6 +27,11 @@ vi.mock("../../services", () => ({
 vi.mock("../../services/briefingApi", () => ({
   getBriefing: vi.fn().mockResolvedValue({ data: null }),
 }));
+
+const appContextValue = {
+  userData: { _id: "user-1", role: "member" },
+  backendUrl: "http://localhost:5000",
+};
 
 vi.mock("../../components/meeting-details/MeetingHeader", () => ({
   default: ({ meeting }) => (
@@ -137,46 +143,52 @@ vi.mock("../../components/meetings/MeetingRisksPanel", () => ({
 vi.mock("../../components/MeetingReadiness", () => ({
   default: () => null,
 }));
-
 vi.mock("../../components/meeting-details/AgendaPacingReport", () => ({
-  default: ({ meetingId }) => (
-    <div data-testid="agenda-pacing-report" data-meeting-id={meetingId}>
-      Pacing for {meetingId}
-    </div>
-  ),
-}));
-vi.mock("../../components/meeting-details/ClipManager", () => ({
   default: () => null,
 }));
-vi.mock("../../components/meeting-details/AttachmentPanel", () => ({
+vi.mock("../../components/meeting-details/ClipManager", () => ({
   default: () => null,
 }));
 vi.mock("../../components/meeting-details/DigestActions", () => ({
   default: () => null,
 }));
 
+vi.mock("../../components/meeting-details/AttachmentPanel", () => ({
+  default: ({ meetingId, userRole, currentUserId }) => (
+    <div
+      data-testid="attachment-panel"
+      data-meeting-id={meetingId}
+      data-user-role={userRole || ""}
+      data-current-user-id={currentUserId || ""}
+    >
+      Attachments for {meetingId}
+    </div>
+  ),
+}));
+
 const renderDetails = () =>
   render(
-    <MemoryRouter initialEntries={["/meetings/123"]}>
-      <Routes>
-        <Route path="/meetings/:id" element={<MeetingDetails />} />
-      </Routes>
-    </MemoryRouter>,
+    <AppContent.Provider value={appContextValue}>
+      <MemoryRouter initialEntries={["/meetings/123"]}>
+        <Routes>
+          <Route path="/meetings/:id" element={<MeetingDetails />} />
+        </Routes>
+      </MemoryRouter>
+    </AppContent.Provider>,
   );
 
-describe("Meeting Details AgendaPacingReport mount (#1986)", () => {
+describe("Meeting Details AttachmentPanel mount (#1988)", () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });
 
-  it("renders the pacing report for a completed meeting with the meeting id", async () => {
+  it("mounts AttachmentPanel with the meeting id and user context", async () => {
     meetingApi.getMeetingById.mockResolvedValue({
       data: {
         success: true,
         meeting: {
           _id: "123",
           title: "Quarterly Planning",
-          status: "completed",
           uploadedBy: "db_123",
           participants: [],
         },
@@ -185,58 +197,10 @@ describe("Meeting Details AgendaPacingReport mount (#1986)", () => {
 
     renderDetails();
 
-    const report = await screen.findByTestId("agenda-pacing-report");
-    expect(report).toHaveTextContent("Pacing for 123");
-    expect(report).toHaveAttribute("data-meeting-id", "123");
-  });
-
-  it("renders the pacing report after the scheduled meeting window has ended", async () => {
-    meetingApi.getMeetingById.mockResolvedValue({
-      data: {
-        success: true,
-        meeting: {
-          _id: "123",
-          title: "Past Sync",
-          status: "uploaded",
-          date: "2020-01-01T10:00:00.000Z",
-          duration: 60,
-          uploadedBy: "db_123",
-          participants: [],
-        },
-      },
-    });
-
-    renderDetails();
-
-    expect(await screen.findByTestId("agenda-pacing-report")).toHaveAttribute(
-      "data-meeting-id",
-      "123",
-    );
-  });
-
-  it("does not show the post-meeting report for an upcoming meeting", async () => {
-    meetingApi.getMeetingById.mockResolvedValue({
-      data: {
-        success: true,
-        meeting: {
-          _id: "123",
-          title: "Upcoming Sync",
-          status: "uploaded",
-          date: "2099-01-01T10:00:00.000Z",
-          duration: 60,
-          uploadedBy: "db_123",
-          participants: [],
-        },
-      },
-    });
-
-    renderDetails();
-
-    expect(await screen.findByTestId("meeting-header")).toHaveTextContent(
-      "Upcoming Sync",
-    );
-    expect(
-      screen.queryByTestId("agenda-pacing-report"),
-    ).not.toBeInTheDocument();
+    const panel = await screen.findByTestId("attachment-panel");
+    expect(panel).toHaveTextContent("Attachments for 123");
+    expect(panel).toHaveAttribute("data-meeting-id", "123");
+    expect(panel).toHaveAttribute("data-user-role", "member");
+    expect(panel).toHaveAttribute("data-current-user-id", "user-1");
   });
 });

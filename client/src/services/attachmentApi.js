@@ -20,7 +20,7 @@ export const attachmentApi = {
     return apiClient.get(
       `/api/meetings/${meetingId}/attachments/${attachmentId}/download`,
       {
-        responseType: "blob", // Important for downloading files
+        responseType: "blob",
       },
     );
   },

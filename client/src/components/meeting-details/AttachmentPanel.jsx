@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import { attachmentApi } from "../../services";
 import { toast } from "react-toastify";
+import { hasPermission } from "../../utils/rbacPermissions";
 import {
   Paperclip,
   Upload,
@@ -14,30 +15,114 @@ import {
   Loader2,
 } from "lucide-react";
 
-const AttachmentPanel = ({ meetingId }) => {
+const CARD_CLASS =
+  "bg-white dark:bg-slate-900 rounded-lg shadow-sm border border-gray-200 dark:border-slate-800 p-6 mb-6";
+
+const getUploaderId = (uploadedBy) =>
+  uploadedBy?._id || uploadedBy?.id || uploadedBy;
+
+const AttachmentPanel = ({ meetingId, userRole, currentUserId }) => {
   const [attachments, setAttachments] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(Boolean(meetingId));
   const [uploading, setUploading] = useState(false);
   const [progress, setProgress] = useState(0);
+  const [error, setError] = useState("");
+  const [forbidden, setForbidden] = useState(false);
   const [previewAttachment, setPreviewAttachment] = useState(null);
   const [previewUrl, setPreviewUrl] = useState(null);
   const [previewLoading, setPreviewLoading] = useState(false);
   const fileInputRef = useRef(null);
 
+  const canUpload = hasPermission(userRole, "attachments", "upload");
+  const canDownload = hasPermission(userRole, "attachments", "download");
+
+  const canDeleteFile = (file) => {
+    const uploaderId = getUploaderId(file.uploadedBy);
+    const isUploader =
+      Boolean(currentUserId) &&
+      Boolean(uploaderId) &&
+      String(uploaderId) === String(currentUserId);
+    return isUploader || hasPermission(userRole, "attachments", "delete");
+  };
+
   const fetchAttachments = useCallback(async () => {
+    if (!meetingId) {
+      setLoading(false);
+      return;
+    }
+
     try {
       setLoading(true);
+      setError("");
+      setForbidden(false);
       const { data } = await attachmentApi.getAttachments(meetingId);
       if (data.success) {
-        setAttachments(data.attachments);
+        setAttachments(data.attachments || []);
+      } else {
+        setAttachments([]);
+        setError(data.message || "Failed to load attachments");
       }
-    } catch (error) {
-      console.error("Error fetching attachments:", error);
-      toast.error("Failed to load attachments");
+    } catch (err) {
+      console.error("Error fetching attachments:", err);
+      const status = err.response?.status;
+      const message =
+        err.response?.data?.message || "Failed to load attachments";
+      if (status === 401 || status === 403) {
+        setForbidden(true);
+        setError(
+          message ||
+            "You are not authorized to view attachments for this meeting.",
+        );
+      } else {
+        setError(message);
+        toast.error(message);
+      }
     } finally {
       setLoading(false);
     }
   }, [meetingId]);
+
+  const handleClosePreview = useCallback(() => {
+    setPreviewUrl((currentUrl) => {
+      if (currentUrl) {
+        URL.revokeObjectURL(currentUrl);
+      }
+      return null;
+    });
+    setPreviewAttachment(null);
+  }, []);
+
+  const handleOpenPreview = useCallback(
+    async (attachment) => {
+      setPreviewAttachment(attachment);
+      setPreviewLoading(true);
+
+      setPreviewUrl((currentUrl) => {
+        if (currentUrl) {
+          URL.revokeObjectURL(currentUrl);
+        }
+        return null;
+      });
+
+      try {
+        const response = await attachmentApi.previewAttachment(
+          meetingId,
+          attachment._id,
+        );
+        const blob = new Blob([response.data], {
+          type: attachment.mimeType || "application/octet-stream",
+        });
+        const url = URL.createObjectURL(blob);
+        setPreviewUrl(url);
+      } catch (error) {
+        console.error("Preview error:", error);
+        toast.error("Failed to load preview for this attachment");
+      } finally {
+        setPreviewLoading(false);
+      }
+    },
+    [meetingId],
+  );
 
   useEffect(() => {
     fetchAttachments();
@@ -61,44 +146,11 @@ const AttachmentPanel = ({ meetingId }) => {
     };
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [previewAttachment, previewUrl]);
-
-  const handleOpenPreview = async (attachment) => {
-    setPreviewAttachment(attachment);
-    setPreviewLoading(true);
-
-    if (previewUrl) {
-      URL.revokeObjectURL(previewUrl);
-      setPreviewUrl(null);
-    }
-
-    try {
-      const response = await attachmentApi.previewAttachment(
-        meetingId,
-        attachment._id,
-      );
-      const blob = new Blob([response.data], {
-        type: attachment.mimeType || "application/octet-stream",
-      });
-      const url = URL.createObjectURL(blob);
-      setPreviewUrl(url);
-    } catch (error) {
-      console.error("Preview error:", error);
-      toast.error("Failed to load preview for this attachment");
-    } finally {
-      setPreviewLoading(false);
-    }
-  };
-
-  const handleClosePreview = () => {
-    if (previewUrl) {
-      URL.revokeObjectURL(previewUrl);
-      setPreviewUrl(null);
-    }
-    setPreviewAttachment(null);
-  };
+  }, [previewAttachment, handleClosePreview]);
 
   const handleFileChange = async (e) => {
+    if (!canUpload) return;
+
     const files = Array.from(e.target.files);
     if (!files || files.length === 0) return;
 
@@ -132,11 +184,18 @@ const AttachmentPanel = ({ meetingId }) => {
           },
         );
         toast.success(`Uploaded ${files[i].name}`);
-      } catch (error) {
-        console.error("Upload error:", error);
+      } catch (err) {
+        console.error("Upload error:", err);
+        const status = err.response?.status;
         toast.error(
-          error.response?.data?.message || `Failed to upload ${files[i].name}`,
+          err.response?.data?.message || `Failed to upload ${files[i].name}`,
         );
+        if (status === 401 || status === 403) {
+          setError(
+            err.response?.data?.message ||
+              "You are not authorized to upload attachments.",
+          );
+        }
       }
     }
 
@@ -147,6 +206,8 @@ const AttachmentPanel = ({ meetingId }) => {
   };
 
   const handleDownload = async (attachment) => {
+    if (!canDownload) return;
+
     try {
       const response = await attachmentApi.downloadAttachment(
         meetingId,
@@ -161,9 +222,9 @@ const AttachmentPanel = ({ meetingId }) => {
       link.click();
       link.remove();
       window.URL.revokeObjectURL(url);
-    } catch (error) {
-      console.error("Download error:", error);
-      toast.error("Failed to download file");
+    } catch (err) {
+      console.error("Download error:", err);
+      toast.error(err.response?.data?.message || "Failed to download file");
     }
   };
 
@@ -178,22 +239,21 @@ const AttachmentPanel = ({ meetingId }) => {
         handleClosePreview();
       }
       fetchAttachments();
-    } catch (error) {
-      console.error("Delete error:", error);
-      toast.error(
-        error.response?.data?.message || "Failed to delete attachment",
-      );
+    } catch (err) {
+      console.error("Delete error:", err);
+      toast.error(err.response?.data?.message || "Failed to delete attachment");
     }
   };
 
-  const getFileIcon = (mimeType = "") => {
-    if (mimeType.includes("pdf"))
+  const getFileIcon = (mimeType) => {
+    const type = mimeType || "";
+    if (type.includes("pdf"))
       return <FileText className="w-6 h-6 text-red-500 dark:text-red-400" />;
-    if (mimeType.includes("image"))
+    if (type.includes("image"))
       return <ImageIcon className="w-6 h-6 text-blue-500 dark:text-blue-400" />;
-    if (mimeType.includes("word"))
+    if (type.includes("word"))
       return <FileText className="w-6 h-6 text-blue-700 dark:text-blue-300" />;
-    if (mimeType.includes("presentation"))
+    if (type.includes("presentation"))
       return (
         <FileText className="w-6 h-6 text-orange-500 dark:text-orange-400" />
       );
@@ -211,33 +271,76 @@ const AttachmentPanel = ({ meetingId }) => {
   const isImageFile = (mimeType = "") => mimeType.startsWith("image/");
   const isPdfFile = (mimeType = "") => mimeType === "application/pdf";
 
+  if (forbidden) {
+    return (
+      <div
+        data-testid="attachment-panel-forbidden"
+        data-meeting-id={meetingId}
+        className={CARD_CLASS}
+      >
+        <h2 className="text-lg font-semibold text-gray-900 dark:text-white flex items-center gap-2 mb-2">
+          <Paperclip className="w-5 h-5 text-gray-500 dark:text-slate-400" />
+          Attachments
+        </h2>
+        <p role="status" className="text-sm text-gray-600 dark:text-slate-400">
+          {error ||
+            "You are not authorized to view attachments for this meeting."}
+        </p>
+      </div>
+    );
+  }
+
   return (
-    <div className="bg-white dark:bg-slate-900 rounded-lg shadow-sm border border-gray-200 dark:border-slate-800 p-6 mb-6">
-      <div className="flex items-center justify-between mb-4">
+    <div
+      data-testid="attachment-panel"
+      data-meeting-id={meetingId}
+      className={CARD_CLASS}
+    >
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
         <h2 className="text-lg font-semibold text-gray-900 dark:text-white flex items-center gap-2">
           <Paperclip className="w-5 h-5 text-gray-500 dark:text-slate-400" />
           Attachments
         </h2>
-        <div>
-          <input
-            type="file"
-            multiple
-            ref={fileInputRef}
-            className="hidden"
-            onChange={handleFileChange}
-            accept=".pdf,.docx,.pptx,.jpg,.jpeg,.png,.gif"
-          />
+        {canUpload && (
+          <div>
+            <input
+              type="file"
+              multiple
+              ref={fileInputRef}
+              className="hidden"
+              onChange={handleFileChange}
+              accept=".pdf,.docx,.pptx,.jpg,.jpeg,.png,.gif"
+              aria-hidden="true"
+            />
+            <button
+              type="button"
+              onClick={() => fileInputRef.current?.click()}
+              disabled={uploading}
+              aria-label="Upload file"
+              className="flex items-center gap-2 px-3 py-1.5 bg-blue-50 dark:bg-blue-950/40 text-blue-600 dark:text-blue-400 hover:bg-blue-100 dark:hover:bg-blue-900/60 rounded-md transition-colors text-sm font-medium cursor-pointer disabled:opacity-50"
+            >
+              <Upload className="w-4 h-4" />
+              Upload File
+            </button>
+          </div>
+        )}
+      </div>
+
+      {error && !loading && (
+        <div
+          role="alert"
+          className="text-sm text-red-600 dark:text-red-400 mb-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2"
+        >
+          <span>{error}</span>
           <button
             type="button"
-            onClick={() => fileInputRef.current?.click()}
-            disabled={uploading}
-            className="flex items-center gap-2 px-3 py-1.5 bg-blue-50 dark:bg-blue-950/40 text-blue-600 dark:text-blue-400 hover:bg-blue-100 dark:hover:bg-blue-900/60 rounded-md transition-colors text-sm font-medium cursor-pointer disabled:opacity-50"
+            onClick={fetchAttachments}
+            className="text-sm text-blue-600 dark:text-blue-400 hover:underline self-start"
           >
-            <Upload className="w-4 h-4" />
-            Upload File
+            Retry
           </button>
         </div>
-      </div>
+      )}
 
       {uploading && (
         <div className="mb-4">
@@ -255,20 +358,30 @@ const AttachmentPanel = ({ meetingId }) => {
       )}
 
       {loading ? (
-        <div className="text-center py-6 text-gray-500 dark:text-slate-400 text-sm animate-pulse">
+        <div
+          role="status"
+          aria-label="Loading attachments"
+          aria-busy="true"
+          className="text-center py-6 text-gray-500 dark:text-slate-400 text-sm animate-pulse"
+        >
           Loading attachments...
         </div>
-      ) : attachments.length === 0 ? (
-        <div className="text-center py-8 bg-gray-50 dark:bg-slate-950/50 rounded-lg border border-dashed border-gray-300 dark:border-slate-800">
+      ) : attachments.length === 0 && !error ? (
+        <div
+          data-testid="attachment-panel-empty"
+          className="text-center py-8 bg-gray-50 dark:bg-slate-950/50 rounded-lg border border-dashed border-gray-300 dark:border-slate-800"
+        >
           <Paperclip className="w-8 h-8 text-gray-400 dark:text-slate-500 mx-auto mb-2" />
           <p className="text-gray-500 dark:text-slate-400 text-sm font-medium">
             No attachments yet
           </p>
           <p className="text-gray-400 dark:text-slate-500 text-xs mt-1">
-            Upload PDF, DOCX, PPTX, or Images (Max 10MB)
+            {canUpload
+              ? "Upload PDF, DOCX, PPTX, or Images (Max 10MB)"
+              : "No files have been attached to this meeting."}
           </p>
         </div>
-      ) : (
+      ) : attachments.length === 0 ? null : (
         <ul className="divide-y divide-gray-100 dark:divide-slate-800 border border-gray-100 dark:border-slate-800 rounded-lg overflow-hidden">
           {attachments.map((file) => (
             <li
@@ -306,24 +419,28 @@ const AttachmentPanel = ({ meetingId }) => {
                 >
                   <Eye className="w-4 h-4" />
                 </button>
-                <button
-                  type="button"
-                  onClick={() => handleDownload(file)}
-                  className="p-1.5 text-gray-500 dark:text-slate-400 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-950/50 rounded-md transition-colors cursor-pointer"
-                  title="Download"
-                  aria-label={`Download attachment ${file.fileName}`}
-                >
-                  <Download className="w-4 h-4" />
-                </button>
-                <button
-                  type="button"
-                  onClick={() => handleDelete(file._id)}
-                  className="p-1.5 text-gray-500 dark:text-slate-400 hover:text-red-600 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/50 rounded-md transition-colors cursor-pointer"
-                  title="Delete"
-                  aria-label={`Delete attachment ${file.fileName}`}
-                >
-                  <Trash2 className="w-4 h-4" />
-                </button>
+                {canDownload && (
+                  <button
+                    type="button"
+                    onClick={() => handleDownload(file)}
+                    className="p-1.5 text-gray-500 dark:text-slate-400 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-950/50 rounded-md transition-colors cursor-pointer"
+                    title="Download"
+                    aria-label={`Download attachment ${file.fileName}`}
+                  >
+                    <Download className="w-4 h-4" />
+                  </button>
+                )}
+                {canDeleteFile(file) && (
+                  <button
+                    type="button"
+                    onClick={() => handleDelete(file._id)}
+                    className="p-1.5 text-gray-500 dark:text-slate-400 hover:text-red-600 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/50 rounded-md transition-colors cursor-pointer"
+                    title="Delete"
+                    aria-label={`Delete attachment ${file.fileName}`}
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                )}
               </div>
             </li>
           ))}
@@ -356,14 +473,16 @@ const AttachmentPanel = ({ meetingId }) => {
                 </div>
               </div>
               <div className="flex items-center gap-2">
-                <button
-                  type="button"
-                  onClick={() => handleDownload(previewAttachment)}
-                  className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-semibold cursor-pointer shadow-xs"
-                >
-                  <Download className="w-3.5 h-3.5" />
-                  Download
-                </button>
+                {canDownload && (
+                  <button
+                    type="button"
+                    onClick={() => handleDownload(previewAttachment)}
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-semibold cursor-pointer shadow-xs"
+                  >
+                    <Download className="w-3.5 h-3.5" />
+                    Download
+                  </button>
+                )}
                 <button
                   type="button"
                   onClick={handleClosePreview}
@@ -409,13 +528,15 @@ const AttachmentPanel = ({ meetingId }) => {
                     </span>{" "}
                     to view it in your default application.
                   </p>
-                  <button
-                    type="button"
-                    onClick={() => handleDownload(previewAttachment)}
-                    className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-semibold cursor-pointer shadow-md"
-                  >
-                    <Download className="w-4 h-4" /> Download File
-                  </button>
+                  {canDownload && (
+                    <button
+                      type="button"
+                      onClick={() => handleDownload(previewAttachment)}
+                      className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-semibold cursor-pointer shadow-md"
+                    >
+                      <Download className="w-4 h-4" /> Download File
+                    </button>
+                  )}
                 </div>
               )}
             </div>

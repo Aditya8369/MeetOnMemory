@@ -96,6 +96,10 @@ vi.mock("../../components/meeting-details/ClipManager.jsx", () => ({
   ),
 }));
 
+vi.mock("../../components/meeting-details/AttachmentPanel.jsx", () => ({
+  default: () => null,
+}));
+
 vi.mock("../../components/meeting-details/DigestActions.jsx", () => ({
   default: () => null,
 }));
