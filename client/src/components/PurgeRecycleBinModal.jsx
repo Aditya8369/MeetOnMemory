@@ -14,6 +14,7 @@ const PurgeRecycleBinModal = ({ isOpen, onClose, onSuccess }) => {
       fetchPreview();
       setConfirmInput("");
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen]);
 
   const fetchPreview = async () => {
