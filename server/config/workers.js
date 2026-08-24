@@ -11,6 +11,7 @@ import {
   initRecapDeliveryWorker,
   initPolicyComplianceRetryWorker,
   initEmbeddingReindexWorker,
+  initMeetingQuizWorker,
 } from "../services/queueService.js";
 import { initWebhookWorker } from "../services/webhookDispatcherService.js";
 import { describeRateLimitBacking } from "../middleware/rateLimitStore.js";
@@ -63,6 +64,7 @@ export async function startWorkers(app) {
   console.log(describeRateLimitBacking().message);
 
   await safeInit("AI Results Worker", () => initAiResultsWorker(app));
+  await safeInit("Meeting Quiz Worker", () => initMeetingQuizWorker(app));
   await safeInit("AI MoM Worker", () => initAiGenerationWorker(app));
   await safeInit("Data Export Worker", () => initDataExportWorker(app));
   await safeInit("Export Cleanup Worker", () => initExportCleanupWorker());
