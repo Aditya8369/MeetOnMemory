@@ -23,13 +23,11 @@ export const createEndorsement = async (req, res) => {
     res.status(201).json({ success: true, data: endorsement });
   } catch (error) {
     if (error.code === 11000) {
-      return res
-        .status(400)
-        .json({
-          success: false,
-          message:
-            "You have already endorsed this user for this skill in this meeting.",
-        });
+      return res.status(400).json({
+        success: false,
+        message:
+          "You have already endorsed this user for this skill in this meeting.",
+      });
     }
     res.status(400).json({ success: false, message: error.message });
   }
