@@ -14,11 +14,24 @@ const clientFiles = changedFiles.filter(
     JS_REGEX.test(file) &&
     !file.includes("/__mocks__/"),
 );
-const directTests = clientFiles.filter((file) =>
-  /(\.test\.|\.spec\.|__tests__)/.test(file),
-);
+const ROOT_CLIENT_MAP = {
+  "client/src/App.jsx": "client/src/__tests__/App.test.jsx",
+  "client/src/services/offlineQueue.js":
+    "client/src/services/__tests__/offlineQueue.test.js",
+  "client/src/components/OfflineBanner.jsx":
+    "client/src/components/__tests__/OfflineBanner.test.jsx",
+  "client/src/components/OfflineQueueInspector.jsx":
+    "client/src/components/__tests__/OfflineQueueInspector.test.jsx",
+};
+
+const directTests = [
+  ...clientFiles.filter((file) => /(\.test\.|\.spec\.|__tests__)/.test(file)),
+  ...clientFiles
+    .filter((file) => ROOT_CLIENT_MAP[file])
+    .map((file) => ROOT_CLIENT_MAP[file]),
+];
 const relatedSources = clientFiles.filter(
-  (file) => !directTests.includes(file),
+  (file) => !directTests.includes(file) && !ROOT_CLIENT_MAP[file],
 );
 
 logStep(
