@@ -104,6 +104,10 @@ vi.mock("../../components/meeting-details/DigestActions.jsx", () => ({
   default: () => null,
 }));
 
+vi.mock("../../components/meeting-details/TopicSummary.jsx", () => ({
+  default: () => null,
+}));
+
 vi.mock("../../services", () => ({
   meetingApi: {
     getMeetingById: vi.fn(),

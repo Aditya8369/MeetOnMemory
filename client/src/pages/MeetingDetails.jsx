@@ -47,6 +47,7 @@ import FeedbackForm from "../components/meeting-details/FeedbackForm";
 import AgendaTimer from "../components/meeting-details/AgendaTimer";
 import AgendaPacingReport from "../components/meeting-details/AgendaPacingReport";
 import ClipManager from "../components/meeting-details/ClipManager";
+import TopicSummary from "../components/meeting-details/TopicSummary";
 import AttachmentPanel from "../components/meeting-details/AttachmentPanel";
 import DigestActions from "../components/meeting-details/DigestActions";
 import HealthScoreCard from "../components/meeting-details/HealthScoreCard";
@@ -488,6 +489,12 @@ const MeetingDetails = () => {
           </div>
 
           <MeetingTranscript meeting={meeting} />
+          <div className="mt-6 mb-6">
+            <TopicSummary
+              meetingId={meeting._id}
+              canExtract={!isViewerOrGuest}
+            />
+          </div>
           <div className="mt-6 mb-6">
             <ClipManager
               meetingId={meeting._id}

@@ -161,6 +161,9 @@ vi.mock("../../components/meeting-details/AttachmentPanel", () => ({
 vi.mock("../../components/meeting-details/DigestActions", () => ({
   default: () => null,
 }));
+vi.mock("../../components/meeting-details/TopicSummary", () => ({
+  default: () => null,
+}));
 
 vi.mock("../../components/meeting-details/SeriesNavigation", () => ({
   default: ({ meeting }) => (
