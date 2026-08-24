@@ -85,9 +85,18 @@ import StandupReports from "../pages/StandupReports.jsx";
 import SlaCompliance from "../pages/SlaCompliance.jsx";
 import TeamAvailability from "../pages/TeamAvailability.jsx";
 import ActionItemTemplates from "../pages/ActionItemTemplates.jsx";
+import IntegrationMarketplaceHub from "../pages/IntegrationMarketplaceHub.jsx";
 
 const ProtectedRoutes = (
   <React.Fragment>
+    <Route
+      path="/integrations/marketplace"
+      element={
+        <ProtectedRoute resource="organizations" action="view">
+          <IntegrationMarketplaceHub />
+        </ProtectedRoute>
+      }
+    />
     <Route
       path="/meetings"
       element={

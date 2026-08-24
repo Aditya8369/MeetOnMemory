@@ -209,8 +209,9 @@ router.use("/api/admin/health", adminHealthRoutes);
 import adminRbacRoutes from "./adminRbacRoutes.js";
 router.use("/api/admin/rbac", adminRbacRoutes);
 router.use("/api/alerts/keywords", keywordAlertRoutes);
+import integrationMarketplaceRoutes from "./integrationMarketplaceRoutes.js";
+router.use("/api/integrations", integrationMarketplaceRoutes);
 router.use("/api/integrations/notion", notionIntegrationRoutes);
-
 import githubIntegrationRoutes from "./githubIntegrationRoutes.js";
 router.use("/api/github", githubIntegrationRoutes);
 
