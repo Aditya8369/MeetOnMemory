@@ -271,4 +271,7 @@ router.use("/api/observers", observerRoutes);
 import skillEndorsementRoutes from "./skillEndorsementRoutes.js";
 router.use("/api/skill-endorsements", skillEndorsementRoutes);
 
+import semanticKnowledgeGraphRoutes from "./semanticKnowledgeGraphRoutes.js";
+router.use("/api/semantic-graph", semanticKnowledgeGraphRoutes);
+
 export default router;
