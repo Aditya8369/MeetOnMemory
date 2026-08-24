@@ -1,17 +1,17 @@
-import express from "express";
+import express from 'express'
 import {
   getQuizForMeeting,
   submitQuizResponse,
   getQuizAnalytics,
-} from "../controllers/meetingQuizController.js";
-import { requireAuth } from "../middleware/authMiddleware.js";
+} from '../controllers/meetingQuizController.js'
+import { requireAuth } from '../middleware/authMiddleware.js'
 
-const router = express.Router({ mergeParams: true });
+const router = express.Router({ mergeParams: true })
 
-router.use(requireAuth);
+router.use(requireAuth)
 
-router.get("/", getQuizForMeeting);
-router.post("/submit", submitQuizResponse);
-router.get("/analytics", getQuizAnalytics);
+router.get('/', getQuizForMeeting)
+router.post('/submit', submitQuizResponse)
+router.get('/analytics', getQuizAnalytics)
 
-export default router;
+export default router

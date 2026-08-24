@@ -1,4 +1,4 @@
-import mongoose from "mongoose";
+import mongoose from 'mongoose'
 
 const questionSchema = new mongoose.Schema({
   questionText: {
@@ -17,22 +17,22 @@ const questionSchema = new mongoose.Schema({
   },
   explanation: {
     type: String,
-    default: "",
+    default: '',
   },
-});
+})
 
 const meetingQuizSchema = new mongoose.Schema(
   {
     meetingId: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: "Meeting",
+      ref: 'Meeting',
       required: true,
       index: true,
     },
     questions: [questionSchema],
   },
   { timestamps: true },
-);
+)
 
-const MeetingQuiz = mongoose.model("MeetingQuiz", meetingQuizSchema);
-export default MeetingQuiz;
+const MeetingQuiz = mongoose.model('MeetingQuiz', meetingQuizSchema)
+export default MeetingQuiz

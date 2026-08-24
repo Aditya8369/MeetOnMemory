@@ -1,30 +1,22 @@
-import mongoose from "mongoose";
+import mongoose from 'mongoose'
 
 const RedactionAuditSchema = new mongoose.Schema(
   {
     organizationId: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: "Organization",
+      ref: 'Organization',
       required: true,
       index: true,
     },
     meetingId: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: "Meeting",
+      ref: 'Meeting',
       required: true,
       index: true,
     },
     entityType: {
       type: String,
-      enum: [
-        "API_KEY",
-        "JWT_TOKEN",
-        "CREDIT_CARD",
-        "SSN",
-        "EMAIL",
-        "PHONE",
-        "PASSWORD_SECRET",
-      ],
+      enum: ['API_KEY', 'JWT_TOKEN', 'CREDIT_CARD', 'SSN', 'EMAIL', 'PHONE', 'PASSWORD_SECRET'],
       required: true,
     },
     maskedToken: {
@@ -44,17 +36,17 @@ const RedactionAuditSchema = new mongoose.Schema(
       {
         requestedBy: {
           type: mongoose.Schema.Types.ObjectId,
-          ref: "User",
+          ref: 'User',
         },
         reason: String,
         status: {
           type: String,
-          enum: ["PENDING", "APPROVED", "REJECTED"],
-          default: "PENDING",
+          enum: ['PENDING', 'APPROVED', 'REJECTED'],
+          default: 'PENDING',
         },
         reviewedBy: {
           type: mongoose.Schema.Types.ObjectId,
-          ref: "User",
+          ref: 'User',
         },
         reviewedAt: Date,
       },
@@ -63,8 +55,8 @@ const RedactionAuditSchema = new mongoose.Schema(
   {
     timestamps: true,
   },
-);
+)
 
-const RedactionAudit = mongoose.model("RedactionAudit", RedactionAuditSchema);
+const RedactionAudit = mongoose.model('RedactionAudit', RedactionAuditSchema)
 
-export default RedactionAudit;
+export default RedactionAudit

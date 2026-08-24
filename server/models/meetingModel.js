@@ -1,16 +1,16 @@
-import mongoose from "mongoose";
-import { normalizeAgendaItems } from "../utils/agendaOrdering.js";
+import mongoose from 'mongoose'
+import { normalizeAgendaItems } from '../utils/agendaOrdering.js'
 
 const meetingSchema = new mongoose.Schema(
   {
     uploadedBy: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: "User",
+      ref: 'User',
       required: true, // user must be logged in
     },
     organization: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: "Organization",
+      ref: 'Organization',
       default: null,
     },
     title: {
@@ -20,12 +20,12 @@ const meetingSchema = new mongoose.Schema(
     },
     description: {
       type: String, // Meeting description/objective
-      default: "",
+      default: '',
     },
     meetingType: {
       type: String, // conference, policy, event, internal
-      enum: ["conference", "policy", "event", "internal"],
-      default: "conference",
+      enum: ['conference', 'policy', 'event', 'internal'],
+      default: 'conference',
     },
     date: {
       type: Date,
@@ -33,7 +33,7 @@ const meetingSchema = new mongoose.Schema(
     },
     time: {
       type: String, // Meeting time (e.g., "14:30")
-      default: "",
+      default: '',
     },
 
     // Meeting reminder notification settings (Issue #1766)
@@ -56,7 +56,7 @@ const meetingSchema = new mongoose.Schema(
     },
     location: {
       type: String, // Location/platform (e.g., "Zoom", "Conference Room A")
-      default: "",
+      default: '',
     },
     allowObservers: {
       type: Boolean,
@@ -68,23 +68,23 @@ const meetingSchema = new mongoose.Schema(
     },
     venue: {
       type: String, // Venue details (physical address or meeting link)
-      default: "",
+      default: '',
     },
     participants: [
       {
         user: {
           type: mongoose.Schema.Types.ObjectId,
-          ref: "User",
+          ref: 'User',
         },
         name: { type: String, required: true },
-        email: { type: String, default: "" },
-        role: { type: String, default: "" },
+        email: { type: String, default: '' },
+        role: { type: String, default: '' },
       },
     ],
     agendaItems: [
       {
         text: { type: String, required: true },
-        description: { type: String, default: "" },
+        description: { type: String, default: '' },
         // Planned length, in MINUTES. Named `duration` for backwards
         // compatibility; see `actualDuration` below for the unit mismatch this
         // creates and why it is deliberate.
@@ -100,8 +100,8 @@ const meetingSchema = new mongoose.Schema(
         // on reload, and the pacing report was structurally all zeros.
         status: {
           type: String,
-          enum: ["pending", "active", "completed", "skipped"],
-          default: "pending",
+          enum: ['pending', 'active', 'completed', 'skipped'],
+          default: 'pending',
         },
         startedAt: { type: Date, default: null },
         completedAt: { type: Date, default: null },
@@ -119,23 +119,23 @@ const meetingSchema = new mongoose.Schema(
     ],
     policyDetails: {
       // For policy-type meetings
-      policyName: { type: String, default: "" },
-      policyVersion: { type: String, default: "" },
+      policyName: { type: String, default: '' },
+      policyVersion: { type: String, default: '' },
       effectiveDate: { type: Date, default: null },
       approvalRequired: { type: Boolean, default: false },
     },
     recordingType: {
       type: String, // "upload" or "live"
-      enum: ["upload", "live"],
-      default: "upload",
+      enum: ['upload', 'live'],
+      default: 'upload',
     },
     fileUrl: {
       type: String, // Path or cloud link to uploaded audio/video file
-      default: "",
+      default: '',
     },
     transcript: {
       type: String, // Raw transcript text from AssemblyAI (legacy plaintext)
-      default: "",
+      default: '',
     },
     /**
      * Issue #1335 — Client-side E2EE ciphertext envelope.
@@ -155,7 +155,7 @@ const meetingSchema = new mongoose.Schema(
     },
     summary: {
       type: String, // Human-readable MoM text
-      default: "",
+      default: '',
     },
     recapStory: {
       type: mongoose.Schema.Types.Mixed, // Cached JSON for the recap story slides
@@ -167,17 +167,17 @@ const meetingSchema = new mongoose.Schema(
     },
     aiNotes: {
       type: String, // Optional - additional AI notes
-      default: "",
+      default: '',
     },
     aiSummaryTemplate: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: "AiSummaryTemplate",
+      ref: 'AiSummaryTemplate',
       default: null,
     },
     status: {
       type: String,
-      enum: ["uploaded", "processing", "completed", "failed"],
-      default: "uploaded",
+      enum: ['uploaded', 'processing', 'completed', 'failed'],
+      default: 'uploaded',
     },
     tags: [String], // e.g., ["policy", "finance", "staff"]
 
@@ -193,7 +193,7 @@ const meetingSchema = new mongoose.Schema(
     // nothing while reporting success.
     series: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: "MeetingSeries",
+      ref: 'MeetingSeries',
       default: null,
     },
     // 1-based index of this meeting within its series; the sort key for
@@ -205,7 +205,7 @@ const meetingSchema = new mongoose.Schema(
     },
     externalCalendarRefs: [
       {
-        provider: { type: String, enum: ["google", "outlook"], required: true },
+        provider: { type: String, enum: ['google', 'outlook'], required: true },
         eventId: { type: String, required: true },
       },
     ],
@@ -236,7 +236,7 @@ const meetingSchema = new mongoose.Schema(
     },
     deletedBy: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: "User",
+      ref: 'User',
       default: null,
     },
     deletionReason: {
@@ -259,7 +259,7 @@ const meetingSchema = new mongoose.Schema(
     },
     collaborativeNotes: {
       type: String, // Plain-text snapshot for read-only views and semantic search
-      default: "",
+      default: '',
     },
 
     // Overall progress through the agenda (Issue #1159).
@@ -270,16 +270,16 @@ const meetingSchema = new mongoose.Schema(
     // `undefined`.
     agendaProgress: {
       type: String,
-      enum: ["not_started", "in_progress", "completed"],
-      default: "not_started",
+      enum: ['not_started', 'in_progress', 'completed'],
+      default: 'not_started',
     },
 
     // Pinecone embedding index status (Issue #2084)
     embeddingIndex: {
       status: {
         type: String,
-        enum: ["idle", "queued", "running", "succeeded", "failed"],
-        default: "idle",
+        enum: ['idle', 'queued', 'running', 'succeeded', 'failed'],
+        default: 'idle',
       },
       lastIndexedAt: { type: Date, default: null },
       lastError: { type: String, default: null, maxlength: 500 },
@@ -287,33 +287,33 @@ const meetingSchema = new mongoose.Schema(
     },
     auditNote: {
       type: String,
-      default: "",
+      default: '',
     },
   },
   { timestamps: true },
-);
+)
 
-meetingSchema.pre("validate", function normalizeAgendaOrder(next) {
-  if (this.isModified("agendaItems") || this.isNew) {
+meetingSchema.pre('validate', function normalizeAgendaOrder(next) {
+  if (this.isModified('agendaItems') || this.isNew) {
     this.agendaItems = normalizeAgendaItems(
       (this.agendaItems || []).map((item) =>
-        typeof item.toObject === "function" ? item.toObject() : item,
+        typeof item.toObject === 'function' ? item.toObject() : item,
       ),
-    );
+    )
   }
-  next();
-});
+  next()
+})
 
 // Indexes for query performance
-meetingSchema.index({ organization: 1, createdAt: -1 });
-meetingSchema.index({ organization: 1, deletedAt: 1, createdAt: -1 });
-meetingSchema.index({ uploadedBy: 1, createdAt: -1 });
-meetingSchema.index({ status: 1 });
-meetingSchema.index({ title: "text", summary: "text" });
+meetingSchema.index({ organization: 1, createdAt: -1 })
+meetingSchema.index({ organization: 1, deletedAt: 1, createdAt: -1 })
+meetingSchema.index({ uploadedBy: 1, createdAt: -1 })
+meetingSchema.index({ status: 1 })
+meetingSchema.index({ title: 'text', summary: 'text' })
 // `getSeriesMeetings` filters on `series` and sorts on `seriesOccurrence`
 // (Issue #1160); `sparse` keeps the index to the small minority of meetings
 // that actually belong to a series.
-meetingSchema.index({ series: 1, seriesOccurrence: 1 }, { sparse: true });
+meetingSchema.index({ series: 1, seriesOccurrence: 1 }, { sparse: true })
 
-const Meeting = mongoose.model("Meeting", meetingSchema);
-export default Meeting;
+const Meeting = mongoose.model('Meeting', meetingSchema)
+export default Meeting

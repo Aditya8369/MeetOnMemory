@@ -1,42 +1,34 @@
-import React, { useEffect, useState } from "react";
-import { useMeetingQuiz } from "../../hooks/useMeetingQuiz";
-import RetentionQuizModal from "./RetentionQuizModal";
-import { BookOpen, AlertCircle, TrendingUp } from "lucide-react";
+import React, { useEffect, useState } from 'react'
+import { useMeetingQuiz } from '../../hooks/useMeetingQuiz'
+import RetentionQuizModal from './RetentionQuizModal'
+import { BookOpen, AlertCircle, TrendingUp } from 'lucide-react'
 
 const RetentionQuizSection = ({ meeting, isOrganizer }) => {
-  const { quizData, analytics, loading, fetchQuiz, fetchAnalytics } =
-    useMeetingQuiz(meeting._id);
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [isAnalyticsVisible, setIsAnalyticsVisible] = useState(false);
+  const { quizData, analytics, loading, fetchQuiz, fetchAnalytics } = useMeetingQuiz(meeting._id)
+  const [isModalOpen, setIsModalOpen] = useState(false)
+  const [isAnalyticsVisible, setIsAnalyticsVisible] = useState(false)
 
   useEffect(() => {
     // Only try to fetch if we think there might be a quiz
-    if (meeting.requireQuiz || meeting.status === "completed") {
-      fetchQuiz();
+    if (meeting.requireQuiz || meeting.status === 'completed') {
+      fetchQuiz()
       if (isOrganizer) {
-        fetchAnalytics();
+        fetchAnalytics()
       }
     }
-  }, [
-    meeting._id,
-    meeting.requireQuiz,
-    meeting.status,
-    isOrganizer,
-    fetchQuiz,
-    fetchAnalytics,
-  ]);
+  }, [meeting._id, meeting.requireQuiz, meeting.status, isOrganizer, fetchQuiz, fetchAnalytics])
 
   if (loading && !quizData) {
-    return null; // hide while loading initial state
+    return null // hide while loading initial state
   }
 
   // If there's no quiz generated yet
   if (!quizData || !quizData.quiz) {
-    return null;
+    return null
   }
 
-  const { response } = quizData;
-  const isCompleted = !!response;
+  const { response } = quizData
+  const isCompleted = !!response
 
   return (
     <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 mt-6 mb-6 overflow-hidden">
@@ -49,7 +41,7 @@ const RetentionQuizSection = ({ meeting, isOrganizer }) => {
             </h2>
             <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
               {isCompleted
-                ? "You have already completed the quiz for this meeting."
+                ? 'You have already completed the quiz for this meeting.'
                 : "Test your knowledge on this meeting's key takeaways."}
             </p>
           </div>
@@ -59,11 +51,11 @@ const RetentionQuizSection = ({ meeting, isOrganizer }) => {
               onClick={() => setIsModalOpen(true)}
               className={`px-4 py-2 rounded-lg font-medium shadow-sm transition-colors text-sm flex items-center gap-2 ${
                 isCompleted
-                  ? "bg-gray-100 text-gray-700 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-200"
-                  : "bg-blue-600 hover:bg-blue-700 text-white"
+                  ? 'bg-gray-100 text-gray-700 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-200'
+                  : 'bg-blue-600 hover:bg-blue-700 text-white'
               }`}
             >
-              {isCompleted ? "View Results" : "Take Quiz"}
+              {isCompleted ? 'View Results' : 'Take Quiz'}
             </button>
 
             {isOrganizer && (
@@ -72,7 +64,7 @@ const RetentionQuizSection = ({ meeting, isOrganizer }) => {
                 className="px-4 py-2 bg-purple-50 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300 rounded-lg font-medium hover:bg-purple-100 transition-colors text-sm flex items-center gap-2 border border-purple-200 dark:border-purple-800"
               >
                 <TrendingUp className="w-4 h-4" />
-                {isAnalyticsVisible ? "Hide Analytics" : "View Analytics"}
+                {isAnalyticsVisible ? 'Hide Analytics' : 'View Analytics'}
               </button>
             )}
           </div>
@@ -85,17 +77,13 @@ const RetentionQuizSection = ({ meeting, isOrganizer }) => {
             </h3>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
               <div className="bg-gray-50 dark:bg-gray-900 rounded-lg p-4 border border-gray-100 dark:border-gray-800">
-                <p className="text-sm text-gray-500 dark:text-gray-400">
-                  Total Participants
-                </p>
+                <p className="text-sm text-gray-500 dark:text-gray-400">Total Participants</p>
                 <p className="text-2xl font-bold text-gray-900 dark:text-white">
                   {analytics.totalParticipants}
                 </p>
               </div>
               <div className="bg-gray-50 dark:bg-gray-900 rounded-lg p-4 border border-gray-100 dark:border-gray-800">
-                <p className="text-sm text-gray-500 dark:text-gray-400">
-                  Average Score
-                </p>
+                <p className="text-sm text-gray-500 dark:text-gray-400">Average Score</p>
                 <p className="text-2xl font-bold text-gray-900 dark:text-white">
                   {analytics.averageScore}%
                 </p>
@@ -116,7 +104,7 @@ const RetentionQuizSection = ({ meeting, isOrganizer }) => {
                       {stat.questionText}
                     </span>
                     <span
-                      className={`text-sm font-medium px-2 py-1 rounded ${stat.missRate > 50 ? "bg-red-100 text-red-700" : "bg-orange-100 text-orange-700"}`}
+                      className={`text-sm font-medium px-2 py-1 rounded ${stat.missRate > 50 ? 'bg-red-100 text-red-700' : 'bg-orange-100 text-orange-700'}`}
                     >
                       {stat.missRate}% missed
                     </span>
@@ -124,9 +112,7 @@ const RetentionQuizSection = ({ meeting, isOrganizer }) => {
                 ))}
               </div>
             ) : (
-              <p className="text-sm text-gray-500 italic">
-                No data available yet.
-              </p>
+              <p className="text-sm text-gray-500 italic">No data available yet.</p>
             )}
           </div>
         )}
@@ -140,12 +126,12 @@ const RetentionQuizSection = ({ meeting, isOrganizer }) => {
         onSubmitSuccess={() => {
           // Re-fetch analytics if organizer so they see updated stats
           if (isOrganizer) {
-            fetchAnalytics();
+            fetchAnalytics()
           }
         }}
       />
     </div>
-  );
-};
+  )
+}
 
-export default RetentionQuizSection;
+export default RetentionQuizSection
