@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useRef, useState, useId } from "react";
 import { useTranslation } from "react-i18next";
 import { useSearchParams } from "react-router-dom";
-import { History, X } from "lucide-react";
+import { History, X, Globe, Mic } from "lucide-react";
 import Navbar from "../components/Navbar.jsx";
 import SearchBar from "../components/ai-search/SearchBar.jsx";
 import SearchFilters from "../components/ai-search/SearchFilters.jsx";
@@ -10,7 +10,8 @@ import HybridResultCard from "../components/ai-search/HybridResultCard.jsx";
 import HybridSearchToggle from "../components/ai-search/HybridSearchToggle.jsx";
 import SearchSkeleton from "../components/ai-search/SearchSkeleton.jsx";
 import SearchEmptyState from "../components/ai-search/SearchEmptyState.jsx";
-import { apiClient } from "../services";
+import VoiceSearchBar from "../components/VoiceSearchBar.jsx";
+import { searchApi } from "../services";
 import { sanitizeHtml } from "../utils/sanitizeHtml";
 import {
   clearSearchHistory,
@@ -118,11 +119,18 @@ const ResultModal = ({ result, onClose }) => {
         </div>
 
         <div className="space-y-4">
+          {(result.organizationName || result.workspaceName) && (
+            <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-indigo-50 dark:bg-indigo-950/50 border border-indigo-200 dark:border-indigo-800 text-indigo-700 dark:text-indigo-300 rounded-full text-xs font-bold">
+              <Globe className="w-3.5 h-3.5" />
+              Workspace: {result.organizationName || result.workspaceName}
+            </div>
+          )}
+
           <div>
             <h3 className="text-sm font-semibold text-gray-500 dark:text-gray-400 uppercase">
               {t("aiSearch.summary")}
             </h3>
-            <p className="text-gray-700 mt-1 leading-relaxed">
+            <p className="text-gray-700 dark:text-gray-300 mt-1 leading-relaxed">
               {result.summary || result.transcript || t("aiSearch.noSummary")}
             </p>
           </div>
@@ -132,7 +140,7 @@ const ResultModal = ({ result, onClose }) => {
               <h3 className="text-sm font-semibold text-gray-500 uppercase">
                 {t("aiSearch.transcript")}
               </h3>
-              <p className="text-gray-600 text-sm mt-1 leading-relaxed max-h-40 overflow-y-auto bg-gray-50 p-3 rounded-lg">
+              <p className="text-gray-600 dark:text-gray-400 text-sm mt-1 leading-relaxed max-h-40 overflow-y-auto bg-gray-50 dark:bg-gray-900 p-3 rounded-lg">
                 {result.transcript}
               </p>
             </div>
@@ -141,7 +149,7 @@ const ResultModal = ({ result, onClose }) => {
           <div className="grid grid-cols-2 gap-4 text-sm">
             <div>
               <span className="text-gray-500">{t("aiSearch.date")}</span>
-              <p className="font-medium text-gray-800">
+              <p className="font-medium text-gray-800 dark:text-gray-200">
                 {result.createdAt
                   ? new Date(result.createdAt).toLocaleDateString("en-US", {
                       year: "numeric",
@@ -155,8 +163,8 @@ const ResultModal = ({ result, onClose }) => {
               <span className="text-gray-500">
                 {t("aiSearch.similarityScore")}
               </span>
-              <p className="font-medium text-gray-800">
-                {result.similarityScore || "N/A"}
+              <p className="font-medium text-gray-800 dark:text-gray-200">
+                {result.similarityScore || result.score || "N/A"}
               </p>
             </div>
           </div>
@@ -170,7 +178,7 @@ const ResultModal = ({ result, onClose }) => {
                 {result.tags.map((tag) => (
                   <span
                     key={tag}
-                    className="bg-blue-100 text-blue-700 px-3 py-1 rounded-full text-xs"
+                    className="bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300 px-3 py-1 rounded-full text-xs font-bold"
                   >
                     #{tag}
                   </span>
@@ -181,6 +189,7 @@ const ResultModal = ({ result, onClose }) => {
         </div>
 
         <button
+          type="button"
           onClick={onClose}
           className="mt-6 w-full bg-blue-600 text-white py-3 rounded-xl font-semibold hover:bg-blue-700 transition"
         >
@@ -204,11 +213,12 @@ const AiSearch = () => {
   const [error, setError] = useState("");
   const [selectedResult, setSelectedResult] = useState(null);
   const [hasSearched, setHasSearched] = useState(false);
+  const [showVoiceBar, setShowVoiceBar] = useState(false);
   const [filters, setFilters] = useState({
     ...DEFAULT_FILTERS,
     ...initial.filters,
   });
-  const [searchMode, setSearchMode] = useState(initial.mode);
+  const [searchMode, setSearchMode] = useState(initial.mode || "standard");
   const [hybridWeights, setHybridWeights] = useState(initial.weights);
   const [history, setHistory] = useState(() => loadSearchHistory());
 
@@ -245,8 +255,18 @@ const AiSearch = () => {
       });
 
       try {
-        if (nextMode === "hybrid") {
-          const res = await apiClient.post("/api/search/hybrid", {
+        if (nextMode === "federated") {
+          const res = await searchApi.federatedSearch({
+            query: nextQuery,
+            dateFrom: nextFilters.dateFrom || undefined,
+            dateTo: nextFilters.dateTo || undefined,
+            meetingType: nextFilters.meetingType || undefined,
+            speaker: nextFilters.speaker || undefined,
+            tag: nextFilters.tag || undefined,
+          });
+          setResults(res.results || res.data?.results || []);
+        } else if (nextMode === "hybrid") {
+          const res = await searchApi.hybridSearch({
             query: nextQuery,
             ...nextWeights,
             dateFrom: nextFilters.dateFrom || undefined,
@@ -255,13 +275,13 @@ const AiSearch = () => {
             speaker: nextFilters.speaker || undefined,
             tag: nextFilters.tag || undefined,
           });
-          setResults(res.data.results || []);
+          setResults(res.results || res.data?.results || []);
         } else {
-          const res = await apiClient.post("/api/ai", {
+          const res = await searchApi.semanticSearch({
             query: nextQuery,
             filters: nextFilters,
           });
-          let sortedResults = res.data.results || [];
+          let sortedResults = res.results || res.data?.results || [];
 
           if (nextFilters.sortBy === "date-desc") {
             sortedResults = [...sortedResults].sort(
@@ -349,7 +369,7 @@ const AiSearch = () => {
 
   const handleViewDetails = (result) => setSelectedResult(result);
   const handleOpenMeeting = (result) => {
-    window.open(`/meeting/${result.meetingId}`, "_blank");
+    window.open(`/meeting/${result.meetingId || result._id}`, "_blank");
   };
   const handleOpenMeetingById = (meetingId) => {
     if (meetingId) window.open(`/meeting/${meetingId}`, "_blank");
@@ -376,19 +396,44 @@ const AiSearch = () => {
           {t("aiSearch.title")}
         </h1>
         <p
-          className="text-gray-600 dark:text-gray-400 mb-8 text-sm md:text-base max-w-2xl"
+          className="text-gray-600 dark:text-gray-400 mb-6 text-sm md:text-base max-w-2xl"
           dangerouslySetInnerHTML={{
             __html: sanitizeHtml(t("aiSearch.subtitle")),
           }}
         />
 
-        <SearchBar
-          query={query}
-          setQuery={setQuery}
-          onSearch={handleSearch}
-          loading={loading}
-          onClear={handleClear}
-        />
+        {/* Voice Search Toggle Header Action */}
+        <div className="w-full flex justify-end mb-3">
+          <button
+            type="button"
+            onClick={() => setShowVoiceBar((prev) => !prev)}
+            className="inline-flex items-center gap-1.5 px-3.5 py-1.5 bg-blue-50 dark:bg-blue-950/60 border border-blue-200 dark:border-blue-800 text-blue-700 dark:text-blue-300 rounded-full text-xs font-bold hover:bg-blue-100 transition cursor-pointer"
+          >
+            <Mic className="w-4 h-4" />
+            {showVoiceBar ? "Hide Voice Search" : "🎙️ Use Voice Search Bar"}
+          </button>
+        </div>
+
+        {/* Voice Search Bar Component Mounting (#2010) */}
+        {showVoiceBar ? (
+          <div className="w-full mb-4">
+            <VoiceSearchBar
+              onQueryChange={(q) => setQuery(q)}
+              onResults={(voiceResults) => {
+                setResults(voiceResults || []);
+                setHasSearched(true);
+              }}
+            />
+          </div>
+        ) : (
+          <SearchBar
+            query={query}
+            setQuery={setQuery}
+            onSearch={handleSearch}
+            loading={loading}
+            onClear={handleClear}
+          />
+        )}
 
         <HybridSearchToggle
           mode={searchMode}
@@ -402,7 +447,7 @@ const AiSearch = () => {
             filters={filters}
             setFilters={setFilters}
             resultCount={results.length}
-            advanced={searchMode === "hybrid"}
+            advanced={searchMode === "hybrid" || searchMode === "federated"}
           />
         </div>
 
@@ -432,7 +477,11 @@ const AiSearch = () => {
                   {entry.query.length > 40
                     ? `${entry.query.slice(0, 37)}…`
                     : entry.query}
-                  {entry.mode === "hybrid" ? " · hybrid" : ""}
+                  {entry.mode === "hybrid"
+                    ? " · hybrid"
+                    : entry.mode === "federated"
+                      ? " · federated"
+                      : ""}
                 </button>
               ))}
             </div>
@@ -457,17 +506,27 @@ const AiSearch = () => {
 
           {!loading && results.length > 0 && (
             <div className="space-y-5">
-              {searchMode === "hybrid"
+              {searchMode === "hybrid" || searchMode === "federated"
                 ? results.map((result, index) => (
-                    <HybridResultCard
-                      key={result.key || index}
-                      result={result}
-                      onOpenMeeting={handleOpenMeetingById}
-                    />
+                    <div
+                      key={result.key || result._id || index}
+                      className="relative"
+                    >
+                      {(result.organizationName || result.workspaceName) && (
+                        <div className="mb-1 inline-flex items-center gap-1 px-2.5 py-0.5 bg-indigo-100 dark:bg-indigo-900/40 text-indigo-700 dark:text-indigo-300 text-[10px] font-bold rounded-full">
+                          <Globe className="w-3 h-3" />
+                          {result.organizationName || result.workspaceName}
+                        </div>
+                      )}
+                      <HybridResultCard
+                        result={result}
+                        onOpenMeeting={handleOpenMeetingById}
+                      />
+                    </div>
                   ))
                 : results.map((result, index) => (
                     <SearchResultCard
-                      key={result.meetingId || index}
+                      key={result.meetingId || result._id || index}
                       result={result}
                       onViewDetails={handleViewDetails}
                       onOpenMeeting={handleOpenMeeting}

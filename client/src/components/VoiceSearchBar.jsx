@@ -1,9 +1,19 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import { Mic, MicOff, Search, Loader2, X } from "lucide-react";
 import { toast } from "react-toastify";
-import apiClient from "../services/apiClient";
+import searchApi from "../services/searchApi";
 
-const VoiceSearchBar = ({ onResults }) => {
+/**
+ * VoiceSearchBar Component (#2010)
+ * Voice-enabled search bar with speech recognition, microphone permission handling,
+ * and fallback error states.
+ */
+const VoiceSearchBar = ({
+  onResults,
+  onQueryChange,
+  placeholder = "Speak or type your search query...",
+  className = "",
+}) => {
   const [isListening, setIsListening] = useState(false);
   const [interimTranscript, setInterimTranscript] = useState("");
   const [finalTranscript, setFinalTranscript] = useState("");
@@ -16,37 +26,43 @@ const VoiceSearchBar = ({ onResults }) => {
 
   useEffect(() => {
     finalTranscriptRef.current = finalTranscript;
-  }, [finalTranscript]);
+    if (onQueryChange) {
+      onQueryChange(finalTranscript);
+    }
+  }, [finalTranscript, onQueryChange]);
 
   const handleSearch = useCallback(
-    async (query) => {
-      if (!query || query.trim().length < 3) {
+    async (queryText) => {
+      const q = (queryText || "").trim();
+      if (!q || q.length < 3) {
         toast.error("Please speak a longer query (minimum 3 characters)");
         return;
       }
 
       try {
         setIsSearching(true);
-        const { data } = await apiClient.get("/api/search/voice", {
-          params: { query: query.trim() },
-          withCredentials: true,
-        });
+        setError(null);
+        const data = await searchApi.voiceSearch(q);
 
         if (data.success) {
-          setResults(data.results || []);
+          const res = data.results || [];
+          setResults(res);
           if (onResults) {
-            onResults(data.results || []);
+            onResults(res);
           }
 
-          if (data.results.length === 0) {
+          if (res.length === 0) {
             toast.info("No results found for your query");
           } else {
-            toast.success(`Found ${data.results.length} result(s)`);
+            toast.success(`Found ${res.length} result(s)`);
           }
         }
-      } catch (error) {
-        console.error("Voice search error:", error);
-        toast.error(error.response?.data?.message || "Search failed");
+      } catch (err) {
+        console.error("Voice search error:", err);
+        const errMsg =
+          err.response?.data?.message || err.message || "Search failed";
+        setError(errMsg);
+        toast.error(errMsg);
       } finally {
         setIsSearching(false);
       }
@@ -61,8 +77,9 @@ const VoiceSearchBar = ({ onResults }) => {
   useEffect(() => {
     // Check if browser supports speech recognition
     if (
-      !("webkitSpeechRecognition" in window) &&
-      !("SpeechRecognition" in window)
+      typeof window === "undefined" ||
+      (!("webkitSpeechRecognition" in window) &&
+        !("SpeechRecognition" in window))
     ) {
       setError("Speech recognition is not supported in this browser");
       return;
@@ -112,12 +129,12 @@ const VoiceSearchBar = ({ onResults }) => {
       setIsListening(false);
 
       if (event.error === "not-allowed") {
-        setError(
-          "Microphone permission denied. Please allow microphone access.",
-        );
+        const msg =
+          "Microphone permission denied. Please allow microphone access in browser settings.";
+        setError(msg);
         toast.error("Microphone permission denied");
       } else if (event.error === "no-speech") {
-        setError("No speech detected.Please try again.");
+        setError("No speech detected. Please try speaking again.");
         toast.error("No speech detected");
       } else {
         setError("Speech recognition error. Please try again.");
@@ -125,7 +142,6 @@ const VoiceSearchBar = ({ onResults }) => {
       }
     };
 
-    // Store recognition instance
     window.recognitionInstance = recognition;
 
     return () => {
@@ -139,7 +155,13 @@ const VoiceSearchBar = ({ onResults }) => {
     if (window.recognitionInstance) {
       setInterimTranscript("");
       setFinalTranscript("");
-      window.recognitionInstance.start();
+      try {
+        window.recognitionInstance.start();
+      } catch (err) {
+        console.error("Could not start recognition:", err);
+      }
+    } else {
+      setError("Speech recognition is not available");
     }
   };
 
@@ -166,37 +188,48 @@ const VoiceSearchBar = ({ onResults }) => {
   };
 
   return (
-    <div className="w-full">
+    <div
+      className={`w-full ${className}`}
+      role="search"
+      data-testid="voice-search-bar"
+    >
       <div className="relative">
         <div className="flex items-center gap-2">
           <div className="relative flex-1">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
             <input
               type="text"
-              placeholder="Speak or type your search query..."
+              aria-label="Voice or text search query input"
+              placeholder={placeholder}
               value={finalTranscript || interimTranscript}
               onChange={(e) => setFinalTranscript(e.target.value)}
               onKeyDown={handleTextSearch}
-              className="w-full pl-10 pr-24 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+              className="w-full pl-10 pr-24 py-2.5 border border-gray-300 dark:border-gray-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 text-sm shadow-sm"
               disabled={isSearching}
             />
             <div className="absolute right-2 top-1/2 transform -translate-y-1/2 flex items-center gap-1">
               {finalTranscript && (
                 <button
+                  type="button"
                   onClick={clearSearch}
-                  className="p-1 text-gray-400 hover:text-gray-600 transition-colors"
+                  aria-label="Clear search"
+                  className="p-1 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 transition-colors"
                   title="Clear search"
                 >
                   <X className="w-4 h-4" />
                 </button>
               )}
               <button
+                type="button"
                 onClick={isListening ? stopListening : startListening}
-                disabled={isSearching || error !== null}
-                className={`p-1 rounded transition-colors ${
+                disabled={isSearching}
+                aria-label={
+                  isListening ? "Stop recording" : "Start voice search"
+                }
+                className={`p-1.5 rounded-lg transition-colors ${
                   isListening
-                    ? "bg-red-100 text-red-600 hover:bg-red-200"
-                    : "bg-blue-100 text-blue-600 hover:bg-blue-200"
+                    ? "bg-red-100 dark:bg-red-950/50 text-red-600 dark:text-red-400 animate-pulse"
+                    : "bg-blue-100 dark:bg-blue-950/50 text-blue-600 dark:text-blue-400 hover:bg-blue-200 dark:hover:bg-blue-900/50"
                 } disabled:opacity-50 disabled:cursor-not-allowed`}
                 title={isListening ? "Stop recording" : "Start voice search"}
               >
@@ -212,50 +245,54 @@ const VoiceSearchBar = ({ onResults }) => {
 
         {/* Interim transcript indicator */}
         {isListening && interimTranscript && (
-          <div className="absolute top-full left-0 right-0 mt-2 p-2 bg-blue-50 border border-blue-200 rounded-lg text-sm text-blue-700">
-            <span className="font-medium">Listening:</span> {interimTranscript}
+          <div className="absolute top-full left-0 right-0 mt-2 p-2.5 bg-blue-50 dark:bg-blue-950/60 border border-blue-200 dark:border-blue-800 rounded-xl text-sm text-blue-700 dark:text-blue-300 shadow-md z-10">
+            <span className="font-bold">Listening:</span> {interimTranscript}
           </div>
         )}
 
-        {/* Error message */}
+        {/* Error message / mic permission fallback */}
         {error && (
-          <div className="absolute top-full left-0 right-0 mt-2 p-2 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700">
-            {error}
+          <div className="mt-2 p-2.5 bg-red-50 dark:bg-red-950/60 border border-red-200 dark:border-red-800 rounded-xl text-xs text-red-700 dark:text-red-300">
+            ⚠️ {error}
           </div>
         )}
       </div>
 
       {/* Loading indicator */}
       {isSearching && (
-        <div className="flex items-center gap-2 mt-2 text-sm text-gray-600">
-          <Loader2 className="w-4 h-4 animate-spin" />
-          <span>Searching...</span>
+        <div className="flex items-center gap-2 mt-2 text-sm text-gray-600 dark:text-gray-400">
+          <Loader2 className="w-4 h-4 animate-spin text-blue-600" />
+          <span>Searching memories by voice...</span>
         </div>
       )}
 
       {/* Results preview */}
       {results.length > 0 && !isSearching && (
-        <div className="mt-3 p-3 bg-gray-50 border border-gray-200 rounded-lg">
-          <p className="text-sm font-medium text-gray-700 mb-2">
-            Search Results ({results.length})
+        <div className="mt-3 p-3 bg-gray-50 dark:bg-gray-800/80 border border-gray-200 dark:border-gray-700 rounded-xl">
+          <p className="text-xs font-bold uppercase text-gray-500 dark:text-gray-400 mb-2">
+            Voice Search Results ({results.length})
           </p>
           <div className="space-y-2 max-h-48 overflow-y-auto">
             {results.slice(0, 3).map((result, index) => (
               <div
                 key={index}
-                className="p-2 bg-white border border-gray-200 rounded text-sm"
+                className="p-2.5 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg text-sm"
               >
-                <p className="font-medium text-gray-900">{result.title}</p>
-                <p className="text-gray-600 text-xs truncate">
-                  {result.summary}
+                <p className="font-bold text-gray-900 dark:text-white">
+                  {result.title || result.name || "Meeting Memory"}
                 </p>
-                <p className="text-xs text-blue-600 mt-1">
-                  Score: {result.score}
+                <p className="text-gray-600 dark:text-gray-300 text-xs truncate mt-0.5">
+                  {result.summary || result.text || result.transcript}
                 </p>
+                {result.score && (
+                  <p className="text-[10px] text-blue-600 dark:text-blue-400 mt-1 font-mono">
+                    Relevance Score: {result.score}
+                  </p>
+                )}
               </div>
             ))}
             {results.length > 3 && (
-              <p className="text-xs text-gray-500 text-center">
+              <p className="text-xs text-gray-500 text-center pt-1">
                 +{results.length - 3} more results
               </p>
             )}
