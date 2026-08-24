@@ -1,4 +1,4 @@
-import mongoose from 'mongoose'
+import mongoose from "mongoose";
 
 const answerSchema = new mongoose.Schema({
   questionIndex: {
@@ -9,19 +9,19 @@ const answerSchema = new mongoose.Schema({
     type: Number,
     required: true,
   },
-})
+});
 
 const quizResponseSchema = new mongoose.Schema(
   {
     quizId: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: 'MeetingQuiz',
+      ref: "MeetingQuiz",
       required: true,
       index: true,
     },
     userId: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: 'User',
+      ref: "User",
       required: true,
       index: true,
     },
@@ -33,10 +33,10 @@ const quizResponseSchema = new mongoose.Schema(
     answers: [answerSchema],
   },
   { timestamps: true },
-)
+);
 
 // A user should only submit once per quiz
-quizResponseSchema.index({ quizId: 1, userId: 1 }, { unique: true })
+quizResponseSchema.index({ quizId: 1, userId: 1 }, { unique: true });
 
-const QuizResponse = mongoose.model('QuizResponse', quizResponseSchema)
-export default QuizResponse
+const QuizResponse = mongoose.model("QuizResponse", quizResponseSchema);
+export default QuizResponse;

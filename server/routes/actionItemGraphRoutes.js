@@ -1,19 +1,19 @@
-import express from 'express'
-import userAuth from '../middleware/userAuth.js'
+import express from "express";
+import userAuth from "../middleware/userAuth.js";
 import {
   addActionItemDependency,
   getActionItemGraph,
   resolveActionItemBlocker,
   removeActionItemDependency,
-} from '../controllers/actionItemGraphController.js'
+} from "../controllers/actionItemGraphController.js";
 
-const router = express.Router()
+const router = express.Router();
 
-router.use(userAuth)
+router.use(userAuth);
 
-router.post('/dependencies', addActionItemDependency)
-router.get('/topology', getActionItemGraph)
-router.patch('/resolve/:actionItemId', resolveActionItemBlocker)
-router.delete('/dependencies/:id', removeActionItemDependency)
+router.post("/dependencies", addActionItemDependency);
+router.get("/topology", getActionItemGraph);
+router.patch("/resolve/:actionItemId", resolveActionItemBlocker);
+router.delete("/dependencies/:id", removeActionItemDependency);
 
-export default router
+export default router;
