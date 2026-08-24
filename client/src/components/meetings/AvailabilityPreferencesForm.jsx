@@ -60,12 +60,14 @@ const AvailabilityPreferencesForm = () => {
   if (!preferences) return null;
 
   return (
-    <div className="bg-white p-6 rounded-lg shadow-md max-w-2xl mx-auto">
-      <h2 className="text-2xl font-bold mb-6">Availability Preferences</h2>
+    <div className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 p-6 rounded-2xl shadow-md max-w-2xl mx-auto text-slate-800 dark:text-slate-200">
+      <h2 className="text-2xl font-bold mb-6 text-slate-950 dark:text-white">
+        Availability Preferences
+      </h2>
 
       <form onSubmit={handleSave}>
         <div className="mb-6">
-          <label className="block text-sm font-medium text-gray-700 mb-2">
+          <label className="block text-sm font-semibold text-slate-750 dark:text-slate-300 mb-2">
             Timezone
           </label>
           <select
@@ -73,7 +75,7 @@ const AvailabilityPreferencesForm = () => {
             onChange={(e) =>
               setPreferences({ ...preferences, timezone: e.target.value })
             }
-            className="w-full border rounded p-2"
+            className="w-full border border-gray-300 dark:border-gray-700 rounded-lg p-2.5 bg-white dark:bg-slate-950 text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500 outline-none"
           >
             <option value="UTC">UTC</option>
             <option value="America/New_York">Eastern Time (US & Canada)</option>
@@ -91,7 +93,7 @@ const AvailabilityPreferencesForm = () => {
         </div>
 
         <div className="mb-6">
-          <label className="block text-sm font-medium text-gray-700 mb-2">
+          <label className="block text-sm font-semibold text-slate-750 dark:text-slate-300 mb-2">
             Weekly Hours
           </label>
           {preferences.weeklyHours.map((dayConfig, index) => (
@@ -99,7 +101,7 @@ const AvailabilityPreferencesForm = () => {
               key={dayConfig.dayOfWeek}
               className="flex items-center gap-4 mb-3"
             >
-              <div className="w-24 font-medium">
+              <div className="w-24 font-medium text-slate-700 dark:text-slate-300">
                 {DAYS[dayConfig.dayOfWeek]}
               </div>
               <input
@@ -108,7 +110,7 @@ const AvailabilityPreferencesForm = () => {
                 onChange={(e) =>
                   handleDayChange(index, "isAvailable", e.target.checked)
                 }
-                className="w-4 h-4"
+                className="w-4 h-4 rounded text-blue-600 focus:ring-blue-500"
               />
               <span className="text-sm">Available</span>
 
@@ -120,7 +122,7 @@ const AvailabilityPreferencesForm = () => {
                     onChange={(e) =>
                       handleDayChange(index, "startTime", e.target.value)
                     }
-                    className="border rounded p-1"
+                    className="border border-gray-300 dark:border-gray-700 rounded p-1 bg-white dark:bg-slate-950 text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-blue-500"
                   />
                   <span>to</span>
                   <input
@@ -129,7 +131,7 @@ const AvailabilityPreferencesForm = () => {
                     onChange={(e) =>
                       handleDayChange(index, "endTime", e.target.value)
                     }
-                    className="border rounded p-1"
+                    className="border border-gray-300 dark:border-gray-700 rounded p-1 bg-white dark:bg-slate-950 text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-blue-500"
                   />
                 </div>
               )}
@@ -139,7 +141,7 @@ const AvailabilityPreferencesForm = () => {
 
         <div className="mb-6 flex gap-6">
           <div className="flex-1">
-            <label className="block text-sm font-medium text-gray-700 mb-2">
+            <label className="block text-sm font-semibold text-slate-750 dark:text-slate-300 mb-2">
               Daily Meeting Load Limit (Hours)
             </label>
             <input
@@ -153,11 +155,11 @@ const AvailabilityPreferencesForm = () => {
                   meetingLoadLimit: Number(e.target.value),
                 })
               }
-              className="w-full border rounded p-2"
+              className="w-full border border-gray-300 dark:border-gray-700 rounded-lg p-2.5 bg-white dark:bg-slate-950 text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-blue-500"
             />
           </div>
           <div className="flex-1">
-            <label className="block text-sm font-medium text-gray-700 mb-2">
+            <label className="block text-sm font-semibold text-slate-750 dark:text-slate-300 mb-2">
               Buffer Between Meetings (Mins)
             </label>
             <input
@@ -172,7 +174,7 @@ const AvailabilityPreferencesForm = () => {
                   bufferBetweenMeetings: Number(e.target.value),
                 })
               }
-              className="w-full border rounded p-2"
+              className="w-full border border-gray-300 dark:border-gray-700 rounded-lg p-2.5 bg-white dark:bg-slate-950 text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-blue-500"
             />
           </div>
         </div>
@@ -180,7 +182,7 @@ const AvailabilityPreferencesForm = () => {
         <button
           type="submit"
           disabled={saving}
-          className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 disabled:opacity-50"
+          className="bg-blue-600 hover:bg-blue-700 text-white px-5 py-2.5 rounded-xl transition-colors disabled:opacity-50 font-semibold cursor-pointer shadow-md shadow-blue-500/10"
         >
           {saving ? "Saving..." : "Save Preferences"}
         </button>
