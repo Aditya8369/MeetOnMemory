@@ -18,6 +18,7 @@ import {
   Settings,
   Activity,
   Menu,
+  ShieldAlert,
   X,
   Sparkles,
   ClipboardList,
@@ -41,6 +42,7 @@ import RbacPermissionExplorer from "../components/admin/RbacPermissionExplorer.j
 import ImportanceRecalculationAdmin from "../components/admin/ImportanceRecalculationAdmin.jsx";
 import AiUsageMetrics from "../components/admin/AiUsageMetrics.jsx";
 import MembershipRequests from "../components/organization/MembershipRequests.jsx";
+import ResourceManagement from "./Admin/ResourceManagement.jsx";
 
 import AppContent from "../context/AppContent.js";
 import { fetchPlatformStatus } from "../services/statusApi.js";
@@ -143,12 +145,15 @@ const MODULES = [
   },
   {
     id: "policies",
-
-    labelKey: "adminPanel.policies",
-    descriptionKey: "adminPanel.policiesDesc",
-    icon: Shield,
-    iconBg: "bg-cyan-50 dark:bg-cyan-900/30",
-    iconColor: "text-cyan-600 dark:text-cyan-400",
+    label: "adminPanel.policies",
+    icon: <ShieldAlert className="w-5 h-5" />,
+    roles: ["admin", "owner", "compliance_officer"],
+  },
+  {
+    id: "resources",
+    label: "Physical Resources",
+    icon: <Building2 className="w-5 h-5" />,
+    roles: ["admin", "owner"],
   },
   {
     id: "reports",
@@ -659,6 +664,8 @@ const AdminPanel = () => {
                 )}
               </div>
             </div>
+          ) : activeModule === "resources" ? (
+            <ResourceManagement />
           ) : activeModule === "templates" ? (
             <TemplateBuilder />
           ) : activeModule === "testimonials" ? (

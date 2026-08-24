@@ -49,9 +49,11 @@ import ClipManager from "../components/meeting-details/ClipManager";
 import HealthScoreCard from "../components/meeting-details/HealthScoreCard";
 import { isMeetingEnded } from "../utils/meetingLifecycle";
 import MeetingRisksPanel from "../components/meetings/MeetingRisksPanel";
-import { Award, ShieldAlert, FileText } from "lucide-react";
+import { Award, ShieldAlert, FileText, Star } from "lucide-react";
 import ExportDialog from "../components/export/ExportDialog";
 import RetentionQuizSection from "../components/meetings/RetentionQuizSection";
+import ResourceConflictsPanel from "../components/meeting-details/ResourceConflictsPanel";
+import SkillEndorsementModal from "../components/meetings/SkillEndorsementModal";
 
 const MeetingDetails = () => {
   const { id } = useParams();
@@ -69,6 +71,7 @@ const MeetingDetails = () => {
   const [isAnalyticsExpanded, setIsAnalyticsExpanded] = useState(false);
   const [isStoryViewerOpen, setIsStoryViewerOpen] = useState(false);
   const [isExportDialogOpen, setIsExportDialogOpen] = useState(false);
+  const [isEndorseModalOpen, setIsEndorseModalOpen] = useState(false);
   const [briefingStatus, setBriefingStatus] = useState("idle");
 
   const dbUserId = currentUser?.publicMetadata?.dbUserId;
@@ -312,6 +315,19 @@ const MeetingDetails = () => {
               Export Minutes
             </button>
             <button
+              onClick={() => setIsEndorseModalOpen(true)}
+              className="flex items-center gap-2 px-4 py-2 bg-amber-500 hover:bg-amber-600 text-white rounded-lg font-medium shadow-sm transition-colors text-sm"
+              disabled={isViewerOrGuest}
+              title={
+                isViewerOrGuest
+                  ? "Viewers cannot endorse peers"
+                  : "Recognize peers for their skills"
+              }
+            >
+              <Star className="w-4 h-4" />
+              Recognize Peers
+            </button>
+            <button
               onClick={() => setIsStoryViewerOpen(true)}
               className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-purple-500 to-pink-500 text-white rounded-lg font-medium shadow-sm hover:opacity-90 transition-opacity text-sm"
             >
@@ -364,6 +380,8 @@ const MeetingDetails = () => {
           {(meeting.series || meeting.seriesId) && (
             <SeriesNavigation meeting={meeting} />
           )}
+
+          <ResourceConflictsPanel meeting={meeting} />
 
           <div className="p-6 bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 shadow-sm mt-6 mb-6">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
@@ -638,6 +656,14 @@ const MeetingDetails = () => {
           onClose={() => setIsExportDialogOpen(false)}
         />
       )}
+
+      <SkillEndorsementModal
+        isOpen={isEndorseModalOpen}
+        onClose={() => setIsEndorseModalOpen(false)}
+        meetingId={meeting._id}
+        participants={meeting.participants}
+        currentUser={currentUser}
+      />
     </div>
   );
 };

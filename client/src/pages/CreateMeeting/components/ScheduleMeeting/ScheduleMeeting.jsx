@@ -10,6 +10,7 @@ import CustomFieldsEditor from "../../../../components/meetings/CustomFieldsEdit
 import ConflictWarning from "./ConflictWarning";
 import { useIcebreakers } from "../../../../hooks/useIcebreakers";
 import IcebreakerWidget from "../../../../components/meetings/IcebreakerWidget";
+import PhysicalResourcesSection from "./PhysicalResourcesSection";
 
 const ScheduleMeeting = ({ hookProps, loadingDuplicate = false }) => {
   const {
@@ -53,6 +54,8 @@ const ScheduleMeeting = ({ hookProps, loadingDuplicate = false }) => {
     conflictCheckError,
     conflictMode,
     setConflictMode,
+    selectedResources,
+    setSelectedResources,
   } = hookProps;
 
   const {
@@ -124,6 +127,13 @@ const ScheduleMeeting = ({ hookProps, loadingDuplicate = false }) => {
           setNewParticipant={setNewParticipant}
           addParticipant={addParticipant}
           removeParticipant={removeParticipant}
+        />
+
+        <PhysicalResourcesSection
+          scheduleData={scheduleData}
+          userData={userData}
+          selectedResources={selectedResources}
+          setSelectedResources={setSelectedResources}
         />
 
         {templates && templates.length > 0 && (

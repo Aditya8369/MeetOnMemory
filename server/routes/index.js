@@ -98,6 +98,7 @@ import minutesApprovalRoutes from "./minutesApprovalRoutes.js";
 import teamAvailabilityRoutes from "./teamAvailabilityRoutes.js";
 import icebreakerRoutes from "./icebreakerRoutes.js";
 import meetingQuizRoutes from "./meetingQuizRoutes.js";
+import resourceBookingRoutes from "./resourceBookingRoutes.js";
 
 const router = express.Router();
 
@@ -152,6 +153,7 @@ router.use("/api/meetings/:meetingId/breakout-rooms", breakoutRoomRoutes);
 router.use("/api/workload", workloadRoutes);
 router.use("/api/meetings/:meetingId/attachments", attachmentRoutes);
 router.use("/api/icebreakers", icebreakerRoutes);
+router.use("/api/physical-resources", resourceBookingRoutes);
 router.use("/api/meetings/:meetingId/minutes-approval", minutesApprovalRoutes);
 router.use("/api/meeting-series", meetingSeriesRoutes);
 router.use("/api/meeting-series", carryForwardRoutes);
@@ -267,5 +269,8 @@ router.use("/api/action-item-templates", actionItemTemplateRoutes);
 
 import observerRoutes from "./observerRoutes.js";
 router.use("/api/observers", observerRoutes);
+
+import skillEndorsementRoutes from "./skillEndorsementRoutes.js";
+router.use("/api/skill-endorsements", skillEndorsementRoutes);
 
 export default router;
