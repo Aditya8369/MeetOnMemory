@@ -832,7 +832,7 @@ export const getTranscriptByMeeting = async (req, res) => {
       meeting: meetingId,
     }).populate(
       "meeting",
-      "title date participants uploadedBy organization transcript encryptedTranscript isTranscriptEncrypted",
+      "title date participants uploadedBy organization transcript encryptedTranscript isTranscriptEncrypted fileUrl",
     );
 
     if (!transcript) {
