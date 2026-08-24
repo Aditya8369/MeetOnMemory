@@ -1,4 +1,5 @@
 import Transcript from "../models/transcriptModel.js";
+import RecordingSession from "../models/RecordingSession.js";
 import { translateContent } from "../services/translationService.js";
 import Meeting from "../models/meetingModel.js";
 import { transcribeFileWithSegments } from "../services/TranscriptionService.js";
@@ -413,6 +414,30 @@ export const uploadTranscriptChunk = async (req, res) => {
       fs.unlinkSync(tempFilePath);
     }
 
+    // Update RecordingSession metric
+    try {
+      let session = await RecordingSession.findOne({
+        meeting: meetingId,
+        status: "IN_PROGRESS",
+      });
+      if (!session) {
+        session = await RecordingSession.create({
+          meeting: meetingId,
+          user: userId,
+          organization: meeting.organization || null,
+          status: "IN_PROGRESS",
+          startedAt: new Date(),
+          lastHeartbeatAt: new Date(),
+        });
+      }
+      session.chunkCount += 1;
+      session.duration += 5;
+      session.lastHeartbeatAt = new Date();
+      await session.save();
+    } catch (sessionErr) {
+      console.warn("Failed to update RecordingSession for chunk:", sessionErr);
+    }
+
     res.status(200).json({
       success: true,
       text: newText,
@@ -423,6 +448,29 @@ export const uploadTranscriptChunk = async (req, res) => {
     if (tempFilePath && fs.existsSync(tempFilePath)) {
       fs.unlinkSync(tempFilePath);
     }
+
+    try {
+      const { meetingId } = req.params;
+      const session = await RecordingSession.findOne({
+        meeting: meetingId,
+        status: "IN_PROGRESS",
+      });
+      if (session) {
+        session.retryCount += 1;
+        session.failureReason =
+          error.message || "Failed to process audio chunk";
+        session.failureHistory.push({
+          reason: error.message || "Failed to process audio chunk",
+          timestamp: new Date(),
+          chunkIndex: session.chunkCount,
+        });
+        session.lastHeartbeatAt = new Date();
+        await session.save();
+      }
+    } catch (recErr) {
+      console.warn("Failed to record error on RecordingSession:", recErr);
+    }
+
     res.status(500).json({
       success: false,
       message: error.message || "Failed to process audio chunk",

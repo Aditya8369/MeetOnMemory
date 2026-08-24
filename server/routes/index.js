@@ -99,6 +99,7 @@ import teamAvailabilityRoutes from "./teamAvailabilityRoutes.js";
 import icebreakerRoutes from "./icebreakerRoutes.js";
 import meetingQuizRoutes from "./meetingQuizRoutes.js";
 import resourceBookingRoutes from "./resourceBookingRoutes.js";
+import recordingSessionRoutes from "./recordingSessionRoutes.js";
 
 const router = express.Router();
 
@@ -139,6 +140,7 @@ router.use("/api/graph", knowledgeGraphRoutes);
 router.use("/api/calendar", calendarRoutes);
 router.use("/api/policy-compliance", policyComplianceRoutes);
 router.use("/api/sessions", sessionRoutes);
+router.use("/api/recording-sessions", recordingSessionRoutes);
 router.use("/api/assistant", assistantRoutes);
 router.use("/api/transcripts", transcriptRoutes);
 router.use("/api/shared-links", sharedLinkRoutes);
