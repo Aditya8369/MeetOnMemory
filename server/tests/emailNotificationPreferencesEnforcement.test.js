@@ -78,15 +78,13 @@ describe("Email Notification Preferences Enforcement (#2021)", () => {
     ]);
 
     NotificationPreference.find.mockReturnValue({
-      lean: vi
-        .fn()
-        .mockResolvedValue([
-          {
-            user: "u-1",
-            emailWeeklyDigest: false,
-            emailMeetingReminders: true,
-          },
-        ]),
+      lean: vi.fn().mockResolvedValue([
+        {
+          user: "u-1",
+          emailWeeklyDigest: false,
+          emailMeetingReminders: true,
+        },
+      ]),
     });
 
     const result = await MeetingDigestService.sendMeetingDigest("m-1");
