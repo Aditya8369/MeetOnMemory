@@ -9,6 +9,7 @@ import {
   ExternalLink,
 } from "lucide-react";
 import { STATUS_STYLES, PRIORITY_STYLES } from "../../utils/taskStyles";
+import DependencyManager from "../DependencyManager";
 
 const FOCUSABLE_SELECTOR =
   'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
@@ -215,6 +216,9 @@ export default function TaskDetailsModal({
                 </button>
               </div>
             </div>
+
+            {/* Task Dependency Manager */}
+            <DependencyManager task={selectedTask} />
           </div>
         </div>
       </div>

@@ -76,4 +76,19 @@ describe("TaskDetailsModal Accessibility (#1226)", () => {
     fireEvent.click(closeButton);
     expect(setSelectedTask).toHaveBeenCalledWith(null);
   });
+
+  it("renders DependencyManager when a task is selected (#2016)", () => {
+    render(
+      <TaskDetailsModal
+        selectedTask={mockTask}
+        setSelectedTask={() => {}}
+        navigate={() => {}}
+      />,
+    );
+
+    expect(screen.getByTestId("dependency-manager")).toBeInTheDocument();
+    expect(
+      screen.getByRole("heading", { name: "Dependencies" }),
+    ).toBeInTheDocument();
+  });
 });
