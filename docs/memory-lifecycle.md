@@ -44,7 +44,8 @@ The thresholds must remain ordered:
 dormantAfterDays < archivedAfterDays < expiredAfterDays
 ```
 
- feature/unify-retention-settings-2267
+feature/unify-retention-settings-2267
+
 - **active** — default state. Shown in normal listings and search.
 - **dormant** — inactive for a while; still shown, but flagged as
   low-usage. A soft signal, not a retrieval filter.
@@ -161,4 +162,4 @@ Bulk transitions and retention-policy changes use the existing
 `knowledge.manage_lifecycle` RBAC permission and authenticated organization
 membership. Memory IDs are validated before querying, and database lookups are
 organization-scoped.
- main
+main
