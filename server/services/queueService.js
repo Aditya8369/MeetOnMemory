@@ -1,22 +1,22 @@
-import { Queue, Worker } from 'bullmq'
-import Redis from 'ioredis'
-import processAiResultJob from '../jobs/processAiResultJob.js'
-import processAudioJob from '../jobs/processAudioJob.js'
-import exportDataJob from '../jobs/exportDataJob.js'
-import cleanupExpiredExportsJob from '../jobs/cleanupExpiredExportsJob.js'
-import conflictScanJob from './conflictDetection/conflictScanJob.js'
-import sentimentAnalysisJob from '../jobs/sentimentAnalysisJob.js'
-import recalculateImportanceJob from '../jobs/recalculateImportanceJob.js'
-import memoryLifecycleJob from '../jobs/memoryLifecycleJob.js'
-import policyComplianceReevaluationJob from '../jobs/policyComplianceReevaluationJob.js'
-import RecapEmailService from './recapEmailService.js'
-import embeddingReindexJob from '../jobs/embeddingReindexJob.js'
-import meetingQuizJob from '../jobs/meetingQuizJob.js'
+import { Queue, Worker } from "bullmq";
+import Redis from "ioredis";
+import processAiResultJob from "../jobs/processAiResultJob.js";
+import processAudioJob from "../jobs/processAudioJob.js";
+import exportDataJob from "../jobs/exportDataJob.js";
+import cleanupExpiredExportsJob from "../jobs/cleanupExpiredExportsJob.js";
+import conflictScanJob from "./conflictDetection/conflictScanJob.js";
+import sentimentAnalysisJob from "../jobs/sentimentAnalysisJob.js";
+import recalculateImportanceJob from "../jobs/recalculateImportanceJob.js";
+import memoryLifecycleJob from "../jobs/memoryLifecycleJob.js";
+import policyComplianceReevaluationJob from "../jobs/policyComplianceReevaluationJob.js";
+import RecapEmailService from "./recapEmailService.js";
+import embeddingReindexJob from "../jobs/embeddingReindexJob.js";
+import meetingQuizJob from "../jobs/meetingQuizJob.js";
 import queueRegistry, {
   readPositiveIntEnv,
   resolveJobOptions,
   resolveWorkerOptions,
-} from './queueRegistry.js'
+} from "./queueRegistry.js";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Issue #975 — Background jobs are silently lost.
@@ -39,42 +39,42 @@ import queueRegistry, {
 // ─────────────────────────────────────────────────────────────────────────────
 
 // BullMQ requires maxRetriesPerRequest to be null on worker connections.
-let _producerConnection = null
-let _workerConnection = null
+let _producerConnection = null;
+let _workerConnection = null;
 
 /** @type {Map<string, import("bullmq").Queue>} */
-const _queueInstances = new Map()
+const _queueInstances = new Map();
 
-const redisConfigured = () => Boolean(process.env.REDIS_URI)
+const redisConfigured = () => Boolean(process.env.REDIS_URI);
 
 function getProducerConnection() {
-  if (!redisConfigured()) return null
+  if (!redisConfigured()) return null;
   if (!_producerConnection) {
     _producerConnection = new Redis(process.env.REDIS_URI, {
       maxRetriesPerRequest: 3, // Fail fast for requests adding tasks to queue
       family: 0,
-    })
-    _producerConnection.on('error', (err) => {
-      console.error('⚠️ BullMQ Producer Redis Connection Error:', err.message)
-    })
-    queueRegistry.registerConnection('bullmq-producer', _producerConnection)
+    });
+    _producerConnection.on("error", (err) => {
+      console.error("⚠️ BullMQ Producer Redis Connection Error:", err.message);
+    });
+    queueRegistry.registerConnection("bullmq-producer", _producerConnection);
   }
-  return _producerConnection
+  return _producerConnection;
 }
 
 function getWorkerConnection() {
-  if (!redisConfigured()) return null
+  if (!redisConfigured()) return null;
   if (!_workerConnection) {
     _workerConnection = new Redis(process.env.REDIS_URI, {
       maxRetriesPerRequest: null, // Unlimited retries for background workers
       family: 0, // Helps with DNS resolution for some cloud providers
-    })
-    _workerConnection.on('error', (err) => {
-      console.error('⚠️ BullMQ Worker Redis Connection Error:', err.message)
-    })
-    queueRegistry.registerConnection('bullmq-worker', _workerConnection)
+    });
+    _workerConnection.on("error", (err) => {
+      console.error("⚠️ BullMQ Worker Redis Connection Error:", err.message);
+    });
+    queueRegistry.registerConnection("bullmq-worker", _workerConnection);
   }
-  return _workerConnection
+  return _workerConnection;
 }
 
 /**
@@ -86,24 +86,24 @@ function getWorkerConnection() {
  * @returns {import("bullmq").Queue|null}
  */
 function getQueue(name) {
-  if (!redisConfigured()) return null
+  if (!redisConfigured()) return null;
 
-  const existing = _queueInstances.get(name)
-  if (existing) return existing
+  const existing = _queueInstances.get(name);
+  if (existing) return existing;
 
-  const connection = getProducerConnection()
-  if (!connection) return null
+  const connection = getProducerConnection();
+  if (!connection) return null;
 
   const queue = new Queue(name, {
     connection,
     // The fix for Problem 1 in #975: every job on every queue now gets
     // attempts + exponential backoff + bounded retention by default.
     defaultJobOptions: resolveJobOptions(name),
-  })
+  });
 
-  _queueInstances.set(name, queue)
-  queueRegistry.registerQueue(name, queue)
-  return queue
+  _queueInstances.set(name, queue);
+  queueRegistry.registerQueue(name, queue);
+  return queue;
 }
 
 /**
@@ -122,41 +122,51 @@ const createQueueFacade = (name) => ({
    * @param {object} [opts] per-job overrides; merged over the queue defaults
    */
   add: async (jobName, data, opts) => {
-    const queue = getQueue(name)
+    const queue = getQueue(name);
     if (!queue) {
-      console.warn(`⚠️ Queue operation ignored: Redis is not configured (queue: ${name}).`)
-      return null
+      console.warn(
+        `⚠️ Queue operation ignored: Redis is not configured (queue: ${name}).`,
+      );
+      return null;
     }
     // Explicitly resolve per-call options against the shared defaults. BullMQ
     // would merge `defaultJobOptions` itself, but doing it here means an
     // `opts` object that only sets e.g. `repeat` can't accidentally shadow the
     // retry policy, and it keeps the merge behaviour unit-testable.
-    return await queue.add(jobName, data, resolveJobOptions(name, opts ?? {}))
+    return await queue.add(jobName, data, resolveJobOptions(name, opts ?? {}));
   },
   get isActive() {
-    return getQueue(name) !== null
+    return getQueue(name) !== null;
   },
   /** Exposed for diagnostics and tests. */
   get name() {
-    return name
+    return name;
   },
-})
+});
 
-export const aiQueue = createQueueFacade('ai-mom-generation')
-export const aiResultsQueue = createQueueFacade('ai-mom-results')
-export const meetingQuizQueue = createQueueFacade('meeting-quiz-queue')
+export const aiQueue = createQueueFacade("ai-mom-generation");
+export const aiResultsQueue = createQueueFacade("ai-mom-results");
+export const meetingQuizQueue = createQueueFacade("meeting-quiz-queue");
 
-export const dataExportQueue = createQueueFacade('data-export-queue')
+export const dataExportQueue = createQueueFacade("data-export-queue");
 
-export const exportCleanupQueue = createQueueFacade('export-cleanup-queue')
+export const exportCleanupQueue = createQueueFacade("export-cleanup-queue");
 
-export const conflictScanQueue = createQueueFacade('conflict-scan-queue')
-export const sentimentAnalysisQueue = createQueueFacade('sentiment-analysis-queue')
-export const recalculateImportanceQueue = createQueueFacade('recalculate-importance-queue')
-export const memoryLifecycleQueue = createQueueFacade('memory-lifecycle-queue')
-export const recapDeliveryQueue = createQueueFacade('recap-delivery-queue')
-export const policyComplianceRetryQueue = createQueueFacade('policy-compliance-retry-queue')
-export const embeddingReindexQueue = createQueueFacade('embedding-reindex-queue')
+export const conflictScanQueue = createQueueFacade("conflict-scan-queue");
+export const sentimentAnalysisQueue = createQueueFacade(
+  "sentiment-analysis-queue",
+);
+export const recalculateImportanceQueue = createQueueFacade(
+  "recalculate-importance-queue",
+);
+export const memoryLifecycleQueue = createQueueFacade("memory-lifecycle-queue");
+export const recapDeliveryQueue = createQueueFacade("recap-delivery-queue");
+export const policyComplianceRetryQueue = createQueueFacade(
+  "policy-compliance-retry-queue",
+);
+export const embeddingReindexQueue = createQueueFacade(
+  "embedding-reindex-queue",
+);
 
 /**
  * Creates a worker, wires the standard lifecycle logging, and registers it with
@@ -175,167 +185,179 @@ export const embeddingReindexQueue = createQueueFacade('embedding-reindex-queue'
  * @returns {import("bullmq").Worker|null}
  */
 function createWorker({ name, label, processor, workerOptions = {} }) {
-  const connection = getWorkerConnection()
+  const connection = getWorkerConnection();
   if (!connection) {
-    console.warn(`⚠️ Redis not configured. ${label} will not start.`)
-    return null
+    console.warn(`⚠️ Redis not configured. ${label} will not start.`);
+    return null;
   }
 
   const worker = new Worker(name, processor, {
     connection,
     ...resolveWorkerOptions(name, workerOptions),
-  })
+  });
 
-  worker.on('completed', (job) => {
-    console.log(`✅ ${label}: job ${job.id} completed successfully`)
-  })
+  worker.on("completed", (job) => {
+    console.log(`✅ ${label}: job ${job.id} completed successfully`);
+  });
 
-  worker.on('failed', (job, err) => {
+  worker.on("failed", (job, err) => {
     // `job` can be undefined when BullMQ fails before it can load the job.
-    const attemptsMade = job?.attemptsMade ?? 0
-    const maxAttempts = job?.opts?.attempts ?? 1
-    const willRetry = attemptsMade < maxAttempts
+    const attemptsMade = job?.attemptsMade ?? 0;
+    const maxAttempts = job?.opts?.attempts ?? 1;
+    const willRetry = attemptsMade < maxAttempts;
 
     if (willRetry) {
       console.warn(
         `↻ ${label}: job ${job?.id} failed attempt ${attemptsMade}/${maxAttempts}, will retry — ${err?.message}`,
-      )
+      );
     } else {
       console.error(
         `❌ ${label}: job ${job?.id} permanently failed after ${attemptsMade}/${maxAttempts} attempts — ${err?.message}`,
-      )
+      );
     }
-  })
+  });
 
-  worker.on('error', (err) => {
-    console.error(`❌ ${label} error:`, err?.message || err)
-  })
+  worker.on("error", (err) => {
+    console.error(`❌ ${label} error:`, err?.message || err);
+  });
 
   // Surfacing stalls matters here: a stalled job is exactly the case that used
   // to disappear without a trace, because with attempts:1 BullMQ had nothing
   // left to re-deliver.
-  worker.on('stalled', (jobId) => {
-    console.warn(`⚠️ ${label}: job ${jobId} stalled and will be re-queued.`)
-  })
+  worker.on("stalled", (jobId) => {
+    console.warn(`⚠️ ${label}: job ${jobId} stalled and will be re-queued.`);
+  });
 
-  queueRegistry.registerWorker(name, worker)
-  console.log(`✅ ${label} initialized and listening to ${name}`)
-  return worker
+  queueRegistry.registerWorker(name, worker);
+  console.log(`✅ ${label} initialized and listening to ${name}`);
+  return worker;
 }
 
 export const initAiResultsWorker = (app) =>
   createWorker({
-    name: 'ai-mom-results',
-    label: 'AI Results Worker',
+    name: "ai-mom-results",
+    label: "AI Results Worker",
     processor: async (job) => await processAiResultJob(job, app),
-  })
+  });
 
 export const initMeetingQuizWorker = (app) =>
   createWorker({
-    name: 'meeting-quiz-queue',
-    label: 'Meeting Quiz Worker',
+    name: "meeting-quiz-queue",
+    label: "Meeting Quiz Worker",
     processor: async (job) => await meetingQuizJob(job, app),
-  })
+  });
 
 export const initAiGenerationWorker = (app) =>
   createWorker({
-    name: 'ai-mom-generation',
-    label: 'AI Generation Worker',
+    name: "ai-mom-generation",
+    label: "AI Generation Worker",
     processor: async (job) => await processAudioJob(job, app),
-  })
+  });
 
 export const initDataExportWorker = (app) =>
   createWorker({
-    name: 'data-export-queue',
-    label: 'Data Export Worker',
+    name: "data-export-queue",
+    label: "Data Export Worker",
     processor: async (job) => await exportDataJob(job, app),
-  })
+  });
 
 export const initExportCleanupWorker = async () => {
   const worker = createWorker({
-    name: 'export-cleanup-queue',
-    label: 'Export Cleanup Worker',
+    name: "export-cleanup-queue",
+    label: "Export Cleanup Worker",
     processor: cleanupExpiredExportsJob,
-  })
+  });
 
-  if (!worker) return null
+  if (!worker) return null;
 
-  const intervalMs = readPositiveIntEnv('EXPORT_CLEANUP_INTERVAL_MS', 60 * 60 * 1000)
+  const intervalMs = readPositiveIntEnv(
+    "EXPORT_CLEANUP_INTERVAL_MS",
+    60 * 60 * 1000,
+  );
 
   try {
     await exportCleanupQueue.add(
-      'scheduled-export-cleanup',
+      "scheduled-export-cleanup",
       {},
       {
         repeat: { every: intervalMs },
-        jobId: 'scheduled-export-cleanup',
+        jobId: "scheduled-export-cleanup",
       },
-    )
+    );
   } catch (err) {
-    console.error('⚠️ Failed to schedule recurring export cleanup:', err.message)
+    console.error(
+      "⚠️ Failed to schedule recurring export cleanup:",
+      err.message,
+    );
   }
 
-  return worker
-}
+  return worker;
+};
 
 export const initConflictScanWorker = (app) =>
   createWorker({
-    name: 'conflict-scan-queue',
-    label: 'Conflict Scan Worker',
+    name: "conflict-scan-queue",
+    label: "Conflict Scan Worker",
     processor: async (job) => await conflictScanJob(job, app),
-  })
+  });
 
 export const initSentimentWorker = (app) =>
   createWorker({
-    name: 'sentiment-analysis-queue',
-    label: 'Sentiment Analysis Worker',
+    name: "sentiment-analysis-queue",
+    label: "Sentiment Analysis Worker",
     processor: async (job) => await sentimentAnalysisJob(job, app),
-  })
+  });
 
 export const initRecalculateImportanceWorker = (app) =>
   createWorker({
-    name: 'recalculate-importance-queue',
-    label: 'Recalculate Importance Worker',
+    name: "recalculate-importance-queue",
+    label: "Recalculate Importance Worker",
     processor: async (job) => await recalculateImportanceJob(job, app),
-  })
+  });
 
 export const initMemoryLifecycleWorker = async (app) => {
   const worker = createWorker({
-    name: 'memory-lifecycle-queue',
-    label: 'Memory Lifecycle Worker',
+    name: "memory-lifecycle-queue",
+    label: "Memory Lifecycle Worker",
     processor: async (job) => await memoryLifecycleJob(job, app),
-  })
+  });
 
-  if (!worker) return null
+  if (!worker) return null;
 
   // Automatic, recurring sweep (Issue #377 acceptance criterion: memories
   // transition according to configured policies without manual triggering).
   // Runs once a day across all organizations; interval is configurable via
   // env so ops can tune it without a code change.
-  const intervalMs = readPositiveIntEnv('LIFECYCLE_SWEEP_INTERVAL_MS', 24 * 60 * 60 * 1000)
+  const intervalMs = readPositiveIntEnv(
+    "LIFECYCLE_SWEEP_INTERVAL_MS",
+    24 * 60 * 60 * 1000,
+  );
 
   try {
     await memoryLifecycleQueue.add(
-      'scheduled-lifecycle-sweep',
+      "scheduled-lifecycle-sweep",
       {},
       {
         repeat: { every: intervalMs },
-        jobId: 'scheduled-lifecycle-sweep',
+        jobId: "scheduled-lifecycle-sweep",
       },
-    )
+    );
   } catch (err) {
-    console.error('⚠️ Failed to schedule recurring memory lifecycle sweep:', err.message)
+    console.error(
+      "⚠️ Failed to schedule recurring memory lifecycle sweep:",
+      err.message,
+    );
   }
 
-  return worker
-}
+  return worker;
+};
 
 export const initPolicyComplianceRetryWorker = () =>
   createWorker({
-    name: 'policy-compliance-retry-queue',
-    label: 'Policy Compliance Retry Worker',
+    name: "policy-compliance-retry-queue",
+    label: "Policy Compliance Retry Worker",
     processor: policyComplianceReevaluationJob,
-  })
+  });
 
 /**
  * Processes queued meeting recap deliveries (Issue #1248).
@@ -343,28 +365,28 @@ export const initPolicyComplianceRetryWorker = () =>
  */
 export const initRecapDeliveryWorker = () =>
   createWorker({
-    name: 'recap-delivery-queue',
-    label: 'Recap Delivery Worker',
+    name: "recap-delivery-queue",
+    label: "Recap Delivery Worker",
     processor: async (job) => {
-      if (job.name !== 'retry-delivery') {
-        throw new Error(`Unsupported recap delivery job: ${job.name}`)
+      if (job.name !== "retry-delivery") {
+        throw new Error(`Unsupported recap delivery job: ${job.name}`);
       }
 
-      const meetingId = job.data?.meetingId
+      const meetingId = job.data?.meetingId;
       if (!meetingId) {
-        throw new Error('Recap delivery job missing meetingId')
+        throw new Error("Recap delivery job missing meetingId");
       }
 
-      await RecapEmailService.sendImmediateRecap(meetingId)
+      await RecapEmailService.sendImmediateRecap(meetingId);
     },
-  })
+  });
 
 export const initEmbeddingReindexWorker = () =>
   createWorker({
-    name: 'embedding-reindex-queue',
-    label: 'Embedding Reindex Worker',
+    name: "embedding-reindex-queue",
+    label: "Embedding Reindex Worker",
     processor: embeddingReindexJob,
-  })
+  });
 
 /**
  * Drains every registered worker, then closes queues and shared Redis
@@ -376,12 +398,12 @@ export const initEmbeddingReindexWorker = () =>
  * @param {object} [options] forwarded to the registry's closeAll
  */
 export const shutdownQueues = async (options) => {
-  const result = await queueRegistry.closeAll(options)
-  _queueInstances.clear()
-  _producerConnection = null
-  _workerConnection = null
-  return result
-}
+  const result = await queueRegistry.closeAll(options);
+  _queueInstances.clear();
+  _producerConnection = null;
+  _workerConnection = null;
+  return result;
+};
 
 /** Diagnostics: which queues and workers are currently live. */
 export const getQueueStatus = () => ({
@@ -389,27 +411,27 @@ export const getQueueStatus = () => ({
   queues: queueRegistry.listQueues(),
   workers: queueRegistry.listWorkers(),
   shuttingDown: queueRegistry.isClosing(),
-})
+});
 
 /**
  * Known BullMQ queue names used by this app (Issue #2080 admin jobs board).
  * Includes queues defined in queueRegistry even if not yet lazy-instantiated.
  */
 export const KNOWN_QUEUE_NAMES = Object.freeze([
-  'ai-mom-generation',
-  'ai-mom-results',
-  'data-export-queue',
-  'export-cleanup-queue',
-  'conflict-scan-queue',
-  'sentiment-analysis-queue',
-  'recalculate-importance-queue',
-  'memory-lifecycle-queue',
-  'recap-delivery-queue',
-  'policy-compliance-retry-queue',
-  'webhook-dispatches',
-  'embedding-reindex-queue',
-  'meeting-quiz-queue',
-])
+  "ai-mom-generation",
+  "ai-mom-results",
+  "data-export-queue",
+  "export-cleanup-queue",
+  "conflict-scan-queue",
+  "sentiment-analysis-queue",
+  "recalculate-importance-queue",
+  "memory-lifecycle-queue",
+  "recap-delivery-queue",
+  "policy-compliance-retry-queue",
+  "webhook-dispatches",
+  "embedding-reindex-queue",
+  "meeting-quiz-queue",
+]);
 
 /**
  * Returns a live BullMQ Queue instance (creating it if needed), or null when
@@ -419,6 +441,6 @@ export const KNOWN_QUEUE_NAMES = Object.freeze([
  * @returns {import("bullmq").Queue|null}
  */
 export const getQueueInstance = (name) => {
-  if (typeof name !== 'string' || !name) return null
-  return getQueue(name)
-}
+  if (typeof name !== "string" || !name) return null;
+  return getQueue(name);
+};

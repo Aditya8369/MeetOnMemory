@@ -1,201 +1,205 @@
-import React, { useEffect, useState, useContext } from 'react'
-import { useParams, useNavigate } from 'react-router-dom'
-import { toast } from 'react-toastify'
-import AppContent from '../context/AppContent'
-import { meetingApi } from '../services'
-import MeetingHeader from '../components/meeting-details/MeetingHeader'
-import SeriesNavigation from '../components/meeting-details/SeriesNavigation'
-import MeetingSummary from '../components/meeting-details/MeetingSummary'
-import MinutesApproval from '../components/meetings/MinutesApproval'
-import MeetingCollaborativeNotes from '../components/meeting-details/MeetingCollaborativeNotes'
-import PersonalNotes from '../components/meeting-details/PersonalNotes'
-import MeetingTranscript from '../components/meeting-details/MeetingTranscript'
-import SpeakerAttribution from '../components/meeting-details/SpeakerAttribution'
-import MeetingParticipants from '../components/meeting-details/MeetingParticipants'
-import MeetingAgenda from '../components/meeting-details/MeetingAgenda'
-import MeetingMetadata from '../components/meeting-details/MeetingMetadata'
-import MeetingActions from '../components/meeting-details/MeetingActions'
-import TranscriptAnnotations from '../components/meeting-details/TranscriptAnnotations'
-import RsvpPanel from '../components/meeting-details/RsvpPanel'
-import KeyMomentsPanel from '../components/meetings/KeyMomentsPanel'
-import HighlightReel from '../components/meetings/HighlightReel'
-import SentimentTimeline from '../components/meetings/SentimentTimeline'
-import MeetingGoalsPanel from '../components/meetings/MeetingGoalsPanel'
-import ShareModal from '../components/shared-links/ShareModal'
-import MeetingFollowUpBanner from '../components/meeting-details/MeetingFollowUpBanner'
-import PresentMode from '../components/meeting-details/PresentMode'
-import PrepChecklist from '../components/meetings/PrepChecklist'
-import SpeakingTimeBreakdown from '../components/meetings/SpeakingTimeBreakdown'
-import CarryForwardConfig from '../components/meetings/CarryForwardConfig'
-import RoleRotationConfig from '../components/meetings/RoleRotationConfig'
-import DuplicateDetectionPanel from '../components/meeting-details/DuplicateDetectionPanel'
-import MeetingTimeline from '../components/meeting-details/MeetingTimeline'
-import RecapStoryViewer from '../components/summaries/RecapStoryViewer'
-import { useUser } from '@clerk/clerk-react'
-import Navbar from '../components/Navbar.jsx'
-import BriefingBanner from '../components/meeting-details/BriefingBanner'
-import AgendaBuilder from '../components/meetings/AgendaBuilder'
-import IcebreakerSection from '../components/meetings/IcebreakerSection'
-import { getBriefing } from '../services/briefingApi'
-import GuestAccessManager from '../components/meetings/GuestAccessManager'
-import MeetingReadiness from '../components/MeetingReadiness'
-import FollowUpThreads from '../components/meeting-details/FollowUpThreads'
-import CommentSection from '../components/meeting-details/CommentSection'
-import PollSection from '../components/meeting-details/PollSection'
-import FeedbackForm from '../components/meeting-details/FeedbackForm'
-import AgendaTimer from '../components/meeting-details/AgendaTimer'
-import AgendaPacingReport from '../components/meeting-details/AgendaPacingReport'
-import ClipManager from '../components/meeting-details/ClipManager'
-import HealthScoreCard from '../components/meeting-details/HealthScoreCard'
-import { isMeetingEnded } from '../utils/meetingLifecycle'
-import MeetingRisksPanel from '../components/meetings/MeetingRisksPanel'
-import { Award, ShieldAlert, FileText, Star } from 'lucide-react'
-import ExportDialog from '../components/export/ExportDialog'
-import RetentionQuizSection from '../components/meetings/RetentionQuizSection'
-import ResourceConflictsPanel from '../components/meeting-details/ResourceConflictsPanel'
-import SkillEndorsementModal from '../components/meetings/SkillEndorsementModal'
+import React, { useEffect, useState, useContext } from "react";
+import { useParams, useNavigate } from "react-router-dom";
+import { toast } from "react-toastify";
+import AppContent from "../context/AppContent";
+import { meetingApi } from "../services";
+import MeetingHeader from "../components/meeting-details/MeetingHeader";
+import SeriesNavigation from "../components/meeting-details/SeriesNavigation";
+import MeetingSummary from "../components/meeting-details/MeetingSummary";
+import MinutesApproval from "../components/meetings/MinutesApproval";
+import MeetingCollaborativeNotes from "../components/meeting-details/MeetingCollaborativeNotes";
+import PersonalNotes from "../components/meeting-details/PersonalNotes";
+import MeetingTranscript from "../components/meeting-details/MeetingTranscript";
+import SpeakerAttribution from "../components/meeting-details/SpeakerAttribution";
+import MeetingParticipants from "../components/meeting-details/MeetingParticipants";
+import MeetingAgenda from "../components/meeting-details/MeetingAgenda";
+import MeetingMetadata from "../components/meeting-details/MeetingMetadata";
+import MeetingActions from "../components/meeting-details/MeetingActions";
+import TranscriptAnnotations from "../components/meeting-details/TranscriptAnnotations";
+import RsvpPanel from "../components/meeting-details/RsvpPanel";
+import KeyMomentsPanel from "../components/meetings/KeyMomentsPanel";
+import HighlightReel from "../components/meetings/HighlightReel";
+import SentimentTimeline from "../components/meetings/SentimentTimeline";
+import MeetingGoalsPanel from "../components/meetings/MeetingGoalsPanel";
+import ShareModal from "../components/shared-links/ShareModal";
+import MeetingFollowUpBanner from "../components/meeting-details/MeetingFollowUpBanner";
+import PresentMode from "../components/meeting-details/PresentMode";
+import PrepChecklist from "../components/meetings/PrepChecklist";
+import SpeakingTimeBreakdown from "../components/meetings/SpeakingTimeBreakdown";
+import CarryForwardConfig from "../components/meetings/CarryForwardConfig";
+import RoleRotationConfig from "../components/meetings/RoleRotationConfig";
+import DuplicateDetectionPanel from "../components/meeting-details/DuplicateDetectionPanel";
+import MeetingTimeline from "../components/meeting-details/MeetingTimeline";
+import RecapStoryViewer from "../components/summaries/RecapStoryViewer";
+import { useUser } from "@clerk/clerk-react";
+import Navbar from "../components/Navbar.jsx";
+import BriefingBanner from "../components/meeting-details/BriefingBanner";
+import AgendaBuilder from "../components/meetings/AgendaBuilder";
+import IcebreakerSection from "../components/meetings/IcebreakerSection";
+import { getBriefing } from "../services/briefingApi";
+import GuestAccessManager from "../components/meetings/GuestAccessManager";
+import MeetingReadiness from "../components/MeetingReadiness";
+import FollowUpThreads from "../components/meeting-details/FollowUpThreads";
+import CommentSection from "../components/meeting-details/CommentSection";
+import PollSection from "../components/meeting-details/PollSection";
+import FeedbackForm from "../components/meeting-details/FeedbackForm";
+import AgendaTimer from "../components/meeting-details/AgendaTimer";
+import AgendaPacingReport from "../components/meeting-details/AgendaPacingReport";
+import ClipManager from "../components/meeting-details/ClipManager";
+import HealthScoreCard from "../components/meeting-details/HealthScoreCard";
+import { isMeetingEnded } from "../utils/meetingLifecycle";
+import MeetingRisksPanel from "../components/meetings/MeetingRisksPanel";
+import { Award, ShieldAlert, FileText, Star } from "lucide-react";
+import ExportDialog from "../components/export/ExportDialog";
+import RetentionQuizSection from "../components/meetings/RetentionQuizSection";
+import ResourceConflictsPanel from "../components/meeting-details/ResourceConflictsPanel";
+import SkillEndorsementModal from "../components/meetings/SkillEndorsementModal";
 
 const MeetingDetails = () => {
-  const { id } = useParams()
-  const navigate = useNavigate()
-  const { user: currentUser } = useUser()
-  const { userData } = useContext(AppContent) || {}
-  const isViewerOrGuest = userData?.role === 'viewer' || userData?.role === 'guest'
+  const { id } = useParams();
+  const navigate = useNavigate();
+  const { user: currentUser } = useUser();
+  const { userData } = useContext(AppContent) || {};
+  const isViewerOrGuest =
+    userData?.role === "viewer" || userData?.role === "guest";
 
-  const [meeting, setMeeting] = useState(null)
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState(null)
-  const [shareModalOpen, setShareModalOpen] = useState(false)
-  const [isPresentModeOpen, setIsPresentModeOpen] = useState(false)
-  const [isAnalyticsExpanded, setIsAnalyticsExpanded] = useState(false)
-  const [isStoryViewerOpen, setIsStoryViewerOpen] = useState(false)
-  const [isExportDialogOpen, setIsExportDialogOpen] = useState(false)
-  const [isEndorseModalOpen, setIsEndorseModalOpen] = useState(false)
-  const [briefingStatus, setBriefingStatus] = useState('idle')
+  const [meeting, setMeeting] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [shareModalOpen, setShareModalOpen] = useState(false);
+  const [isPresentModeOpen, setIsPresentModeOpen] = useState(false);
+  const [isAnalyticsExpanded, setIsAnalyticsExpanded] = useState(false);
+  const [isStoryViewerOpen, setIsStoryViewerOpen] = useState(false);
+  const [isExportDialogOpen, setIsExportDialogOpen] = useState(false);
+  const [isEndorseModalOpen, setIsEndorseModalOpen] = useState(false);
+  const [briefingStatus, setBriefingStatus] = useState("idle");
 
-  const dbUserId = currentUser?.publicMetadata?.dbUserId
+  const dbUserId = currentUser?.publicMetadata?.dbUserId;
   const participant = meeting?.participants?.find(
-    (p) => p.user?.toString() === dbUserId || p.user?._id?.toString() === dbUserId,
-  )
-  const userRole = participant?.role || null
+    (p) =>
+      p.user?.toString() === dbUserId || p.user?._id?.toString() === dbUserId,
+  );
+  const userRole = participant?.role || null;
 
   const handleGenerateBriefing = async () => {
-    setBriefingStatus('generating')
+    setBriefingStatus("generating");
     try {
       const response = await fetch(`/api/meetings/${id}/briefing-generate`, {
-        method: 'POST',
-      })
+        method: "POST",
+      });
       if (response.ok) {
-        setBriefingStatus('ready')
+        setBriefingStatus("ready");
       } else {
-        setBriefingStatus('failed')
+        setBriefingStatus("failed");
       }
     } catch (err) {
-      console.error('Failed to generate briefing:', err)
-      setBriefingStatus('failed')
+      console.error("Failed to generate briefing:", err);
+      setBriefingStatus("failed");
     }
-  }
+  };
 
   useEffect(() => {
     const fetchMeetingDetails = async () => {
       try {
-        setLoading(true)
-        setError(null)
-        const { data } = await meetingApi.getMeetingById(id)
+        setLoading(true);
+        setError(null);
+        const { data } = await meetingApi.getMeetingById(id);
         if (data.success) {
-          setMeeting(data.meeting)
+          setMeeting(data.meeting);
         } else {
-          setError(data.message || 'Failed to fetch meeting details')
+          setError(data.message || "Failed to fetch meeting details");
         }
 
         // Fetch briefing status
         try {
-          const bData = await getBriefing(id)
+          const bData = await getBriefing(id);
           if (bData && bData.status) {
-            setBriefingStatus(bData.status)
+            setBriefingStatus(bData.status);
           }
         } catch (bErr) {
           // It's ok if it doesn't exist
-          console.warn('Could not fetch briefing', bErr)
-          setBriefingStatus('none')
+          console.warn("Could not fetch briefing", bErr);
+          setBriefingStatus("none");
         }
       } catch (err) {
-        console.error('Error fetching meeting details:', err)
-        setError(err.response?.data?.message || 'Failed to fetch meeting details')
+        console.error("Error fetching meeting details:", err);
+        setError(
+          err.response?.data?.message || "Failed to fetch meeting details",
+        );
       } finally {
-        setLoading(false)
+        setLoading(false);
       }
-    }
+    };
 
-    fetchMeetingDetails()
-  }, [id])
+    fetchMeetingDetails();
+  }, [id]);
 
   const refreshMeeting = async () => {
     try {
-      const { data } = await meetingApi.getMeetingById(id)
+      const { data } = await meetingApi.getMeetingById(id);
       if (data.success) {
-        setMeeting(data.meeting)
+        setMeeting(data.meeting);
       }
     } catch (err) {
-      console.error('Error refreshing meeting after speaker mapping:', err)
+      console.error("Error refreshing meeting after speaker mapping:", err);
     }
-  }
+  };
 
   const handleBack = () => {
     if (
       window.history.state &&
-      typeof window.history.state.idx === 'number' &&
+      typeof window.history.state.idx === "number" &&
       window.history.state.idx > 0
     ) {
-      navigate(-1)
+      navigate(-1);
     } else {
-      navigate('/meetings')
+      navigate("/meetings");
     }
-  }
+  };
 
   const handleDelete = async (meetingId) => {
     try {
-      const { data } = await meetingApi.deleteMeeting(meetingId)
+      const { data } = await meetingApi.deleteMeeting(meetingId);
       if (data.success) {
         toast.success(
           <div className="flex items-center justify-between gap-3">
             <span>Meeting moved to recycle bin</span>
             <button
               type="button"
-              onClick={() => navigate('/meetings/recycle-bin')}
+              onClick={() => navigate("/meetings/recycle-bin")}
               className="text-xs font-semibold text-blue-600 hover:text-blue-700 underline shrink-0"
             >
               View Recycle Bin
             </button>
           </div>,
-        )
-        toast.success('Meeting deleted successfully')
-        navigate('/meetings')
+        );
+        toast.success("Meeting deleted successfully");
+        navigate("/meetings");
       } else {
-        toast.error(data.message || 'Failed to delete meeting')
+        toast.error(data.message || "Failed to delete meeting");
       }
     } catch (err) {
-      console.error('Error deleting meeting:', err)
-      toast.error(err.response?.data?.message || 'Failed to delete meeting')
+      console.error("Error deleting meeting:", err);
+      toast.error(err.response?.data?.message || "Failed to delete meeting");
     }
-  }
+  };
 
   const handleRename = async (meetingId, newTitle) => {
     try {
       const { data } = await meetingApi.updateMeeting(meetingId, {
         title: newTitle,
-      })
+      });
       if (data.success) {
-        toast.success('Meeting renamed successfully')
-        setMeeting({ ...meeting, title: newTitle })
+        toast.success("Meeting renamed successfully");
+        setMeeting({ ...meeting, title: newTitle });
       } else {
-        toast.error(data.message || 'Failed to rename meeting')
+        toast.error(data.message || "Failed to rename meeting");
       }
     } catch (err) {
-      console.error('Error renaming meeting:', err)
-      toast.error(err.response?.data?.message || 'Failed to rename meeting')
+      console.error("Error renaming meeting:", err);
+      toast.error(err.response?.data?.message || "Failed to rename meeting");
     }
-  }
+  };
 
   if (loading) {
     return (
@@ -212,7 +216,7 @@ const MeetingDetails = () => {
           </div>
         </div>
       </div>
-    )
+    );
   }
 
   if (error) {
@@ -251,7 +255,7 @@ const MeetingDetails = () => {
           </div>
         </div>
       </div>
-    )
+    );
   }
 
   if (!meeting) {
@@ -279,7 +283,7 @@ const MeetingDetails = () => {
           </div>
         </div>
       </div>
-    )
+    );
   }
 
   return (
@@ -292,10 +296,11 @@ const MeetingDetails = () => {
               <ShieldAlert className="w-5 h-5 text-amber-600 dark:text-amber-400 shrink-0" />
               <div className="flex-1">
                 <span className="font-bold">
-                  Read-Only Access ({userData?.role || 'Viewer'} Mode):
-                </span>{' '}
-                You have view permissions for this meeting. Interactive controls like recording,
-                editing notes, renaming, and member invitations are disabled.
+                  Read-Only Access ({userData?.role || "Viewer"} Mode):
+                </span>{" "}
+                You have view permissions for this meeting. Interactive controls
+                like recording, editing notes, renaming, and member invitations
+                are disabled.
               </div>
             </div>
           )}
@@ -315,8 +320,8 @@ const MeetingDetails = () => {
               disabled={isViewerOrGuest}
               title={
                 isViewerOrGuest
-                  ? 'Viewers cannot endorse peers'
-                  : 'Recognize peers for their skills'
+                  ? "Viewers cannot endorse peers"
+                  : "Recognize peers for their skills"
               }
             >
               <Star className="w-4 h-4" />
@@ -326,7 +331,12 @@ const MeetingDetails = () => {
               onClick={() => setIsStoryViewerOpen(true)}
               className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-purple-500 to-pink-500 text-white rounded-lg font-medium shadow-sm hover:opacity-90 transition-opacity text-sm"
             >
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg
+                className="w-5 h-5"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
                 <path
                   strokeLinecap="round"
                   strokeLinejoin="round"
@@ -348,7 +358,7 @@ const MeetingDetails = () => {
             <BriefingBanner
               meetingId={meeting._id}
               briefingStatus={briefingStatus}
-              onRegenerate={() => setBriefingStatus('pending')}
+              onRegenerate={() => setBriefingStatus("pending")}
             />
           )}
 
@@ -367,7 +377,9 @@ const MeetingDetails = () => {
             onShare={() => setShareModalOpen(true)}
             onPresent={() => setIsPresentModeOpen(true)}
           />
-          {(meeting.series || meeting.seriesId) && <SeriesNavigation meeting={meeting} />}
+          {(meeting.series || meeting.seriesId) && (
+            <SeriesNavigation meeting={meeting} />
+          )}
 
           <ResourceConflictsPanel meeting={meeting} />
 
@@ -378,25 +390,26 @@ const MeetingDetails = () => {
                   AI Intelligence Core
                 </h3>
                 <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
-                  Parse discussion timelines, profile histories, and open action paths.
+                  Parse discussion timelines, profile histories, and open action
+                  paths.
                 </p>
               </div>
 
               <div className="flex items-center gap-3">
-                {briefingStatus === 'generating' && (
+                {briefingStatus === "generating" && (
                   <div className="flex items-center gap-2 text-xs font-semibold text-amber-600 bg-amber-50 dark:bg-amber-950/30 px-3 py-1.5 rounded-xl border border-amber-200 dark:border-amber-900/40">
                     <span className="w-3 h-3 border-2 border-amber-600/30 border-t-amber-600 rounded-full animate-spin" />
                     Synthesizing Briefing...
                   </div>
                 )}
 
-                {briefingStatus === 'failed' && (
+                {briefingStatus === "failed" && (
                   <span className="text-xs font-semibold text-red-600 bg-red-50 dark:bg-red-950/30 px-3 py-1.5 rounded-xl border border-red-200 dark:border-red-900/40">
                     ⚠️ Generation Failed
                   </span>
                 )}
 
-                {briefingStatus === 'ready' && (
+                {briefingStatus === "ready" && (
                   <button
                     onClick={() => navigate(`/meeting/${id}/briefing`)}
                     className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-black uppercase tracking-wider rounded-xl shadow transition"
@@ -413,9 +426,9 @@ const MeetingDetails = () => {
                   Meeting Quality
                 </button>
 
-                {(briefingStatus === 'idle' ||
-                  briefingStatus === 'none' ||
-                  briefingStatus === 'failed') && (
+                {(briefingStatus === "idle" ||
+                  briefingStatus === "none" ||
+                  briefingStatus === "failed") && (
                   <button
                     onClick={handleGenerateBriefing}
                     className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-black uppercase tracking-wider rounded-xl shadow transition"
@@ -430,13 +443,17 @@ const MeetingDetails = () => {
 
           <RetentionQuizSection
             meeting={meeting}
-            isOrganizer={currentUser?.publicMetadata?.dbUserId === meeting.uploadedBy}
+            isOrganizer={
+              currentUser?.publicMetadata?.dbUserId === meeting.uploadedBy
+            }
           />
 
           <div className="mt-6 mb-6">
             <HealthScoreCard
               meetingId={meeting._id}
-              organizationId={meeting.organization?._id || meeting.organization || undefined}
+              organizationId={
+                meeting.organization?._id || meeting.organization || undefined
+              }
             />
           </div>
           <MinutesApproval meeting={meeting} />
@@ -468,7 +485,11 @@ const MeetingDetails = () => {
 
           <MeetingTranscript meeting={meeting} />
           <div className="mt-6 mb-6">
-            <ClipManager meetingId={meeting._id} meeting={meeting} canManage={!isViewerOrGuest} />
+            <ClipManager
+              meetingId={meeting._id}
+              meeting={meeting}
+              canManage={!isViewerOrGuest}
+            />
           </div>
           <TranscriptAnnotations meeting={meeting} />
 
@@ -487,7 +508,9 @@ const MeetingDetails = () => {
           <div className="mt-6 mb-6">
             <FeedbackForm
               meetingId={meeting._id}
-              organizationId={meeting.organization?._id || meeting.organization || undefined}
+              organizationId={
+                meeting.organization?._id || meeting.organization || undefined
+              }
             />
           </div>
 
@@ -504,7 +527,7 @@ const MeetingDetails = () => {
               >
                 <button className="p-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-full transition-colors">
                   <svg
-                    className={`w-5 h-5 transform transition-transform ${isAnalyticsExpanded ? 'rotate-180' : ''}`}
+                    className={`w-5 h-5 transform transition-transform ${isAnalyticsExpanded ? "rotate-180" : ""}`}
                     fill="none"
                     stroke="currentColor"
                     viewBox="0 0 24 24"
@@ -520,19 +543,23 @@ const MeetingDetails = () => {
                 Speaking Time Analytics
               </h2>
               <button
-                onClick={() => navigate('/speaking-time-trends')}
+                onClick={() => navigate("/speaking-time-trends")}
                 className="text-sm text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 font-medium"
               >
                 View My Trends →
               </button>
             </div>
-            {isAnalyticsExpanded && <SpeakingTimeBreakdown meetingId={meeting._id} />}
+            {isAnalyticsExpanded && (
+              <SpeakingTimeBreakdown meetingId={meeting._id} />
+            )}
           </div>
 
           <MeetingParticipants meeting={meeting} />
           <RsvpPanel
             meetingId={meeting._id}
-            isOrganizer={currentUser?.publicMetadata?.dbUserId === meeting.uploadedBy}
+            isOrganizer={
+              currentUser?.publicMetadata?.dbUserId === meeting.uploadedBy
+            }
             participants={meeting.participants}
           />
           <PrepChecklist meeting={meeting} currentUser={currentUser} />
@@ -544,11 +571,13 @@ const MeetingDetails = () => {
                 seriesId={meeting.series._id || meeting.series}
                 currentMeetingId={meeting._id}
                 userRole={
-                  currentUser?.publicMetadata?.dbUserId === meeting.uploadedBy ? 'host' : 'member'
+                  currentUser?.publicMetadata?.dbUserId === meeting.uploadedBy
+                    ? "host"
+                    : "member"
                 }
                 onApplySuccess={() => {
                   // Reload meeting data to reflect new agenda items
-                  window.location.reload()
+                  window.location.reload();
                 }}
               />
               {currentUser?.publicMetadata?.dbUserId === meeting.uploadedBy && (
@@ -570,7 +599,9 @@ const MeetingDetails = () => {
 
           <AgendaBuilder
             meetingId={meeting._id}
-            isOrganizer={currentUser?.publicMetadata?.dbUserId === meeting.uploadedBy}
+            isOrganizer={
+              currentUser?.publicMetadata?.dbUserId === meeting.uploadedBy
+            }
             userRole={userRole}
           />
 
@@ -589,7 +620,11 @@ const MeetingDetails = () => {
           {currentUser?.publicMetadata?.dbUserId === meeting.uploadedBy && (
             <GuestAccessManager meetingId={meeting._id} />
           )}
-          <MeetingActions meeting={meeting} onDelete={handleDelete} onRename={handleRename} />
+          <MeetingActions
+            meeting={meeting}
+            onDelete={handleDelete}
+            onRename={handleRename}
+          />
         </div>
       </div>
 
@@ -602,15 +637,24 @@ const MeetingDetails = () => {
       />
 
       {isPresentModeOpen && (
-        <PresentMode meeting={meeting} onClose={() => setIsPresentModeOpen(false)} />
+        <PresentMode
+          meeting={meeting}
+          onClose={() => setIsPresentModeOpen(false)}
+        />
       )}
 
       {isStoryViewerOpen && (
-        <RecapStoryViewer meetingId={meeting._id} onClose={() => setIsStoryViewerOpen(false)} />
+        <RecapStoryViewer
+          meetingId={meeting._id}
+          onClose={() => setIsStoryViewerOpen(false)}
+        />
       )}
 
       {isExportDialogOpen && (
-        <ExportDialog meetingId={meeting._id} onClose={() => setIsExportDialogOpen(false)} />
+        <ExportDialog
+          meetingId={meeting._id}
+          onClose={() => setIsExportDialogOpen(false)}
+        />
       )}
 
       <SkillEndorsementModal
@@ -621,7 +665,7 @@ const MeetingDetails = () => {
         currentUser={currentUser}
       />
     </div>
-  )
-}
+  );
+};
 
-export default MeetingDetails
+export default MeetingDetails;

@@ -1,4 +1,4 @@
-import { initRedis } from '../services/redisService.js'
+import { initRedis } from "../services/redisService.js";
 import {
   initAiResultsWorker,
   initAiGenerationWorker,
@@ -12,9 +12,9 @@ import {
   initPolicyComplianceRetryWorker,
   initEmbeddingReindexWorker,
   initMeetingQuizWorker,
-} from '../services/queueService.js'
-import { initWebhookWorker } from '../services/webhookDispatcherService.js'
-import { describeRateLimitBacking } from '../middleware/rateLimitStore.js'
+} from "../services/queueService.js";
+import { initWebhookWorker } from "../services/webhookDispatcherService.js";
+import { describeRateLimitBacking } from "../middleware/rateLimitStore.js";
 
 /**
  * Boots every background service.
@@ -38,58 +38,69 @@ import { describeRateLimitBacking } from '../middleware/rateLimitStore.js'
  * @returns {Promise<{started: string[], failed: {name: string, error: string}[]}>}
  */
 export async function startWorkers(app) {
-  const started = []
-  const failed = []
+  const started = [];
+  const failed = [];
 
   const safeInit = async (name, initFn) => {
     try {
-      await initFn()
-      started.push(name)
+      await initFn();
+      started.push(name);
     } catch (err) {
-      const error = err?.message || String(err)
-      failed.push({ name, error })
-      console.error(`⚠️ Failed to initialize background service "${name}":`, error)
+      const error = err?.message || String(err);
+      failed.push({ name, error });
+      console.error(
+        `⚠️ Failed to initialize background service "${name}":`,
+        error,
+      );
     }
-  }
+  };
 
-  await safeInit('Redis', () => initRedis())
+  await safeInit("Redis", () => initRedis());
 
   // Issue #1452: the rate limiters used to bind their store at import time,
   // long before this point, so they always fell back to an in-process
   // MemoryStore and nothing said so. They bind lazily now — this line makes
   // the resulting configuration visible in the boot log either way.
-  console.log(describeRateLimitBacking().message)
+  console.log(describeRateLimitBacking().message);
 
-  await safeInit('AI Results Worker', () => initAiResultsWorker(app))
-  await safeInit('Meeting Quiz Worker', () => initMeetingQuizWorker(app))
-  await safeInit('AI MoM Worker', () => initAiGenerationWorker(app))
-  await safeInit('Data Export Worker', () => initDataExportWorker(app))
-  await safeInit('Export Cleanup Worker', () => initExportCleanupWorker())
-  await safeInit('Conflict Scan Worker', () => initConflictScanWorker(app))
-  await safeInit('Webhook Worker', () => initWebhookWorker())
-  await safeInit('Sentiment Worker', () => initSentimentWorker(app))
-  await safeInit('Recalculate Importance Worker', () => initRecalculateImportanceWorker(app))
-  await safeInit('Memory Lifecycle Worker', () => initMemoryLifecycleWorker(app))
-  await safeInit('Recap Delivery Worker', () => initRecapDeliveryWorker())
-  await safeInit('Policy Compliance Retry Worker', () => initPolicyComplianceRetryWorker())
-  await safeInit('Embedding Reindex Worker', () => initEmbeddingReindexWorker())
+  await safeInit("AI Results Worker", () => initAiResultsWorker(app));
+  await safeInit("Meeting Quiz Worker", () => initMeetingQuizWorker(app));
+  await safeInit("AI MoM Worker", () => initAiGenerationWorker(app));
+  await safeInit("Data Export Worker", () => initDataExportWorker(app));
+  await safeInit("Export Cleanup Worker", () => initExportCleanupWorker());
+  await safeInit("Conflict Scan Worker", () => initConflictScanWorker(app));
+  await safeInit("Webhook Worker", () => initWebhookWorker());
+  await safeInit("Sentiment Worker", () => initSentimentWorker(app));
+  await safeInit("Recalculate Importance Worker", () =>
+    initRecalculateImportanceWorker(app),
+  );
+  await safeInit("Memory Lifecycle Worker", () =>
+    initMemoryLifecycleWorker(app),
+  );
+  await safeInit("Recap Delivery Worker", () => initRecapDeliveryWorker());
+  await safeInit("Policy Compliance Retry Worker", () =>
+    initPolicyComplianceRetryWorker(),
+  );
+  await safeInit("Embedding Reindex Worker", () =>
+    initEmbeddingReindexWorker(),
+  );
 
   // Pinecone pre-warm is best-effort and independent of the queue layer.
   try {
-    const { preWarmPinecone } = await import('../utils/embeddingUtils.js')
-    await safeInit('Pinecone DB', () => preWarmPinecone())
+    const { preWarmPinecone } = await import("../utils/embeddingUtils.js");
+    await safeInit("Pinecone DB", () => preWarmPinecone());
   } catch {
     // Module unavailable (optional dependency) — not fatal.
   }
 
   if (failed.length === 0) {
-    console.log(`✅ Background services started (${started.length}).`)
+    console.log(`✅ Background services started (${started.length}).`);
   } else {
     console.warn(
       `⚠️ Background services started with ${failed.length} failure(s): ` +
-        failed.map((f) => f.name).join(', '),
-    )
+        failed.map((f) => f.name).join(", "),
+    );
   }
 
-  return { started, failed }
+  return { started, failed };
 }

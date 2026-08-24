@@ -1,12 +1,18 @@
-import eventBus from '../services/eventBus.js'
-import Meeting from '../models/meetingModel.js'
-import { processStructuredMoM, detectResolutions } from '../services/knowledgeGraphService.js'
-import User from '../models/userModel.js'
+import eventBus from "../services/eventBus.js";
+import Meeting from "../models/meetingModel.js";
+import {
+  processStructuredMoM,
+  detectResolutions,
+} from "../services/knowledgeGraphService.js";
+import User from "../models/userModel.js";
 
-import { indexMeeting } from '../utils/embeddingUtils.js'
-import { meetingQuizQueue } from '../services/queueService.js'
-import { normalizeMoM, buildHumanReadableMoM } from '../services/GenerativeAIService.js'
-import MeetingDigestService from '../services/MeetingDigestService.js'
+import { indexMeeting } from "../utils/embeddingUtils.js";
+import { meetingQuizQueue } from "../services/queueService.js";
+import {
+  normalizeMoM,
+  buildHumanReadableMoM,
+} from "../services/GenerativeAIService.js";
+import MeetingDigestService from "../services/MeetingDigestService.js";
 
 export default async function processAiResultJob(job, _app) {
   const {
@@ -17,43 +23,47 @@ export default async function processAiResultJob(job, _app) {
     userId,
     structuredMoM: structured,
     generation,
-  } = job.data
+  } = job.data;
 
   try {
-    const textToSummarize = (transcript || '').trim()
+    const textToSummarize = (transcript || "").trim();
 
-    console.log(`🧠 Processing AI Result for ${meetingId || 'transcript-only'}...`)
+    console.log(
+      `🧠 Processing AI Result for ${meetingId || "transcript-only"}...`,
+    );
 
     if (generation?.degraded) {
       console.warn(
-        `⚠️ MoM for ${meetingId || 'transcript-only'} was generated in degraded mode ` +
+        `⚠️ MoM for ${meetingId || "transcript-only"} was generated in degraded mode ` +
           `(${generation.provider}, reason: ${generation.reason}). Consider reprocessing.`,
-      )
+      );
     }
 
     if (!structured) {
-      throw new Error('No structured summary generated')
+      throw new Error("No structured summary generated");
     }
 
-    const mom = normalizeMoM(structured, title, date, generation)
-    const humanReadable = buildHumanReadableMoM(mom)
+    const mom = normalizeMoM(structured, title, date, generation);
+    const humanReadable = buildHumanReadableMoM(mom);
 
-    let meetingToUpdate = null
+    let meetingToUpdate = null;
 
     if (meetingId) {
-      meetingToUpdate = await Meeting.findById(meetingId)
+      meetingToUpdate = await Meeting.findById(meetingId);
       if (!meetingToUpdate) {
-        throw new Error(`Meeting ${meetingId} no longer exists; cannot persist generated MoM`)
+        throw new Error(
+          `Meeting ${meetingId} no longer exists; cannot persist generated MoM`,
+        );
       }
-      meetingToUpdate.title = mom.title
-      meetingToUpdate.date = new Date(date)
-      meetingToUpdate.summary = humanReadable
-      meetingToUpdate.structuredMoM = mom
-      meetingToUpdate.status = 'completed'
-      await meetingToUpdate.save()
+      meetingToUpdate.title = mom.title;
+      meetingToUpdate.date = new Date(date);
+      meetingToUpdate.summary = humanReadable;
+      meetingToUpdate.structuredMoM = mom;
+      meetingToUpdate.status = "completed";
+      await meetingToUpdate.save();
     } else {
-      const user = await User.findById(userId)
-      const userOrg = user?.organization || null
+      const user = await User.findById(userId);
+      const userOrg = user?.organization || null;
 
       meetingToUpdate = await Meeting.create({
         uploadedBy: userId,
@@ -63,64 +73,70 @@ export default async function processAiResultJob(job, _app) {
         transcript: textToSummarize,
         summary: humanReadable,
         structuredMoM: mom,
-        status: 'completed',
-      })
-      await indexMeeting(meetingToUpdate)
+        status: "completed",
+      });
+      await indexMeeting(meetingToUpdate);
     }
 
-    console.log('✅ MoM saved to database')
+    console.log("✅ MoM saved to database");
 
     // Trigger internal events for webhooks
     try {
       if (!meetingId) {
-        eventBus.emit('meeting.created', {
+        eventBus.emit("meeting.created", {
           meeting: meetingToUpdate,
           membersToNotify: [],
-        })
+        });
       }
-      eventBus.emit('mom.generated', meetingToUpdate)
+      eventBus.emit("mom.generated", meetingToUpdate);
     } catch (evtErr) {
-      console.error('⚠️ Failed to emit webhook events from queue:', evtErr.message)
+      console.error(
+        "⚠️ Failed to emit webhook events from queue:",
+        evtErr.message,
+      );
     }
 
     try {
-      await detectResolutions(meetingToUpdate, mom)
-      await processStructuredMoM(meetingToUpdate, mom)
+      await detectResolutions(meetingToUpdate, mom);
+      await processStructuredMoM(meetingToUpdate, mom);
     } catch (kgError) {
-      console.error('⚠️ Knowledge graph processing failed (non-fatal):', kgError)
+      console.error(
+        "⚠️ Knowledge graph processing failed (non-fatal):",
+        kgError,
+      );
     }
 
     // Fire and forget email digest
     MeetingDigestService.sendMeetingDigest(meetingToUpdate._id).catch((err) => {
-      console.error('Failed to send meeting digest automatically:', err)
-    })
+      console.error("Failed to send meeting digest automatically:", err);
+    });
 
     if (meetingToUpdate.requireQuiz) {
       meetingQuizQueue
         .add(
-          'generate-meeting-quiz',
+          "generate-meeting-quiz",
           { meetingId: meetingToUpdate._id },
           { jobId: `meeting-quiz-${meetingToUpdate._id}` },
         )
         .catch((err) => {
-          console.error('Failed to enqueue meeting quiz generation:', err)
-        })
+          console.error("Failed to enqueue meeting quiz generation:", err);
+        });
     }
 
-    return { success: true, meetingId: meetingToUpdate._id }
+    return { success: true, meetingId: meetingToUpdate._id };
   } catch (error) {
     if (meetingId) {
       try {
-        const meeting = await Meeting.findById(meetingId)
+        const meeting = await Meeting.findById(meetingId);
         if (meeting) {
-          meeting.status = 'failed'
-          await meeting.save()
-          eventBus.emit('meeting.updated', meeting)
+          meeting.status = "failed";
+          await meeting.save();
+          eventBus.emit("meeting.updated", meeting);
         }
       } catch (dbErr) {
-        console.error('⚠️ Failed to update meeting status to failed:', dbErr)
+        console.error("⚠️ Failed to update meeting status to failed:", dbErr);
       }
     }
-    throw error
+    throw error;
   }
 }
