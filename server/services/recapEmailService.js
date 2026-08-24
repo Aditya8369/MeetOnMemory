@@ -164,6 +164,13 @@ class RecapEmailService {
 
           if (preferences.deliveryTiming !== "immediate") continue;
 
+          if (await this.isEmailUnsubscribed(user._id, "daily")) {
+            console.log(
+              `[RecapEmailService] Skipping immediate recap for ${user.email} due to email preference opt-out.`,
+            );
+            continue;
+          }
+
           if (this.isQuietHours(preferences)) {
             console.log(
               `[RecapEmailService] Deferring immediate recap for ${user.email} due to quiet hours.`,
