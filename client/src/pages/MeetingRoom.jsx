@@ -23,6 +23,8 @@ import MeetingControlBar from "../components/meetings/MeetingControlBar.jsx";
 import TranscriptPanel from "../components/meetings/TranscriptPanel.jsx";
 import MultiLanguageTranscript from "../components/meeting-room/MultiLanguageTranscript.jsx";
 import LiveCaptions from "../components/meetings/LiveCaptions.jsx";
+import LiveIcebreakerBanner from "../components/meeting-room/LiveIcebreakerBanner.jsx";
+
 import DeviceSetupModal from "../components/meetings/DeviceSetupModal.jsx";
 import axios from "../services/apiClient.js";
 import FacilitatorDashboard from "./FacilitatorDashboard.jsx";
@@ -599,6 +601,12 @@ const MeetingRoom = () => {
             toggleTranscription={toggleTranscription}
           />
           <ReactionOverlay reactions={reactions} />
+
+          <LiveIcebreakerBanner
+            meetingId={roomId}
+            peers={peers}
+            localUserInfo={localUserInfo}
+          />
 
           {meeting && (
             <AgendaTimer

@@ -31,4 +31,3 @@ export const deleteRule = async (id) => {
   const response = await api.delete(`/api/automation-rules/${id}`);
   return response.data.data;
 };
-

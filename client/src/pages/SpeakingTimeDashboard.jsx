@@ -1,23 +1,45 @@
 import React, { useState, useMemo } from "react";
 import {
-  Mic, Users, Clock, BarChart3, Lightbulb, Activity,
-  TrendingUp, Timer, MessageSquare, AlertTriangle,
-  Sparkles, Filter, RotateCcw,
+  Mic,
+  Users,
+  Clock,
+  BarChart3,
+  Lightbulb,
+  Activity,
+  TrendingUp,
+  Timer,
+  MessageSquare,
+  AlertTriangle,
+  Sparkles,
+  Filter,
+  RotateCcw,
 } from "lucide-react";
 import {
-  SpeakingMetricCard, SpeakerCard, BalanceScoreCard,
-  PatternCard, SpeakingRecommendationCard,
+  SpeakingMetricCard,
+  SpeakerCard,
+  BalanceScoreCard,
+  PatternCard,
+  SpeakingRecommendationCard,
 } from "./SpeakingCards";
 import {
-  SpeakingDistributionPie, BalanceTrendChart,
-  MeetingTypeComparisonChart, TurnSequenceChart,
-  PatternRadarChart, SilenceAnalysisChart, InterruptionHeatmapChart,
+  SpeakingDistributionPie,
+  BalanceTrendChart,
+  MeetingTypeComparisonChart,
+  TurnSequenceChart,
+  PatternRadarChart,
+  SilenceAnalysisChart,
+  InterruptionHeatmapChart,
 } from "./SpeakingCharts";
 import {
-  generateMockSpeakingDistribution, generateMockSpeakingTrend,
-  generateMockMeetingTypeSpeaking, generateMockInterruptionMatrix,
-  generateMockSpeakingPatterns, generateMockTurnSequence,
-  generateMockSilenceAnalysis, generateMockStats, generateMockRecommendations,
+  generateMockSpeakingDistribution,
+  generateMockSpeakingTrend,
+  generateMockMeetingTypeSpeaking,
+  generateMockInterruptionMatrix,
+  generateMockSpeakingPatterns,
+  generateMockTurnSequence,
+  generateMockSilenceAnalysis,
+  generateMockStats,
+  generateMockRecommendations,
 } from "./speakingData";
 import { BalanceRating } from "./speakingTypes";
 
@@ -53,7 +75,10 @@ const SpeakingTimeDashboard = () => {
   const balanceRating = getBalanceRating(stats.avgBalanceScore);
   const maxPercent = Math.max(...distribution.map((d) => d.speakingPercent));
 
-  const totalImprovement = recommendations.reduce((sum, r) => sum + r.estimatedImprovement, 0);
+  const totalImprovement = recommendations.reduce(
+    (sum, r) => sum + r.estimatedImprovement,
+    0,
+  );
 
   return (
     <div className="min-h-screen bg-linear-to-b from-slate-50 via-white to-slate-50 dark:from-gray-900 dark:via-gray-900 dark:to-gray-900">
@@ -73,7 +98,8 @@ const SpeakingTimeDashboard = () => {
                       Speaking Time Analytics
                     </h1>
                     <p className="text-sm text-slate-500 dark:text-gray-400 mt-0.5">
-                      Analyze speaking patterns, balance, and participation equity
+                      Analyze speaking patterns, balance, and participation
+                      equity
                     </p>
                   </div>
                 </div>
@@ -90,10 +116,34 @@ const SpeakingTimeDashboard = () => {
 
         {/* Stats Row */}
         <section className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6 sm:mb-8">
-          <SpeakingMetricCard icon={Mic} label="Balance Score" value={`${stats.avgBalanceScore.toFixed(0)}/100`} subtitle={balanceRating} color="#8b5cf6" />
-          <SpeakingMetricCard icon={Timer} label="Avg Turn Length" value={`${stats.avgTurnLength.toFixed(1)}min`} subtitle="per speaking turn" color="#0ea5e9" />
-          <SpeakingMetricCard icon={Clock} label="Total Hours" value={`${stats.totalSpeakingHours.toFixed(0)}h`} subtitle="speaking analyzed" color="#22c55e" />
-          <SpeakingMetricCard icon={Users} label="Participants" value={stats.avgParticipantsPerMeeting.toFixed(0)} subtitle={`avg per meeting`} color="#f59e0b" />
+          <SpeakingMetricCard
+            icon={Mic}
+            label="Balance Score"
+            value={`${stats.avgBalanceScore.toFixed(0)}/100`}
+            subtitle={balanceRating}
+            color="#8b5cf6"
+          />
+          <SpeakingMetricCard
+            icon={Timer}
+            label="Avg Turn Length"
+            value={`${stats.avgTurnLength.toFixed(1)}min`}
+            subtitle="per speaking turn"
+            color="#0ea5e9"
+          />
+          <SpeakingMetricCard
+            icon={Clock}
+            label="Total Hours"
+            value={`${stats.totalSpeakingHours.toFixed(0)}h`}
+            subtitle="speaking analyzed"
+            color="#22c55e"
+          />
+          <SpeakingMetricCard
+            icon={Users}
+            label="Participants"
+            value={stats.avgParticipantsPerMeeting.toFixed(0)}
+            subtitle={`avg per meeting`}
+            color="#f59e0b"
+          />
         </section>
 
         {/* Tabs */}
@@ -122,7 +172,10 @@ const SpeakingTimeDashboard = () => {
           <div className="space-y-6">
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
               <div className="lg:col-span-1">
-                <BalanceScoreCard score={stats.avgBalanceScore} rating={balanceRating} />
+                <BalanceScoreCard
+                  score={stats.avgBalanceScore}
+                  rating={balanceRating}
+                />
               </div>
               <div className="lg:col-span-2">
                 <SpeakingDistributionPie data={distribution} />
@@ -142,7 +195,11 @@ const SpeakingTimeDashboard = () => {
           <div className="space-y-6">
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
               {distribution.map((member) => (
-                <SpeakerCard key={member.id} member={member} maxPercent={maxPercent} />
+                <SpeakerCard
+                  key={member.id}
+                  member={member}
+                  maxPercent={maxPercent}
+                />
               ))}
             </div>
             <InterruptionHeatmapChart data={interruptions} />
@@ -172,7 +229,8 @@ const SpeakingTimeDashboard = () => {
                 </h3>
               </div>
               <p className="text-sm text-slate-600 dark:text-gray-400">
-                AI identified {recommendations.length} opportunities to improve speaking balance and participation equity.
+                AI identified {recommendations.length} opportunities to improve
+                speaking balance and participation equity.
               </p>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -186,7 +244,8 @@ const SpeakingTimeDashboard = () => {
         {/* Footer */}
         <div className="mt-8 pt-6 border-t border-slate-200 dark:border-gray-700 text-center">
           <p className="text-xs text-slate-400 dark:text-gray-500">
-            Speaking Time Analytics · AI-Powered Pattern Detection · Inclusive Facilitation
+            Speaking Time Analytics · AI-Powered Pattern Detection · Inclusive
+            Facilitation
           </p>
         </div>
       </div>

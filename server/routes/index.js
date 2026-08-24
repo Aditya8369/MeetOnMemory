@@ -96,6 +96,7 @@ import actionItemsRoutes from "./actionItems.routes.js";
 import workloadRoutes from "./workloadRoutes.js";
 import minutesApprovalRoutes from "./minutesApprovalRoutes.js";
 import teamAvailabilityRoutes from "./teamAvailabilityRoutes.js";
+import icebreakerRoutes from "./icebreakerRoutes.js";
 
 const router = express.Router();
 
@@ -148,6 +149,7 @@ router.use("/api/meetings/:meetingId/topics", topicRoutes);
 router.use("/api/meetings/:meetingId/breakout-rooms", breakoutRoomRoutes);
 router.use("/api/workload", workloadRoutes);
 router.use("/api/meetings/:meetingId/attachments", attachmentRoutes);
+router.use("/api/icebreakers", icebreakerRoutes);
 router.use("/api/meetings/:meetingId/minutes-approval", minutesApprovalRoutes);
 router.use("/api/meeting-series", meetingSeriesRoutes);
 router.use("/api/meeting-series", carryForwardRoutes);

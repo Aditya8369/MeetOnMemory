@@ -3,15 +3,21 @@
  */
 
 import {
-  CostCategory, CostTrend, EfficiencyRating,
-  MOCK_DEPARTMENTS, MOCK_MEETING_TYPES, MOCK_MEMBERS,
-} from './costAnalyticsTypes';
+  CostCategory,
+  CostTrend,
+  EfficiencyRating,
+  MOCK_DEPARTMENTS,
+  MOCK_MEETING_TYPES,
+  MOCK_MEMBERS,
+} from "./costAnalyticsTypes";
 
 let _idCounter = 0;
-const generateId = (prefix = 'id') => `${prefix}_${++_idCounter}_${Date.now()}`;
+const generateId = (prefix = "id") => `${prefix}_${++_idCounter}_${Date.now()}`;
 
-const randomBetween = (min, max) => Math.round((Math.random() * (max - min) + min) * 100) / 100;
-const randomInt = (min, max) => Math.floor(Math.random() * (max - min + 1)) + min;
+const randomBetween = (min, max) =>
+  Math.round((Math.random() * (max - min) + min) * 100) / 100;
+const randomInt = (min, max) =>
+  Math.floor(Math.random() * (max - min + 1)) + min;
 const randomChoice = (arr) => arr[Math.floor(Math.random() * arr.length)];
 
 export function generateMockCostSummary() {
@@ -40,10 +46,13 @@ export function generateMockMonthlyCosts(months = 8) {
 
     data.push({
       month: date.toISOString().slice(0, 7),
-      label: date.toLocaleDateString('en-US', { month: 'short', year: '2-digit' }),
+      label: date.toLocaleDateString("en-US", {
+        month: "short",
+        year: "2-digit",
+      }),
       totalCost: Math.round(base),
-      salaryCost: Math.round(base * randomBetween(0.55, 0.70)),
-      infrastructureCost: Math.round(base * randomBetween(0.10, 0.18)),
+      salaryCost: Math.round(base * randomBetween(0.55, 0.7)),
+      infrastructureCost: Math.round(base * randomBetween(0.1, 0.18)),
       toolsCost: Math.round(base * randomBetween(0.08, 0.14)),
       otherCost: Math.round(base * randomBetween(0.05, 0.12)),
       meetingCount: randomInt(70, 160),
@@ -62,8 +71,12 @@ export function generateMockDepartmentCosts() {
     avgParticipants: randomBetween(3, 12),
     avgDuration: randomBetween(25, 75),
     costEfficiency: randomBetween(55, 98),
-    trend: randomChoice([CostTrend.INCREASING, CostTrend.STABLE, CostTrend.DECREASING]),
-    topCostDriver: randomChoice(['Salary', 'Tools', 'Infrastructure']),
+    trend: randomChoice([
+      CostTrend.INCREASING,
+      CostTrend.STABLE,
+      CostTrend.DECREASING,
+    ]),
+    topCostDriver: randomChoice(["Salary", "Tools", "Infrastructure"]),
   }));
 }
 
@@ -96,13 +109,48 @@ export function generateMockMemberCosts() {
 
 export function generateMockCostBreakdown() {
   return [
-    { category: CostCategory.SALARY, amount: randomBetween(10000, 18000), percent: 0, label: 'Salary Costs' },
-    { category: CostCategory.INFRASTRUCTURE, amount: randomBetween(1500, 3500), percent: 0, label: 'Infrastructure' },
-    { category: CostCategory.TOOLS, amount: randomBetween(1000, 2500), percent: 0, label: 'Tools & Software' },
-    { category: CostCategory.TRAVEL, amount: randomBetween(500, 2000), percent: 0, label: 'Travel' },
-    { category: CostCategory.VENUE, amount: randomBetween(300, 1500), percent: 0, label: 'Venue' },
-    { category: CostCategory.CATERING, amount: randomBetween(200, 1000), percent: 0, label: 'Catering' },
-    { category: CostCategory.OTHER, amount: randomBetween(200, 800), percent: 0, label: 'Other' },
+    {
+      category: CostCategory.SALARY,
+      amount: randomBetween(10000, 18000),
+      percent: 0,
+      label: "Salary Costs",
+    },
+    {
+      category: CostCategory.INFRASTRUCTURE,
+      amount: randomBetween(1500, 3500),
+      percent: 0,
+      label: "Infrastructure",
+    },
+    {
+      category: CostCategory.TOOLS,
+      amount: randomBetween(1000, 2500),
+      percent: 0,
+      label: "Tools & Software",
+    },
+    {
+      category: CostCategory.TRAVEL,
+      amount: randomBetween(500, 2000),
+      percent: 0,
+      label: "Travel",
+    },
+    {
+      category: CostCategory.VENUE,
+      amount: randomBetween(300, 1500),
+      percent: 0,
+      label: "Venue",
+    },
+    {
+      category: CostCategory.CATERING,
+      amount: randomBetween(200, 1000),
+      percent: 0,
+      label: "Catering",
+    },
+    {
+      category: CostCategory.OTHER,
+      amount: randomBetween(200, 800),
+      percent: 0,
+      label: "Other",
+    },
   ].map((item) => {
     const total = 15000;
     item.percent = Math.round((item.amount / total) * 100);
@@ -120,7 +168,10 @@ export function generateMockCostEfficiency(months = 8) {
     base = Math.max(45, Math.min(95, base));
     data.push({
       month: date.toISOString().slice(0, 7),
-      label: date.toLocaleDateString('en-US', { month: 'short', year: '2-digit' }),
+      label: date.toLocaleDateString("en-US", {
+        month: "short",
+        year: "2-digit",
+      }),
       efficiencyScore: Math.round(base),
       costPerDecision: randomBetween(50, 250),
       avgMeetingRating: randomBetween(3.0, 4.8),
@@ -164,7 +215,10 @@ export function generateMockHourlyCostDistribution() {
     hour,
     label: `${hour}:00`,
     meetingCount: hour >= 9 && hour <= 17 ? randomInt(5, 25) : randomInt(0, 3),
-    avgCost: hour >= 9 && hour <= 17 ? randomBetween(150, 400) : randomBetween(50, 150),
+    avgCost:
+      hour >= 9 && hour <= 17
+        ? randomBetween(150, 400)
+        : randomBetween(50, 150),
     totalCost: 0,
   })).map((item) => {
     item.totalCost = Math.round(item.meetingCount * item.avgCost);
@@ -174,11 +228,65 @@ export function generateMockHourlyCostDistribution() {
 
 export function generateMockCostRecommendations() {
   return [
-    { id: generateId('rec'), title: 'Consolidate Standup Meetings', description: 'Merge 3 overlapping standup meetings into 1 daily sync. Potential savings: $2,400/month.', savings: 2400, impact: 'high', category: 'Consolidation', effort: 'low' },
-    { id: generateId('rec'), title: 'Limit All-Hands Duration', description: 'Reduce all-hands from 90min to 60min. Average cost drops by $1,200 per session.', savings: 1200, impact: 'medium', category: 'Duration', effort: 'low' },
-    { id: generateId('rec'), title: 'Async Design Reviews', description: 'Replace 40% of design review meetings with async Loom videos. Save ~$1,800/month.', savings: 1800, impact: 'high', category: 'Async', effort: 'medium' },
-    { id: generateId('rec'), title: 'Meeting-Free Wednesdays', description: 'Implement meeting-free Wednesdays to reduce meeting load by 20%. Estimated savings: $3,500/month.', savings: 3500, impact: 'high', category: 'Policy', effort: 'medium' },
-    { id: generateId('rec'), title: 'Reduce 1-on-1 Frequency', description: 'Move bi-weekly 1-on-1s to monthly for non-managers. Save $1,500/month in salary costs.', savings: 1500, impact: 'medium', category: 'Frequency', effort: 'low' },
-    { id: generateId('rec'), title: 'Optimize Room Booking', description: 'Use AI-powered room allocation to reduce venue waste by 30%. Save $800/month.', savings: 800, impact: 'low', category: 'Venue', effort: 'high' },
+    {
+      id: generateId("rec"),
+      title: "Consolidate Standup Meetings",
+      description:
+        "Merge 3 overlapping standup meetings into 1 daily sync. Potential savings: $2,400/month.",
+      savings: 2400,
+      impact: "high",
+      category: "Consolidation",
+      effort: "low",
+    },
+    {
+      id: generateId("rec"),
+      title: "Limit All-Hands Duration",
+      description:
+        "Reduce all-hands from 90min to 60min. Average cost drops by $1,200 per session.",
+      savings: 1200,
+      impact: "medium",
+      category: "Duration",
+      effort: "low",
+    },
+    {
+      id: generateId("rec"),
+      title: "Async Design Reviews",
+      description:
+        "Replace 40% of design review meetings with async Loom videos. Save ~$1,800/month.",
+      savings: 1800,
+      impact: "high",
+      category: "Async",
+      effort: "medium",
+    },
+    {
+      id: generateId("rec"),
+      title: "Meeting-Free Wednesdays",
+      description:
+        "Implement meeting-free Wednesdays to reduce meeting load by 20%. Estimated savings: $3,500/month.",
+      savings: 3500,
+      impact: "high",
+      category: "Policy",
+      effort: "medium",
+    },
+    {
+      id: generateId("rec"),
+      title: "Reduce 1-on-1 Frequency",
+      description:
+        "Move bi-weekly 1-on-1s to monthly for non-managers. Save $1,500/month in salary costs.",
+      savings: 1500,
+      impact: "medium",
+      category: "Frequency",
+      effort: "low",
+    },
+    {
+      id: generateId("rec"),
+      title: "Optimize Room Booking",
+      description:
+        "Use AI-powered room allocation to reduce venue waste by 30%. Save $800/month.",
+      savings: 800,
+      impact: "low",
+      category: "Venue",
+      effort: "high",
+    },
   ];
 }
