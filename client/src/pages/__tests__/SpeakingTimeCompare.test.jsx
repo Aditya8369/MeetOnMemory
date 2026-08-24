@@ -121,4 +121,26 @@ describe("SpeakingTimeCompare Dashboard (#2038)", () => {
       ).toBeInTheDocument();
     });
   });
+
+  it("renders error state when API call fails and allows retrying", async () => {
+    speakingTimeApi.getOrgCompare.mockRejectedValueOnce(
+      new Error("Network Error"),
+    );
+
+    render(
+      <BrowserRouter>
+        <SpeakingTimeCompare />
+      </BrowserRouter>,
+    );
+
+    await waitFor(() => {
+      expect(
+        screen.getByText("Failed to load team comparison"),
+      ).toBeInTheDocument();
+      expect(screen.getByText("Network Error")).toBeInTheDocument();
+    });
+
+    const retryBtn = screen.getByText("Retry");
+    expect(retryBtn).toBeInTheDocument();
+  });
 });
