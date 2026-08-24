@@ -16,9 +16,9 @@ import {
   Sparkles,
   Edit2,
   Check,
+  Loader2,
 } from "lucide-react";
 import { toast } from "react-toastify";
-import { sanitizeHtml } from "../utils/sanitizeHtml";
 import MeetingSentimentChart from "../components/MeetingSentimentChart";
 import SpeakerAttribution from "../components/meeting-details/SpeakerAttribution";
 import AppContent from "../context/AppContent.js";
@@ -58,6 +58,104 @@ const TranscriptViewer = () => {
   const [targetLang, setTargetLang] = useState("es");
   const [translationStatus, setTranslationStatus] = useState("idle");
   const [translatedText, setTranslatedText] = useState("");
+
+  const [editingSegmentIndex, setEditingSegmentIndex] = useState(null);
+  const [editSegmentText, setEditSegmentText] = useState("");
+  const [editSegmentStartTime, setEditSegmentStartTime] = useState("");
+  const [editSegmentEndTime, setEditSegmentEndTime] = useState("");
+  const [isSavingSegment, setIsSavingSegment] = useState(false);
+
+  const parseTimestampToSeconds = (timeStr) => {
+    if (typeof timeStr === "number") return timeStr;
+    if (!timeStr) return 0;
+    const parts = String(timeStr).trim().split(":");
+    if (parts.length === 2) {
+      const mins = Number(parts[0]);
+      const secs = Number(parts[1]);
+      return isNaN(mins) || isNaN(secs) ? NaN : mins * 60 + secs;
+    }
+    if (parts.length === 3) {
+      const hrs = Number(parts[0]);
+      const mins = Number(parts[1]);
+      const secs = Number(parts[2]);
+      return isNaN(hrs) || isNaN(mins) || isNaN(secs)
+        ? NaN
+        : hrs * 3600 + mins * 60 + secs;
+    }
+    const num = Number(timeStr);
+    return isNaN(num) ? NaN : num;
+  };
+
+  const startEditSegment = (index, segment) => {
+    setEditingSegmentIndex(index);
+    setEditSegmentText(segment.text || "");
+    setEditSegmentStartTime(formatTimestamp(segment.startTime || 0));
+    setEditSegmentEndTime(formatTimestamp(segment.endTime || 0));
+  };
+
+  const handleCancelEditSegment = () => {
+    setEditingSegmentIndex(null);
+    setEditSegmentText("");
+    setEditSegmentStartTime("");
+    setEditSegmentEndTime("");
+  };
+
+  const handleSaveSegment = async (index) => {
+    const startSec = parseTimestampToSeconds(editSegmentStartTime);
+    const endSec = parseTimestampToSeconds(editSegmentEndTime);
+
+    if (isNaN(startSec) || startSec < 0) {
+      toast.error("Start time must be a valid timestamp (MM:SS or seconds)");
+      return;
+    }
+    if (isNaN(endSec) || endSec < 0) {
+      toast.error("End time must be a valid timestamp (MM:SS or seconds)");
+      return;
+    }
+    if (endSec < startSec) {
+      toast.error("End time cannot be less than start time");
+      return;
+    }
+    if (!editSegmentText.trim()) {
+      toast.error("Segment text cannot be empty");
+      return;
+    }
+
+    setIsSavingSegment(true);
+    try {
+      const targetId = transcript?._id || meetingId;
+      await api.patch(`/api/transcripts/${targetId}/segments/${index}`, {
+        text: editSegmentText.trim(),
+        startTime: startSec,
+        endTime: endSec,
+      });
+
+      toast.success("Transcript segment updated successfully");
+      setTranscript((prev) => {
+        if (!prev || !prev.segments) return prev;
+        const updatedSegments = [...prev.segments];
+        updatedSegments[index] = {
+          ...updatedSegments[index],
+          text: editSegmentText.trim(),
+          startTime: startSec,
+          endTime: endSec,
+          isEdited: true,
+          editedAt: new Date().toISOString(),
+        };
+        return {
+          ...prev,
+          segments: updatedSegments,
+          fullText: updatedSegments.map((s) => s.text).join(" "),
+        };
+      });
+      setEditingSegmentIndex(null);
+    } catch (err) {
+      console.error("Error updating segment:", err);
+      toast.error(err.response?.data?.message || "Failed to update segment");
+    } finally {
+      setIsSavingSegment(false);
+    }
+  };
 
   const handleTriggerTranslation = async () => {
     setTranslationStatus("translating");
@@ -238,15 +336,6 @@ const TranscriptViewer = () => {
     const mins = Math.floor(seconds / 60);
     const secs = Math.floor(seconds % 60);
     return `${mins.toString().padStart(2, "0")}:${secs.toString().padStart(2, "0")}`;
-  };
-
-  const highlightText = (text, query) => {
-    if (!query) return text;
-    const regex = new RegExp(`(${query})`, "gi");
-    return text.replace(
-      regex,
-      '<mark class="bg-yellow-300 text-black">$1</mark>',
-    );
   };
 
   const scrollToSegment = (index) => {
@@ -514,89 +603,225 @@ const TranscriptViewer = () => {
                     key={index}
                     id={`segment-${index}`}
                     className={`bg-white dark:bg-slate-800 rounded-lg p-4 border ${
-                      highlightedSegment === index
+                      editingSegmentIndex === index
                         ? "border-indigo-500 ring-2 ring-indigo-200 dark:ring-indigo-800"
-                        : "border-gray-200 dark:border-gray-700"
+                        : highlightedSegment === index
+                          ? "border-indigo-500 ring-2 ring-indigo-200 dark:ring-indigo-800"
+                          : "border-gray-200 dark:border-gray-700"
                     } transition-all`}
                   >
-                    <div className="flex items-center justify-between mb-2">
-                      <div className="flex items-center gap-2">
-                        {editingSpeakerIndex === index ? (
-                          <div className="flex items-center gap-2 relative">
-                            <input
-                              type="text"
-                              className="px-2 py-1 bg-white dark:bg-slate-700 border border-indigo-300 rounded text-xs text-gray-800 dark:text-gray-200"
-                              value={newSpeakerName}
-                              onChange={(e) =>
-                                setNewSpeakerName(e.target.value)
-                              }
-                              list="participants-list"
-                              autoFocus
-                            />
-                            <datalist id="participants-list">
-                              {meeting?.participants?.map((p, i) => (
-                                <option key={i} value={p.name} />
-                              ))}
-                            </datalist>
-                            <div className="flex items-center gap-1">
-                              <label className="text-xs text-gray-600 dark:text-gray-400 flex items-center gap-1 cursor-pointer">
-                                Map all '{segment.speaker}' globally
-                              </label>
-                            </div>
-                            <button
-                              onClick={() =>
-                                handleSpeakerChange(index, segment.speaker)
-                              }
-                              className="p-1 bg-indigo-600 text-white rounded hover:bg-indigo-700"
-                            >
-                              <Check size={14} />
-                            </button>
-                            <button
-                              onClick={() => setEditingSpeakerIndex(null)}
-                              className="p-1 bg-gray-200 text-gray-600 rounded hover:bg-gray-300"
-                            >
-                              <X size={14} />
-                            </button>
+                    {editingSegmentIndex === index ? (
+                      /* Inline Segment Editor Mode */
+                      <div className="space-y-3">
+                        <div className="flex flex-wrap items-center justify-between gap-2 border-b border-gray-100 dark:border-gray-700/60 pb-2">
+                          <div className="flex items-center gap-2">
+                            <span className="text-xs font-semibold text-indigo-600 dark:text-indigo-400">
+                              Editing Segment #{index + 1}
+                            </span>
+                            <span className="px-2 py-0.5 bg-indigo-50 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300 text-xs font-medium rounded">
+                              {segment.speaker || "Speaker"}
+                            </span>
                           </div>
-                        ) : (
-                          <span
-                            onClick={() => {
-                              if (canEdit) {
-                                setEditingSpeakerIndex(index);
-                                setNewSpeakerName(segment.speaker);
+
+                          {/* Timestamp Inputs */}
+                          <div className="flex items-center gap-2 text-xs">
+                            <Clock size={12} className="text-gray-400" />
+                            <label className="text-gray-500 dark:text-gray-400 text-xs flex items-center">
+                              Start:
+                              <input
+                                type="text"
+                                aria-label="Start time"
+                                value={editSegmentStartTime}
+                                onChange={(e) =>
+                                  setEditSegmentStartTime(e.target.value)
+                                }
+                                placeholder="00:00"
+                                className="ml-1 px-1.5 py-0.5 w-16 bg-white dark:bg-slate-700 border border-gray-300 dark:border-gray-600 rounded text-xs text-gray-800 dark:text-gray-200"
+                              />
+                            </label>
+                            <label className="text-gray-500 dark:text-gray-400 text-xs flex items-center">
+                              End:
+                              <input
+                                type="text"
+                                aria-label="End time"
+                                value={editSegmentEndTime}
+                                onChange={(e) =>
+                                  setEditSegmentEndTime(e.target.value)
+                                }
+                                placeholder="00:00"
+                                className="ml-1 px-1.5 py-0.5 w-16 bg-white dark:bg-slate-700 border border-gray-300 dark:border-gray-600 rounded text-xs text-gray-800 dark:text-gray-200"
+                              />
+                            </label>
+                          </div>
+                        </div>
+
+                        {/* Segment Textarea */}
+                        <div>
+                          <textarea
+                            rows={3}
+                            aria-label="Segment text"
+                            className="w-full p-2.5 bg-white dark:bg-slate-700 border border-indigo-300 dark:border-indigo-600 rounded-md text-sm text-gray-800 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-indigo-500 font-sans leading-relaxed resize-y"
+                            value={editSegmentText}
+                            onChange={(e) => setEditSegmentText(e.target.value)}
+                            onKeyDown={(e) => {
+                              if (
+                                (e.ctrlKey || e.metaKey) &&
+                                e.key === "Enter"
+                              ) {
+                                e.preventDefault();
+                                handleSaveSegment(index);
+                              } else if (e.key === "Escape") {
+                                e.preventDefault();
+                                handleCancelEditSegment();
                               }
                             }}
-                            className={`px-2 py-1 bg-indigo-100 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300 text-xs font-medium rounded ${canEdit ? "cursor-pointer hover:bg-indigo-200 dark:hover:bg-indigo-800/50 transition-colors" : ""}`}
-                            title={canEdit ? "Click to edit speaker" : ""}
-                          >
-                            {segment.speaker || "Speaker"}
-                            {canEdit && (
-                              <Edit2
-                                size={10}
-                                className="inline ml-1 opacity-50"
-                              />
-                            )}
+                            autoFocus
+                          />
+                        </div>
+
+                        {/* Editor Actions */}
+                        <div className="flex items-center justify-between pt-1">
+                          <span className="text-[11px] text-gray-400">
+                            Press{" "}
+                            <kbd className="px-1 py-0.5 bg-gray-100 dark:bg-slate-700 rounded border border-gray-200 dark:border-gray-600 text-[10px]">
+                              Ctrl+Enter
+                            </kbd>{" "}
+                            to save,{" "}
+                            <kbd className="px-1 py-0.5 bg-gray-100 dark:bg-slate-700 rounded border border-gray-200 dark:border-gray-600 text-[10px]">
+                              Esc
+                            </kbd>{" "}
+                            to cancel
                           </span>
-                        )}
-                        <span className="text-gray-500 dark:text-gray-400 text-xs">
-                          {formatTimestamp(segment.startTime)}
-                        </span>
+                          <div className="flex items-center gap-2">
+                            <button
+                              type="button"
+                              onClick={handleCancelEditSegment}
+                              disabled={isSavingSegment}
+                              className="px-3 py-1.5 bg-gray-200 dark:bg-slate-700 hover:bg-gray-300 dark:hover:bg-slate-600 text-gray-700 dark:text-gray-300 text-xs font-medium rounded-md flex items-center gap-1 transition-colors"
+                            >
+                              <X size={12} />
+                              Cancel
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => handleSaveSegment(index)}
+                              disabled={isSavingSegment}
+                              className="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-medium rounded-md flex items-center gap-1 transition-colors shadow-sm disabled:opacity-50"
+                            >
+                              {isSavingSegment ? (
+                                <Loader2 size={12} className="animate-spin" />
+                              ) : (
+                                <Check size={12} />
+                              )}
+                              Save Changes
+                            </button>
+                          </div>
+                        </div>
                       </div>
-                    </div>
-                    <p
-                      className="text-gray-700 dark:text-gray-300 text-sm leading-relaxed"
-                      dangerouslySetInnerHTML={{
-                        __html: sanitizeHtml(
-                          highlightText(segment.text, searchQuery),
-                        ),
-                      }}
-                    />
-                    <p className="text-gray-700 dark:text-gray-300 text-sm leading-relaxed">
-                      <HighlightedText
-                        text={segment.text}
-                        query={searchQuery}
-                      />
-                    </p>
+                    ) : (
+                      /* Normal Segment View */
+                      <>
+                        <div className="flex items-center justify-between mb-2">
+                          <div className="flex items-center gap-2">
+                            {editingSpeakerIndex === index ? (
+                              <div className="flex items-center gap-2 relative">
+                                <input
+                                  type="text"
+                                  className="px-2 py-1 bg-white dark:bg-slate-700 border border-indigo-300 rounded text-xs text-gray-800 dark:text-gray-200"
+                                  value={newSpeakerName}
+                                  onChange={(e) =>
+                                    setNewSpeakerName(e.target.value)
+                                  }
+                                  list="participants-list"
+                                  autoFocus
+                                />
+                                <datalist id="participants-list">
+                                  {meeting?.participants?.map((p, i) => (
+                                    <option key={i} value={p.name} />
+                                  ))}
+                                </datalist>
+                                <div className="flex items-center gap-1">
+                                  <label className="text-xs text-gray-600 dark:text-gray-400 flex items-center gap-1 cursor-pointer">
+                                    Map all '{segment.speaker}' globally
+                                  </label>
+                                </div>
+                                <button
+                                  onClick={() =>
+                                    handleSpeakerChange(index, segment.speaker)
+                                  }
+                                  className="p-1 bg-indigo-600 text-white rounded hover:bg-indigo-700"
+                                >
+                                  <Check size={14} />
+                                </button>
+                                <button
+                                  onClick={() => setEditingSpeakerIndex(null)}
+                                  className="p-1 bg-gray-200 text-gray-600 rounded hover:bg-gray-300"
+                                >
+                                  <X size={14} />
+                                </button>
+                              </div>
+                            ) : (
+                              <span
+                                onClick={() => {
+                                  if (canEdit) {
+                                    setEditingSpeakerIndex(index);
+                                    setNewSpeakerName(segment.speaker);
+                                  }
+                                }}
+                                className={`px-2 py-1 bg-indigo-100 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300 text-xs font-medium rounded ${canEdit ? "cursor-pointer hover:bg-indigo-200 dark:hover:bg-indigo-800/50 transition-colors" : ""}`}
+                                title={canEdit ? "Click to edit speaker" : ""}
+                              >
+                                {segment.speaker || "Speaker"}
+                                {canEdit && (
+                                  <Edit2
+                                    size={10}
+                                    className="inline ml-1 opacity-50"
+                                  />
+                                )}
+                              </span>
+                            )}
+                            <span className="text-gray-500 dark:text-gray-400 text-xs flex items-center gap-1">
+                              <Clock size={11} className="inline opacity-70" />
+                              {formatTimestamp(segment.startTime)}
+                              {segment.endTime > segment.startTime &&
+                                ` - ${formatTimestamp(segment.endTime)}`}
+                            </span>
+                            {segment.isEdited && (
+                              <span
+                                className="text-[10px] px-1.5 py-0.5 rounded bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300 font-medium"
+                                title={
+                                  segment.editedAt
+                                    ? `Edited at ${new Date(segment.editedAt).toLocaleString()}`
+                                    : "Edited"
+                                }
+                              >
+                                Edited
+                              </span>
+                            )}
+                          </div>
+
+                          {/* Edit segment button */}
+                          {canEdit && (
+                            <button
+                              type="button"
+                              onClick={() => startEditSegment(index, segment)}
+                              className="px-2 py-1 hover:bg-gray-100 dark:hover:bg-slate-700 rounded text-gray-500 hover:text-indigo-600 dark:hover:text-indigo-400 text-xs flex items-center gap-1 transition-colors"
+                              title="Edit segment text and timestamps"
+                              aria-label="Edit segment"
+                            >
+                              <Edit2 size={12} />
+                              <span className="hidden sm:inline">Edit</span>
+                            </button>
+                          )}
+                        </div>
+                        <p className="text-gray-700 dark:text-gray-300 text-sm leading-relaxed">
+                          <HighlightedText
+                            text={segment.text}
+                            query={searchQuery}
+                          />
+                        </p>
+                      </>
+                    )}
                   </div>
                 ))
               )}
