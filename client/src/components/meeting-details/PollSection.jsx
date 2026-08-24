@@ -29,6 +29,7 @@ const PollSection = ({
   meetingId,
   socket: externalSocket = null,
   title = "Polls",
+  userRole,
 }) => {
   const { userData, backendUrl } = useContext(AppContent);
   const [polls, setPolls] = useState([]);
@@ -49,6 +50,7 @@ const PollSection = ({
   const isAdminOrOwner =
     userData?.role === "admin" || userData?.role === "owner";
   const canCreatePoll = hasPermission(userData?.role, "meetings", "edit");
+  const isObserver = userRole === "observer";
 
   const fetchPolls = useCallback(async () => {
     if (!meetingId) {
@@ -209,6 +211,7 @@ const PollSection = ({
   };
 
   const handleVote = async (pollId, pollType, optionId) => {
+    if (isObserver) return;
     try {
       const selectedOptionIds = [optionId];
       await castVote(pollId, selectedOptionIds);
@@ -246,6 +249,7 @@ const PollSection = ({
     const [selected, setSelected] = useState([]);
 
     const toggleSelection = (optionId) => {
+      if (isObserver) return;
       if (selected.includes(optionId)) {
         setSelected(selected.filter((id) => id !== optionId));
       } else {
@@ -254,7 +258,7 @@ const PollSection = ({
     };
 
     const submitMultipleVotes = async () => {
-      if (selected.length === 0) return;
+      if (selected.length === 0 || isObserver) return;
       try {
         await castVote(poll._id, selected);
         toast.success("Votes submitted successfully!");
@@ -271,25 +275,28 @@ const PollSection = ({
             <input
               type="checkbox"
               id={opt._id}
+              disabled={poll.isClosed || isObserver}
               checked={selected.includes(opt._id)}
               onChange={() => toggleSelection(opt._id)}
-              className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+              className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500 disabled:opacity-50"
             />
             <label
               htmlFor={opt._id}
-              className="text-gray-700 dark:text-gray-300"
+              className={`text-gray-700 dark:text-gray-300 ${isObserver ? "opacity-50" : ""}`}
             >
               {opt.text}
             </label>
           </div>
         ))}
-        <button
-          onClick={submitMultipleVotes}
-          disabled={selected.length === 0}
-          className="mt-2 px-3 py-1 bg-blue-600 text-white rounded text-sm disabled:opacity-50"
-        >
-          Submit Votes
-        </button>
+        {!isObserver && (
+          <button
+            onClick={submitMultipleVotes}
+            disabled={selected.length === 0 || poll.isClosed}
+            className="mt-2 px-3 py-1 bg-blue-600 text-white rounded text-sm disabled:opacity-50"
+          >
+            Submit Votes
+          </button>
+        )}
       </div>
     );
   };
@@ -390,10 +397,10 @@ const PollSection = ({
                   return (
                     <div
                       key={opt._id}
-                      role="button"
-                      tabIndex={0}
+                      role={isObserver ? undefined : "button"}
+                      tabIndex={isObserver ? -1 : 0}
                       aria-label={`Vote for ${opt.text}`}
-                      className={`relative overflow-hidden rounded-md border p-3 cursor-pointer transition-colors ${
+                      className={`relative overflow-hidden rounded-md border p-3 ${isObserver ? "opacity-70 cursor-not-allowed" : "cursor-pointer"} transition-colors ${
                         (opt.votes || []).some(
                           (v) => v._id === userData?._id || v === userData?._id,
                         )
@@ -401,6 +408,7 @@ const PollSection = ({
                           : "border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700"
                       }`}
                       onClick={() =>
+                        !isObserver &&
                         handleVote(
                           poll._id,
                           poll.pollType,
@@ -409,7 +417,10 @@ const PollSection = ({
                         )
                       }
                       onKeyDown={(e) => {
-                        if (e.key === "Enter" || e.key === " ") {
+                        if (
+                          !isObserver &&
+                          (e.key === "Enter" || e.key === " ")
+                        ) {
                           e.preventDefault();
                           handleVote(
                             poll._id,

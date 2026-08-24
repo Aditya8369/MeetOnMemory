@@ -20,6 +20,19 @@ export const getBreakdownForMeeting = async (meetingId) => {
     (a, b) => a.startTime - b.startTime,
   );
 
+  const meeting = await Meeting.findById(meetingId)
+    .select("participants")
+    .lean();
+  const observerIdentifiers = new Set();
+  if (meeting && meeting.participants) {
+    meeting.participants.forEach((p) => {
+      if (p.role === "observer") {
+        if (p.user) observerIdentifiers.add(p.user.toString());
+        observerIdentifiers.add(p.name);
+      }
+    });
+  }
+
   const statsMap = new Map();
   let meetingSpan = 0;
   let previousSegmentEnd = 0;
@@ -38,6 +51,8 @@ export const getBreakdownForMeeting = async (meetingId) => {
 
     // Use speakerId if available, fallback to speaker name
     const identifier = speakerId || speaker || "Unknown";
+
+    if (observerIdentifiers.has(identifier)) return;
 
     if (!statsMap.has(identifier)) {
       statsMap.set(identifier, {
@@ -165,7 +180,9 @@ export const getOrgSpeakingTimeStats = async (orgId, startDate, endDate) => {
     if (endDate) query.date.$lte = new Date(endDate);
   }
 
-  const meetings = await Meeting.find(query).select("_id title date").lean();
+  const meetings = await Meeting.find(query)
+    .select("_id title date participants")
+    .lean();
 
   if (meetings.length === 0) {
     return {
@@ -178,6 +195,20 @@ export const getOrgSpeakingTimeStats = async (orgId, startDate, endDate) => {
   }
 
   const meetingIds = meetings.map((m) => m._id);
+  const observerMap = new Map();
+  meetings.forEach((m) => {
+    const obsSet = new Set();
+    if (m.participants) {
+      m.participants.forEach((p) => {
+        if (p.role === "observer") {
+          if (p.user) obsSet.add(p.user.toString());
+          obsSet.add(p.name);
+        }
+      });
+    }
+    observerMap.set(m._id.toString(), obsSet);
+  });
+
   const transcripts = await Transcript.find({
     meeting: { $in: meetingIds },
   }).lean();
@@ -197,6 +228,7 @@ export const getOrgSpeakingTimeStats = async (orgId, startDate, endDate) => {
   const allTalkRatios = [];
 
   for (const transcript of transcripts) {
+    const obsSet = observerMap.get(transcript.meeting.toString()) || new Set();
     const segments = transcript.segments || [];
     if (segments.length === 0) continue;
 
@@ -217,6 +249,8 @@ export const getOrgSpeakingTimeStats = async (orgId, startDate, endDate) => {
       if (duration <= 0) return;
 
       const identifier = speakerId || speaker || "Unknown";
+      if (obsSet.has(identifier)) return;
+
       speakerDurations[identifier] =
         (speakerDurations[identifier] || 0) + duration;
       speakerNames[identifier] = speaker || "Unknown";
