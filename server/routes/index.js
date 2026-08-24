@@ -97,6 +97,7 @@ import workloadRoutes from "./workloadRoutes.js";
 import minutesApprovalRoutes from "./minutesApprovalRoutes.js";
 import teamAvailabilityRoutes from "./teamAvailabilityRoutes.js";
 import icebreakerRoutes from "./icebreakerRoutes.js";
+import meetingQuizRoutes from "./meetingQuizRoutes.js";
 import resourceBookingRoutes from "./resourceBookingRoutes.js";
 
 const router = express.Router();
@@ -116,6 +117,7 @@ router.use("/api/meetings/timer", agendaTimerRoutes);
 router.use("/api/meetings/:meetingId/checklist", meetingChecklistRoutes);
 router.use("/api/meetings/:id/duplicates", meetingDuplicateRoutes);
 router.use("/api/delegations", meetingDelegationRoutes);
+router.use("/api/meetings/:meetingId/quiz", meetingQuizRoutes);
 router.use("/api/meetings", meetingRoutes);
 router.use("/api/meetings", meetingTimelineRoutes);
 router.use("/api/meetings", highlightReelRoutes);
@@ -273,5 +275,11 @@ router.use("/api/skill-endorsements", skillEndorsementRoutes);
 
 import semanticKnowledgeGraphRoutes from "./semanticKnowledgeGraphRoutes.js";
 router.use("/api/semantic-graph", semanticKnowledgeGraphRoutes);
+import calendarConflictRoutes from "./calendarConflictRoutes.js";
+router.use("/api/calendar-sync", calendarConflictRoutes);
+import complianceRoutes from "./complianceRoutes.js";
+router.use("/api/compliance", complianceRoutes);
+import actionItemGraphRoutes from "./actionItemGraphRoutes.js";
+router.use("/api/action-item-graph", actionItemGraphRoutes);
 
 export default router;
