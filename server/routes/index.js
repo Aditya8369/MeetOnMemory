@@ -273,6 +273,8 @@ router.use("/api/observers", observerRoutes);
 import skillEndorsementRoutes from "./skillEndorsementRoutes.js";
 router.use("/api/skill-endorsements", skillEndorsementRoutes);
 
+import semanticKnowledgeGraphRoutes from "./semanticKnowledgeGraphRoutes.js";
+router.use("/api/semantic-graph", semanticKnowledgeGraphRoutes);
 import calendarConflictRoutes from "./calendarConflictRoutes.js";
 router.use("/api/calendar-sync", calendarConflictRoutes);
 import complianceRoutes from "./complianceRoutes.js";
