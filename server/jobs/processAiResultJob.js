@@ -7,6 +7,7 @@ import {
 import User from "../models/userModel.js";
 
 import { indexMeeting } from "../utils/embeddingUtils.js";
+import { meetingQuizQueue } from "../services/queueService.js";
 import {
   normalizeMoM,
   buildHumanReadableMoM,
@@ -109,6 +110,18 @@ export default async function processAiResultJob(job, _app) {
     MeetingDigestService.sendMeetingDigest(meetingToUpdate._id).catch((err) => {
       console.error("Failed to send meeting digest automatically:", err);
     });
+
+    if (meetingToUpdate.requireQuiz) {
+      meetingQuizQueue
+        .add(
+          "generate-meeting-quiz",
+          { meetingId: meetingToUpdate._id },
+          { jobId: `meeting-quiz-${meetingToUpdate._id}` },
+        )
+        .catch((err) => {
+          console.error("Failed to enqueue meeting quiz generation:", err);
+        });
+    }
 
     return { success: true, meetingId: meetingToUpdate._id };
   } catch (error) {
