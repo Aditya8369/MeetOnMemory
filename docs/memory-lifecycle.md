@@ -127,15 +127,14 @@ come back.
 exclude `archived` and `expired` memories by default. Pass
 `?includeArchived=true` to include them (e.g. for an admin retention view).
 
-## What's intentionally out of scope for this change
+## Unified Retention Management
 
-- A dedicated retention analytics dashboard (UI). The data needed for one
-  (per-organization counts by state, transition history) is already
-  produced by `runLifecycleSweep`'s summary and each memory's
-  `lifecycleHistory`; wiring that into a frontend view is a natural
-  fast-follow rather than part of the core mechanism.
-- Per-organization, DB-configurable policies (vs. the current
-  environment-variable-based global policy). Env vars satisfy "retention
-  rules can be modified without code changes" for now; a settings-panel-
-  backed per-org override is a reasonable follow-up if different orgs need
-  different thresholds.
+With the addition of the `RetentionManagementWizard`, there is now a single admin entry point for managing retention policies.
+
+- **Unified Dashboard**: Admins can now configure memory lifecycle policies alongside meeting audio/log retention and document attachment retention in one centralized interface.
+- **Dynamic Deletion Simulation**: The UI provides a real-time projection of database indices and binary blocks scheduled for extraction based on the active policy sliders (e.g., number of expired context vectors, meeting logs, and binary attachment size).
+- **Consolidated Backends**: The policies save to the correct backends (Memory Service and Data Retention Service) simultaneously via unified controllers, deprecating the previously duplicated manual controls.
+
+## Future Enhancements
+
+- Per-organization, DB-configurable policies (vs. the current environment-variable-based global policy). Env vars satisfy "retention rules can be modified without code changes" for now; a settings-panel-backed per-org override is a reasonable follow-up if different orgs need different thresholds.
