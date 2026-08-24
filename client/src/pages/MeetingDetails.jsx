@@ -47,6 +47,7 @@ import FeedbackForm from "../components/meeting-details/FeedbackForm";
 import AgendaTimer from "../components/meeting-details/AgendaTimer";
 import AgendaPacingReport from "../components/meeting-details/AgendaPacingReport";
 import ClipManager from "../components/meeting-details/ClipManager";
+import AttachmentPanel from "../components/meeting-details/AttachmentPanel";
 import HealthScoreCard from "../components/meeting-details/HealthScoreCard";
 import { isMeetingEnded } from "../utils/meetingLifecycle";
 import MeetingRisksPanel from "../components/meetings/MeetingRisksPanel";
@@ -621,6 +622,13 @@ const MeetingDetails = () => {
             </div>
           )}
           <MeetingMetadata meeting={meeting} />
+          <div className="mt-6 mb-6">
+            <AttachmentPanel
+              meetingId={meeting._id}
+              userRole={userData?.role}
+              currentUserId={userData?._id}
+            />
+          </div>
           {currentUser?.publicMetadata?.dbUserId === meeting.uploadedBy && (
             <GuestAccessManager meetingId={meeting._id} />
           )}

@@ -1,15 +1,3 @@
-/**
- * MeetingDetailsReactionSummary.test.jsx
- *
- * Tests that the ReactionSummaryCard is correctly wired into MeetingDetails
- * with proper data fetching, empty state, and error handling (Issue #1993).
- *
- * Covers:
- *  - ReactionSummaryCard renders when meeting data is loaded
- *  - Empty state when no reactions exist (card returns null)
- *  - API errors do not crash the page
- *  - Reaction totals/breakdown render when data exists
- */
 import React from "react";
 import { render, screen } from "@testing-library/react";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
@@ -18,12 +6,8 @@ import MeetingDetails from "../MeetingDetails.jsx";
 import { meetingApi } from "../../services";
 import AppContent from "../../context/AppContent";
 
-/* ------------------------------------------------------------------ */
-/* Mocks (following MeetingDetailsCommentSection.test.jsx pattern)    */
-/* ------------------------------------------------------------------ */
-
 vi.mock("../../components/Navbar.jsx", () => ({
-  default: () => <nav data-testid="app-navbar">App Navbar</nav>,
+  default: () => <div data-testid="app-navbar">App Navbar</div>,
 }));
 
 vi.mock("@clerk/clerk-react", () => ({
@@ -37,7 +21,6 @@ vi.mock("../../services", () => ({
     getMeetingById: vi.fn(),
     deleteMeeting: vi.fn(),
     updateMeeting: vi.fn(),
-    getReactionSummary: vi.fn(),
   },
 }));
 
@@ -45,13 +28,18 @@ vi.mock("../../services/briefingApi", () => ({
   getBriefing: vi.fn().mockResolvedValue({ data: null }),
 }));
 
+const appContextValue = {
+  userData: { _id: "user-1", role: "member" },
+  backendUrl: "http://localhost:5000",
+};
+
 vi.mock("../../components/meeting-details/MeetingHeader", () => ({
   default: ({ meeting }) => (
-    <div data-testid="meeting-header">{meeting?.title}</div>
+    <div data-testid="meeting-header">{meeting.title}</div>
   ),
 }));
 vi.mock("../../components/meeting-details/MeetingSummary", () => ({
-  default: () => <div data-testid="meeting-summary" />,
+  default: () => null,
 }));
 vi.mock("../../components/meeting-details/MeetingCollaborativeNotes", () => ({
   default: () => null,
@@ -128,31 +116,22 @@ vi.mock("../../components/meetings/AgendaBuilder", () => ({
 vi.mock("../../components/meetings/GuestAccessManager", () => ({
   default: () => null,
 }));
-vi.mock("../../components/meetings/MinutesApproval", () => ({
-  default: () => null,
-}));
-vi.mock("../../components/meeting-details/PersonalNotes", () => ({
-  default: () => null,
-}));
-vi.mock("../../components/meeting-details/SeriesNavigation", () => ({
-  default: () => null,
-}));
-vi.mock("../../components/meeting-details/SpeakerAttribution", () => ({
-  default: () => null,
-}));
-vi.mock("../../components/meeting-details/HealthScoreCard", () => ({
-  default: () => null,
-}));
-vi.mock("../../components/meeting-details/RetentionQuizSection", () => ({
-  default: () => null,
-}));
-vi.mock("../../components/meetings/IcebreakerSection", () => ({
+vi.mock("../../components/meeting-details/PollSection", () => ({
   default: () => null,
 }));
 vi.mock("../../components/meeting-details/FeedbackForm", () => ({
   default: () => null,
 }));
 vi.mock("../../components/meeting-details/AgendaTimer", () => ({
+  default: () => null,
+}));
+vi.mock("../../components/meeting-details/HealthScoreCard", () => ({
+  default: () => null,
+}));
+vi.mock("../../components/meetings/MinutesApproval", () => ({
+  default: () => null,
+}));
+vi.mock("../../components/meeting-details/PersonalNotes", () => ({
   default: () => null,
 }));
 vi.mock("../../components/meeting-details/FollowUpThreads", () => ({
@@ -170,102 +149,55 @@ vi.mock("../../components/meeting-details/AgendaPacingReport", () => ({
 vi.mock("../../components/meeting-details/ClipManager", () => ({
   default: () => null,
 }));
+
 vi.mock("../../components/meeting-details/AttachmentPanel", () => ({
-  default: () => null,
-}));
-vi.mock("../../components/meeting-details/CommentSection", () => ({
-  default: () => null,
-}));
-
-/* ------------------------------------------------------------------ */
-/* Mock the ReactionSummaryCard — the component under test            */
-/* ------------------------------------------------------------------ */
-
-vi.mock("../../components/meeting-details/ReactionSummaryCard.jsx", () => ({
-  default: ({ meetingId }) => (
-    <div data-testid="reaction-summary-card" data-meeting-id={meetingId}>
-      ReactionSummaryCard
+  default: ({ meetingId, userRole, currentUserId }) => (
+    <div
+      data-testid="attachment-panel"
+      data-meeting-id={meetingId}
+      data-user-role={userRole || ""}
+      data-current-user-id={currentUserId || ""}
+    >
+      Attachments for {meetingId}
     </div>
   ),
 }));
 
-/* ------------------------------------------------------------------ */
-/* Test setup                                                         */
-/* ------------------------------------------------------------------ */
-
-const appContextValue = {
-  userData: { _id: "user_123", role: "member" },
-  backendUrl: "http://localhost:5000",
-};
-
 const renderDetails = () =>
   render(
     <AppContent.Provider value={appContextValue}>
-      <MemoryRouter initialEntries={["/meeting/meeting-rxn-123"]}>
+      <MemoryRouter initialEntries={["/meetings/123"]}>
         <Routes>
-          <Route path="/meeting/:id" element={<MeetingDetails />} />
+          <Route path="/meetings/:id" element={<MeetingDetails />} />
         </Routes>
       </MemoryRouter>
     </AppContent.Provider>,
   );
 
-describe("MeetingDetails — ReactionSummaryCard wiring (Issue #1993)", () => {
+describe("Meeting Details AttachmentPanel mount (#1988)", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+  });
+
+  it("mounts AttachmentPanel with the meeting id and user context", async () => {
     meetingApi.getMeetingById.mockResolvedValue({
       data: {
         success: true,
         meeting: {
-          _id: "meeting-rxn-123",
-          title: "Test Meeting",
-          date: "2026-08-20T10:00:00.000Z",
-          duration: 30,
-          status: "completed",
-          description: "A test meeting.",
-          transcript: "",
-          summary: {
-            summary: "Test",
-            decisions: [],
-            action_items: [],
-            agenda: [],
-          },
+          _id: "123",
+          title: "Quarterly Planning",
           uploadedBy: "db_123",
-          organization: { _id: "org-1", name: "Test Org" },
           participants: [],
         },
       },
     });
-  });
-
-  it("renders the ReactionSummaryCard with the correct meetingId", async () => {
-    renderDetails();
-
-    const card = await screen.findByTestId("reaction-summary-card");
-    expect(card).toHaveAttribute("data-meeting-id", "meeting-rxn-123");
-  });
-
-  it("ReactionSummaryCard is present alongside other panels", async () => {
-    renderDetails();
-
-    await screen.findByTestId("reaction-summary-card");
-    expect(screen.getByTestId("meeting-summary")).toBeInTheDocument();
-  });
-
-  it("does NOT crash when getReactionSummary API fails", async () => {
-    meetingApi.getReactionSummary.mockRejectedValue(new Error("Network error"));
 
     renderDetails();
 
-    // The page should still render without crashing
-    const card = await screen.findByTestId("reaction-summary-card");
-    expect(card).toBeInTheDocument();
-    expect(screen.getByTestId("meeting-summary")).toBeInTheDocument();
-  });
-
-  it("passes meetingId matching the route param", async () => {
-    renderDetails();
-
-    const card = await screen.findByTestId("reaction-summary-card");
-    expect(card.getAttribute("data-meeting-id")).toBe("meeting-rxn-123");
+    const panel = await screen.findByTestId("attachment-panel");
+    expect(panel).toHaveTextContent("Attachments for 123");
+    expect(panel).toHaveAttribute("data-meeting-id", "123");
+    expect(panel).toHaveAttribute("data-user-role", "member");
+    expect(panel).toHaveAttribute("data-current-user-id", "user-1");
   });
 });
