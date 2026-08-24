@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useCallback } from "react";
 import { AlertTriangle, X, Loader2, Info } from "lucide-react";
 import { meetingApi } from "../services/meetingApi.js";
 import { toast } from "react-toastify";
@@ -14,9 +14,9 @@ const PurgeRecycleBinModal = ({ isOpen, onClose, onSuccess }) => {
       fetchPreview();
       setConfirmInput("");
     }
-  }, [isOpen]);
+  }, [isOpen, fetchPreview]);
 
-  const fetchPreview = async () => {
+  const fetchPreview = useCallback(async () => {
     try {
       setLoading(true);
       const { data } = await meetingApi.getPurgePreview();
@@ -30,7 +30,7 @@ const PurgeRecycleBinModal = ({ isOpen, onClose, onSuccess }) => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [onClose]);
 
   const handlePurge = async () => {
     if (confirmInput !== "PURGE") return;

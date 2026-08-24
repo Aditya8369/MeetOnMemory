@@ -143,8 +143,16 @@ class ParticipantEngagementService {
     const meetingsAttended = await Meeting.countDocuments({
       organization: orgId,
       $or: [
-        { "participants.userId": userId },
-        { "participants.user": userId },
+        {
+          participants: {
+            $elemMatch: { userId: userId, role: { $ne: "observer" } },
+          },
+        },
+        {
+          participants: {
+            $elemMatch: { user: userId, role: { $ne: "observer" } },
+          },
+        },
         { host: userId },
         { organizer: userId },
         { createdBy: userId },
@@ -178,10 +186,23 @@ class ParticipantEngagementService {
       ],
     });
 
+    // Find meetings where this user was an observer
+    const observerMeetings = await Meeting.find({
+      organization: orgId,
+      $or: [
+        { participants: { $elemMatch: { userId: userId, role: "observer" } } },
+        { participants: { $elemMatch: { user: userId, role: "observer" } } },
+      ],
+    })
+      .select("_id")
+      .lean();
+    const observerMeetingIds = observerMeetings.map((m) => m._id);
+
     // Real speaking time aggregated from MeetingAnalytics docs
     let totalSpeakingSeconds = 0;
     const analyticsDocs = await MeetingAnalytics.find({
       organization: orgId,
+      meeting: { $nin: observerMeetingIds },
       $or: [
         { "speakers.userId": userId },
         { "speakingTimeDistribution.userId": userId },
