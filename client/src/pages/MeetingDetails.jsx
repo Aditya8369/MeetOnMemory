@@ -59,6 +59,14 @@ const MeetingDetails = () => {
   const { userData } = useContext(AppContent);
   const isViewerOrGuest =
     userData?.role === "viewer" || userData?.role === "guest";
+
+  const dbUserId = currentUser?.publicMetadata?.dbUserId;
+  const participant = meeting?.participants?.find(
+    (p) =>
+      p.user?.toString() === dbUserId || p.user?._id?.toString() === dbUserId,
+  );
+  const userRole = participant?.role || null;
+
   const [meeting, setMeeting] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -567,6 +575,7 @@ const MeetingDetails = () => {
             isOrganizer={
               currentUser?.publicMetadata?.dbUserId === meeting.uploadedBy
             }
+            userRole={userRole}
           />
 
           <IcebreakerSection meetingId={meeting._id} />

@@ -2,7 +2,9 @@ import React from "react";
 
 const EMOJIS = ["👍", "❤️", "😂", "🎉", "🤔", "👏"];
 
-const ReactionBar = ({ sendReaction, onCooldown }) => {
+const ReactionBar = ({ sendReaction, onCooldown, userRole }) => {
+  if (userRole === "observer") return null;
+
   return (
     <div className="absolute bottom-24 left-1/2 transform -translate-x-1/2 z-40">
       <div

@@ -620,70 +620,133 @@ const MeetingRoom = () => {
           <div className="flex-1 flex min-h-0 overflow-hidden">
             {/* Video Grid — responsive by participant count + viewport (#907) */}
             <div
-              className={`flex-1 min-h-0 min-w-0 overflow-y-auto overflow-x-hidden bg-gray-900 transition-all duration-300 ${
-                activePanel ? "hidden md:block" : "block"
+              className={`flex-1 min-h-0 min-w-0 flex flex-col overflow-y-auto overflow-x-hidden bg-gray-900 transition-all duration-300 ${
+                activePanel ? "hidden md:flex" : "flex"
               }`}
             >
               <div
-                className={`grid gap-2 sm:gap-3 md:gap-4 p-2 sm:p-4 md:p-6 content-center justify-items-stretch min-h-full ${getMeetingVideoGridClass(
-                  peers.length + 1,
+                className={`flex-1 grid gap-2 sm:gap-3 md:gap-4 p-2 sm:p-4 md:p-6 content-center justify-items-stretch ${getMeetingVideoGridClass(
+                  peers.filter((p) => {
+                    const participant = meeting?.participants?.find(
+                      (part) =>
+                        part.user?.toString() === p.userInfo?.id ||
+                        part.user?._id?.toString() === p.userInfo?.id,
+                    );
+                    return participant?.role !== "observer";
+                  }).length + (userRole !== "observer" ? 1 : 0),
                 )}`}
               >
                 {/* Local Stream */}
-                <div className={MEETING_VIDEO_TILE_CLASS}>
-                  <video
-                    ref={userVideoRef}
-                    autoPlay
-                    playsInline
-                    muted
-                    className="w-full h-full object-cover scale-x-[-1]"
-                  />
-                  {!cameraOn && (
-                    <div className="absolute inset-0 flex items-center justify-center bg-gray-800">
-                      {localUserInfo.profilePic ? (
-                        <img
-                          src={localUserInfo.profilePic}
-                          alt=""
-                          className="w-16 h-16 sm:w-20 sm:h-20 rounded-full object-cover shadow-xl"
-                        />
-                      ) : (
-                        <div className="w-16 h-16 sm:w-20 sm:h-20 bg-indigo-600 rounded-full flex items-center justify-center text-2xl sm:text-3xl font-bold text-white shadow-xl">
-                          {(localUserInfo.name || "P").charAt(0).toUpperCase()}
-                        </div>
+                {userRole !== "observer" && (
+                  <div className={MEETING_VIDEO_TILE_CLASS}>
+                    <video
+                      ref={userVideoRef}
+                      autoPlay
+                      playsInline
+                      muted
+                      className="w-full h-full object-cover scale-x-[-1]"
+                    />
+                    {!cameraOn && (
+                      <div className="absolute inset-0 flex items-center justify-center bg-gray-800">
+                        {localUserInfo.profilePic ? (
+                          <img
+                            src={localUserInfo.profilePic}
+                            alt=""
+                            className="w-16 h-16 sm:w-20 sm:h-20 rounded-full object-cover shadow-xl"
+                          />
+                        ) : (
+                          <div className="w-16 h-16 sm:w-20 sm:h-20 bg-indigo-600 rounded-full flex items-center justify-center text-2xl sm:text-3xl font-bold text-white shadow-xl">
+                            {(localUserInfo.name || "P")
+                              .charAt(0)
+                              .toUpperCase()}
+                          </div>
+                        )}
+                      </div>
+                    )}
+                    <div className="absolute bottom-2 left-2 sm:bottom-4 sm:left-4 bg-black/60 px-2 py-1 sm:px-3 sm:py-1.5 rounded-lg backdrop-blur-sm text-white text-xs sm:text-sm flex items-center gap-2 max-w-[calc(100%-1rem)]">
+                      <span
+                        className={`w-2 h-2 rounded-full shrink-0 ${micOn ? "bg-green-500" : "bg-red-500"}`}
+                      />
+                      <span className="truncate">{localUserInfo.name}</span>
+                      {userRole === "scribe" && (
+                        <span className="ml-1 bg-blue-500/20 text-blue-300 text-[10px] px-1.5 py-0.5 rounded border border-blue-500/30">
+                          📝 Scribe
+                        </span>
+                      )}
+                      {userRole === "timekeeper" && (
+                        <span className="ml-1 bg-emerald-500/20 text-emerald-300 text-[10px] px-1.5 py-0.5 rounded border border-emerald-500/30">
+                          ⏱️ Timekeeper
+                        </span>
+                      )}
+                      {isScreenSharing && (
+                        <span className="text-[10px] sm:text-xs text-indigo-300 shrink-0">
+                          Sharing
+                        </span>
                       )}
                     </div>
-                  )}
-                  <div className="absolute bottom-2 left-2 sm:bottom-4 sm:left-4 bg-black/60 px-2 py-1 sm:px-3 sm:py-1.5 rounded-lg backdrop-blur-sm text-white text-xs sm:text-sm flex items-center gap-2 max-w-[calc(100%-1rem)]">
-                    <span
-                      className={`w-2 h-2 rounded-full shrink-0 ${micOn ? "bg-green-500" : "bg-red-500"}`}
-                    />
-                    <span className="truncate">{localUserInfo.name}</span>
-                    {userRole === "scribe" && (
-                      <span className="ml-1 bg-blue-500/20 text-blue-300 text-[10px] px-1.5 py-0.5 rounded border border-blue-500/30">
-                        📝 Scribe
-                      </span>
-                    )}
-                    {userRole === "timekeeper" && (
-                      <span className="ml-1 bg-emerald-500/20 text-emerald-300 text-[10px] px-1.5 py-0.5 rounded border border-emerald-500/30">
-                        ⏱️ Timekeeper
-                      </span>
-                    )}
-                    {isScreenSharing && (
-                      <span className="text-[10px] sm:text-xs text-indigo-300 shrink-0">
-                        Sharing
-                      </span>
-                    )}
                   </div>
-                </div>
+                )}
 
                 {/* Remote Streams */}
-                {peers.map((peerObj) => (
-                  <PeerVideo
-                    key={peerObj.peerID}
-                    peer={peerObj.peer}
-                    userInfo={peerObj.userInfo}
-                  />
-                ))}
+                {peers
+                  .filter((p) => {
+                    const participant = meeting?.participants?.find(
+                      (part) =>
+                        part.user?.toString() === p.userInfo?.id ||
+                        part.user?._id?.toString() === p.userInfo?.id,
+                    );
+                    return participant?.role !== "observer";
+                  })
+                  .map((peerObj) => (
+                    <PeerVideo
+                      key={peerObj.peerID}
+                      peer={peerObj.peer}
+                      userInfo={peerObj.userInfo}
+                    />
+                  ))}
+              </div>
+
+              {/* Observers Gallery */}
+              <div className="bg-gray-950 p-4 border-t border-gray-800">
+                <h3 className="text-gray-400 text-sm font-semibold mb-2">
+                  Observers
+                </h3>
+                <div className="flex gap-2 overflow-x-auto pb-2">
+                  {userRole === "observer" && (
+                    <div className="w-24 h-24 sm:w-32 sm:h-32 shrink-0 bg-gray-800 rounded-lg overflow-hidden relative border-2 border-gray-700 opacity-60 flex items-center justify-center">
+                      <video
+                        ref={userVideoRef}
+                        autoPlay
+                        playsInline
+                        muted
+                        className="w-full h-full object-cover scale-x-[-1]"
+                      />
+                      <div className="absolute bottom-1 left-1 bg-black/60 px-2 py-0.5 rounded text-white text-[10px] truncate max-w-[calc(100%-0.5rem)]">
+                        {localUserInfo.name} (You)
+                      </div>
+                    </div>
+                  )}
+                  {peers
+                    .filter((p) => {
+                      const participant = meeting?.participants?.find(
+                        (part) =>
+                          part.user?.toString() === p.userInfo?.id ||
+                          part.user?._id?.toString() === p.userInfo?.id,
+                      );
+                      return participant?.role === "observer";
+                    })
+                    .map((peerObj) => (
+                      <div
+                        key={peerObj.peerID}
+                        className="w-24 h-24 sm:w-32 sm:h-32 shrink-0 bg-gray-800 rounded-lg overflow-hidden relative border-2 border-gray-700 opacity-60 flex items-center justify-center"
+                      >
+                        <PeerVideo
+                          peer={peerObj.peer}
+                          userInfo={peerObj.userInfo}
+                        />
+                      </div>
+                    ))}
+                </div>
               </div>
             </div>
 
@@ -741,6 +804,7 @@ const MeetingRoom = () => {
                   meetingId={roomId}
                   socket={socketRef?.current || socket}
                   title="Live Polls"
+                  userRole={userRole}
                 />
               </div>
             )}
@@ -770,7 +834,11 @@ const MeetingRoom = () => {
 
           <LiveCaptions showCaptions={showCaptions} captions={captions} />
 
-          <ReactionBar sendReaction={sendReaction} onCooldown={onCooldown} />
+          <ReactionBar
+            sendReaction={sendReaction}
+            onCooldown={onCooldown}
+            userRole={userRole}
+          />
 
           <MeetingControlBar
             micOn={micOn}
@@ -780,6 +848,7 @@ const MeetingRoom = () => {
             isScreenSharing={isScreenSharing}
             toggleScreenShare={toggleScreenShare}
             leaveMeeting={leaveMeeting}
+            userRole={userRole}
           />
         </div>
       )}

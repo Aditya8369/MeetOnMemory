@@ -6,7 +6,7 @@ import * as agendaBuilderApi from "../../services/agendaBuilderApi";
 
 const SOCKET_URL = import.meta.env.VITE_API_URL || "http://localhost:5000";
 
-const AgendaBuilder = ({ meetingId, isOrganizer }) => {
+const AgendaBuilder = ({ meetingId, isOrganizer, userRole }) => {
   // const { user } = useUser(); // unused
   const [proposals, setProposals] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -212,11 +212,13 @@ const AgendaBuilder = ({ meetingId, isOrganizer }) => {
               value={newTopicText}
               onChange={(e) => setNewTopicText(e.target.value)}
               placeholder="Suggest a topic..."
-              className="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md dark:bg-gray-800 dark:text-white"
+              disabled={userRole === "observer"}
+              className="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md dark:bg-gray-800 dark:text-white disabled:opacity-50"
             />
             <button
               type="submit"
-              className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-md"
+              disabled={userRole === "observer"}
+              className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-md disabled:opacity-50"
             >
               Propose
             </button>
@@ -241,7 +243,8 @@ const AgendaBuilder = ({ meetingId, isOrganizer }) => {
                 <div className="flex items-center gap-2">
                   <button
                     onClick={() => handleVote(proposal._id, 1)}
-                    className="flex items-center gap-1 text-gray-500 hover:text-blue-600"
+                    disabled={userRole === "observer"}
+                    className="flex items-center gap-1 text-gray-500 hover:text-blue-600 disabled:opacity-50"
                   >
                     <svg
                       className="w-4 h-4"

@@ -263,4 +263,7 @@ router.use("/api/team-availability", teamAvailabilityRoutes);
 import actionItemTemplateRoutes from "./actionItemTemplateRoutes.js";
 router.use("/api/action-item-templates", actionItemTemplateRoutes);
 
+import observerRoutes from "./observerRoutes.js";
+router.use("/api/observers", observerRoutes);
+
 export default router;

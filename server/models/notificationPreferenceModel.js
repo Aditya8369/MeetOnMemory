@@ -32,9 +32,7 @@ const notificationPreferenceSchema = new mongoose.Schema(
     },
 
     // ── Email channel ────────────────────────────────────────────────────
-    // NOT YET ENFORCED. The email paths (MeetingDigestService,
-    // recapEmailService) do not consult these. Tracked as follow-up work;
-    // documented rather than silently ignored.
+    // Enforced across email delivery paths (MeetingDigestService, recapEmailService, reminderScheduler).
     emailMeetingReminders: {
       type: Boolean,
       default: true,
