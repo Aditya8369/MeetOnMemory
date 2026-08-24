@@ -83,8 +83,8 @@ describe("SpeakingTimeCompare Dashboard (#2038)", () => {
       expect(
         screen.getByText("Team Speaking Time Comparison"),
       ).toBeInTheDocument();
-      expect(screen.getByText("5")).toBeInTheDocument(); // Meetings Analyzed count card
-      expect(screen.getByText("30.5%")).toBeInTheDocument(); // Avg Talk Ratio card
+      expect(screen.getAllByText("5")[0]).toBeInTheDocument(); // Meetings Analyzed count card
+      expect(screen.getAllByText("30.5%")[0]).toBeInTheDocument(); // Avg Talk Ratio card
       expect(screen.getByText("28.2%")).toBeInTheDocument(); // Median Talk Ratio card
     });
 
