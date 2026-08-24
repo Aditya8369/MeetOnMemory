@@ -217,8 +217,9 @@ router.use("/api/admin/rbac", adminRbacRoutes);
 import adminAiUsageRoutes from "./adminAiUsageRoutes.js";
 router.use("/api/admin/ai-usage", adminAiUsageRoutes);
 router.use("/api/alerts/keywords", keywordAlertRoutes);
+import integrationMarketplaceRoutes from "./integrationMarketplaceRoutes.js";
+router.use("/api/integrations", integrationMarketplaceRoutes);
 router.use("/api/integrations/notion", notionIntegrationRoutes);
-
 import githubIntegrationRoutes from "./githubIntegrationRoutes.js";
 router.use("/api/github", githubIntegrationRoutes);
 
