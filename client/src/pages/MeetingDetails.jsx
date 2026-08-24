@@ -51,6 +51,7 @@ import { isMeetingEnded } from "../utils/meetingLifecycle";
 import MeetingRisksPanel from "../components/meetings/MeetingRisksPanel";
 import { Award, ShieldAlert, FileText } from "lucide-react";
 import ExportDialog from "../components/export/ExportDialog";
+import ResourceConflictsPanel from "../components/meeting-details/ResourceConflictsPanel";
 
 const MeetingDetails = () => {
   const { id } = useParams();
@@ -363,6 +364,8 @@ const MeetingDetails = () => {
           {(meeting.series || meeting.seriesId) && (
             <SeriesNavigation meeting={meeting} />
           )}
+
+          <ResourceConflictsPanel meeting={meeting} />
 
           <div className="p-6 bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 shadow-sm mt-6 mb-6">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">

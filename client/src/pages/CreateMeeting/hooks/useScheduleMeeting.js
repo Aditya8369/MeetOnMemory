@@ -9,6 +9,7 @@ import { useCallback, useContext, useEffect, useMemo, useState } from "react";
 import { customFieldApi } from "../../../api/customFieldApi";
 import { focusTimeApi } from "../../../api/focusTimeApi";
 import { calendarAvailabilityApi } from "../../../api/calendarAvailabilityApi";
+import resourceBookingApi from "../../../services/resourceBookingApi";
 import AppContent from "../../../context/AppContent";
 import {
   buildMeetingDraftKey,
@@ -109,6 +110,7 @@ export const useScheduleMeeting = ({
     policyDetails: null,
     recordingType: "upload",
   });
+  const [selectedResources, setSelectedResources] = useState([]);
 
   const [focusBlocks, setFocusBlocks] = useState([]);
   const [focusConflicts, setFocusConflicts] = useState([]);
@@ -134,6 +136,7 @@ export const useScheduleMeeting = ({
       agendaItems,
       selectedTemplateId,
       selectedAiSummaryTemplateId,
+      selectedResources,
     }),
     [
       participants,
@@ -141,6 +144,7 @@ export const useScheduleMeeting = ({
       agendaItems,
       selectedTemplateId,
       selectedAiSummaryTemplateId,
+      selectedResources,
     ],
   );
 
@@ -148,6 +152,8 @@ export const useScheduleMeeting = ({
     if (draft?.scheduleData) setScheduleData(draft.scheduleData);
     if (Array.isArray(draft?.participants)) setParticipants(draft.participants);
     if (Array.isArray(draft?.agendaItems)) setAgendaItems(draft.agendaItems);
+    if (Array.isArray(draft?.selectedResources))
+      setSelectedResources(draft.selectedResources);
     if (typeof draft?.selectedTemplateId === "string") {
       setSelectedTemplateId(draft.selectedTemplateId);
     }
@@ -422,6 +428,7 @@ export const useScheduleMeeting = ({
     setSelectedTemplateId("");
     setFocusConflicts([]);
     setBusyParticipants([]);
+    setSelectedResources([]);
     clearDraft();
   };
 
@@ -536,6 +543,37 @@ export const useScheduleMeeting = ({
             toast.error("Meeting saved, but custom fields failed to save");
           }
         }
+
+        if (
+          selectedResources &&
+          selectedResources.length > 0 &&
+          userData?.organization
+        ) {
+          const orgId = userData.organization._id || userData.organization;
+          const slot = buildScheduleSlot(
+            scheduleData.date,
+            scheduleData.time,
+            scheduleData.duration,
+          );
+          if (slot) {
+            for (const resourceId of selectedResources) {
+              try {
+                await resourceBookingApi.createBooking(orgId, {
+                  resourceId,
+                  meetingId: response.data.meeting._id,
+                  startTime: slot.start.toISOString(),
+                  endTime: slot.end.toISOString(),
+                });
+              } catch (err) {
+                console.error("Failed to book resource", err);
+                toast.error(
+                  `Failed to book a selected physical resource: ${err.response?.data?.message || err.message}`,
+                );
+              }
+            }
+          }
+        }
+
         toast.success("✅ Meeting scheduled and synced to calendars!");
 
         if (response.data.calendarLinks) {
@@ -598,5 +636,7 @@ export const useScheduleMeeting = ({
     conflictCheckError,
     conflictMode,
     setConflictMode,
+    selectedResources,
+    setSelectedResources,
   };
 };
