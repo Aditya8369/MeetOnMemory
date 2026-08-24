@@ -62,6 +62,11 @@ vi.mock("react-i18next", () => ({
         "navbar.myProfile": "My Profile",
         "navbar.settings": "Settings",
         "navbar.logout": "Logout",
+        "navbar.parkingLot": "Parking Lot",
+        "navbar.meetingSeries": "Meeting Series",
+        "navbar.meetingTemplates": "Meeting Templates",
+        "navbar.compareMeetings": "Compare Meetings",
+        "navbar.recycleBin": "Recycle Bin",
       };
       return translations[key] || key;
     },
@@ -157,6 +162,19 @@ describe("Navbar Grouped Navigation & Feature Route Discovery (#2024)", () => {
     ).toBeInTheDocument();
     expect(
       screen.getByRole("button", { name: /admin menu/i }),
+    ).toBeInTheDocument();
+  });
+
+  it("opens Meetings dropdown and includes the parking lot backlog route", async () => {
+    renderNavbar("admin");
+
+    fireEvent.click(screen.getByRole("button", { name: /meetings menu/i }));
+
+    expect(
+      screen.getByRole("menu", { name: /meetings sub-navigation/i }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("menuitem", { name: /parking lot/i }),
     ).toBeInTheDocument();
   });
 

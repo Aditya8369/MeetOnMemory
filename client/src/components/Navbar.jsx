@@ -432,7 +432,8 @@ const Navbar = () => {
           currentPath === "/upload-meeting" ||
           currentPath === "/summaries" ||
           currentPath === "/reports" ||
-          currentPath === "/policies"
+          currentPath === "/policies" ||
+          currentPath === "/parking-lot"
         );
       }
       if (tabPath === "/meeting-series") {
@@ -487,6 +488,12 @@ const Navbar = () => {
             label: t("navbar.recycleBin"),
             href: "/meetings/recycle-bin",
             icon: Trash2,
+            permission: { resource: "meetings", action: "view" },
+          },
+          {
+            label: t("navbar.parkingLot"),
+            href: "/parking-lot",
+            icon: Lightbulb,
             permission: { resource: "meetings", action: "view" },
           },
         ],

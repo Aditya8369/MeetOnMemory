@@ -65,6 +65,7 @@ import RecapScheduleDashboard from "../pages/RecapScheduleDashboard.jsx";
 import MeetingHealthDashboard from "../pages/MeetingHealthDashboard.jsx";
 import AutomationRules from "../pages/AutomationRules.jsx";
 import TopicExplorer from "../pages/TopicExplorer.jsx";
+import ParkingLotBacklogPage from "../pages/ParkingLotBacklogPage.jsx";
 import ConflictResolution from "../pages/ConflictResolution.jsx";
 import SpeakingTimeTrends from "../pages/SpeakingTimeTrends.jsx";
 import SpeakingTimeCompare from "../pages/SpeakingTimeCompare.jsx";
@@ -362,6 +363,14 @@ const ProtectedRoutes = (
       element={
         <ProtectedRoute resource="reports" action="view">
           <TopicExplorer />
+        </ProtectedRoute>
+      }
+    />
+    <Route
+      path="/parking-lot"
+      element={
+        <ProtectedRoute resource="meetings" action="view">
+          <ParkingLotBacklogPage />
         </ProtectedRoute>
       }
     />
