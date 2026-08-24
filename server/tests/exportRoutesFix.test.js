@@ -83,9 +83,7 @@ describe("Export Routes API (/api/export-templates & /api/exports) (#2003)", () 
     };
     ExportTemplate.create.mockResolvedValue({ _id: "t-2", ...payload });
 
-    const res = await request(app)
-      .post("/api/export-templates")
-      .send(payload);
+    const res = await request(app).post("/api/export-templates").send(payload);
 
     expect(res.status).toBe(201);
     expect(res.body.success).toBe(true);
