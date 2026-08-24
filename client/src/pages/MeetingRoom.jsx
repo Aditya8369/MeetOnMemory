@@ -1,98 +1,84 @@
-import React, {
-  useCallback,
-  useEffect,
-  useState,
-  useRef,
-  useContext,
-  useMemo,
-} from "react";
-import { useParams, useNavigate } from "react-router-dom";
-import { io } from "socket.io-client";
-import { useAuth } from "@clerk/clerk-react";
-import Peer from "simple-peer";
-import { toast } from "react-toastify";
-import { Loader2, CheckCircle2 } from "lucide-react";
-import CollaborativeEditor from "../components/meetings/CollaborativeEditor.jsx";
-import ParkingLotPanel from "../components/meetings/ParkingLotPanel.jsx";
-import BreakoutRoomPanel from "../components/meeting-room/BreakoutRoomPanel.jsx";
-import PollSection from "../components/meeting-details/PollSection.jsx";
-import AgendaTimer from "../components/meeting-details/AgendaTimer.jsx";
-import PeerVideo from "../components/meetings/PeerVideo.jsx";
-import MeetingHeader from "../components/meetings/MeetingHeader.jsx";
-import MeetingControlBar from "../components/meetings/MeetingControlBar.jsx";
-import TranscriptPanel from "../components/meetings/TranscriptPanel.jsx";
-import MultiLanguageTranscript from "../components/meeting-room/MultiLanguageTranscript.jsx";
-import LiveCaptions from "../components/meetings/LiveCaptions.jsx";
-import LiveIcebreakerBanner from "../components/meeting-room/LiveIcebreakerBanner.jsx";
+import React, { useCallback, useEffect, useState, useRef, useContext, useMemo } from 'react'
+import { useParams, useNavigate } from 'react-router-dom'
+import { io } from 'socket.io-client'
+import { useAuth } from '@clerk/clerk-react'
+import Peer from 'simple-peer'
+import { toast } from 'react-toastify'
+import { Loader2, CheckCircle2 } from 'lucide-react'
+import CollaborativeEditor from '../components/meetings/CollaborativeEditor.jsx'
+import ParkingLotPanel from '../components/meetings/ParkingLotPanel.jsx'
+import BreakoutRoomPanel from '../components/meeting-room/BreakoutRoomPanel.jsx'
+import PollSection from '../components/meeting-details/PollSection.jsx'
+import AgendaTimer from '../components/meeting-details/AgendaTimer.jsx'
+import PeerVideo from '../components/meetings/PeerVideo.jsx'
+import MeetingHeader from '../components/meetings/MeetingHeader.jsx'
+import MeetingControlBar from '../components/meetings/MeetingControlBar.jsx'
+import TranscriptPanel from '../components/meetings/TranscriptPanel.jsx'
+import MultiLanguageTranscript from '../components/meeting-room/MultiLanguageTranscript.jsx'
+import LiveCaptions from '../components/meetings/LiveCaptions.jsx'
+import LiveIcebreakerBanner from '../components/meeting-room/LiveIcebreakerBanner.jsx'
+import CollaborativeCanvas from '../components/meeting-room/CollaborativeCanvas.jsx'
 
-import DeviceSetupModal from "../components/meetings/DeviceSetupModal.jsx";
-import axios from "../services/apiClient.js";
-import FacilitatorDashboard from "./FacilitatorDashboard.jsx";
-import useWebRTC from "../hooks/useWebRTC";
-import useDevicePermission from "../hooks/useDevicePermission";
-import useLiveTranscription from "../hooks/useLiveTranscription";
-import useReactions from "../hooks/useReactions.js";
-import ReactionBar from "../components/meetings/ReactionBar.jsx";
-import ReactionOverlay from "../components/meetings/ReactionOverlay.jsx";
-import {
-  getMeetingVideoGridClass,
-  MEETING_VIDEO_TILE_CLASS,
-} from "../utils/meetingVideoGrid.js";
-import {
-  getTrackEnabledState,
-  resolveMeetingMediaStream,
-} from "../utils/mediaStream.js";
-import AppContent from "../context/AppContent.js";
-import {
-  createClerkSocketOptions,
-  getClerkBearerToken,
-} from "../services/apiClient.js";
+import DeviceSetupModal from '../components/meetings/DeviceSetupModal.jsx'
+import axios from '../services/apiClient.js'
+import FacilitatorDashboard from './FacilitatorDashboard.jsx'
+import useWebRTC from '../hooks/useWebRTC'
+import useDevicePermission from '../hooks/useDevicePermission'
+import useLiveTranscription from '../hooks/useLiveTranscription'
+import useReactions from '../hooks/useReactions.js'
+import ReactionBar from '../components/meetings/ReactionBar.jsx'
+import ReactionOverlay from '../components/meetings/ReactionOverlay.jsx'
+import { getMeetingVideoGridClass, MEETING_VIDEO_TILE_CLASS } from '../utils/meetingVideoGrid.js'
+import { getTrackEnabledState, resolveMeetingMediaStream } from '../utils/mediaStream.js'
+import AppContent from '../context/AppContent.js'
+import { createClerkSocketOptions, getClerkBearerToken } from '../services/apiClient.js'
 
 /** Build join/signaling identity from authenticated AppContext user (Issue #1211). */
 const buildLocalUserInfo = (userData) => ({
   id: userData?._id || userData?.id || undefined,
-  name: userData?.name || "Participant",
-  email: userData?.email || "",
-  profilePic: userData?.profilePic || "",
-});
+  name: userData?.name || 'Participant',
+  email: userData?.email || '',
+  profilePic: userData?.profilePic || '',
+})
 
-/** Side panel ids for exclusive panel visibility (Issue #1648). */
+/** Side panel ids for exclusive panel visibility (Issue #1648, #2234). */
 const MEETING_ROOM_PANELS = {
-  NOTES: "notes",
-  PARKING_LOT: "parkingLot",
-  TRANSCRIPT: "transcript",
-  BREAKOUT_ROOMS: "breakoutRooms",
-  POLLS: "polls",
-  AGENDA: "agenda",
-};
+  NOTES: 'notes',
+  PARKING_LOT: 'parkingLot',
+  TRANSCRIPT: 'transcript',
+  BREAKOUT_ROOMS: 'breakoutRooms',
+  POLLS: 'polls',
+  AGENDA: 'agenda',
+  CANVAS: 'canvas',
+}
 
 const MeetingRoom = () => {
-  const { roomId } = useParams();
-  const navigate = useNavigate();
-  const { userData } = useContext(AppContent);
-  const { isSignedIn, isLoaded, userId } = useAuth();
-  const [socket, setSocket] = useState(null);
-  const [meeting, setMeeting] = useState(null);
-  const [userRole, setUserRole] = useState(null);
-  const localUserInfo = useMemo(() => buildLocalUserInfo(userData), [userData]);
-  const localUserInfoRef = useRef(localUserInfo);
-  localUserInfoRef.current = localUserInfo;
+  const { roomId } = useParams()
+  const navigate = useNavigate()
+  const { userData } = useContext(AppContent)
+  const { isSignedIn, isLoaded, userId } = useAuth()
+  const [socket, setSocket] = useState(null)
+  const [meeting, setMeeting] = useState(null)
+  const [userRole, setUserRole] = useState(null)
+  const localUserInfo = useMemo(() => buildLocalUserInfo(userData), [userData])
+  const localUserInfoRef = useRef(localUserInfo)
+  localUserInfoRef.current = localUserInfo
 
-  const screenTrackRef = useRef();
-  const peersRef = useRef([]);
-  const backendUrl = import.meta.env.VITE_BACKEND_URL;
+  const screenTrackRef = useRef()
+  const peersRef = useRef([])
+  const backendUrl = import.meta.env.VITE_BACKEND_URL
 
-  const [joined, setJoined] = useState(false);
-  const [loading, setLoading] = useState(false);
-  const [meetingEnded, setMeetingEnded] = useState(false);
+  const [joined, setJoined] = useState(false)
+  const [loading, setLoading] = useState(false)
+  const [meetingEnded, setMeetingEnded] = useState(false)
   // eslint-disable-next-line no-unused-vars
-  const [mediaError, setMediaError] = useState(null);
+  const [mediaError, setMediaError] = useState(null)
 
-  const [micOn, setMicOn] = useState(true);
-  const [cameraOn, setCameraOn] = useState(true);
-  const [isScreenSharing, setIsScreenSharing] = useState(false);
+  const [micOn, setMicOn] = useState(true)
+  const [cameraOn, setCameraOn] = useState(true)
+  const [isScreenSharing, setIsScreenSharing] = useState(false)
 
-  const [peers, setPeers] = useState([]);
+  const [peers, setPeers] = useState([])
 
   // Shared Timer State
   const [timerState, setTimerState] = useState({
@@ -100,35 +86,48 @@ const MeetingRoom = () => {
     elapsed: 0,
     remaining: 0,
     currentAgendaItem: null,
-  });
-  const timerStateRef = useRef(timerState);
+  })
+  const timerStateRef = useRef(timerState)
 
-  const [activePanel, setActivePanel] = useState(null);
+  const [activePanel, setActivePanel] = useState(null)
 
   const togglePanel = useCallback((panel) => {
-    setActivePanel((current) => (current === panel ? null : panel));
-  }, []);
+    setActivePanel((current) => (current === panel ? null : panel))
+  }, [])
 
   const closePanel = useCallback(() => {
-    setActivePanel(null);
-  }, []);
+    setActivePanel(null)
+  }, [])
 
-  const showNotes = activePanel === MEETING_ROOM_PANELS.NOTES;
-  const showParkingLot = activePanel === MEETING_ROOM_PANELS.PARKING_LOT;
-  const showTranscript = activePanel === MEETING_ROOM_PANELS.TRANSCRIPT;
-  const showBreakoutRooms = activePanel === MEETING_ROOM_PANELS.BREAKOUT_ROOMS;
-  const showPolls = activePanel === MEETING_ROOM_PANELS.POLLS;
-  const showAgenda = activePanel === MEETING_ROOM_PANELS.AGENDA;
+  const showNotes = activePanel === MEETING_ROOM_PANELS.NOTES
+  const showParkingLot = activePanel === MEETING_ROOM_PANELS.PARKING_LOT
+  const showTranscript = activePanel === MEETING_ROOM_PANELS.TRANSCRIPT
+  const showBreakoutRooms = activePanel === MEETING_ROOM_PANELS.BREAKOUT_ROOMS
+  const showPolls = activePanel === MEETING_ROOM_PANELS.POLLS
+  const showAgenda = activePanel === MEETING_ROOM_PANELS.AGENDA
+  const showCanvas = activePanel === MEETING_ROOM_PANELS.CANVAS
+
+  // Canvas color assignment based on user identity for remote cursor distinction
+  const canvasColor = useMemo(() => {
+    const COLORS = ['#6366f1', '#ef4444', '#10b981', '#f59e0b', '#8b5cf6', '#ec4899']
+    const id = userData?._id || userId || ''
+    let hash = 0
+    for (let i = 0; i < id.length; i++) {
+      hash = (hash << 5) - hash + id.charCodeAt(i)
+      hash |= 0
+    }
+    return COLORS[Math.abs(hash) % COLORS.length]
+  }, [userData, userId])
 
   // Transcription state
-  const [showCaptions] = useState(true);
-  const [captions, setCaptions] = useState([]);
-  const [transcriptSegments, setTranscriptSegments] = useState([]);
-  const [transcriptionEnabled, setTranscriptionEnabled] = useState(false);
+  const [showCaptions] = useState(true)
+  const [captions, setCaptions] = useState([])
+  const [transcriptSegments, setTranscriptSegments] = useState([])
+  const [transcriptionEnabled, setTranscriptionEnabled] = useState(false)
 
   // Device permission setup
-  const [deviceSetupDone, setDeviceSetupDone] = useState(false);
-  const permission = useDevicePermission();
+  const [deviceSetupDone, setDeviceSetupDone] = useState(false)
+  const permission = useDevicePermission()
 
   // WebRTC
   const { socketRef, userVideoRef, streamRef } = useWebRTC(roomId, {
@@ -136,21 +135,17 @@ const MeetingRoom = () => {
     setCaptions,
     setTranscriptSegments,
     setTranscriptionEnabled,
-  });
+  })
 
   // Transcription
-  const { toggleTranscription } = useLiveTranscription(
-    roomId,
-    socketRef,
-    streamRef,
-  );
+  const { toggleTranscription } = useLiveTranscription(roomId, socketRef, streamRef)
 
   // Reactions
-  const { reactions, sendReaction, onCooldown } = useReactions(roomId, socket);
+  const { reactions, sendReaction, onCooldown } = useReactions(roomId, socket)
 
   // Local timer tick for smooth UI updates
   useEffect(() => {
-    let interval;
+    let interval
     if (timerState.isRunning && !meetingEnded) {
       interval = setInterval(() => {
         setTimerState((prev) => {
@@ -158,132 +153,124 @@ const MeetingRoom = () => {
             ...prev,
             elapsed: prev.elapsed + 1,
             remaining: Math.max(0, prev.remaining - 1),
-          };
-          timerStateRef.current = next;
-          return next;
-        });
-      }, 1000);
+          }
+          timerStateRef.current = next
+          return next
+        })
+      }, 1000)
     }
-    return () => clearInterval(interval);
-  }, [timerState.isRunning, meetingEnded]);
+    return () => clearInterval(interval)
+  }, [timerState.isRunning, meetingEnded])
 
   useEffect(() => {
-    if (!roomId) return;
+    if (!roomId) return
     const fetchMeetingData = async () => {
       try {
         const [meetingRes, rolesRes] = await Promise.all([
           axios.get(`/api/meetings/${roomId}`),
           axios.get(`/api/meetings/${roomId}/roles`),
-        ]);
-        setMeeting(meetingRes.data.meeting);
-        const myRoleObj = rolesRes.data.find(
-          (r) => r.userId?._id === userId || r.userId === userId,
-        );
+        ])
+        setMeeting(meetingRes.data.meeting)
+        const myRoleObj = rolesRes.data.find((r) => r.userId?._id === userId || r.userId === userId)
         if (myRoleObj) {
-          setUserRole(myRoleObj.role);
+          setUserRole(myRoleObj.role)
         }
       } catch (error) {
-        console.error("Failed to fetch meeting data:", error);
+        console.error('Failed to fetch meeting data:', error)
       }
-    };
-    fetchMeetingData();
-  }, [roomId, userId]);
+    }
+    fetchMeetingData()
+  }, [roomId, userId])
 
   const setupSocketListeners = (activeSocket) => {
-    const userInfo = localUserInfoRef.current;
-    activeSocket.emit("join-meeting", { roomId, userInfo });
+    const userInfo = localUserInfoRef.current
+    activeSocket.emit('join-meeting', { roomId, userInfo })
 
-    activeSocket.on("reconnect_attempt", async () => {
-      const token = await getClerkBearerToken();
+    activeSocket.on('reconnect_attempt', async () => {
+      const token = await getClerkBearerToken()
       if (activeSocket.auth) {
-        activeSocket.auth.token = token;
+        activeSocket.auth.token = token
       } else {
-        activeSocket.auth = { token };
+        activeSocket.auth = { token }
       }
-    });
+    })
 
-    activeSocket.on("all-users", (users) => {
-      const peersArr = [];
+    activeSocket.on('all-users', (users) => {
+      const peersArr = []
       users.forEach((user) => {
-        const peer = createPeer(
-          user.socketId,
-          activeSocket.id,
-          streamRef.current,
-        );
+        const peer = createPeer(user.socketId, activeSocket.id, streamRef.current)
         peersRef.current.push({
           peerID: user.socketId,
           peer,
           userInfo: user,
-        });
+        })
         peersArr.push({
           peerID: user.socketId,
           peer,
           userInfo: user,
-        });
-      });
-      setPeers(peersArr);
-    });
+        })
+      })
+      setPeers(peersArr)
+    })
 
-    activeSocket.on("user-joined", (user) => {
-      toast.info(`👋 Participant joined`);
-      const peer = addPeer(user.socketId, activeSocket.id, streamRef.current);
+    activeSocket.on('user-joined', (user) => {
+      toast.info(`👋 Participant joined`)
+      const peer = addPeer(user.socketId, activeSocket.id, streamRef.current)
       peersRef.current.push({
         peerID: user.socketId,
         peer,
         userInfo: user,
-      });
+      })
 
-      setPeers([...peersRef.current]);
-    });
+      setPeers([...peersRef.current])
+    })
 
     // Timer synchronization event
-    activeSocket.on("timer-sync", (serverState) => {
-      setTimerState((prev) => ({ ...prev, ...serverState }));
-      timerStateRef.current = { ...timerStateRef.current, ...serverState };
-    });
+    activeSocket.on('timer-sync', (serverState) => {
+      setTimerState((prev) => ({ ...prev, ...serverState }))
+      timerStateRef.current = { ...timerStateRef.current, ...serverState }
+    })
 
-    activeSocket.on("user-joined-signal", (payload) => {
-      const item = peersRef.current.find((p) => p.peerID === payload.callerID);
+    activeSocket.on('user-joined-signal', (payload) => {
+      const item = peersRef.current.find((p) => p.peerID === payload.callerID)
       if (item) {
-        item.peer.signal(payload.signal);
+        item.peer.signal(payload.signal)
       }
-    });
+    })
 
-    activeSocket.on("receiving-returned-signal", (payload) => {
-      const item = peersRef.current.find((p) => p.peerID === payload.id);
+    activeSocket.on('receiving-returned-signal', (payload) => {
+      const item = peersRef.current.find((p) => p.peerID === payload.id)
       if (item) {
-        item.peer.signal(payload.signal);
+        item.peer.signal(payload.signal)
       }
-    });
+    })
 
-    activeSocket.on("user-left", (id) => {
-      toast.error(`🚪 Participant left`);
-      const peerObj = peersRef.current.find((p) => p.peerID === id);
+    activeSocket.on('user-left', (id) => {
+      toast.error(`🚪 Participant left`)
+      const peerObj = peersRef.current.find((p) => p.peerID === id)
       if (peerObj) {
-        peerObj.peer.destroy();
+        peerObj.peer.destroy()
       }
-      peersRef.current = peersRef.current.filter((p) => p.peerID !== id);
-      setPeers([...peersRef.current]);
-    });
+      peersRef.current = peersRef.current.filter((p) => p.peerID !== id)
+      setPeers([...peersRef.current])
+    })
 
     // Transcription events
-    activeSocket.on("transcript-partial", (data) => {
+    activeSocket.on('transcript-partial', (data) => {
       if (showCaptions) {
         setCaptions((prev) => [
           ...prev.slice(-4),
           { text: data.text, isFinal: false, timestamp: data.timestamp },
-        ]);
+        ])
       }
-    });
+    })
 
-    activeSocket.on("transcript-final", (data) => {
-      const { segment } = data;
+    activeSocket.on('transcript-final', (data) => {
+      const { segment } = data
       setCaptions((prev) => {
         // Check for exact duplicate in captions
-        const exists = prev.some(
-          (c) => c.text === segment.text && c.timestamp === data.timestamp,
-        );
-        if (exists) return prev;
+        const exists = prev.some((c) => c.text === segment.text && c.timestamp === data.timestamp)
+        if (exists) return prev
         return [
           ...prev.slice(-4),
           {
@@ -292,264 +279,260 @@ const MeetingRoom = () => {
             isFinal: true,
             timestamp: data.timestamp,
           },
-        ];
-      });
+        ]
+      })
       setTranscriptSegments((prev) => {
         const exists = prev.some(
           (s) =>
             s.startTime === segment.startTime &&
             s.text === segment.text &&
             s.speaker === segment.speaker,
-        );
-        if (exists) return prev;
-        return [...prev, segment];
-      });
-    });
+        )
+        if (exists) return prev
+        return [...prev, segment]
+      })
+    })
 
-    activeSocket.on("transcription-started", () => {
-      setTranscriptionEnabled(true);
-      toast.success("🎙️ Live transcription started");
-    });
+    activeSocket.on('transcription-started', () => {
+      setTranscriptionEnabled(true)
+      toast.success('🎙️ Live transcription started')
+    })
 
-    activeSocket.on("transcription-stopped", () => {
-      setTranscriptionEnabled(false);
-      toast.info("🎙️ Live transcription stopped");
-    });
+    activeSocket.on('transcription-stopped', () => {
+      setTranscriptionEnabled(false)
+      toast.info('🎙️ Live transcription stopped')
+    })
 
-    activeSocket.on("transcription-error", (data) => {
-      toast.error(`Transcription error: ${data.message}`);
-      setTranscriptionEnabled(false);
-    });
-  };
+    activeSocket.on('transcription-error', (data) => {
+      toast.error(`Transcription error: ${data.message}`)
+      setTranscriptionEnabled(false)
+    })
+  }
 
   // Connect & Rebind socket dynamically when Clerk session or token changes
   useEffect(() => {
-    if (!joined || !isSignedIn || !isLoaded) return;
+    if (!joined || !isSignedIn || !isLoaded) return
 
-    let active = true;
-    let newSocket = null;
+    let active = true
+    let newSocket = null
 
     const connectAndBind = async () => {
       try {
-        setLoading(true);
+        setLoading(true)
         // Clear previous connection
         if (socketRef.current) {
-          socketRef.current.disconnect();
-          socketRef.current = null;
-          setSocket(null);
+          socketRef.current.disconnect()
+          socketRef.current = null
+          setSocket(null)
         }
 
         const opts = await createClerkSocketOptions({
-          transports: ["websocket"],
-        });
-        if (!active) return;
+          transports: ['websocket'],
+        })
+        if (!active) return
 
-        newSocket = io(backendUrl, opts);
-        socketRef.current = newSocket;
-        setSocket(newSocket);
+        newSocket = io(backendUrl, opts)
+        socketRef.current = newSocket
+        setSocket(newSocket)
 
-        setupSocketListeners(newSocket);
-        setLoading(false);
+        setupSocketListeners(newSocket)
+        setLoading(false)
       } catch (err) {
-        console.error("Socket rebinding error:", err);
-        setLoading(false);
+        console.error('Socket rebinding error:', err)
+        setLoading(false)
       }
-    };
+    }
 
-    connectAndBind();
+    connectAndBind()
 
     return () => {
-      active = false;
+      active = false
       if (newSocket) {
-        newSocket.disconnect();
+        newSocket.disconnect()
       }
-    };
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [userId, isSignedIn, isLoaded, joined, backendUrl]);
+  }, [userId, isSignedIn, isLoaded, joined, backendUrl])
 
   const joinMeeting = async (providedStream = null, joinOptions = {}) => {
     try {
-      setLoading(true);
+      setLoading(true)
 
-      const { mode = null } = joinOptions;
+      const { mode = null } = joinOptions
       const stream = await resolveMeetingMediaStream({
         providedStream,
         mode,
         videoDeviceId: permission.selectedCamera,
         audioDeviceId: permission.selectedMicrophone,
-      });
+      })
 
-      streamRef.current = stream;
-      const trackState = getTrackEnabledState(stream);
-      setMicOn(trackState.micOn);
-      setCameraOn(trackState.cameraOn);
-      setJoined(true);
+      streamRef.current = stream
+      const trackState = getTrackEnabledState(stream)
+      setMicOn(trackState.micOn)
+      setCameraOn(trackState.cameraOn)
+      setJoined(true)
 
       setTimeout(() => {
         if (userVideoRef.current) {
-          userVideoRef.current.srcObject = stream;
+          userVideoRef.current.srcObject = stream
         }
-      }, 100);
+      }, 100)
 
       // Loading state will be turned off in the react socket useEffect upon successful connect
     } catch (err) {
-      console.error("Camera/Mic access denied:", err);
-      let errMsg =
-        "Camera or microphone access denied. Please enable them and retry.";
-      if (err.name === "NotFoundError" || err.name === "DevicesNotFoundError") {
-        errMsg = "Required media devices (camera or microphone) not found.";
-      } else if (
-        err.name === "NotAllowedError" ||
-        err.name === "PermissionDeniedError"
-      ) {
+      console.error('Camera/Mic access denied:', err)
+      let errMsg = 'Camera or microphone access denied. Please enable them and retry.'
+      if (err.name === 'NotFoundError' || err.name === 'DevicesNotFoundError') {
+        errMsg = 'Required media devices (camera or microphone) not found.'
+      } else if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') {
         errMsg =
-          "Permission denied. Please allow camera and microphone access in your browser settings.";
+          'Permission denied. Please allow camera and microphone access in your browser settings.'
       }
-      setMediaError(errMsg);
-      toast.error(errMsg);
-      setLoading(false);
-      setDeviceSetupDone(false);
+      setMediaError(errMsg)
+      toast.error(errMsg)
+      setLoading(false)
+      setDeviceSetupDone(false)
     }
-  };
+  }
 
   const createPeer = (userToSignal, callerID, stream) => {
     const peer = new Peer({
       initiator: true,
       trickle: false,
       stream,
-    });
+    })
 
-    peer.on("signal", (signal) => {
-      socketRef.current.emit("sending-signal", {
+    peer.on('signal', (signal) => {
+      socketRef.current.emit('sending-signal', {
         userToSignal,
         callerID,
         signal,
         // Server ignores this and uses authenticated socket.user (#1211).
         userInfo: localUserInfoRef.current,
-      });
-    });
+      })
+    })
 
-    return peer;
-  };
+    return peer
+  }
 
   const addPeer = (incomingSignal, callerID, stream) => {
     const peer = new Peer({
       initiator: false,
       trickle: false,
       stream,
-    });
+    })
 
-    peer.on("signal", (signal) => {
-      socketRef.current.emit("returning-signal", { signal, callerID });
-    });
+    peer.on('signal', (signal) => {
+      socketRef.current.emit('returning-signal', { signal, callerID })
+    })
 
-    return peer;
-  };
+    return peer
+  }
 
   const leaveMeeting = useCallback(() => {
-    setMeetingEnded(true);
+    setMeetingEnded(true)
 
-    streamRef.current?.getTracks().forEach((track) => track.stop());
-    screenTrackRef.current?.getTracks().forEach((track) => track.stop());
+    streamRef.current?.getTracks().forEach((track) => track.stop())
+    screenTrackRef.current?.getTracks().forEach((track) => track.stop())
 
-    socketRef.current?.disconnect();
+    socketRef.current?.disconnect()
 
-    setJoined(false);
-    setSocket(null);
+    setJoined(false)
+    setSocket(null)
 
     setTimeout(() => {
-      setMeetingEnded(false);
-      navigate("/dashboard");
-    }, 4000);
-  }, [navigate, socketRef, streamRef]);
+      setMeetingEnded(false)
+      navigate('/dashboard')
+    }, 4000)
+  }, [navigate, socketRef, streamRef])
 
   // Cleanly handle logout during an active meeting
   useEffect(() => {
     if (joined && isLoaded && !isSignedIn) {
-      leaveMeeting();
+      leaveMeeting()
     }
-  }, [isSignedIn, isLoaded, joined, leaveMeeting]);
+  }, [isSignedIn, isLoaded, joined, leaveMeeting])
 
   // Toggle Media Handlers
   const toggleMic = () => {
     if (streamRef.current) {
-      const audioTrack = streamRef.current.getAudioTracks()[0];
+      const audioTrack = streamRef.current.getAudioTracks()[0]
       if (audioTrack) {
-        audioTrack.enabled = !micOn;
-        setMicOn(!micOn);
+        audioTrack.enabled = !micOn
+        setMicOn(!micOn)
       }
     }
-  };
+  }
 
   const toggleCamera = () => {
     if (streamRef.current) {
-      const videoTrack = streamRef.current.getVideoTracks()[0];
+      const videoTrack = streamRef.current.getVideoTracks()[0]
       if (videoTrack) {
-        videoTrack.enabled = !cameraOn;
-        setCameraOn(!cameraOn);
+        videoTrack.enabled = !cameraOn
+        setCameraOn(!cameraOn)
       }
     }
-  };
+  }
 
   const toggleScreenShare = async () => {
     if (!isScreenSharing) {
       try {
         const screenStream = await navigator.mediaDevices.getDisplayMedia({
           video: { cursor: true },
-        });
-        const screenTrack = screenStream.getVideoTracks()[0];
+        })
+        const screenTrack = screenStream.getVideoTracks()[0]
 
         peersRef.current.forEach(({ peer }) => {
-          const videoTrack = streamRef.current.getVideoTracks()[0];
-          peer.replaceTrack(videoTrack, screenTrack, streamRef.current);
-        });
+          const videoTrack = streamRef.current.getVideoTracks()[0]
+          peer.replaceTrack(videoTrack, screenTrack, streamRef.current)
+        })
 
         screenTrack.onended = () => {
-          stopScreenShare();
-        };
+          stopScreenShare()
+        }
 
-        userVideoRef.current.srcObject = screenStream;
-        screenTrackRef.current = screenStream;
-        setIsScreenSharing(true);
+        userVideoRef.current.srcObject = screenStream
+        screenTrackRef.current = screenStream
+        setIsScreenSharing(true)
       } catch (err) {
-        console.error("Screen share failed", err);
+        console.error('Screen share failed', err)
       }
     } else {
-      stopScreenShare();
+      stopScreenShare()
     }
-  };
+  }
 
   const stopScreenShare = () => {
-    const videoTrack = streamRef.current.getVideoTracks()[0];
+    const videoTrack = streamRef.current.getVideoTracks()[0]
     peersRef.current.forEach(({ peer }) => {
-      const currentTrack = screenTrackRef.current?.getTracks()[0];
+      const currentTrack = screenTrackRef.current?.getTracks()[0]
       if (currentTrack) {
-        peer.replaceTrack(currentTrack, videoTrack, streamRef.current);
+        peer.replaceTrack(currentTrack, videoTrack, streamRef.current)
       }
-    });
+    })
 
-    screenTrackRef.current?.getTracks().forEach((t) => t.stop());
-    userVideoRef.current.srcObject = streamRef.current;
-    setIsScreenSharing(false);
-  };
+    screenTrackRef.current?.getTracks().forEach((t) => t.stop())
+    userVideoRef.current.srcObject = streamRef.current
+    setIsScreenSharing(false)
+  }
 
   const copyLink = () => {
-    navigator.clipboard.writeText(window.location.href);
-    toast.success("Meeting link copied!");
-  };
+    navigator.clipboard.writeText(window.location.href)
+    toast.success('Meeting link copied!')
+  }
 
   const handleJoinWithStream = (stream) => {
     // Hand off ownership so Device Setup unmount cleanup does not stop tracks.
-    permission.releaseStream();
-    setDeviceSetupDone(true);
-    joinMeeting(stream);
-  };
+    permission.releaseStream()
+    setDeviceSetupDone(true)
+    joinMeeting(stream)
+  }
 
-  const handleJoinWithout = (mode = "observer") => {
-    permission.releaseStream();
-    setDeviceSetupDone(true);
-    joinMeeting(null, { mode });
-  };
+  const handleJoinWithout = (mode = 'observer') => {
+    permission.releaseStream()
+    setDeviceSetupDone(true)
+    joinMeeting(null, { mode })
+  }
 
   return (
     <div className="min-h-screen flex flex-col bg-gray-900 relative overflow-hidden font-sans">
@@ -570,25 +553,22 @@ const MeetingRoom = () => {
       )}
 
       {/* ---------- ACTIVE MEETING SCREEN ---------- */}
-      {joined && !meetingEnded && userRole === "facilitator" && meeting && (
+      {joined && !meetingEnded && userRole === 'facilitator' && meeting && (
         <div className="flex-1 flex flex-col min-h-0">
-          <AgendaTimer
-            meeting={meeting}
-            socket={socketRef?.current || socket}
-          />
+          <AgendaTimer meeting={meeting} socket={socketRef?.current || socket} />
           <FacilitatorDashboard
             meeting={meeting}
             onAdvanceAgenda={() => {
               // emit socket event to advance agenda
             }}
             onNudgeParticipant={() => {
-              toast.success("Nudge sent to participant");
+              toast.success('Nudge sent to participant')
             }}
           />
         </div>
       )}
 
-      {joined && !meetingEnded && userRole !== "facilitator" && (
+      {joined && !meetingEnded && userRole !== 'facilitator' && (
         <div className="flex-1 flex flex-col min-h-0 bg-gray-900 relative">
           <MeetingHeader
             roomId={roomId}
@@ -602,18 +582,10 @@ const MeetingRoom = () => {
           />
           <ReactionOverlay reactions={reactions} />
 
-          <LiveIcebreakerBanner
-            meetingId={roomId}
-            peers={peers}
-            localUserInfo={localUserInfo}
-          />
+          <LiveIcebreakerBanner meetingId={roomId} peers={peers} localUserInfo={localUserInfo} />
 
           {meeting && (
-            <AgendaTimer
-              meeting={meeting}
-              socket={socketRef?.current || socket}
-              compact
-            />
+            <AgendaTimer meeting={meeting} socket={socketRef?.current || socket} compact />
           )}
 
           {/* Main content area: video grid + notes panel */}
@@ -621,7 +593,7 @@ const MeetingRoom = () => {
             {/* Video Grid — responsive by participant count + viewport (#907) */}
             <div
               className={`flex-1 min-h-0 min-w-0 flex flex-col overflow-y-auto overflow-x-hidden bg-gray-900 transition-all duration-300 ${
-                activePanel ? "hidden md:flex" : "flex"
+                activePanel ? 'hidden md:flex' : 'flex'
               }`}
             >
               <div
@@ -631,13 +603,13 @@ const MeetingRoom = () => {
                       (part) =>
                         part.user?.toString() === p.userInfo?.id ||
                         part.user?._id?.toString() === p.userInfo?.id,
-                    );
-                    return participant?.role !== "observer";
-                  }).length + (userRole !== "observer" ? 1 : 0),
+                    )
+                    return participant?.role !== 'observer'
+                  }).length + (userRole !== 'observer' ? 1 : 0),
                 )}`}
               >
                 {/* Local Stream */}
-                {userRole !== "observer" && (
+                {userRole !== 'observer' && (
                   <div className={MEETING_VIDEO_TILE_CLASS}>
                     <video
                       ref={userVideoRef}
@@ -656,24 +628,22 @@ const MeetingRoom = () => {
                           />
                         ) : (
                           <div className="w-16 h-16 sm:w-20 sm:h-20 bg-indigo-600 rounded-full flex items-center justify-center text-2xl sm:text-3xl font-bold text-white shadow-xl">
-                            {(localUserInfo.name || "P")
-                              .charAt(0)
-                              .toUpperCase()}
+                            {(localUserInfo.name || 'P').charAt(0).toUpperCase()}
                           </div>
                         )}
                       </div>
                     )}
                     <div className="absolute bottom-2 left-2 sm:bottom-4 sm:left-4 bg-black/60 px-2 py-1 sm:px-3 sm:py-1.5 rounded-lg backdrop-blur-sm text-white text-xs sm:text-sm flex items-center gap-2 max-w-[calc(100%-1rem)]">
                       <span
-                        className={`w-2 h-2 rounded-full shrink-0 ${micOn ? "bg-green-500" : "bg-red-500"}`}
+                        className={`w-2 h-2 rounded-full shrink-0 ${micOn ? 'bg-green-500' : 'bg-red-500'}`}
                       />
                       <span className="truncate">{localUserInfo.name}</span>
-                      {userRole === "scribe" && (
+                      {userRole === 'scribe' && (
                         <span className="ml-1 bg-blue-500/20 text-blue-300 text-[10px] px-1.5 py-0.5 rounded border border-blue-500/30">
                           📝 Scribe
                         </span>
                       )}
-                      {userRole === "timekeeper" && (
+                      {userRole === 'timekeeper' && (
                         <span className="ml-1 bg-emerald-500/20 text-emerald-300 text-[10px] px-1.5 py-0.5 rounded border border-emerald-500/30">
                           ⏱️ Timekeeper
                         </span>
@@ -694,8 +664,8 @@ const MeetingRoom = () => {
                       (part) =>
                         part.user?.toString() === p.userInfo?.id ||
                         part.user?._id?.toString() === p.userInfo?.id,
-                    );
-                    return participant?.role !== "observer";
+                    )
+                    return participant?.role !== 'observer'
                   })
                   .map((peerObj) => (
                     <PeerVideo
@@ -708,11 +678,9 @@ const MeetingRoom = () => {
 
               {/* Observers Gallery */}
               <div className="bg-gray-950 p-4 border-t border-gray-800">
-                <h3 className="text-gray-400 text-sm font-semibold mb-2">
-                  Observers
-                </h3>
+                <h3 className="text-gray-400 text-sm font-semibold mb-2">Observers</h3>
                 <div className="flex gap-2 overflow-x-auto pb-2">
-                  {userRole === "observer" && (
+                  {userRole === 'observer' && (
                     <div className="w-24 h-24 sm:w-32 sm:h-32 shrink-0 bg-gray-800 rounded-lg overflow-hidden relative border-2 border-gray-700 opacity-60 flex items-center justify-center">
                       <video
                         ref={userVideoRef}
@@ -732,18 +700,15 @@ const MeetingRoom = () => {
                         (part) =>
                           part.user?.toString() === p.userInfo?.id ||
                           part.user?._id?.toString() === p.userInfo?.id,
-                      );
-                      return participant?.role === "observer";
+                      )
+                      return participant?.role === 'observer'
                     })
                     .map((peerObj) => (
                       <div
                         key={peerObj.peerID}
                         className="w-24 h-24 sm:w-32 sm:h-32 shrink-0 bg-gray-800 rounded-lg overflow-hidden relative border-2 border-gray-700 opacity-60 flex items-center justify-center"
                       >
-                        <PeerVideo
-                          peer={peerObj.peer}
-                          userInfo={peerObj.userInfo}
-                        />
+                        <PeerVideo peer={peerObj.peer} userInfo={peerObj.userInfo} />
                       </div>
                     ))}
                 </div>
@@ -768,8 +733,7 @@ const MeetingRoom = () => {
               >
                 <ParkingLotPanel
                   organizationId={
-                    userData?.currentOrganization?._id ||
-                    userData?.organizations?.[0]
+                    userData?.currentOrganization?._id || userData?.organizations?.[0]
                   }
                   meetingId={roomId}
                 />
@@ -784,11 +748,7 @@ const MeetingRoom = () => {
               >
                 <BreakoutRoomPanel
                   meetingId={roomId}
-                  isHost={
-                    userData?.role === "admin" ||
-                    userData?.role === "host" ||
-                    true
-                  }
+                  isHost={userData?.role === 'admin' || userData?.role === 'host' || true}
                   currentUserId={userData?._id || userId}
                   socket={socketRef?.current || socket}
                 />
@@ -815,11 +775,22 @@ const MeetingRoom = () => {
                 className="w-full md:w-[360px] lg:w-[400px] shrink-0 p-4 bg-gray-950 border-l border-gray-800 overflow-y-auto flex flex-col transition-all duration-300"
               >
                 {meeting ? (
-                  <AgendaTimer
-                    meeting={meeting}
-                    socket={socketRef?.current || socket}
-                  />
+                  <AgendaTimer meeting={meeting} socket={socketRef?.current || socket} />
                 ) : null}
+              </div>
+            )}
+
+            {/* Collaborative Canvas Panel (Issue #2234) */}
+            {showCanvas && (
+              <div
+                data-testid="meeting-room-canvas-panel"
+                className="w-full md:w-[480px] lg:w-[560px] shrink-0 bg-gray-950 border-l border-gray-800 overflow-hidden flex flex-col transition-all duration-300"
+              >
+                <CollaborativeCanvas
+                  socket={socketRef?.current || socket}
+                  userId={userData?._id || userId}
+                  userColor={canvasColor}
+                />
               </div>
             )}
 
@@ -834,11 +805,7 @@ const MeetingRoom = () => {
 
           <LiveCaptions showCaptions={showCaptions} captions={captions} />
 
-          <ReactionBar
-            sendReaction={sendReaction}
-            onCooldown={onCooldown}
-            userRole={userRole}
-          />
+          <ReactionBar sendReaction={sendReaction} onCooldown={onCooldown} userRole={userRole} />
 
           <MeetingControlBar
             micOn={micOn}
@@ -861,7 +828,7 @@ const MeetingRoom = () => {
             Processing Meeting Data...
           </h2>
           <p className="text-gray-600 dark:text-gray-400 mt-3 max-w-md leading-relaxed">
-            Our AI is preparing your <strong>transcript</strong> and{" "}
+            Our AI is preparing your <strong>transcript</strong> and{' '}
             <strong>Minutes of Meeting</strong>.
           </p>
           <Loader2 className="animate-spin text-indigo-600 mt-5" size={28} />
@@ -871,7 +838,7 @@ const MeetingRoom = () => {
         </div>
       )}
     </div>
-  );
-};
+  )
+}
 
-export default MeetingRoom;
+export default MeetingRoom

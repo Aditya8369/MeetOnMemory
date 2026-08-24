@@ -1,5 +1,5 @@
-import React, { useContext } from "react";
-import AppContent from "../../context/AppContent.js";
+import React, { useContext } from 'react'
+import AppContent from '../../context/AppContent.js'
 import {
   Clock,
   Users,
@@ -13,7 +13,8 @@ import {
   BarChart3,
   Timer,
   ShieldAlert,
-} from "lucide-react";
+  PenTool,
+} from 'lucide-react'
 
 export default function MeetingHeader({
   roomId,
@@ -26,22 +27,23 @@ export default function MeetingHeader({
   toggleTranscription,
   userRole: propUserRole,
 }) {
-  const { userData } = useContext(AppContent);
-  const userRole = propUserRole || userData?.role || "member";
-  const isViewerOrGuest = userRole === "viewer" || userRole === "guest";
+  const { userData } = useContext(AppContent)
+  const userRole = propUserRole || userData?.role || 'member'
+  const isViewerOrGuest = userRole === 'viewer' || userRole === 'guest'
   const formatTime = (seconds) => {
-    const hrs = Math.floor(seconds / 3600);
-    const mins = Math.floor((seconds % 3600) / 60);
-    const secs = seconds % 60;
-    return `${hrs > 0 ? hrs + ":" : ""}${mins.toString().padStart(2, "0")}:${secs.toString().padStart(2, "0")}`;
-  };
+    const hrs = Math.floor(seconds / 3600)
+    const mins = Math.floor((seconds % 3600) / 60)
+    const secs = seconds % 60
+    return `${hrs > 0 ? hrs + ':' : ''}${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`
+  }
 
-  const isNotesOpen = activePanel === "notes";
-  const isParkingLotOpen = activePanel === "parkingLot";
-  const isTranscriptOpen = activePanel === "transcript";
-  const isBreakoutRoomsOpen = activePanel === "breakoutRooms";
-  const isPollsOpen = activePanel === "polls";
-  const isAgendaOpen = activePanel === "agenda";
+  const isNotesOpen = activePanel === 'notes'
+  const isParkingLotOpen = activePanel === 'parkingLot'
+  const isTranscriptOpen = activePanel === 'transcript'
+  const isBreakoutRoomsOpen = activePanel === 'breakoutRooms'
+  const isPollsOpen = activePanel === 'polls'
+  const isAgendaOpen = activePanel === 'agenda'
+  const isCanvasOpen = activePanel === 'canvas'
 
   return (
     <header
@@ -82,40 +84,34 @@ export default function MeetingHeader({
         {/* Notes Toggle */}
         <button
           type="button"
-          onClick={() => onTogglePanel("notes")}
+          onClick={() => onTogglePanel('notes')}
           aria-pressed={isNotesOpen}
           className={`flex items-center gap-1.5 text-sm font-semibold px-4 py-2 rounded-xl transition-all cursor-pointer ${
             isNotesOpen
-              ? "bg-indigo-600 text-white hover:bg-indigo-700"
-              : "bg-gray-800 text-gray-300 hover:text-white hover:bg-gray-700"
+              ? 'bg-indigo-600 text-white hover:bg-indigo-700'
+              : 'bg-gray-800 text-gray-300 hover:text-white hover:bg-gray-700'
           }`}
-          title={isNotesOpen ? "Hide notes" : "Open collaborative notes"}
+          title={isNotesOpen ? 'Hide notes' : 'Open collaborative notes'}
         >
-          {isNotesOpen ? (
-            <PanelRightClose size={16} />
-          ) : (
-            <NotebookPen size={16} />
-          )}
-          <span className="hidden sm:inline">
-            {isNotesOpen ? "Hide Notes" : "Notes"}
-          </span>
+          {isNotesOpen ? <PanelRightClose size={16} /> : <NotebookPen size={16} />}
+          <span className="hidden sm:inline">{isNotesOpen ? 'Hide Notes' : 'Notes'}</span>
         </button>
 
         {/* Parking Lot Toggle */}
         <button
           type="button"
-          onClick={() => onTogglePanel("parkingLot")}
+          onClick={() => onTogglePanel('parkingLot')}
           aria-pressed={isParkingLotOpen}
           className={`flex items-center gap-1.5 text-sm font-semibold px-4 py-2 rounded-xl transition-all cursor-pointer ${
             isParkingLotOpen
-              ? "bg-indigo-600 text-white hover:bg-indigo-700"
-              : "bg-gray-800 text-gray-300 hover:text-white hover:bg-gray-700"
+              ? 'bg-indigo-600 text-white hover:bg-indigo-700'
+              : 'bg-gray-800 text-gray-300 hover:text-white hover:bg-gray-700'
           }`}
-          title={isParkingLotOpen ? "Hide parking lot" : "Open parking lot"}
+          title={isParkingLotOpen ? 'Hide parking lot' : 'Open parking lot'}
         >
           <Lightbulb size={16} />
           <span className="hidden sm:inline">
-            {isParkingLotOpen ? "Hide Ideas" : "Parking Lot"}
+            {isParkingLotOpen ? 'Hide Ideas' : 'Parking Lot'}
           </span>
         </button>
 
@@ -123,22 +119,18 @@ export default function MeetingHeader({
         {!isViewerOrGuest && (
           <button
             type="button"
-            onClick={() => onTogglePanel("breakoutRooms")}
+            onClick={() => onTogglePanel('breakoutRooms')}
             aria-pressed={isBreakoutRoomsOpen}
             className={`flex items-center gap-1.5 text-sm font-semibold px-4 py-2 rounded-xl transition-all cursor-pointer ${
               isBreakoutRoomsOpen
-                ? "bg-indigo-600 text-white hover:bg-indigo-700"
-                : "bg-gray-800 text-gray-300 hover:text-white hover:bg-gray-700"
+                ? 'bg-indigo-600 text-white hover:bg-indigo-700'
+                : 'bg-gray-800 text-gray-300 hover:text-white hover:bg-gray-700'
             }`}
-            title={
-              isBreakoutRoomsOpen
-                ? "Hide breakout rooms"
-                : "Open breakout rooms"
-            }
+            title={isBreakoutRoomsOpen ? 'Hide breakout rooms' : 'Open breakout rooms'}
           >
             <DoorOpen size={16} />
             <span className="hidden sm:inline">
-              {isBreakoutRoomsOpen ? "Hide Breakout" : "Breakout"}
+              {isBreakoutRoomsOpen ? 'Hide Breakout' : 'Breakout'}
             </span>
           </button>
         )}
@@ -146,37 +138,49 @@ export default function MeetingHeader({
         {/* Polls Toggle */}
         <button
           type="button"
-          onClick={() => onTogglePanel("polls")}
+          onClick={() => onTogglePanel('polls')}
           aria-pressed={isPollsOpen}
           className={`flex items-center gap-1.5 text-sm font-semibold px-4 py-2 rounded-xl transition-all cursor-pointer ${
             isPollsOpen
-              ? "bg-indigo-600 text-white hover:bg-indigo-700"
-              : "bg-gray-800 text-gray-300 hover:text-white hover:bg-gray-700"
+              ? 'bg-indigo-600 text-white hover:bg-indigo-700'
+              : 'bg-gray-800 text-gray-300 hover:text-white hover:bg-gray-700'
           }`}
-          title={isPollsOpen ? "Hide live polls" : "Open live polls"}
+          title={isPollsOpen ? 'Hide live polls' : 'Open live polls'}
         >
           <BarChart3 size={16} />
-          <span className="hidden sm:inline">
-            {isPollsOpen ? "Hide Polls" : "Polls"}
-          </span>
+          <span className="hidden sm:inline">{isPollsOpen ? 'Hide Polls' : 'Polls'}</span>
         </button>
 
         {/* Agenda Timer Toggle */}
         <button
           type="button"
-          onClick={() => onTogglePanel("agenda")}
+          onClick={() => onTogglePanel('agenda')}
           aria-pressed={isAgendaOpen}
           className={`flex items-center gap-1.5 text-sm font-semibold px-4 py-2 rounded-xl transition-all cursor-pointer ${
             isAgendaOpen
-              ? "bg-indigo-600 text-white hover:bg-indigo-700"
-              : "bg-gray-800 text-gray-300 hover:text-white hover:bg-gray-700"
+              ? 'bg-indigo-600 text-white hover:bg-indigo-700'
+              : 'bg-gray-800 text-gray-300 hover:text-white hover:bg-gray-700'
           }`}
-          title={isAgendaOpen ? "Hide live agenda" : "Open live agenda"}
+          title={isAgendaOpen ? 'Hide live agenda' : 'Open live agenda'}
         >
           <Timer size={16} />
-          <span className="hidden sm:inline">
-            {isAgendaOpen ? "Hide Agenda" : "Agenda"}
-          </span>
+          <span className="hidden sm:inline">{isAgendaOpen ? 'Hide Agenda' : 'Agenda'}</span>
+        </button>
+
+        {/* Canvas Toggle */}
+        <button
+          type="button"
+          onClick={() => onTogglePanel('canvas')}
+          aria-pressed={isCanvasOpen}
+          className={`flex items-center gap-1.5 text-sm font-semibold px-4 py-2 rounded-xl transition-all cursor-pointer ${
+            isCanvasOpen
+              ? 'bg-indigo-600 text-white hover:bg-indigo-700'
+              : 'bg-gray-800 text-gray-300 hover:text-white hover:bg-gray-700'
+          }`}
+          title={isCanvasOpen ? 'Hide whiteboard' : 'Open collaborative whiteboard'}
+        >
+          <PenTool size={16} />
+          <span className="hidden sm:inline">{isCanvasOpen ? 'Hide Canvas' : 'Canvas'}</span>
         </button>
 
         {/* Transcription Toggle (gated to non-viewer/guest) */}
@@ -186,19 +190,13 @@ export default function MeetingHeader({
             onClick={toggleTranscription}
             className={`flex items-center gap-1.5 text-sm font-semibold px-4 py-2 rounded-xl transition-all cursor-pointer ${
               transcriptionEnabled
-                ? "bg-green-600 text-white hover:bg-green-700"
-                : "bg-gray-800 text-gray-300 hover:text-white hover:bg-gray-700"
+                ? 'bg-green-600 text-white hover:bg-green-700'
+                : 'bg-gray-800 text-gray-300 hover:text-white hover:bg-gray-700'
             }`}
-            title={
-              transcriptionEnabled
-                ? "Stop transcription"
-                : "Start live transcription"
-            }
+            title={transcriptionEnabled ? 'Stop transcription' : 'Start live transcription'}
           >
             <Captions size={16} />
-            <span className="hidden sm:inline">
-              {transcriptionEnabled ? "Stop" : "Captions"}
-            </span>
+            <span className="hidden sm:inline">{transcriptionEnabled ? 'Stop' : 'Captions'}</span>
           </button>
         ) : (
           <div
@@ -213,21 +211,19 @@ export default function MeetingHeader({
         {/* Transcript Toggle */}
         <button
           type="button"
-          onClick={() => onTogglePanel("transcript")}
+          onClick={() => onTogglePanel('transcript')}
           aria-pressed={isTranscriptOpen}
           className={`flex items-center gap-1.5 text-sm font-semibold px-4 py-2 rounded-xl transition-all cursor-pointer ${
             isTranscriptOpen
-              ? "bg-indigo-600 text-white hover:bg-indigo-700"
-              : "bg-gray-800 text-gray-300 hover:text-white hover:bg-gray-700"
+              ? 'bg-indigo-600 text-white hover:bg-indigo-700'
+              : 'bg-gray-800 text-gray-300 hover:text-white hover:bg-gray-700'
           }`}
-          title={isTranscriptOpen ? "Hide transcript" : "Show transcript"}
+          title={isTranscriptOpen ? 'Hide transcript' : 'Show transcript'}
         >
           <FileText size={16} />
-          <span className="hidden sm:inline">
-            {isTranscriptOpen ? "Hide" : "Transcript"}
-          </span>
+          <span className="hidden sm:inline">{isTranscriptOpen ? 'Hide' : 'Transcript'}</span>
         </button>
       </div>
     </header>
-  );
+  )
 }
