@@ -12,6 +12,7 @@ export * from "./membershipRequestApi";
 export * from "./invitationApi";
 export * from "./webhookApi";
 export * from "./sharedLinkApi";
+export * from "./searchApi.js";
 export * from "./meetingTemplateApi";
 export * from "./tagApi";
 export * from "./attachmentApi";
