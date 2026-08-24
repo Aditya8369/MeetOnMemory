@@ -742,7 +742,8 @@ const Settings = () => {
                         Email Notifications
                       </p>
                       <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-                        Receive notifications via email
+                        Receive meeting reminders, digests, and action item
+                        emails
                       </p>
                     </div>
                     <button
