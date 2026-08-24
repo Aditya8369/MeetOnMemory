@@ -27,6 +27,8 @@ import {
   getDeletedMeetings,
   restoreDeletedMeeting,
   permanentlyDeleteMeeting,
+  getPurgePreviewController,
+  purgeTrashController,
   searchMeetingsByText, // 🆕 NEW: Voice/Text Search
   archiveMeeting,
   restoreMeeting,
@@ -326,6 +328,23 @@ router.get(
   requireOrgMembership,
   requirePermission("meetings", "view"),
   getDeletedMeetings,
+);
+router.get(
+  "/trash/purge-preview",
+  userAuth,
+  requireAdminOrOwner,
+  requireOrgMembership,
+  requirePermission("meetings", "view"),
+  getPurgePreviewController,
+);
+router.delete(
+  "/trash/purge",
+  userAuth,
+  writeLimiter,
+  requireAdminOrOwner,
+  requireOrgMembership,
+  requirePermission("meetings", "edit"),
+  purgeTrashController,
 );
 router.post(
   "/:id/restore-deleted",
