@@ -91,6 +91,9 @@ vi.mock("../../components/meetings/CarryForwardConfig", () => ({
 vi.mock("../../components/meeting-details/DuplicateDetectionPanel", () => ({
   default: () => null,
 }));
+vi.mock("../../components/meeting-details/CommentSection", () => ({
+  default: () => null,
+}));
 vi.mock("../../components/meeting-details/MeetingTimeline", () => ({
   default: () => null,
 }));
