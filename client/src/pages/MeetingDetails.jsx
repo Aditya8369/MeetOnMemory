@@ -51,6 +51,7 @@ import { isMeetingEnded } from "../utils/meetingLifecycle";
 import MeetingRisksPanel from "../components/meetings/MeetingRisksPanel";
 import { Award, ShieldAlert, FileText, Star } from "lucide-react";
 import ExportDialog from "../components/export/ExportDialog";
+import RetentionQuizSection from "../components/meetings/RetentionQuizSection";
 import ResourceConflictsPanel from "../components/meeting-details/ResourceConflictsPanel";
 import SkillEndorsementModal from "../components/meetings/SkillEndorsementModal";
 
@@ -58,16 +59,9 @@ const MeetingDetails = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   const { user: currentUser } = useUser();
-  const { userData } = useContext(AppContent);
+  const { userData } = useContext(AppContent) || {};
   const isViewerOrGuest =
     userData?.role === "viewer" || userData?.role === "guest";
-
-  const dbUserId = currentUser?.publicMetadata?.dbUserId;
-  const participant = meeting?.participants?.find(
-    (p) =>
-      p.user?.toString() === dbUserId || p.user?._id?.toString() === dbUserId,
-  );
-  const userRole = participant?.role || null;
 
   const [meeting, setMeeting] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -79,6 +73,13 @@ const MeetingDetails = () => {
   const [isExportDialogOpen, setIsExportDialogOpen] = useState(false);
   const [isEndorseModalOpen, setIsEndorseModalOpen] = useState(false);
   const [briefingStatus, setBriefingStatus] = useState("idle");
+
+  const dbUserId = currentUser?.publicMetadata?.dbUserId;
+  const participant = meeting?.participants?.find(
+    (p) =>
+      p.user?.toString() === dbUserId || p.user?._id?.toString() === dbUserId,
+  );
+  const userRole = participant?.role || null;
 
   const handleGenerateBriefing = async () => {
     setBriefingStatus("generating");
@@ -439,6 +440,14 @@ const MeetingDetails = () => {
             </div>
           </div>
           <MeetingSummary meeting={meeting} />
+
+          <RetentionQuizSection
+            meeting={meeting}
+            isOrganizer={
+              currentUser?.publicMetadata?.dbUserId === meeting.uploadedBy
+            }
+          />
+
           <div className="mt-6 mb-6">
             <HealthScoreCard
               meetingId={meeting._id}

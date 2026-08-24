@@ -23,7 +23,7 @@ const TRANSCRIPTION_POLL_TIMEOUT_MS = 10 * 60 * 1000;
 
 const MeetingActions = ({ meeting, onDelete, onRename }) => {
   const navigate = useNavigate();
-  const { userData } = useContext(AppContent);
+  const { userData } = useContext(AppContent) || {};
   const isViewerOrGuest =
     userData?.role === "viewer" || userData?.role === "guest";
   const [showDeleteModal, setShowDeleteModal] = useState(false);
