@@ -70,7 +70,8 @@
     "activityFeed": "Activity Feed",
     "tags": "Tag Browser",
     "automationRules": "Automation Rules",
-    "recapSchedule": "Recap Schedule"
+    "recapSchedule": "Recap Schedule",
+    "parkingLot": "Parking Lot"
   },
   "hero": {
     "badge": "AI-Powered Knowledge Management",
