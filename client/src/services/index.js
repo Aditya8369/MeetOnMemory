@@ -41,3 +41,4 @@ export * from "./adminHealthApi";
 export * from "./adminRbacApi";
 export * from "./adminImportanceApi";
 export * from "./exportTemplateApi.js";
+export * from "./skillEndorsementApi";

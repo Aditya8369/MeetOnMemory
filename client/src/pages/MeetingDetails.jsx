@@ -49,8 +49,9 @@ import ClipManager from "../components/meeting-details/ClipManager";
 import HealthScoreCard from "../components/meeting-details/HealthScoreCard";
 import { isMeetingEnded } from "../utils/meetingLifecycle";
 import MeetingRisksPanel from "../components/meetings/MeetingRisksPanel";
-import { Award, ShieldAlert, FileText } from "lucide-react";
+import { Award, ShieldAlert, FileText, Star } from "lucide-react";
 import ExportDialog from "../components/export/ExportDialog";
+import SkillEndorsementModal from "../components/meetings/SkillEndorsementModal";
 
 const MeetingDetails = () => {
   const { id } = useParams();
@@ -75,6 +76,7 @@ const MeetingDetails = () => {
   const [isAnalyticsExpanded, setIsAnalyticsExpanded] = useState(false);
   const [isStoryViewerOpen, setIsStoryViewerOpen] = useState(false);
   const [isExportDialogOpen, setIsExportDialogOpen] = useState(false);
+  const [isEndorseModalOpen, setIsEndorseModalOpen] = useState(false);
   const [briefingStatus, setBriefingStatus] = useState("idle");
 
   const handleGenerateBriefing = async () => {
@@ -309,6 +311,19 @@ const MeetingDetails = () => {
             >
               <FileText className="w-4 h-4" />
               Export Minutes
+            </button>
+            <button
+              onClick={() => setIsEndorseModalOpen(true)}
+              className="flex items-center gap-2 px-4 py-2 bg-amber-500 hover:bg-amber-600 text-white rounded-lg font-medium shadow-sm transition-colors text-sm"
+              disabled={isViewerOrGuest}
+              title={
+                isViewerOrGuest
+                  ? "Viewers cannot endorse peers"
+                  : "Recognize peers for their skills"
+              }
+            >
+              <Star className="w-4 h-4" />
+              Recognize Peers
             </button>
             <button
               onClick={() => setIsStoryViewerOpen(true)}
@@ -629,6 +644,14 @@ const MeetingDetails = () => {
           onClose={() => setIsExportDialogOpen(false)}
         />
       )}
+
+      <SkillEndorsementModal
+        isOpen={isEndorseModalOpen}
+        onClose={() => setIsEndorseModalOpen(false)}
+        meetingId={meeting._id}
+        participants={meeting.participants}
+        currentUser={currentUser}
+      />
     </div>
   );
 };
