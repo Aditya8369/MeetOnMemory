@@ -1,22 +1,22 @@
-import mongoose from "mongoose";
+import mongoose from 'mongoose'
 
 const ActionItemDependencySchema = new mongoose.Schema(
   {
     organizationId: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: "Organization",
+      ref: 'Organization',
       required: true,
       index: true,
     },
     sourceMeetingId: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: "Meeting",
+      ref: 'Meeting',
       required: true,
       index: true,
     },
     targetMeetingId: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: "Meeting",
+      ref: 'Meeting',
       index: true,
     },
     sourceActionItemId: {
@@ -31,8 +31,8 @@ const ActionItemDependencySchema = new mongoose.Schema(
     },
     dependencyType: {
       type: String,
-      enum: ["BLOCKS", "DEPENDS_ON", "RELATES_TO", "PARENT_OF"],
-      default: "BLOCKS",
+      enum: ['BLOCKS', 'DEPENDS_ON', 'RELATES_TO', 'PARENT_OF'],
+      default: 'BLOCKS',
     },
     criticalPathWeight: {
       type: Number,
@@ -42,8 +42,8 @@ const ActionItemDependencySchema = new mongoose.Schema(
     },
     status: {
       type: String,
-      enum: ["ACTIVE", "RESOLVED", "WAIVED"],
-      default: "ACTIVE",
+      enum: ['ACTIVE', 'RESOLVED', 'WAIVED'],
+      default: 'ACTIVE',
     },
     escalationLevel: {
       type: Number,
@@ -62,16 +62,13 @@ const ActionItemDependencySchema = new mongoose.Schema(
   {
     timestamps: true,
   },
-);
+)
 
 ActionItemDependencySchema.index(
   { organizationId: 1, sourceActionItemId: 1, targetActionItemId: 1 },
   { unique: true },
-);
+)
 
-const ActionItemGraph = mongoose.model(
-  "ActionItemGraph",
-  ActionItemDependencySchema,
-);
+const ActionItemGraph = mongoose.model('ActionItemGraph', ActionItemDependencySchema)
 
-export default ActionItemGraph;
+export default ActionItemGraph

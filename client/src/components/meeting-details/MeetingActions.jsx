@@ -1,17 +1,17 @@
-import React, { useState, useRef, useEffect, useContext } from "react";
-import { useNavigate } from "react-router-dom";
-import AppContent from "../../context/AppContent.js";
-import useExport from "../../hooks/useExport.js";
-import { Mic, MicOff, Loader2 } from "lucide-react";
-import { toast } from "react-toastify";
-import apiClient from "../../services/apiClient";
-import ConfirmModal from "../ConfirmModal.jsx";
-import { usePolling } from "../../hooks/usePolling.js";
+import React, { useState, useRef, useEffect, useContext } from 'react'
+import { useNavigate } from 'react-router-dom'
+import AppContent from '../../context/AppContent.js'
+import useExport from '../../hooks/useExport.js'
+import { Mic, MicOff, Loader2 } from 'lucide-react'
+import { toast } from 'react-toastify'
+import apiClient from '../../services/apiClient'
+import ConfirmModal from '../ConfirmModal.jsx'
+import { usePolling } from '../../hooks/usePolling.js'
 import {
   generateICS,
   getGoogleCalendarUrl,
   getOutlookCalendarUrl,
-} from "../../utils/calendarExport.js";
+} from '../../utils/calendarExport.js'
 
 /**
  * Deadline for the post-recording transcription poll (Issue #1455).
@@ -19,182 +19,175 @@ import {
  * The previous poll had none — it ran until the transcript reached a terminal
  * status, which for a job that dies in the queue is never.
  */
-const TRANSCRIPTION_POLL_TIMEOUT_MS = 10 * 60 * 1000;
+const TRANSCRIPTION_POLL_TIMEOUT_MS = 10 * 60 * 1000
 
 const MeetingActions = ({ meeting, onDelete, onRename }) => {
-  const navigate = useNavigate();
-  const { userData } = useContext(AppContent) || {};
-  const isViewerOrGuest =
-    userData?.role === "viewer" || userData?.role === "guest";
-  const [showDeleteModal, setShowDeleteModal] = useState(false);
-  const [showRenameModal, setShowRenameModal] = useState(false);
-  const [newTitle, setNewTitle] = useState("");
-  const [showExportMenu, setShowExportMenu] = useState(false);
-  const [showCalendarMenu, setShowCalendarMenu] = useState(false);
-  const { exportMeeting, isExporting } = useExport();
+  const navigate = useNavigate()
+  const { userData } = useContext(AppContent) || {}
+  const isViewerOrGuest = userData?.role === 'viewer' || userData?.role === 'guest'
+  const [showDeleteModal, setShowDeleteModal] = useState(false)
+  const [showRenameModal, setShowRenameModal] = useState(false)
+  const [newTitle, setNewTitle] = useState('')
+  const [showExportMenu, setShowExportMenu] = useState(false)
+  const [showCalendarMenu, setShowCalendarMenu] = useState(false)
+  const { exportMeeting, isExporting } = useExport()
 
   // Recording state
-  const [isRecording, setIsRecording] = useState(false);
-  const [isProcessing, setIsProcessing] = useState(false);
-  const mediaRecorderRef = useRef(null);
-  const chunksRef = useRef([]);
-  const recordingIntervalRef = useRef(null);
+  const [isRecording, setIsRecording] = useState(false)
+  const [isProcessing, setIsProcessing] = useState(false)
+  const mediaRecorderRef = useRef(null)
+  const chunksRef = useRef([])
+  const recordingIntervalRef = useRef(null)
 
   // Owns the transcription poll below, including its teardown on unmount.
-  const { startPolling } = usePolling();
+  const { startPolling } = usePolling()
 
   const handleDownloadTranscript = () => {
     if (!meeting.transcript) {
-      toast.error("No transcript available to download.");
-      return;
+      toast.error('No transcript available to download.')
+      return
     }
 
-    const blob = new Blob([meeting.transcript], { type: "text/plain" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `${meeting.title || "meeting"}-transcript.txt`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
-  };
+    const blob = new Blob([meeting.transcript], { type: 'text/plain' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `${meeting.title || 'meeting'}-transcript.txt`
+    document.body.appendChild(a)
+    a.click()
+    document.body.removeChild(a)
+    URL.revokeObjectURL(url)
+  }
 
   const handleExport = (format) => {
-    setShowExportMenu(false);
-    exportMeeting(meeting, format);
-  };
+    setShowExportMenu(false)
+    exportMeeting(meeting, format)
+  }
 
   const handleRename = () => {
-    setNewTitle(meeting.title || "");
-    setShowRenameModal(true);
-  };
+    setNewTitle(meeting.title || '')
+    setShowRenameModal(true)
+  }
 
   const confirmRename = () => {
     if (newTitle.trim()) {
-      onRename(meeting._id, newTitle.trim());
-      setShowRenameModal(false);
+      onRename(meeting._id, newTitle.trim())
+      setShowRenameModal(false)
     }
-  };
+  }
 
   const handleDelete = () => {
-    setShowDeleteModal(true);
-  };
+    setShowDeleteModal(true)
+  }
 
   useEffect(() => {
     const handleKeyDown = (e) => {
-      if (e.key === "Escape") {
-        if (showDeleteModal) setShowDeleteModal(false);
-        if (showRenameModal) setShowRenameModal(false);
+      if (e.key === 'Escape') {
+        if (showDeleteModal) setShowDeleteModal(false)
+        if (showRenameModal) setShowRenameModal(false)
       }
-    };
+    }
 
     if (showDeleteModal || showRenameModal) {
-      window.addEventListener("keydown", handleKeyDown);
+      window.addEventListener('keydown', handleKeyDown)
     }
-    return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [showDeleteModal, showRenameModal]);
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [showDeleteModal, showRenameModal])
 
   const handleBackdropClick = (e, closeModal) => {
     if (e.target === e.currentTarget) {
-      closeModal();
+      closeModal()
     }
-  };
+  }
 
   const confirmDelete = () => {
-    onDelete(meeting._id);
-    setShowDeleteModal(false);
-  };
+    onDelete(meeting._id)
+    setShowDeleteModal(false)
+  }
 
   const handleBack = () => {
     if (
       window.history.state &&
-      typeof window.history.state.idx === "number" &&
+      typeof window.history.state.idx === 'number' &&
       window.history.state.idx > 0
     ) {
-      navigate(-1);
+      navigate(-1)
     } else {
-      navigate("/meetings");
+      navigate('/meetings')
     }
-  };
+  }
 
   // Recording handlers
   const startRecording = async () => {
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
 
       const { data } = await apiClient.post(
         `/api/meetings/${meeting._id}/recording/start`,
         {},
         { withCredentials: true },
-      );
+      )
 
       if (!data.success) {
-        throw new Error(data.message || "Failed to start recording");
+        throw new Error(data.message || 'Failed to start recording')
       }
 
-      mediaRecorderRef.current = new MediaRecorder(stream);
-      chunksRef.current = [];
+      mediaRecorderRef.current = new MediaRecorder(stream)
+      chunksRef.current = []
 
       mediaRecorderRef.current.ondataavailable = (event) => {
         if (event.data.size > 0) {
-          chunksRef.current.push(event.data);
+          chunksRef.current.push(event.data)
         }
-      };
+      }
 
-      mediaRecorderRef.current.start();
-      setIsRecording(true);
-      toast.success("Recording started");
+      mediaRecorderRef.current.start()
+      setIsRecording(true)
+      toast.success('Recording started')
 
       recordingIntervalRef.current = setInterval(async () => {
         if (chunksRef.current.length > 0) {
-          const blob = new Blob(chunksRef.current, { type: "audio/webm" });
-          const formData = new FormData();
-          formData.append("audio", blob, "audio.webm");
+          const blob = new Blob(chunksRef.current, { type: 'audio/webm' })
+          const formData = new FormData()
+          formData.append('audio', blob, 'audio.webm')
 
           try {
-            await apiClient.post(
-              `/api/meetings/${meeting._id}/transcript/upload`,
-              formData,
-              { withCredentials: true },
-            );
-            chunksRef.current = [];
+            await apiClient.post(`/api/meetings/${meeting._id}/transcript/upload`, formData, {
+              withCredentials: true,
+            })
+            chunksRef.current = []
           } catch (error) {
-            console.error("Error uploading audio chunk:", error);
+            console.error('Error uploading audio chunk:', error)
           }
         }
-      }, 10000);
+      }, 10000)
     } catch (error) {
-      console.error("Error starting recording:", error);
-      toast.error(error.message || "Failed to start recording");
+      console.error('Error starting recording:', error)
+      toast.error(error.message || 'Failed to start recording')
     }
-  };
+  }
 
   const stopRecording = async () => {
-    if (!mediaRecorderRef.current) return;
+    if (!mediaRecorderRef.current) return
 
-    mediaRecorderRef.current.stop();
-    mediaRecorderRef.current.stream
-      .getTracks()
-      .forEach((track) => track.stop());
+    mediaRecorderRef.current.stop()
+    mediaRecorderRef.current.stream.getTracks().forEach((track) => track.stop())
 
     if (recordingIntervalRef.current) {
-      clearInterval(recordingIntervalRef.current);
+      clearInterval(recordingIntervalRef.current)
     }
 
     if (chunksRef.current.length > 0) {
-      const blob = new Blob(chunksRef.current, { type: "audio/webm" });
-      const formData = new FormData();
-      formData.append("audio", blob, "audio.webm");
+      const blob = new Blob(chunksRef.current, { type: 'audio/webm' })
+      const formData = new FormData()
+      formData.append('audio', blob, 'audio.webm')
 
       try {
-        await apiClient.post(
-          `/api/meetings/${meeting._id}/transcript/upload`,
-          formData,
-          { withCredentials: true },
-        );
+        await apiClient.post(`/api/meetings/${meeting._id}/transcript/upload`, formData, {
+          withCredentials: true,
+        })
       } catch (error) {
-        console.error("Error uploading final audio chunk:", error);
+        console.error('Error uploading final audio chunk:', error)
       }
     }
 
@@ -203,15 +196,15 @@ const MeetingActions = ({ meeting, onDelete, onRename }) => {
         `/api/meetings/${meeting._id}/recording/stop`,
         {},
         { withCredentials: true },
-      );
+      )
 
       if (!data.success) {
-        throw new Error(data.message || "Failed to stop recording");
+        throw new Error(data.message || 'Failed to stop recording')
       }
 
-      setIsRecording(false);
-      setIsProcessing(true);
-      toast.success("Recording stopped, transcription started");
+      setIsRecording(false)
+      setIsProcessing(true)
+      toast.success('Recording stopped, transcription started')
 
       // The transcription poll used to keep its interval id in a `const` local
       // to this handler, so it survived unmount and had no deadline at all —
@@ -223,79 +216,71 @@ const MeetingActions = ({ meeting, onDelete, onRename }) => {
           const { data: transcriptData } = await apiClient.get(
             `/api/meetings/${meeting._id}/transcript`,
             { withCredentials: true, signal },
-          );
+          )
 
-          if (!transcriptData.success) return false;
+          if (!transcriptData.success) return false
 
-          if (transcriptData.transcript.status === "completed") {
-            setIsProcessing(false);
-            toast.success("Transcription completed!");
-            window.location.reload();
-            return true;
+          if (transcriptData.transcript.status === 'completed') {
+            setIsProcessing(false)
+            toast.success('Transcription completed!')
+            window.location.reload()
+            return true
           }
 
-          if (transcriptData.transcript.status === "failed") {
-            setIsProcessing(false);
-            toast.error("Transcription failed. Please try again.");
-            return true;
+          if (transcriptData.transcript.status === 'failed') {
+            setIsProcessing(false)
+            toast.error('Transcription failed. Please try again.')
+            return true
           }
 
-          return false;
+          return false
         },
         {
           intervalMs: 5000,
           timeoutMs: TRANSCRIPTION_POLL_TIMEOUT_MS,
           onTimeout: () => {
-            setIsProcessing(false);
+            setIsProcessing(false)
             toast.info(
-              "Transcription is taking longer than expected. Refresh the page to check on it.",
-            );
+              'Transcription is taking longer than expected. Refresh the page to check on it.',
+            )
           },
-          onError: (error) =>
-            console.error("Error polling transcript status:", error),
+          onError: (error) => console.error('Error polling transcript status:', error),
         },
-      );
+      )
     } catch (error) {
-      console.error("Error stopping recording:", error);
-      toast.error(error.message || "Failed to stop recording");
-      setIsRecording(false);
+      console.error('Error stopping recording:', error)
+      toast.error(error.message || 'Failed to stop recording')
+      setIsRecording(false)
     }
-  };
+  }
 
   const toggleRecording = () => {
     if (isRecording) {
-      stopRecording();
+      stopRecording()
     } else {
-      startRecording();
+      startRecording()
     }
-  };
+  }
 
   useEffect(() => {
     return () => {
       if (recordingIntervalRef.current) {
-        clearInterval(recordingIntervalRef.current);
+        clearInterval(recordingIntervalRef.current)
       }
       if (mediaRecorderRef.current && isRecording) {
-        mediaRecorderRef.current.stop();
-        mediaRecorderRef.current.stream
-          .getTracks()
-          .forEach((track) => track.stop());
+        mediaRecorderRef.current.stop()
+        mediaRecorderRef.current.stream.getTracks().forEach((track) => track.stop())
       }
-    };
-  }, [isRecording]);
+    }
+  }, [isRecording])
 
-  if (!meeting) return null;
+  if (!meeting) return null
 
   return (
     <>
       <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-6">
         <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
-          <svg
-            className="w-5 h-5"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-          >
+          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path
               strokeLinecap="round"
               strokeLinejoin="round"
@@ -313,10 +298,10 @@ const MeetingActions = ({ meeting, onDelete, onRename }) => {
               disabled={isProcessing}
               className={`flex items-center justify-center gap-2 px-4 py-2 rounded-lg transition-colors text-sm font-medium ${
                 isRecording
-                  ? "bg-red-500 hover:bg-red-600 text-white"
+                  ? 'bg-red-500 hover:bg-red-600 text-white'
                   : isProcessing
-                    ? "bg-gray-100 text-gray-400 cursor-not-allowed"
-                    : "bg-blue-600 hover:bg-blue-700 text-white"
+                    ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                    : 'bg-blue-600 hover:bg-blue-700 text-white'
               }`}
             >
               {isProcessing ? (
@@ -350,12 +335,7 @@ const MeetingActions = ({ meeting, onDelete, onRename }) => {
             onClick={handleDownloadTranscript}
             className="flex items-center justify-center gap-2 px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition-colors text-sm font-medium"
           >
-            <svg
-              className="w-4 h-4"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path
                 strokeLinecap="round"
                 strokeLinejoin="round"
@@ -373,11 +353,7 @@ const MeetingActions = ({ meeting, onDelete, onRename }) => {
               className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition-colors text-sm font-medium disabled:opacity-50"
             >
               {isExporting ? (
-                <svg
-                  className="animate-spin w-4 h-4"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                >
+                <svg className="animate-spin w-4 h-4" fill="none" viewBox="0 0 24 24">
                   <circle
                     className="opacity-25"
                     cx="12"
@@ -393,12 +369,7 @@ const MeetingActions = ({ meeting, onDelete, onRename }) => {
                   ></path>
                 </svg>
               ) : (
-                <svg
-                  className="w-4 h-4"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path
                     strokeLinecap="round"
                     strokeLinejoin="round"
@@ -407,24 +378,24 @@ const MeetingActions = ({ meeting, onDelete, onRename }) => {
                   />
                 </svg>
               )}
-              {isExporting ? "Exporting..." : "Export MoM"}
+              {isExporting ? 'Exporting...' : 'Export MoM'}
             </button>
             {showExportMenu && (
               <div className="absolute top-full left-0 mt-2 w-full bg-white border border-gray-200 rounded-lg shadow-lg z-10 overflow-hidden">
                 <button
-                  onClick={() => handleExport("pdf")}
+                  onClick={() => handleExport('pdf')}
                   className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors"
                 >
                   Export as PDF
                 </button>
                 <button
-                  onClick={() => handleExport("docx")}
+                  onClick={() => handleExport('docx')}
                   className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors"
                 >
                   Export as DOCX
                 </button>
                 <button
-                  onClick={() => handleExport("md")}
+                  onClick={() => handleExport('md')}
                   className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors"
                 >
                   Export as Markdown
@@ -438,12 +409,7 @@ const MeetingActions = ({ meeting, onDelete, onRename }) => {
               onClick={() => setShowCalendarMenu(!showCalendarMenu)}
               className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition-colors text-sm font-medium"
             >
-              <svg
-                className="w-4 h-4"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path
                   strokeLinecap="round"
                   strokeLinejoin="round"
@@ -457,8 +423,8 @@ const MeetingActions = ({ meeting, onDelete, onRename }) => {
               <div className="absolute top-full left-0 mt-2 w-full bg-white border border-gray-200 rounded-lg shadow-lg z-10 overflow-hidden">
                 <button
                   onClick={() => {
-                    setShowCalendarMenu(false);
-                    generateICS(meeting);
+                    setShowCalendarMenu(false)
+                    generateICS(meeting)
                   }}
                   className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors"
                 >
@@ -492,12 +458,7 @@ const MeetingActions = ({ meeting, onDelete, onRename }) => {
                 onClick={handleRename}
                 className="flex items-center justify-center gap-2 px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition-colors text-sm font-medium"
               >
-                <svg
-                  className="w-4 h-4"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path
                     strokeLinecap="round"
                     strokeLinejoin="round"
@@ -512,12 +473,7 @@ const MeetingActions = ({ meeting, onDelete, onRename }) => {
                 onClick={handleDelete}
                 className="flex items-center justify-center gap-2 px-4 py-2 bg-red-50 hover:bg-red-100 text-red-700 rounded-lg transition-colors text-sm font-medium"
               >
-                <svg
-                  className="w-4 h-4"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path
                     strokeLinecap="round"
                     strokeLinejoin="round"
@@ -535,12 +491,7 @@ const MeetingActions = ({ meeting, onDelete, onRename }) => {
           onClick={handleBack}
           className="mt-4 w-full flex items-center justify-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors text-sm font-medium"
         >
-          <svg
-            className="w-4 h-4"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-          >
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path
               strokeLinecap="round"
               strokeLinejoin="round"
@@ -564,9 +515,7 @@ const MeetingActions = ({ meeting, onDelete, onRename }) => {
       {/* Rename Modal */}
       {showRenameModal && (
         <div
-          onClick={(e) =>
-            handleBackdropClick(e, () => setShowRenameModal(false))
-          }
+          onClick={(e) => handleBackdropClick(e, () => setShowRenameModal(false))}
           className="fixed inset-0 bg-black/60 backdrop-blur-xs flex items-center justify-center z-50 p-4"
         >
           <div
@@ -586,8 +535,8 @@ const MeetingActions = ({ meeting, onDelete, onRename }) => {
               value={newTitle}
               onChange={(e) => setNewTitle(e.target.value)}
               onKeyDown={(e) => {
-                if (e.key === "Enter") {
-                  confirmRename();
+                if (e.key === 'Enter') {
+                  confirmRename()
                 }
               }}
               className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white text-xs focus:ring-2 focus:ring-blue-500 focus:outline-none"
@@ -612,7 +561,7 @@ const MeetingActions = ({ meeting, onDelete, onRename }) => {
         </div>
       )}
     </>
-  );
-};
+  )
+}
 
-export default MeetingActions;
+export default MeetingActions
