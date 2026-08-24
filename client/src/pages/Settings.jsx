@@ -43,6 +43,7 @@ import { usePolling } from "../hooks/usePolling.js";
 import PushNotificationManager from "../components/notifications/PushNotificationManager.jsx";
 import PwaInstallButton from "../components/pwa/PwaInstallButton.jsx";
 import DataExportSection from "../components/settings/DataExportSection.jsx";
+import ClerkSecuritySection from "../components/settings/ClerkSecuritySection.jsx";
 
 const clerkPubKey = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY;
 
@@ -975,39 +976,7 @@ const Settings = () => {
                 </div>
               )}
 
-              <div className="w-full flex items-center justify-between py-3 px-4 rounded-xl opacity-50 cursor-not-allowed">
-                <div className="flex items-center gap-3">
-                  <Shield className="w-4 h-4 text-slate-400" />
-                  <div className="text-left">
-                    <p className="text-sm font-semibold text-slate-900 dark:text-slate-200">
-                      Two-Factor Authentication
-                    </p>
-                    <p className="text-xs text-slate-500 dark:text-slate-400">
-                      Coming soon
-                    </p>
-                  </div>
-                </div>
-                <span className="text-xs font-semibold text-slate-400 dark:text-slate-500 bg-slate-100 dark:bg-slate-800 px-2 py-1 rounded-full">
-                  Soon
-                </span>
-              </div>
-
-              <div className="w-full flex items-center justify-between py-3 px-4 rounded-xl opacity-50 cursor-not-allowed">
-                <div className="flex items-center gap-3">
-                  <Globe className="w-4 h-4 text-slate-400" />
-                  <div className="text-left">
-                    <p className="text-sm font-semibold text-slate-900 dark:text-slate-200">
-                      Active Sessions
-                    </p>
-                    <p className="text-xs text-slate-500 dark:text-slate-400">
-                      Manage your active sessions
-                    </p>
-                  </div>
-                </div>
-                <span className="text-xs font-semibold text-slate-400 dark:text-slate-500 bg-slate-100 dark:bg-slate-800 px-2 py-1 rounded-full">
-                  Soon
-                </span>
-              </div>
+              <ClerkSecuritySection />
 
               <hr className="border-slate-100 dark:border-slate-800" />
 
