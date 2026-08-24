@@ -271,4 +271,7 @@ router.use("/api/observers", observerRoutes);
 import skillEndorsementRoutes from "./skillEndorsementRoutes.js";
 router.use("/api/skill-endorsements", skillEndorsementRoutes);
 
+import customRoleRoutes from "./customRoleRoutes.js";
+router.use("/api/rbac-matrix", customRoleRoutes);
+
 export default router;
