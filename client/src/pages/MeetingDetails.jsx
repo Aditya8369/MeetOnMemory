@@ -47,8 +47,10 @@ import FeedbackForm from "../components/meeting-details/FeedbackForm";
 import AgendaTimer from "../components/meeting-details/AgendaTimer";
 import AgendaPacingReport from "../components/meeting-details/AgendaPacingReport";
 import ClipManager from "../components/meeting-details/ClipManager";
+import DigestActions from "../components/meeting-details/DigestActions";
 import HealthScoreCard from "../components/meeting-details/HealthScoreCard";
 import { isMeetingEnded } from "../utils/meetingLifecycle";
+import { canManageMeetingDigest } from "../utils/digestAccess";
 import MeetingRisksPanel from "../components/meetings/MeetingRisksPanel";
 import { Award, ShieldAlert, FileText, Star } from "lucide-react";
 import ExportDialog from "../components/export/ExportDialog";
@@ -621,6 +623,15 @@ const MeetingDetails = () => {
             </div>
           )}
           <MeetingMetadata meeting={meeting} />
+          {canManageMeetingDigest({
+            meeting,
+            userData,
+            dbUserId,
+          }) && (
+            <div className="mt-6 mb-6">
+              <DigestActions meetingId={meeting._id} canManage />
+            </div>
+          )}
           {currentUser?.publicMetadata?.dbUserId === meeting.uploadedBy && (
             <GuestAccessManager meetingId={meeting._id} />
           )}

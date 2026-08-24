@@ -162,6 +162,9 @@ vi.mock("../../components/meeting-details/ClipManager", () => ({
     </div>
   ),
 }));
+vi.mock("../../components/meeting-details/DigestActions", () => ({
+  default: () => null,
+}));
 
 import { meetingApi } from "../../services";
 
