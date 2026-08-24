@@ -1,21 +1,43 @@
 import React, { useState, useMemo } from "react";
 import {
-  Shield, Activity, AlertTriangle, Users, Lightbulb,
-  Filter, RotateCcw, TrendingUp, CheckCircle, Clock,
-  ChevronDown, Sparkles, BarChart3, Zap,
+  Shield,
+  Activity,
+  AlertTriangle,
+  Users,
+  Lightbulb,
+  Filter,
+  RotateCcw,
+  TrendingUp,
+  CheckCircle,
+  Clock,
+  ChevronDown,
+  Sparkles,
+  BarChart3,
+  Zap,
 } from "lucide-react";
 import {
-  HealthScoreRing, MetricScoreCard, IssueCard, TeamHealthCard,
-  InsightCard, MeetingTypeHealthCard,
+  HealthScoreRing,
+  MetricScoreCard,
+  IssueCard,
+  TeamHealthCard,
+  InsightCard,
+  MeetingTypeHealthCard,
 } from "./HealthCards";
 import {
-  HealthTrendChart, TeamComparisonBarChart, MetricRadarChart,
-  IssueSeverityPieChart, MeetingTypeHealthBarChart, IssueTrendChart,
+  HealthTrendChart,
+  TeamComparisonBarChart,
+  MetricRadarChart,
+  IssueSeverityPieChart,
+  MeetingTypeHealthBarChart,
+  IssueTrendChart,
 } from "./HealthCharts";
 import {
-  generateMockOverallHealth, generateMockHealthTrend,
-  generateMockTeamHealth, generateMockIssues,
-  generateMockMeetingHealthDetails, generateMockActionableInsights,
+  generateMockOverallHealth,
+  generateMockHealthTrend,
+  generateMockTeamHealth,
+  generateMockIssues,
+  generateMockMeetingHealthDetails,
+  generateMockActionableInsights,
 } from "./healthData";
 import { MOCK_TEAMS } from "./healthTypes";
 
@@ -42,7 +64,9 @@ const MeetingHealthDashboard = () => {
 
   const unresolvedIssues = issues.filter((i) => !i.isResolved);
   const resolvedIssues = issues.filter((i) => i.isResolved);
-  const criticalIssues = issues.filter((i) => i.severity === "critical" || i.severity === "error");
+  const criticalIssues = issues.filter(
+    (i) => i.severity === "critical" || i.severity === "error",
+  );
 
   const filteredTeams = useMemo(() => {
     if (selectedTeam === "all") return teamHealth;
@@ -67,15 +91,19 @@ const MeetingHealthDashboard = () => {
                       Meeting Health Dashboard
                     </h1>
                     <p className="text-sm text-slate-500 dark:text-gray-400 mt-0.5">
-                      Monitor meeting quality, track issues, and optimize team performance
+                      Monitor meeting quality, track issues, and optimize team
+                      performance
                     </p>
                   </div>
                 </div>
                 <div className="flex items-center gap-2">
-                  <span className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-[11px] font-semibold ${
-                    unresolvedIssues.length > 5 ? "border-red-200 dark:border-red-700 bg-red-50 dark:bg-red-900/30 text-red-700 dark:text-red-300" :
-                    "border-emerald-200 dark:border-emerald-700 bg-emerald-50 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300"
-                  }`}>
+                  <span
+                    className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-[11px] font-semibold ${
+                      unresolvedIssues.length > 5
+                        ? "border-red-200 dark:border-red-700 bg-red-50 dark:bg-red-900/30 text-red-700 dark:text-red-300"
+                        : "border-emerald-200 dark:border-emerald-700 bg-emerald-50 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300"
+                    }`}
+                  >
                     <AlertTriangle className="h-3.5 w-3.5" />
                     {unresolvedIssues.length} Open Issues
                   </span>
@@ -92,20 +120,36 @@ const MeetingHealthDashboard = () => {
           </div>
           <div className="lg:col-span-3 grid grid-cols-2 sm:grid-cols-4 gap-3">
             <div className="rounded-xl border border-slate-200/80 dark:border-gray-700 bg-white dark:bg-gray-800 p-4 text-center shadow-sm">
-              <p className="text-2xl font-bold text-slate-900 dark:text-white">{overallHealth.grade}</p>
-              <p className="text-[10px] text-slate-400 uppercase font-semibold">Grade</p>
+              <p className="text-2xl font-bold text-slate-900 dark:text-white">
+                {overallHealth.grade}
+              </p>
+              <p className="text-[10px] text-slate-400 uppercase font-semibold">
+                Grade
+              </p>
             </div>
             <div className="rounded-xl border border-slate-200/80 dark:border-gray-700 bg-white dark:bg-gray-800 p-4 text-center shadow-sm">
-              <p className="text-2xl font-bold text-slate-900 dark:text-white">{overallHealth.totalMeetingsAnalyzed}</p>
-              <p className="text-[10px] text-slate-400 uppercase font-semibold">Meetings Analyzed</p>
+              <p className="text-2xl font-bold text-slate-900 dark:text-white">
+                {overallHealth.totalMeetingsAnalyzed}
+              </p>
+              <p className="text-[10px] text-slate-400 uppercase font-semibold">
+                Meetings Analyzed
+              </p>
             </div>
             <div className="rounded-xl border border-slate-200/80 dark:border-gray-700 bg-white dark:bg-gray-800 p-4 text-center shadow-sm">
-              <p className="text-2xl font-bold text-amber-600">{criticalIssues.length}</p>
-              <p className="text-[10px] text-slate-400 uppercase font-semibold">Critical Issues</p>
+              <p className="text-2xl font-bold text-amber-600">
+                {criticalIssues.length}
+              </p>
+              <p className="text-[10px] text-slate-400 uppercase font-semibold">
+                Critical Issues
+              </p>
             </div>
             <div className="rounded-xl border border-slate-200/80 dark:border-gray-700 bg-white dark:bg-gray-800 p-4 text-center shadow-sm">
-              <p className="text-2xl font-bold text-emerald-600">{resolvedIssues.length}</p>
-              <p className="text-[10px] text-slate-400 uppercase font-semibold">Resolved</p>
+              <p className="text-2xl font-bold text-emerald-600">
+                {resolvedIssues.length}
+              </p>
+              <p className="text-[10px] text-slate-400 uppercase font-semibold">
+                Resolved
+              </p>
             </div>
           </div>
         </section>
@@ -158,11 +202,17 @@ const MeetingHealthDashboard = () => {
         {activeTab === "issues" && (
           <div className="space-y-6">
             <div className="flex items-center gap-3 flex-wrap">
-              <span className="text-xs font-semibold text-slate-500">{unresolvedIssues.length} open</span>
+              <span className="text-xs font-semibold text-slate-500">
+                {unresolvedIssues.length} open
+              </span>
               <span className="text-xs text-slate-300">·</span>
-              <span className="text-xs font-semibold text-emerald-500">{resolvedIssues.length} resolved</span>
+              <span className="text-xs font-semibold text-emerald-500">
+                {resolvedIssues.length} resolved
+              </span>
               <span className="text-xs text-slate-300">·</span>
-              <span className="text-xs font-semibold text-red-500">{criticalIssues.length} critical</span>
+              <span className="text-xs font-semibold text-red-500">
+                {criticalIssues.length} critical
+              </span>
             </div>
             <IssueTrendChart issues={issues} />
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -184,7 +234,11 @@ const MeetingHealthDashboard = () => {
                 className="px-3 py-1.5 text-xs font-medium bg-white dark:bg-gray-800 border border-slate-200 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500"
               >
                 <option value="all">All Teams</option>
-                {MOCK_TEAMS.map((t) => <option key={t} value={t}>{t}</option>)}
+                {MOCK_TEAMS.map((t) => (
+                  <option key={t} value={t}>
+                    {t}
+                  </option>
+                ))}
               </select>
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -208,11 +262,15 @@ const MeetingHealthDashboard = () => {
               <div className="flex items-center gap-3 mb-2">
                 <Sparkles className="h-5 w-5 text-violet-600" />
                 <h3 className="text-lg font-bold text-slate-900 dark:text-white">
-                  Potential Improvement: +{insights.reduce((sum, i) => sum + i.estimatedImprovement, 0)}%
+                  Potential Improvement: +
+                  {insights.reduce((sum, i) => sum + i.estimatedImprovement, 0)}
+                  %
                 </h3>
               </div>
               <p className="text-sm text-slate-600 dark:text-gray-400">
-                AI analysis identified {insights.length} actionable improvements. Implementing all could boost your health score significantly.
+                AI analysis identified {insights.length} actionable
+                improvements. Implementing all could boost your health score
+                significantly.
               </p>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -226,7 +284,8 @@ const MeetingHealthDashboard = () => {
         {/* Footer */}
         <div className="mt-8 pt-6 border-t border-slate-200 dark:border-gray-700 text-center">
           <p className="text-xs text-slate-400 dark:text-gray-500">
-            Meeting Health Dashboard · AI-Powered Analysis · Real-time Monitoring
+            Meeting Health Dashboard · AI-Powered Analysis · Real-time
+            Monitoring
           </p>
         </div>
       </div>

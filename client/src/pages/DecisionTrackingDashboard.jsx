@@ -1,24 +1,47 @@
 import React, { useState, useMemo } from "react";
 import {
-  GitBranch, Lightbulb, BarChart3, Users, Target,
-  CheckCircle, Clock, TrendingUp, AlertTriangle,
-  Sparkles, Filter, RotateCcw, ChevronDown,
+  GitBranch,
+  Lightbulb,
+  BarChart3,
+  Users,
+  Target,
+  CheckCircle,
+  Clock,
+  TrendingUp,
+  AlertTriangle,
+  Sparkles,
+  Filter,
+  RotateCcw,
+  ChevronDown,
 } from "lucide-react";
-import { DecisionStatus, DecisionCategory, DecisionImpact } from "./decisionTypes";
 import {
-  DecisionMetricCard, DecisionCard, DecisionRecommendationCard,
+  DecisionStatus,
+  DecisionCategory,
+  DecisionImpact,
+} from "./decisionTypes";
+import {
+  DecisionMetricCard,
+  DecisionCard,
+  DecisionRecommendationCard,
   DecisionPipelineCard,
 } from "./DecisionCards";
 import {
-  DecisionTrendChart, CategoryBreakdownChart,
-  ImplementationSpeedChart, ImpactAnalysisChart,
-  DecisionVelocityChart, ApprovalFunnelChart,
+  DecisionTrendChart,
+  CategoryBreakdownChart,
+  ImplementationSpeedChart,
+  ImpactAnalysisChart,
+  DecisionVelocityChart,
+  ApprovalFunnelChart,
 } from "./DecisionCharts";
 import {
-  generateMockDecisions, generateMockDecisionTrend,
-  generateMockDecisionByCategory, generateMockDecisionByImpact,
-  generateMockImplementationTimeline, generateMockDecisionVelocity,
-  generateMockStats, generateMockRecommendations,
+  generateMockDecisions,
+  generateMockDecisionTrend,
+  generateMockDecisionByCategory,
+  generateMockDecisionByImpact,
+  generateMockImplementationTimeline,
+  generateMockDecisionVelocity,
+  generateMockStats,
+  generateMockRecommendations,
 } from "./decisionData";
 
 const TABS = [
@@ -48,7 +71,8 @@ const DecisionTrackingDashboard = () => {
   const filteredDecisions = useMemo(() => {
     return decisions.filter((d) => {
       if (statusFilter !== "all" && d.status !== statusFilter) return false;
-      if (categoryFilter !== "all" && d.category !== categoryFilter) return false;
+      if (categoryFilter !== "all" && d.category !== categoryFilter)
+        return false;
       if (impactFilter !== "all" && d.impact !== impactFilter) return false;
       return true;
     });
@@ -60,7 +84,10 @@ const DecisionTrackingDashboard = () => {
     setImpactFilter("all");
   };
 
-  const totalImprovement = recommendations.reduce((sum, r) => sum + r.estimatedImprovement, 0);
+  const totalImprovement = recommendations.reduce(
+    (sum, r) => sum + r.estimatedImprovement,
+    0,
+  );
 
   return (
     <div className="min-h-screen bg-linear-to-b from-slate-50 via-white to-slate-50 dark:from-gray-900 dark:via-gray-900 dark:to-gray-900">
@@ -80,7 +107,8 @@ const DecisionTrackingDashboard = () => {
                       Decision Tracking
                     </h1>
                     <p className="text-sm text-slate-500 dark:text-gray-400 mt-0.5">
-                      Track, analyze, and optimize organizational decision-making
+                      Track, analyze, and optimize organizational
+                      decision-making
                     </p>
                   </div>
                 </div>
@@ -97,12 +125,48 @@ const DecisionTrackingDashboard = () => {
 
         {/* Stats Row */}
         <section className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 mb-6 sm:mb-8">
-          <DecisionMetricCard icon={GitBranch} label="Total" value={stats.totalDecisions} subtitle="decisions tracked" color="#8b5cf6" />
-          <DecisionMetricCard icon={CheckCircle} label="Implemented" value={stats.implementedCount} subtitle={`${stats.implementationRate.toFixed(0)}% rate`} color="#22c55e" />
-          <DecisionMetricCard icon={Clock} label="Avg Time" value={`${stats.avgDaysToDecide.toFixed(0)}d`} subtitle="to decide" color="#0ea5e9" />
-          <DecisionMetricCard icon={Target} label="Implement" value={`${stats.avgDaysToImplement.toFixed(0)}d`} subtitle="avg implementation" color="#f59e0b" />
-          <DecisionMetricCard icon={TrendingUp} label="Confidence" value={`${(stats.avgConfidence * 100).toFixed(0)}%`} subtitle="avg decision confidence" color="#14b8a6" />
-          <DecisionMetricCard icon={AlertTriangle} label="Pending" value={stats.pendingCount} subtitle="awaiting decision" color="#f97316" />
+          <DecisionMetricCard
+            icon={GitBranch}
+            label="Total"
+            value={stats.totalDecisions}
+            subtitle="decisions tracked"
+            color="#8b5cf6"
+          />
+          <DecisionMetricCard
+            icon={CheckCircle}
+            label="Implemented"
+            value={stats.implementedCount}
+            subtitle={`${stats.implementationRate.toFixed(0)}% rate`}
+            color="#22c55e"
+          />
+          <DecisionMetricCard
+            icon={Clock}
+            label="Avg Time"
+            value={`${stats.avgDaysToDecide.toFixed(0)}d`}
+            subtitle="to decide"
+            color="#0ea5e9"
+          />
+          <DecisionMetricCard
+            icon={Target}
+            label="Implement"
+            value={`${stats.avgDaysToImplement.toFixed(0)}d`}
+            subtitle="avg implementation"
+            color="#f59e0b"
+          />
+          <DecisionMetricCard
+            icon={TrendingUp}
+            label="Confidence"
+            value={`${(stats.avgConfidence * 100).toFixed(0)}%`}
+            subtitle="avg decision confidence"
+            color="#14b8a6"
+          />
+          <DecisionMetricCard
+            icon={AlertTriangle}
+            label="Pending"
+            value={stats.pendingCount}
+            subtitle="awaiting decision"
+            color="#f97316"
+          />
         </section>
 
         {/* Tabs */}
@@ -149,25 +213,51 @@ const DecisionTrackingDashboard = () => {
             {/* Filters */}
             <div className="flex flex-wrap items-center gap-3 p-4 bg-white dark:bg-gray-800 rounded-xl border border-slate-200/80 dark:border-gray-700 shadow-sm">
               <Filter className="h-4 w-4 text-slate-400" />
-              <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}
-                className="px-3 py-1.5 text-xs font-medium bg-slate-50 dark:bg-gray-700 border border-slate-200 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+              <select
+                value={statusFilter}
+                onChange={(e) => setStatusFilter(e.target.value)}
+                className="px-3 py-1.5 text-xs font-medium bg-slate-50 dark:bg-gray-700 border border-slate-200 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
                 <option value="all">All Statuses</option>
-                {Object.values(DecisionStatus).map((s) => <option key={s} value={s}>{s.replace("_", " ")}</option>)}
+                {Object.values(DecisionStatus).map((s) => (
+                  <option key={s} value={s}>
+                    {s.replace("_", " ")}
+                  </option>
+                ))}
               </select>
-              <select value={categoryFilter} onChange={(e) => setCategoryFilter(e.target.value)}
-                className="px-3 py-1.5 text-xs font-medium bg-slate-50 dark:bg-gray-700 border border-slate-200 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+              <select
+                value={categoryFilter}
+                onChange={(e) => setCategoryFilter(e.target.value)}
+                className="px-3 py-1.5 text-xs font-medium bg-slate-50 dark:bg-gray-700 border border-slate-200 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
                 <option value="all">All Categories</option>
-                {Object.values(DecisionCategory).map((c) => <option key={c} value={c}>{c}</option>)}
+                {Object.values(DecisionCategory).map((c) => (
+                  <option key={c} value={c}>
+                    {c}
+                  </option>
+                ))}
               </select>
-              <select value={impactFilter} onChange={(e) => setImpactFilter(e.target.value)}
-                className="px-3 py-1.5 text-xs font-medium bg-slate-50 dark:bg-gray-700 border border-slate-200 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+              <select
+                value={impactFilter}
+                onChange={(e) => setImpactFilter(e.target.value)}
+                className="px-3 py-1.5 text-xs font-medium bg-slate-50 dark:bg-gray-700 border border-slate-200 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
                 <option value="all">All Impacts</option>
-                {Object.values(DecisionImpact).map((i) => <option key={i} value={i}>{i}</option>)}
+                {Object.values(DecisionImpact).map((i) => (
+                  <option key={i} value={i}>
+                    {i}
+                  </option>
+                ))}
               </select>
-              <button onClick={resetFilters} className="p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-gray-700 transition">
+              <button
+                onClick={resetFilters}
+                className="p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-gray-700 transition"
+              >
                 <RotateCcw className="h-3.5 w-3.5 text-slate-400" />
               </button>
-              <span className="ml-auto text-[11px] text-slate-400">{filteredDecisions.length} decisions</span>
+              <span className="ml-auto text-[11px] text-slate-400">
+                {filteredDecisions.length} decisions
+              </span>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -197,7 +287,8 @@ const DecisionTrackingDashboard = () => {
                 </h3>
               </div>
               <p className="text-sm text-slate-600 dark:text-gray-400">
-                AI identified {recommendations.length} opportunities to improve decision velocity, quality, and follow-through.
+                AI identified {recommendations.length} opportunities to improve
+                decision velocity, quality, and follow-through.
               </p>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -211,7 +302,8 @@ const DecisionTrackingDashboard = () => {
         {/* Footer */}
         <div className="mt-8 pt-6 border-t border-slate-200 dark:border-gray-700 text-center">
           <p className="text-xs text-slate-400 dark:text-gray-500">
-            Decision Tracking Dashboard · AI-Powered Insights · Organizational Intelligence
+            Decision Tracking Dashboard · AI-Powered Insights · Organizational
+            Intelligence
           </p>
         </div>
       </div>

@@ -1,26 +1,49 @@
 import React, { useState, useMemo } from "react";
 import {
-  DollarSign, TrendingUp, Users, Clock, Target,
-  BarChart3, Lightbulb, Filter, RotateCcw, Download,
-  Sparkles, ChevronDown, Building, Zap,
+  DollarSign,
+  TrendingUp,
+  Users,
+  Clock,
+  Target,
+  BarChart3,
+  Lightbulb,
+  Filter,
+  RotateCcw,
+  Download,
+  Sparkles,
+  ChevronDown,
+  Building,
+  Zap,
 } from "lucide-react";
 import {
-  generateMockCostSummary, generateMockMonthlyCosts,
-  generateMockDepartmentCosts, generateMockMeetingTypeCosts,
-  generateMockMemberCosts, generateMockCostBreakdown,
-  generateMockCostEfficiency, generateMockROIAnalysis,
-  generateMockBudgetComparison, generateMockHourlyCostDistribution,
+  generateMockCostSummary,
+  generateMockMonthlyCosts,
+  generateMockDepartmentCosts,
+  generateMockMeetingTypeCosts,
+  generateMockMemberCosts,
+  generateMockCostBreakdown,
+  generateMockCostEfficiency,
+  generateMockROIAnalysis,
+  generateMockBudgetComparison,
+  generateMockHourlyCostDistribution,
   generateMockCostRecommendations,
 } from "./costAnalyticsData";
 import {
-  CostMetricCard, DepartmentCostCard, MemberCostCard,
-  RecommendationCard, BudgetStatusCard,
+  CostMetricCard,
+  DepartmentCostCard,
+  MemberCostCard,
+  RecommendationCard,
+  BudgetStatusCard,
 } from "./CostAnalyticsCards";
 import {
-  MonthlyCostTrendChart, DepartmentCostBarChart,
-  CostBreakdownPieChart, EfficiencyTrendChart,
-  ROIAnalysisChart, HourlyCostDistributionChart,
-  BudgetComparisonChart, MeetingTypeCostScatterChart,
+  MonthlyCostTrendChart,
+  DepartmentCostBarChart,
+  CostBreakdownPieChart,
+  EfficiencyTrendChart,
+  ROIAnalysisChart,
+  HourlyCostDistributionChart,
+  BudgetComparisonChart,
+  MeetingTypeCostScatterChart,
 } from "./CostAnalyticsCharts";
 
 const TABS = [
@@ -50,7 +73,11 @@ const CostAnalyticsDashboard = () => {
   const recommendations = useMemo(() => generateMockCostRecommendations(), []);
 
   const totalSavings = recommendations.reduce((sum, r) => sum + r.savings, 0);
-  const costChange = ((summary.totalCostMonth - summary.totalCostLastMonth) / summary.totalCostLastMonth * 100).toFixed(1);
+  const costChange = (
+    ((summary.totalCostMonth - summary.totalCostLastMonth) /
+      summary.totalCostLastMonth) *
+    100
+  ).toFixed(1);
 
   const filteredDepartments = useMemo(() => {
     if (selectedDept === "all") return departments;
@@ -75,7 +102,8 @@ const CostAnalyticsDashboard = () => {
                       Meeting Cost Analytics
                     </h1>
                     <p className="text-sm text-slate-500 dark:text-gray-400 mt-0.5">
-                      Track, analyze, and optimize your organization's meeting investment
+                      Track, analyze, and optimize your organization's meeting
+                      investment
                     </p>
                   </div>
                 </div>
@@ -92,12 +120,50 @@ const CostAnalyticsDashboard = () => {
 
         {/* Stats Row */}
         <section className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 mb-6 sm:mb-8">
-          <CostMetricCard icon={DollarSign} label="Total Cost" value={`$${(summary.totalCostMonth / 1000).toFixed(1)}k`} subtitle="this month" delta={costChange} color="#8b5cf6" />
-          <CostMetricCard icon={BarChart3} label="Per Meeting" value={`$${summary.avgCostPerMeeting.toFixed(0)}`} subtitle="average cost" color="#0ea5e9" />
-          <CostMetricCard icon={Users} label="Per Person" value={`$${summary.avgCostPerParticipant.toFixed(0)}`} subtitle="per participant" color="#22c55e" />
-          <CostMetricCard icon={Clock} label="Hours" value={summary.totalParticipantHours.toFixed(0)} subtitle="participant hours" color="#f59e0b" />
-          <CostMetricCard icon={Target} label="Efficiency" value={`${summary.budgetUtilization.toFixed(0)}%`} subtitle="budget utilization" color="#14b8a6" />
-          <CostMetricCard icon={TrendingUp} label="Savings" value={`$${summary.savingsFromOptimization.toFixed(0)}`} subtitle="from optimization" delta={`-$${summary.savingsFromOptimization.toFixed(0)}`} color="#ec4899" />
+          <CostMetricCard
+            icon={DollarSign}
+            label="Total Cost"
+            value={`$${(summary.totalCostMonth / 1000).toFixed(1)}k`}
+            subtitle="this month"
+            delta={costChange}
+            color="#8b5cf6"
+          />
+          <CostMetricCard
+            icon={BarChart3}
+            label="Per Meeting"
+            value={`$${summary.avgCostPerMeeting.toFixed(0)}`}
+            subtitle="average cost"
+            color="#0ea5e9"
+          />
+          <CostMetricCard
+            icon={Users}
+            label="Per Person"
+            value={`$${summary.avgCostPerParticipant.toFixed(0)}`}
+            subtitle="per participant"
+            color="#22c55e"
+          />
+          <CostMetricCard
+            icon={Clock}
+            label="Hours"
+            value={summary.totalParticipantHours.toFixed(0)}
+            subtitle="participant hours"
+            color="#f59e0b"
+          />
+          <CostMetricCard
+            icon={Target}
+            label="Efficiency"
+            value={`${summary.budgetUtilization.toFixed(0)}%`}
+            subtitle="budget utilization"
+            color="#14b8a6"
+          />
+          <CostMetricCard
+            icon={TrendingUp}
+            label="Savings"
+            value={`$${summary.savingsFromOptimization.toFixed(0)}`}
+            subtitle="from optimization"
+            delta={`-$${summary.savingsFromOptimization.toFixed(0)}`}
+            color="#ec4899"
+          />
         </section>
 
         {/* Tabs */}
@@ -148,9 +214,13 @@ const CostAnalyticsDashboard = () => {
                 className="px-3 py-1.5 text-xs font-medium bg-white dark:bg-gray-800 border border-slate-200 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-violet-500"
               >
                 <option value="all">All Departments</option>
-                {[...new Set(departments.map((d) => d.department))].map((dept) => (
-                  <option key={dept} value={dept}>{dept}</option>
-                ))}
+                {[...new Set(departments.map((d) => d.department))].map(
+                  (dept) => (
+                    <option key={dept} value={dept}>
+                      {dept}
+                    </option>
+                  ),
+                )}
               </select>
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -183,16 +253,45 @@ const CostAnalyticsDashboard = () => {
             <ROIAnalysisChart data={roi} />
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
               {roi.map((item) => (
-                <div key={item.type} className={`rounded-xl border p-4 shadow-sm ${item.isProfitable ? "border-emerald-200 dark:border-emerald-800 bg-emerald-50/50 dark:bg-emerald-900/10" : "border-red-200 dark:border-red-800 bg-red-50/50 dark:bg-red-900/10"}`}>
+                <div
+                  key={item.type}
+                  className={`rounded-xl border p-4 shadow-sm ${item.isProfitable ? "border-emerald-200 dark:border-emerald-800 bg-emerald-50/50 dark:bg-emerald-900/10" : "border-red-200 dark:border-red-800 bg-red-50/50 dark:bg-red-900/10"}`}
+                >
                   <div className="flex items-center justify-between mb-2">
-                    <h3 className="text-sm font-semibold text-slate-900 dark:text-gray-100">{item.type}</h3>
-                    <span className={`text-lg font-bold ${item.isProfitable ? "text-emerald-600" : "text-red-500"}`}>{item.roi.toFixed(1)}x</span>
+                    <h3 className="text-sm font-semibold text-slate-900 dark:text-gray-100">
+                      {item.type}
+                    </h3>
+                    <span
+                      className={`text-lg font-bold ${item.isProfitable ? "text-emerald-600" : "text-red-500"}`}
+                    >
+                      {item.roi.toFixed(1)}x
+                    </span>
                   </div>
                   <div className="grid grid-cols-2 gap-2 text-[10px]">
-                    <div><span className="text-slate-400">Investment:</span> <span className="font-semibold">${item.investment.toLocaleString()}</span></div>
-                    <div><span className="text-slate-400">Outcomes:</span> <span className="font-semibold">${item.outcomes.toLocaleString()}</span></div>
-                    <div><span className="text-slate-400">Decisions:</span> <span className="font-semibold">{item.decisionCount}</span></div>
-                    <div><span className="text-slate-400">Actions:</span> <span className="font-semibold">{item.actionItemsGenerated}</span></div>
+                    <div>
+                      <span className="text-slate-400">Investment:</span>{" "}
+                      <span className="font-semibold">
+                        ${item.investment.toLocaleString()}
+                      </span>
+                    </div>
+                    <div>
+                      <span className="text-slate-400">Outcomes:</span>{" "}
+                      <span className="font-semibold">
+                        ${item.outcomes.toLocaleString()}
+                      </span>
+                    </div>
+                    <div>
+                      <span className="text-slate-400">Decisions:</span>{" "}
+                      <span className="font-semibold">
+                        {item.decisionCount}
+                      </span>
+                    </div>
+                    <div>
+                      <span className="text-slate-400">Actions:</span>{" "}
+                      <span className="font-semibold">
+                        {item.actionItemsGenerated}
+                      </span>
+                    </div>
                   </div>
                 </div>
               ))}
@@ -206,11 +305,14 @@ const CostAnalyticsDashboard = () => {
             <div className="rounded-xl border border-emerald-200 dark:border-emerald-800 bg-emerald-50 dark:bg-emerald-900/20 p-5">
               <div className="flex items-center gap-3 mb-2">
                 <Lightbulb className="h-5 w-5 text-emerald-600" />
-                <h3 className="text-lg font-bold text-slate-900 dark:text-white">Potential Savings: ${totalSavings.toLocaleString()}/month</h3>
+                <h3 className="text-lg font-bold text-slate-900 dark:text-white">
+                  Potential Savings: ${totalSavings.toLocaleString()}/month
+                </h3>
               </div>
               <p className="text-sm text-slate-600 dark:text-gray-400">
-                AI analysis identified {recommendations.length} opportunities to reduce meeting costs.
-                Implementing all recommendations could save up to ${totalSavings.toLocaleString()} per month.
+                AI analysis identified {recommendations.length} opportunities to
+                reduce meeting costs. Implementing all recommendations could
+                save up to ${totalSavings.toLocaleString()} per month.
               </p>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -224,7 +326,8 @@ const CostAnalyticsDashboard = () => {
         {/* Footer */}
         <div className="mt-8 pt-6 border-t border-slate-200 dark:border-gray-700 text-center">
           <p className="text-xs text-slate-400 dark:text-gray-500">
-            Meeting Cost Analytics · AI-Powered Optimization · Cost tracking updated in real-time
+            Meeting Cost Analytics · AI-Powered Optimization · Cost tracking
+            updated in real-time
           </p>
         </div>
       </div>

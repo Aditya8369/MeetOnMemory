@@ -28,11 +28,7 @@ function walk(dir, ignore = new Set(["node_modules", ".git", "coverage"])) {
 function resolveRelative(fromFile, spec) {
   if (!spec.startsWith(".")) return null;
   const base = path.resolve(path.dirname(fromFile), spec);
-  const candidates = [
-    base,
-    `${base}.js`,
-    path.join(base, "index.js"),
-  ];
+  const candidates = [base, `${base}.js`, path.join(base, "index.js")];
   for (const c of candidates) if (fs.existsSync(c)) return c;
   return null;
 }
@@ -76,7 +72,10 @@ function extractImports(content) {
   let buf = "";
   for (const line of lines) {
     buf += `${line}\n`;
-    if (buf.includes(";") || (!buf.includes("from") && buf.trim().endsWith("'"))) {
+    if (
+      buf.includes(";") ||
+      (!buf.includes("from") && buf.trim().endsWith("'"))
+    ) {
       const stmt = buf.trim();
       if (stmt.startsWith("import ")) {
         const parsed = parseImportStatement(stmt.replace(/\n/g, " "));

@@ -35,6 +35,7 @@ import { useUser } from "@clerk/clerk-react";
 import Navbar from "../components/Navbar.jsx";
 import BriefingBanner from "../components/meeting-details/BriefingBanner";
 import AgendaBuilder from "../components/meetings/AgendaBuilder";
+import IcebreakerSection from "../components/meetings/IcebreakerSection";
 import { getBriefing } from "../services/briefingApi";
 import GuestAccessManager from "../components/meetings/GuestAccessManager";
 import MeetingReadiness from "../components/MeetingReadiness";
@@ -576,6 +577,8 @@ const MeetingDetails = () => {
             }
             userRole={userRole}
           />
+
+          <IcebreakerSection meetingId={meeting._id} />
 
           <MeetingAgenda meeting={meeting} />
           <div className="mt-6 mb-6">

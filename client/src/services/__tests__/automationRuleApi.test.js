@@ -25,7 +25,9 @@ describe("automationRuleApi /api prefix verification", () => {
   });
 
   it("calls GET /api/automation-rules when fetching rules", async () => {
-    api.get.mockResolvedValueOnce({ data: { data: { rules: [{ _id: "r1" }] } } });
+    api.get.mockResolvedValueOnce({
+      data: { data: { rules: [{ _id: "r1" }] } },
+    });
     const result = await fetchRules();
     expect(api.get).toHaveBeenCalledWith("/api/automation-rules");
     expect(result).toEqual([{ _id: "r1" }]);

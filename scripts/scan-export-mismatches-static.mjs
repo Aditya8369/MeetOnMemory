@@ -37,14 +37,19 @@ function parseExports(content) {
       if (name) named.add(name);
     }
   }
-  for (const m of content.matchAll(/export\s+(?:async\s+)?(?:function|class|const|let|var)\s+([\w$]+)/g)) {
+  for (const m of content.matchAll(
+    /export\s+(?:async\s+)?(?:function|class|const|let|var)\s+([\w$]+)/g,
+  )) {
     named.add(m[1]);
   }
   for (const m of content.matchAll(/export\s*\*\s+from\s+['"][^'"]+['"]/g)) {
     named.add("*reexport*");
   }
 
-  if (/module\.exports\s*=/.test(content) || /exports\.[\w$]+\s*=/.test(content)) {
+  if (
+    /module\.exports\s*=/.test(content) ||
+    /exports\.[\w$]+\s*=/.test(content)
+  ) {
     hasDefault = true;
   }
 
@@ -57,7 +62,10 @@ function parseImports(content) {
   for (const stmt of stmts) {
     const spec = stmt.match(/from\s+['"]([^'"]+)['"]/)?.[1];
     if (!spec) continue;
-    const clause = stmt.replace(/^import\s+/, "").replace(/\s+from\s+['"][^'"]+['"]/, "").trim();
+    const clause = stmt
+      .replace(/^import\s+/, "")
+      .replace(/\s+from\s+['"][^'"]+['"]/, "")
+      .trim();
 
     if (clause.startsWith("* as ")) {
       imports.push({ spec, kind: "namespace", name: clause.slice(5).trim() });
@@ -71,7 +79,13 @@ function parseImports(content) {
         for (const part of defaultMatch[2].split(",")) {
           const seg = part.trim();
           const m = seg.match(/^([\w$]+)(?:\s+as\s+([\w$]+))?$/);
-          if (m) imports.push({ spec, kind: "named", import: m[2] || m[1], export: m[1] });
+          if (m)
+            imports.push({
+              spec,
+              kind: "named",
+              import: m[2] || m[1],
+              export: m[1],
+            });
         }
       }
       continue;
@@ -82,7 +96,13 @@ function parseImports(content) {
       for (const part of brace[1].split(",")) {
         const seg = part.trim();
         const m = seg.match(/^([\w$]+)(?:\s+as\s+([\w$]+))?$/);
-        if (m) imports.push({ spec, kind: "named", import: m[2] || m[1], export: m[1] });
+        if (m)
+          imports.push({
+            spec,
+            kind: "named",
+            import: m[2] || m[1],
+            export: m[1],
+          });
       }
     }
   }
@@ -107,11 +127,36 @@ for (const file of files) {
     if (!exp) continue;
 
     if (imp.kind === "default" && !exp.hasDefault && exp.named.size === 0) {
-      mismatches.push({ type: "missing-default", from: relFrom, target: relTarget, name: imp.name });
-    } else if (imp.kind === "default" && !exp.hasDefault && exp.named.size > 0) {
-      mismatches.push({ type: "default-vs-named", from: relFrom, target: relTarget, name: imp.name, available: [...exp.named].sort() });
-    } else if (imp.kind === "named" && !exp.named.has(imp.export) && !exp.named.has("*reexport*")) {
-      mismatches.push({ type: "missing-named", from: relFrom, target: relTarget, name: imp.export, available: [...exp.named].sort() });
+      mismatches.push({
+        type: "missing-default",
+        from: relFrom,
+        target: relTarget,
+        name: imp.name,
+      });
+    } else if (
+      imp.kind === "default" &&
+      !exp.hasDefault &&
+      exp.named.size > 0
+    ) {
+      mismatches.push({
+        type: "default-vs-named",
+        from: relFrom,
+        target: relTarget,
+        name: imp.name,
+        available: [...exp.named].sort(),
+      });
+    } else if (
+      imp.kind === "named" &&
+      !exp.named.has(imp.export) &&
+      !exp.named.has("*reexport*")
+    ) {
+      mismatches.push({
+        type: "missing-named",
+        from: relFrom,
+        target: relTarget,
+        name: imp.export,
+        available: [...exp.named].sort(),
+      });
     }
   }
 }
