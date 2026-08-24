@@ -66,4 +66,13 @@ export const meetingApi = {
   updateInvite: (meetingId, data) =>
     apiClient.patch(`/api/meetings/${meetingId}/invite`, data),
   resolveInvite: (code) => apiClient.get(`/api/meetings/invite/${code}`),
+
+  resendDigest: (meetingId) =>
+    apiClient.post(`/api/meetings/${meetingId}/digest/resend`),
+  previewDigest: (meetingId) =>
+    apiClient.get(`/api/meetings/${meetingId}/digest/preview`, {
+      responseType: "text",
+    }),
+  getDigestStatus: (meetingId) =>
+    apiClient.get(`/api/meetings/${meetingId}/digest/status`),
 };

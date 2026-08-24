@@ -28,11 +28,6 @@ vi.mock("../../services/briefingApi", () => ({
   getBriefing: vi.fn().mockResolvedValue({ data: null }),
 }));
 
-const appContextValue = {
-  userData: { _id: "user-1", role: "member" },
-  backendUrl: "http://localhost:5000",
-};
-
 vi.mock("../../components/meeting-details/MeetingHeader", () => ({
   default: ({ meeting }) => (
     <div data-testid="meeting-header">{meeting.title}</div>
@@ -137,9 +132,6 @@ vi.mock("../../components/meeting-details/PersonalNotes", () => ({
 vi.mock("../../components/meeting-details/FollowUpThreads", () => ({
   default: () => null,
 }));
-vi.mock("../../components/meeting-details/CommentSection", () => ({
-  default: () => null,
-}));
 vi.mock("../../components/meetings/MeetingRisksPanel", () => ({
   default: () => null,
 }));
@@ -152,25 +144,22 @@ vi.mock("../../components/meeting-details/AgendaPacingReport", () => ({
 vi.mock("../../components/meeting-details/ClipManager", () => ({
   default: () => null,
 }));
-vi.mock("../../components/meeting-details/DigestActions", () => ({
-  default: () => null,
-}));
 
-vi.mock("../../components/meeting-details/SpeakerAttribution", () => ({
-  default: ({ meetingId, participants }) => (
+vi.mock("../../components/meeting-details/DigestActions", () => ({
+  default: ({ meetingId, canManage }) => (
     <div
-      data-testid="speaker-attribution"
+      data-testid="digest-actions"
       data-meeting-id={meetingId}
-      data-participant-count={participants?.length ?? 0}
+      data-can-manage={canManage ? "yes" : "no"}
     >
-      Speaker attribution for {meetingId}
+      Digest for {meetingId}
     </div>
   ),
 }));
 
-const renderDetails = () =>
+const renderDetails = (userData = { _id: "db_123", role: "member" }) =>
   render(
-    <AppContent.Provider value={appContextValue}>
+    <AppContent.Provider value={{ userData }}>
       <MemoryRouter initialEntries={["/meetings/123"]}>
         <Routes>
           <Route path="/meetings/:id" element={<MeetingDetails />} />
@@ -179,12 +168,12 @@ const renderDetails = () =>
     </AppContent.Provider>,
   );
 
-describe("Meeting Details SpeakerAttribution mount (#1991)", () => {
+describe("Meeting Details DigestActions mount (#1990)", () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });
 
-  it("mounts SpeakerAttribution with the meeting id and participants", async () => {
+  it("mounts DigestActions for the meeting owner with the meeting id", async () => {
     meetingApi.getMeetingById.mockResolvedValue({
       data: {
         success: true,
@@ -192,16 +181,59 @@ describe("Meeting Details SpeakerAttribution mount (#1991)", () => {
           _id: "123",
           title: "Quarterly Planning",
           uploadedBy: "db_123",
-          participants: [{ name: "Alex" }, { name: "Sam" }],
+          participants: [],
+          organization: "org-a",
         },
       },
     });
 
     renderDetails();
 
-    const section = await screen.findByTestId("speaker-attribution");
-    expect(section).toHaveTextContent("Speaker attribution for 123");
-    expect(section).toHaveAttribute("data-meeting-id", "123");
-    expect(section).toHaveAttribute("data-participant-count", "2");
+    const panel = await screen.findByTestId("digest-actions");
+    expect(panel).toHaveTextContent("Digest for 123");
+    expect(panel).toHaveAttribute("data-meeting-id", "123");
+    expect(panel).toHaveAttribute("data-can-manage", "yes");
+  });
+
+  it("mounts DigestActions for an org admin who is not the uploader", async () => {
+    meetingApi.getMeetingById.mockResolvedValue({
+      data: {
+        success: true,
+        meeting: {
+          _id: "123",
+          title: "Quarterly Planning",
+          uploadedBy: "someone-else",
+          participants: [],
+          organization: "org-a",
+        },
+      },
+    });
+
+    renderDetails({ _id: "db_123", role: "admin", organization: "org-a" });
+
+    const panel = await screen.findByTestId("digest-actions");
+    expect(panel).toHaveAttribute("data-meeting-id", "123");
+  });
+
+  it("does not show digest actions for an unauthorized member", async () => {
+    meetingApi.getMeetingById.mockResolvedValue({
+      data: {
+        success: true,
+        meeting: {
+          _id: "123",
+          title: "Quarterly Planning",
+          uploadedBy: "someone-else",
+          participants: [],
+          organization: "org-a",
+        },
+      },
+    });
+
+    renderDetails({ _id: "member-9", role: "member", organization: "org-a" });
+
+    expect(await screen.findByTestId("meeting-header")).toHaveTextContent(
+      "Quarterly Planning",
+    );
+    expect(screen.queryByTestId("digest-actions")).not.toBeInTheDocument();
   });
 });
