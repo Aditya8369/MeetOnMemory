@@ -39,3 +39,4 @@ export { default as highlightReelApi } from "./highlightReelApi.js";
 export * from "./adminHealthApi";
 export * from "./adminRbacApi";
 export * from "./adminImportanceApi";
+export * from "./exportTemplateApi.js";
