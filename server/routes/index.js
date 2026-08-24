@@ -271,4 +271,7 @@ router.use("/api/observers", observerRoutes);
 import skillEndorsementRoutes from "./skillEndorsementRoutes.js";
 router.use("/api/skill-endorsements", skillEndorsementRoutes);
 
+import complianceRoutes from "./complianceRoutes.js";
+router.use("/api/compliance", complianceRoutes);
+
 export default router;
