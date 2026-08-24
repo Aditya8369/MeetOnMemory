@@ -119,6 +119,22 @@ const CreateMeeting = () => {
               toast.success("Meeting scheduled successfully");
               navigate("/meetings");
             }}
+            onHandoff={(handoffData) => {
+              if (handoffData) {
+                hydrateDuplicateMeeting({
+                  title: handoffData.title,
+                  duration: handoffData.duration,
+                  date: handoffData.date,
+                  time: handoffData.time,
+                  participants: handoffData.participants,
+                });
+                toast.success(
+                  "Time slot and participants transferred to meeting form.",
+                );
+              }
+              setShowSmartScheduler(false);
+              setActiveSection("schedule");
+            }}
           />
         )}
 

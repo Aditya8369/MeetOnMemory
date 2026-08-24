@@ -1,14 +1,36 @@
+import mongoose from "mongoose";
 import actionItemDependencyService from "../services/actionItemDependencyService.js";
+
+const getOrgId = (user) => {
+  return (user?.organization?._id || user?.organization)?.toString();
+};
 
 export const addDependency = async (req, res) => {
   try {
     const { dependentId, blockerId } = req.body;
-    const orgId = req.user.organization;
+    const orgId = getOrgId(req.user);
+
+    if (!orgId || !mongoose.Types.ObjectId.isValid(orgId)) {
+      return res.status(400).json({
+        success: false,
+        message: "Organization ID is required and must be valid",
+      });
+    }
 
     if (!dependentId || !blockerId) {
       return res.status(400).json({
         success: false,
         message: "Both dependentId and blockerId are required",
+      });
+    }
+
+    if (
+      !mongoose.Types.ObjectId.isValid(dependentId) ||
+      !mongoose.Types.ObjectId.isValid(blockerId)
+    ) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid dependentId or blockerId format",
       });
     }
 
@@ -35,7 +57,26 @@ export const addDependency = async (req, res) => {
 export const removeDependency = async (req, res) => {
   try {
     const { dependentId, blockerId } = req.params;
-    const orgId = req.user.organization;
+    const orgId = getOrgId(req.user);
+
+    if (!orgId || !mongoose.Types.ObjectId.isValid(orgId)) {
+      return res.status(400).json({
+        success: false,
+        message: "Organization ID is required and must be valid",
+      });
+    }
+
+    if (
+      !dependentId ||
+      !blockerId ||
+      !mongoose.Types.ObjectId.isValid(dependentId) ||
+      !mongoose.Types.ObjectId.isValid(blockerId)
+    ) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid dependentId or blockerId format",
+      });
+    }
 
     await actionItemDependencyService.removeDependency(
       dependentId,
@@ -59,7 +100,21 @@ export const removeDependency = async (req, res) => {
 export const getDependencies = async (req, res) => {
   try {
     const { itemId } = req.params;
-    const orgId = req.user.organization;
+    const orgId = getOrgId(req.user);
+
+    if (!orgId || !mongoose.Types.ObjectId.isValid(orgId)) {
+      return res.status(400).json({
+        success: false,
+        message: "Organization ID is required and must be valid",
+      });
+    }
+
+    if (!itemId || !mongoose.Types.ObjectId.isValid(itemId)) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid itemId format",
+      });
+    }
 
     const dependencies = await actionItemDependencyService.getDependencies(
       itemId,

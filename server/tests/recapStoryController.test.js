@@ -1,4 +1,5 @@
 // server/tests/recapStoryController.test.js
+import { jest } from "@jest/globals";
 import Meeting from "../models/meetingModel.js";
 import {
   checkMeetingOrgAccess,

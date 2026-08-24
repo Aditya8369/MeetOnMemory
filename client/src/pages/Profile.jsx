@@ -1,10 +1,12 @@
 import React, { useState, useContext, useEffect } from "react";
+import { Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import axios from "axios";
 import Navbar from "../components/Navbar.jsx";
 import { toast } from "react-toastify";
 import { userApi } from "../services";
 import AppContent from "../context/AppContent";
+import { useSkillEndorsements } from "../hooks/useSkillEndorsements";
 import {
   User,
   Mail,
@@ -27,6 +29,10 @@ const Profile = () => {
   const [profilePicFailed, setProfilePicFailed] = useState(false);
   const [gamificationData, setGamificationData] = useState(null);
 
+  const [endorsements, setEndorsements] = useState([]);
+  const { getUserEndorsements, loading: endorsementsLoading } =
+    useSkillEndorsements();
+
   useEffect(() => {
     setProfilePicFailed(false);
   }, [userData?.profilePic]);
@@ -45,6 +51,13 @@ const Profile = () => {
         );
     }
   }, [userData]);
+
+  useEffect(() => {
+    if (userData?._id || userData?.id) {
+      const id = userData._id || userData.id;
+      getUserEndorsements(id).then((data) => setEndorsements(data || []));
+    }
+  }, [userData, getUserEndorsements]);
 
   // Form State
   const [name, setName] = useState("");
@@ -302,31 +315,116 @@ const Profile = () => {
                 </p>
               </div>
 
-              {/* Gamification section */}
+              {/* Gamification section — top badge showcase (#2066) */}
               {gamificationData && (
                 <div className="pt-6 border-t border-slate-100 dark:border-slate-800 space-y-4">
-                  <div className="text-[11px] text-slate-400 dark:text-slate-500 font-bold uppercase tracking-wider">
-                    {t("profile.trophyCase")}
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="text-[11px] text-slate-400 dark:text-slate-500 font-bold uppercase tracking-wider">
+                      {t("profile.trophyCase")}
+                    </div>
+                    <Link
+                      to="/badges"
+                      className="text-xs font-medium text-blue-600 hover:text-blue-800 dark:text-blue-400"
+                    >
+                      View all badges
+                    </Link>
                   </div>
                   <div className="flex items-center gap-4">
                     <div className="bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 px-4 py-2 rounded-lg font-bold">
                       {gamificationData.totalPoints} {t("profile.points")}
                     </div>
                   </div>
-                  {gamificationData.unlockedBadges?.length > 0 && (
+                  {gamificationData.unlockedBadges?.length > 0 ? (
                     <div className="flex flex-wrap gap-2 mt-2">
-                      {gamificationData.unlockedBadges.map((ub, idx) => (
-                        <div
-                          key={idx}
-                          className="bg-yellow-100 dark:bg-yellow-900/30 text-yellow-800 dark:text-yellow-200 text-xs px-3 py-1 rounded-full font-medium flex items-center gap-1 border border-yellow-200 dark:border-yellow-700/50"
-                        >
-                          🏅 {ub.badge?.name || t("profile.badge")}
-                        </div>
-                      ))}
+                      {[...gamificationData.unlockedBadges]
+                        .sort(
+                          (a, b) =>
+                            new Date(b.unlockedAt || 0) -
+                            new Date(a.unlockedAt || 0),
+                        )
+                        .slice(0, 3)
+                        .map((ub, idx) => (
+                          <Link
+                            key={ub.badge?._id || idx}
+                            to={
+                              ub.badge?._id
+                                ? `/badges#badge-${ub.badge._id}`
+                                : "/badges"
+                            }
+                            className="bg-yellow-100 dark:bg-yellow-900/30 text-yellow-800 dark:text-yellow-200 text-xs px-3 py-1 rounded-full font-medium flex items-center gap-1 border border-yellow-200 dark:border-yellow-700/50 hover:ring-2 hover:ring-yellow-300/60"
+                          >
+                            🏅 {ub.badge?.name || t("profile.badge")}
+                          </Link>
+                        ))}
                     </div>
+                  ) : (
+                    <p className="text-xs text-slate-500 dark:text-slate-400">
+                      No badges yet —{" "}
+                      <Link
+                        to="/badges"
+                        className="text-blue-600 hover:underline dark:text-blue-400"
+                      >
+                        browse the gallery
+                      </Link>
+                    </p>
                   )}
                 </div>
               )}
+
+              {/* Endorsements Section */}
+              <div className="pt-6 border-t border-slate-100 dark:border-slate-800 space-y-4">
+                <div className="flex items-center justify-between gap-2">
+                  <div className="text-[11px] text-slate-400 dark:text-slate-500 font-bold uppercase tracking-wider">
+                    {t("profile.endorsements") || "Peer Endorsements"}
+                  </div>
+                </div>
+
+                {endorsementsLoading ? (
+                  <div className="flex items-center justify-center p-4">
+                    <Loader2 className="animate-spin w-5 h-5 text-blue-500" />
+                  </div>
+                ) : endorsements.length > 0 ? (
+                  <div className="space-y-4 mt-2">
+                    {endorsements.map((skill, idx) => (
+                      <div
+                        key={idx}
+                        className="bg-slate-50 dark:bg-slate-800/50 p-4 rounded-xl border border-slate-100 dark:border-slate-700/50"
+                      >
+                        <div className="flex items-center justify-between mb-2">
+                          <h4 className="font-bold text-slate-800 dark:text-slate-200">
+                            {skill.skillTag}
+                          </h4>
+                          <span className="bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300 text-xs font-semibold px-2.5 py-0.5 rounded-full">
+                            {skill.count} endorsements
+                          </span>
+                        </div>
+                        <div className="space-y-2">
+                          {skill.endorsements.map((end, eIdx) => (
+                            <div
+                              key={eIdx}
+                              className="text-sm text-slate-600 dark:text-slate-400 bg-white dark:bg-slate-800 p-2 rounded-lg border border-slate-100 dark:border-slate-700"
+                            >
+                              {end.comment && (
+                                <p className="italic mb-1">"{end.comment}"</p>
+                              )}
+                              <Link
+                                to={`/meeting/${end.meetingId}`}
+                                className="text-xs text-blue-500 hover:underline"
+                              >
+                                View Meeting ↗
+                              </Link>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-xs text-slate-500 dark:text-slate-400">
+                    No endorsements yet.
+                  </p>
+                )}
+              </div>
             </div>
           ) : (
             // ================= EDIT STATE =================

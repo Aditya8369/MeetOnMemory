@@ -6,7 +6,7 @@ import IssueTrackerIntegration from "../models/issueTrackerIntegrationModel.js";
 export const getConfig = async (req, res) => {
   try {
     const { provider } = req.params;
-    const orgId = req.user.organizationId;
+    const orgId = req.user.organization;
 
     if (!["jira", "linear"].includes(provider)) {
       return res
@@ -24,8 +24,12 @@ export const getConfig = async (req, res) => {
     }
 
     // Don't send tokens back to the client
-    const { accessToken, refreshToken, webhookSecret, ...safeData } =
-      integration.toObject();
+    const {
+      accessToken: _accessToken,
+      refreshToken: _refreshToken,
+      webhookSecret: _webhookSecret,
+      ...safeData
+    } = integration.toObject();
 
     res.status(200).json({ success: true, data: safeData });
   } catch (error) {
@@ -40,7 +44,7 @@ export const getConfig = async (req, res) => {
 export const updateConfig = async (req, res) => {
   try {
     const { provider } = req.params;
-    const orgId = req.user.organizationId;
+    const orgId = req.user.organization;
     const userId = req.user.id;
     const { accessToken, config } = req.body;
 
@@ -99,7 +103,7 @@ export const updateConfig = async (req, res) => {
 export const disconnect = async (req, res) => {
   try {
     const { provider } = req.params;
-    const orgId = req.user.organizationId;
+    const orgId = req.user.organization;
 
     if (!["jira", "linear"].includes(provider)) {
       return res

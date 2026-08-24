@@ -14,15 +14,23 @@ export const verifyMeetingAccess = async (req, res, next) => {
         .json({ success: false, error: "Meeting not found" });
     }
 
-    // Verify organization ownership match
-    const meetingOrgId = meeting.organization || meeting.organizationId;
-    const userOrgId = req.user.organization || req.user.organizationId;
+    // Owner/creator access check
+    const isOwner =
+      Boolean(meeting.uploadedBy) &&
+      Boolean(req.user?._id) &&
+      meeting.uploadedBy.toString() === req.user._id.toString();
 
-    if (
+    // Verify organization ownership match - fail closed if organization information is missing
+    const meetingOrgId = meeting.organization;
+    const userOrgId = req.user?.organization;
+
+    const isSameOrg = Boolean(
       meetingOrgId &&
       userOrgId &&
-      meetingOrgId.toString() !== userOrgId.toString()
-    ) {
+      meetingOrgId.toString() === userOrgId.toString(),
+    );
+
+    if (!isOwner && !isSameOrg) {
       return res
         .status(403)
         .json({ success: false, error: "Unauthorized access to meeting" });
@@ -53,14 +61,21 @@ export const verifyActionItemAccess = async (req, res, next) => {
         .json({ success: false, error: "Action item not found" });
 
     const meeting = item.sourceMeetingId || item.meetingId;
-    const meetingOrgId = meeting?.organization || meeting?.organizationId;
-    const userOrgId = req.user.organization || req.user.organizationId;
+    const isOwner =
+      Boolean(meeting?.uploadedBy) &&
+      Boolean(req.user?._id) &&
+      meeting.uploadedBy.toString() === req.user._id.toString();
 
-    if (
+    const meetingOrgId = meeting?.organization || item.organization;
+    const userOrgId = req.user?.organization;
+
+    const isSameOrg = Boolean(
       meetingOrgId &&
       userOrgId &&
-      meetingOrgId.toString() !== userOrgId.toString()
-    ) {
+      meetingOrgId.toString() === userOrgId.toString(),
+    );
+
+    if (!isOwner && !isSameOrg) {
       return res
         .status(403)
         .json({ success: false, error: "Unauthorized access to action item" });

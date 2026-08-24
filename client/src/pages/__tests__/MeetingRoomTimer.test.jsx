@@ -78,6 +78,10 @@ vi.mock("../../components/meetings/LiveCaptions.jsx", () => ({
   default: () => <div data-testid="captions">Captions</div>,
 }));
 
+vi.mock("../../components/meeting-details/AgendaTimer.jsx", () => ({
+  default: () => <div data-testid="agenda-timer">Agenda</div>,
+}));
+
 vi.mock("../../components/meetings/DeviceSetupModal.jsx", () => {
   const MockDeviceSetupModal = ({ onSetupComplete }) => {
     React.useEffect(() => {

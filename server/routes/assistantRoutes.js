@@ -7,6 +7,7 @@ import {
   processMessage,
   setPinnedContext,
   clearPinnedContext,
+  renameSession,
 } from "../services/ragAssistantService.js";
 import userAuth from "../middleware/userAuth.js";
 import { assistantMessageLimiter } from "../middleware/rateLimiter.js";
@@ -56,6 +57,21 @@ router.delete("/sessions/:id", async (req, res) => {
   } catch (error) {
     console.error("Error deleting session:", error);
     res.status(500).json({ error: "Failed to delete session" });
+  }
+});
+
+// Rename a session
+router.patch("/sessions/:id", async (req, res) => {
+  try {
+    const { title } = req.body;
+    if (!title) {
+      return res.status(400).json({ error: "Title is required" });
+    }
+    const session = await renameSession(req.params.id, req.user._id, title);
+    res.json(session);
+  } catch (error) {
+    console.error("Error renaming session:", error);
+    res.status(500).json({ error: "Failed to rename session" });
   }
 });
 

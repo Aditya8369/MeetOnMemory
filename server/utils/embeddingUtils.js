@@ -5,6 +5,7 @@
 
 import dotenv from "dotenv";
 import Meeting from "../models/meetingModel.js";
+import { recordAiUsageSafe } from "../services/aiUsageMetricsService.js";
 
 dotenv.config();
 
@@ -97,8 +98,15 @@ export const embedText = async (text) => {
       arr = padded;
     }
 
+    // Counters only — never store prompt/transcript text (Issue #2083).
+    recordAiUsageSafe({
+      kind: "embedding",
+      embeddingChars: text.length,
+    });
+
     return arr;
   } catch (error) {
+    recordAiUsageSafe({ kind: "embedding", error: true });
     console.error("❌ Local embedding creation failed:", error);
     throw new Error("Embedding creation failed");
   }
@@ -180,8 +188,35 @@ export const indexMeeting = async (meeting) => {
     console.log(
       `✅ Indexed meeting: ${title} (${transcriptChunks.length} chunks)`,
     );
+
+    if (meeting._id) {
+      await Meeting.updateOne(
+        { _id: meeting._id },
+        {
+          $set: {
+            "embeddingIndex.status": "succeeded",
+            "embeddingIndex.lastIndexedAt": new Date(),
+            "embeddingIndex.lastError": null,
+          },
+        },
+      ).catch(() => {});
+    }
   } catch (error) {
     console.error("❌ Failed to index meeting:", error);
+    if (meeting?._id) {
+      await Meeting.updateOne(
+        { _id: meeting._id },
+        {
+          $set: {
+            "embeddingIndex.status": "failed",
+            "embeddingIndex.lastError": String(error?.message || error).slice(
+              0,
+              500,
+            ),
+          },
+        },
+      ).catch(() => {});
+    }
     throw error;
   }
 };

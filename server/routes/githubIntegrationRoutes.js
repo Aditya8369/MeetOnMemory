@@ -1,4 +1,13 @@
+// server/routes/githubIntegrationRoutes.js
+/**
+ * GitHub Integration Express Routes
+ *
+ * Provides endpoints for GitHub OAuth flow and integration status mounted at `/api/github`.
+ */
+
 import express from "express";
+import userAuth from "../middleware/userAuth.js";
+import { requireOrganizationParamMatch } from "../middleware/rbac.js";
 import {
   initiateOAuth,
   handleCallback,
@@ -7,36 +16,94 @@ import {
   updateRepository,
   syncActionItem,
 } from "../controllers/githubIntegrationController.js";
-import userAuth from "../middleware/userAuth.js";
-import { requireOrgMembership } from "../middleware/rbac.js";
 
 const router = express.Router();
 
-// OAuth flow — callback does not have a session cookie yet (redirect from GitHub)
-router.get("/auth", userAuth, initiateOAuth);
-router.get("/callback", handleCallback);
+// Middleware to normalize organizationId from path, query, body, or req.user fallback
+const normalizeOrgId = (req, res, next) => {
+  if (!req.params.organizationId) {
+    req.params.organizationId =
+      req.query.organizationId ||
+      req.body.organizationId ||
+      req.user?.organization?.toString() ||
+      "";
+  }
+  next();
+};
 
-// Protected organization-scoped routes
+// Public callback (GitHub redirects here; state signature is validated internally)
+router.get("/oauth_redirect", handleCallback);
+
+// All other routes require user authentication
+router.use(userAuth);
+
+// OAuth Flow Initiation (aliased to support both /auth and /connect)
+router.get("/auth", initiateOAuth);
+router.get("/connect", initiateOAuth);
+
+// Scoped status checking
 router.get(
   "/status/:organizationId",
-  userAuth,
-  requireOrgMembership,
+  normalizeOrgId,
+  requireOrganizationParamMatch("organizationId"),
   getStatus,
 );
+router.get(
+  "/status",
+  normalizeOrgId,
+  requireOrganizationParamMatch("organizationId"),
+  getStatus,
+);
+
+// Scoped disconnection
 router.delete(
   "/disconnect/:organizationId",
-  userAuth,
-  requireOrgMembership,
+  normalizeOrgId,
+  requireOrganizationParamMatch("organizationId"),
   disconnect,
 );
-router.patch(
+router.post(
+  "/disconnect",
+  normalizeOrgId,
+  requireOrganizationParamMatch("organizationId"),
+  disconnect,
+);
+
+// Scoped repository configuration
+router.post(
   "/repository/:organizationId",
-  userAuth,
-  requireOrgMembership,
+  normalizeOrgId,
+  requireOrganizationParamMatch("organizationId"),
+  updateRepository,
+);
+router.post(
+  "/repository",
+  normalizeOrgId,
+  requireOrganizationParamMatch("organizationId"),
   updateRepository,
 );
 
-// Manual sync trigger
-router.post("/sync", userAuth, requireOrgMembership, syncActionItem);
+// Repository listing (stub)
+router.get(
+  "/repos",
+  normalizeOrgId,
+  requireOrganizationParamMatch("organizationId"),
+  async (req, res) => {
+    try {
+      return res.status(200).json({
+        success: true,
+        repositories: [],
+      });
+    } catch (_err) {
+      return res.status(500).json({
+        success: false,
+        message: "Internal server error fetching GitHub repositories.",
+      });
+    }
+  },
+);
+
+// Action Item manual sync trigger
+router.post("/sync", syncActionItem);
 
 export default router;

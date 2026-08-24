@@ -14,6 +14,12 @@ vi.mock("../../components/organization/TopContributorsWidget", () => ({
   default: () => <div data-testid="top-contributors">Top Contributors</div>,
 }));
 
+vi.mock("../../components/dashboard/FeedbackTrendChart.jsx", () => ({
+  default: ({ orgId }) => (
+    <div data-testid="feedback-trend-chart">Trends for {orgId}</div>
+  ),
+}));
+
 vi.mock("react-i18next", () => ({
   useTranslation: () => ({
     t: (key) => key,
@@ -44,6 +50,9 @@ describe("Dashboard", () => {
     expect(screen.getByTestId("navbar")).toBeInTheDocument();
     expect(screen.getByLabelText("Dashboard hero")).toBeInTheDocument();
     expect(screen.getByTestId("feature-cards-grid")).toBeInTheDocument();
+    expect(screen.getByTestId("feedback-trend-chart")).toHaveTextContent(
+      "Trends for org-1",
+    );
   });
 
   it("renders all seven admin feature cards in a plain CSS grid (#712)", async () => {

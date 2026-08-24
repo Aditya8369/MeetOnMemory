@@ -32,16 +32,21 @@ const MeetingRepository = () => {
 
   // Saved Filters
   const [savedFilters, setSavedFilters] = useState([]);
+  const [savedFiltersError, setSavedFiltersError] = useState(null);
   const [isSaveModalOpen, setIsSaveModalOpen] = useState(false);
 
   const fetchSavedFilters = useCallback(async () => {
     try {
+      setSavedFiltersError(null);
       const response = await savedFilterApi.getFilters();
       if (response.data?.success) {
-        setSavedFilters(response.data.filters);
+        setSavedFilters(response.data.filters || []);
       }
     } catch (err) {
       console.error("Failed to fetch saved filters", err);
+      setSavedFiltersError(
+        err.response?.data?.message || "Failed to load saved views",
+      );
     }
   }, []);
 
@@ -107,6 +112,8 @@ const MeetingRepository = () => {
     selectedMeetings,
     toggleSelection,
     isProcessing,
+    errorMessage,
+    clearError,
     handleBulkArchive,
     handleBulkTag,
     handleBulkSoftDelete,
@@ -329,8 +336,10 @@ const MeetingRepository = () => {
     <div className="space-y-6">
       <SavedFilterBar
         savedFilters={savedFilters}
+        error={savedFiltersError}
         onApplyFilter={handleApplySavedFilter}
         fetchFilters={fetchSavedFilters}
+        onRetry={fetchSavedFilters}
       />
 
       {/* Search and Filters */}
@@ -453,11 +462,13 @@ const MeetingRepository = () => {
         <BulkActionBar
           selectedCount={selectedMeetings.size}
           isProcessing={isProcessing}
+          errorMessage={errorMessage}
           onArchive={handleBulkArchive}
           onDelete={handleBulkSoftDelete}
           onExport={handleBulkExport}
           onTag={handleBulkTag}
           onCancel={toggleBulkMode}
+          onClearError={clearError}
         />
       )}
     </div>

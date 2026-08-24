@@ -2,7 +2,7 @@ import request from "supertest";
 import mongoose from "mongoose";
 
 const { default: express } = await import("express");
-const { getPatterns, acknowledgePattern, dismissPattern, triggerManualScan } =
+const { getPatterns, acknowledgePattern } =
   await import("../controllers/meetingPatternController.js");
 const { default: MeetingPattern } =
   await import("../models/meetingPatternModel.js");

@@ -78,7 +78,7 @@ export const transcribeWithGemini = async (audioUrl) => {
     const mimeType = audioRes.headers["content-type"] || "audio/mpeg";
 
     const response = await axios.post(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${GEMINI_API_KEY}`,
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent`,
       {
         contents: [
           {
@@ -99,6 +99,7 @@ export const transcribeWithGemini = async (audioUrl) => {
       {
         headers: {
           "Content-Type": "application/json",
+          "x-goog-api-key": GEMINI_API_KEY,
         },
       },
     );

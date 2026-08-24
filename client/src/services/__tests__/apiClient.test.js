@@ -15,6 +15,7 @@ import {
   mockSuccessfulResponse,
   restoreAdapter,
 } from "./helpers/axiosAdapterMocks.js";
+import apiClient, { setClerkTokenGetter } from "../apiClient.js";
 
 const DEFAULT_MESSAGE = "An unexpected error occurred. Please try again.";
 const OFFLINE_MESSAGE =
@@ -23,13 +24,9 @@ const ONLINE_NETWORK_MESSAGE =
   "Unable to reach the server. This may be a network issue or a CORS policy restriction.";
 
 describe("apiClient interceptors", () => {
-  let apiClient;
-  let setClerkTokenGetter;
   let rejectInterceptor;
 
-  beforeAll(async () => {
-    ({ default: apiClient, setClerkTokenGetter } =
-      await import("../apiClient.js"));
+  beforeAll(() => {
     rejectInterceptor = apiClient.interceptors.response.handlers[0].rejected;
   });
 

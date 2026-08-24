@@ -7,10 +7,17 @@ import {
   getNotifications,
   markAsRead,
   markAllAsRead,
+  markGroupAsRead,
   deleteNotification,
   getUnreadCount,
   getPreferences,
   updatePreferences,
+  muteMeeting,
+  unmuteMeeting,
+  getVapidPublicKey,
+  subscribePush,
+  unsubscribePush,
+  sendTestPush,
 } from "../controllers/notificationController.js";
 
 const notificationRouter = express.Router();
@@ -34,6 +41,24 @@ notificationRouter.patch(
   markAllAsRead,
 );
 notificationRouter.patch(
+  "/mark-group-read",
+  writeLimiter,
+  requirePermission("notifications", "self_manage"),
+  markGroupAsRead,
+);
+notificationRouter.post(
+  "/mute-meeting/:meetingId",
+  writeLimiter,
+  requirePermission("notifications", "self_manage"),
+  muteMeeting,
+);
+notificationRouter.delete(
+  "/mute-meeting/:meetingId",
+  writeLimiter,
+  requirePermission("notifications", "self_manage"),
+  unmuteMeeting,
+);
+notificationRouter.patch(
   "/:id/read",
   writeLimiter,
   requirePermission("notifications", "view"),
@@ -49,6 +74,31 @@ notificationRouter.put(
   writeLimiter,
   requirePermission("notifications", "self_manage"),
   updatePreferences,
+);
+
+// Web Push endpoints
+notificationRouter.get(
+  "/push/public-key",
+  requirePermission("notifications", "view"),
+  getVapidPublicKey,
+);
+notificationRouter.post(
+  "/push/subscribe",
+  writeLimiter,
+  requirePermission("notifications", "self_manage"),
+  subscribePush,
+);
+notificationRouter.post(
+  "/push/unsubscribe",
+  writeLimiter,
+  requirePermission("notifications", "self_manage"),
+  unsubscribePush,
+);
+notificationRouter.post(
+  "/push/test",
+  writeLimiter,
+  requirePermission("notifications", "self_manage"),
+  sendTestPush,
 );
 
 notificationRouter.delete(

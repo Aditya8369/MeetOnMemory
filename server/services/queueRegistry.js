@@ -90,6 +90,15 @@ export const QUEUE_DEFINITIONS = Object.freeze({
     jobOptions: { attempts: 3 },
     workerOptions: { concurrency: 2 },
   }),
+  "policy-compliance-retry-queue": Object.freeze({
+    jobOptions: { attempts: 3, backoff: { type: "exponential", delay: 10000 } },
+    workerOptions: { concurrency: 2 },
+  }),
+  "embedding-reindex-queue": Object.freeze({
+    // Reindex is CPU-heavy (local embeddings) and Pinecone-bound; keep serial.
+    jobOptions: { attempts: 2, backoff: { type: "exponential", delay: 10000 } },
+    workerOptions: { concurrency: 1 },
+  }),
   "webhook-dispatches": Object.freeze({
     // These values already existed inline in webhookDispatcherService.js; they
     // are recorded here so the webhook queue picks up the shared retention caps

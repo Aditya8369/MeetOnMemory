@@ -11,7 +11,6 @@ import ActionItem from "../models/actionItemModel.js";
 import Meeting from "../models/Meeting.js";
 import GithubIntegration from "../models/githubIntegrationModel.js";
 import GitHubIssueSync from "../models/githubIssueSyncModel.js";
-import WebhookDeliveryLog from "../models/webhookDeliveryLogModel.js";
 import { encryptToken } from "../utils/crypto.js";
 
 // Mock nodemailer

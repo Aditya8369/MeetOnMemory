@@ -1,7 +1,7 @@
-const jwt = require("jsonwebtoken");
-const User = require("../models/User");
-const CrdtService = require("../services/crdtService");
-const NotePresence = require("../models/NotePresence");
+import jwt from "jsonwebtoken";
+import User from "../models/userModel.js";
+import CrdtService from "../services/crdtService.js";
+import NotePresence from "../models/NotePresence.js";
 
 // Predefined colors for user cursors to ensure visual distinction
 const CURSOR_COLORS = [
@@ -197,4 +197,4 @@ const initializeNotesSocket = (io) => {
   });
 };
 
-module.exports = initializeNotesSocket;
+export default initializeNotesSocket;

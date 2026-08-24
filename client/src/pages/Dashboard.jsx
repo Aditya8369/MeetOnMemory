@@ -14,10 +14,12 @@ import {
   Users,
   Trophy,
   ArrowRight,
+  CalendarRange,
 } from "lucide-react";
 import Navbar from "../components/Navbar.jsx";
 import TopContributorsWidget from "../components/organization/TopContributorsWidget";
 import DashboardMetricsWidget from "../components/dashboard/DashboardMetricsWidget.jsx";
+import FeedbackTrendChart from "../components/dashboard/FeedbackTrendChart.jsx";
 import OrganizationLogo from "../components/organization/OrganizationLogo.jsx";
 import OrganizationBanner from "../components/organization/OrganizationBanner.jsx";
 import PersonalNotesSidebar from "../components/PersonalNotesSidebar.jsx";
@@ -45,6 +47,7 @@ const ROUTE_MAP = {
   "attendance-analytics": "/attendance-analytics",
   "meeting-cost-analytics": "/meeting-cost-analytics",
   leaderboard: "/leaderboard",
+  "meeting-series": "/meeting-series",
 };
 
 /* ─── Dashboard ───────────────────────────────────────────────────────────── */
@@ -56,6 +59,8 @@ const Dashboard = () => {
 
   const organizationName =
     userData?.organization?.name?.toUpperCase() || "ORGANIZATION";
+  const organizationId =
+    userData?.organization?._id || userData?.organization || "";
   const organizationLogoUrl =
     userData?.organization?.logoUrl || userData?.organization?.logo || "";
   const organizationBannerUrl = userData?.organization?.bannerUrl || "";
@@ -96,6 +101,19 @@ const Dashboard = () => {
       accentRing:
         "group-hover:ring-emerald-100 dark:group-hover:ring-emerald-900/40",
       requiresCreateMeeting: true,
+    },
+    {
+      id: "meeting-series",
+      icon: CalendarRange,
+      title: "Meeting Series",
+      description:
+        "Browse recurring programs, open retrospectives, and pause or cancel series.",
+      iconBg: "bg-teal-50 dark:bg-teal-900/30",
+      iconColor: "text-teal-600 dark:text-teal-400",
+      tag: "Recurring",
+      tagColor:
+        "bg-teal-50 dark:bg-teal-900/30 text-teal-700 dark:text-teal-300 border-teal-100 dark:border-teal-800",
+      accentRing: "group-hover:ring-teal-100 dark:group-hover:ring-teal-900/40",
     },
     {
       id: "summaries",
@@ -316,6 +334,12 @@ const Dashboard = () => {
 
         {/* ── Operational Metrics ── */}
         <DashboardMetricsWidget />
+
+        {organizationId ? (
+          <div className="mb-8">
+            <FeedbackTrendChart orgId={organizationId} />
+          </div>
+        ) : null}
 
         {/* ── Feature Cards ── */}
         <section aria-label="Dashboard features">

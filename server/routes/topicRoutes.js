@@ -1,9 +1,12 @@
 import express from "express";
 import {
   extractForMeeting,
+  extractForOrganization,
   getTopicsForMeeting,
   getTopicClusters,
   renameCluster,
+  deleteCluster,
+  mergeClusters,
   triggerClustering,
 } from "../controllers/topicController.js";
 import userAuth from "../middleware/userAuth.js";
@@ -27,7 +30,7 @@ router.use(requireOrgMembership);
 router.post("/extract/:meetingId", extractForMeeting);
 router.get("/meeting/:meetingId", getTopicsForMeeting);
 
-// Organization cluster routes.
+// Organization cluster & extraction routes.
 //
 // `:orgId` is kept rather than removed — `client/src/pages/TopicExplorer.jsx`
 // calls the parameterised URL — but the handlers now reject a value that does
@@ -35,6 +38,9 @@ router.get("/meeting/:meetingId", getTopicsForMeeting);
 // the caller's data under someone else's id.
 router.get("/clusters/org/:orgId", getTopicClusters);
 router.post("/clusters/org/:orgId/cluster", triggerClustering);
+router.post("/extract/org/:orgId", extractForOrganization);
 router.put("/clusters/:clusterId", renameCluster);
+router.delete("/clusters/:clusterId", deleteCluster);
+router.post("/clusters/:clusterId/merge", mergeClusters);
 
 export default router;

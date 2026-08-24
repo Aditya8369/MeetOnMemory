@@ -16,6 +16,15 @@ const carryForwardApi = {
     api.post(`/meeting-series/${seriesId}/carry-forward/apply`, {
       currentMeetingId,
     }),
+
+  getMeetingPreview: (meetingId) =>
+    api.get(`/meetings/${meetingId}/carry-forward/preview`),
+
+  applyMeetingCarryForward: (meetingId, seriesId) =>
+    api.post(`/meetings/${meetingId}/carry-forward/apply`, { seriesId }),
+
+  getHistory: (seriesId) =>
+    api.get(`/series/${seriesId}/carry-forward/history`),
 };
 
 export default carryForwardApi;

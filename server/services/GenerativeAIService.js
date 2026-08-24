@@ -5,6 +5,7 @@ import {
   callWithResilience,
   createCircuitBreaker,
 } from "../utils/aiResilience.js";
+import { recordAiUsageSafe } from "./aiUsageMetricsService.js";
 
 const HUGGINGFACE_API_KEY = process.env.HUGGINGFACE_API_KEY; // eslint-disable-line no-unused-vars
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
@@ -93,31 +94,44 @@ export const resetGeminiClient = () => {
  * @returns {Promise<string>} raw model output text
  */
 export const generateText = async (prompt, label) => {
-  const result = await callWithResilience(
-    async (signal) => {
-      const model = getGenerativeModel();
-      // The SDK forwards requestOptions to fetch, so a well-behaved version
-      // cancels the in-flight request on abort. withTimeout rejects regardless,
-      // so an SDK that ignores the signal still cannot hang us.
-      return await model.generateContent(prompt, { signal });
-    },
-    {
-      label,
-      timeoutMs: GEMINI_TIMEOUT_MS(),
-      retries: GEMINI_MAX_RETRIES(),
-      baseDelayMs: GEMINI_RETRY_BASE_MS(),
-      maxDelayMs: GEMINI_RETRY_MAX_MS(),
-      breaker: geminiBreaker,
-      onRetry: ({ attempt, delayMs, classification }) =>
-        console.warn(
-          `↻ ${label}: attempt ${attempt} failed (${classification.kind}` +
-            `${classification.status ? ` ${classification.status}` : ""}), ` +
-            `retrying in ${delayMs}ms`,
-        ),
-    },
-  );
+  try {
+    const result = await callWithResilience(
+      async (signal) => {
+        const model = getGenerativeModel();
+        // The SDK forwards requestOptions to fetch, so a well-behaved version
+        // cancels the in-flight request on abort. withTimeout rejects regardless,
+        // so an SDK that ignores the signal still cannot hang us.
+        return await model.generateContent(prompt, { signal });
+      },
+      {
+        label,
+        timeoutMs: GEMINI_TIMEOUT_MS(),
+        retries: GEMINI_MAX_RETRIES(),
+        baseDelayMs: GEMINI_RETRY_BASE_MS(),
+        maxDelayMs: GEMINI_RETRY_MAX_MS(),
+        breaker: geminiBreaker,
+        onRetry: ({ attempt, delayMs, classification }) =>
+          console.warn(
+            `↻ ${label}: attempt ${attempt} failed (${classification.kind}` +
+              `${classification.status ? ` ${classification.status}` : ""}), ` +
+              `retrying in ${delayMs}ms`,
+          ),
+      },
+    );
 
-  return result.response.text();
+    const usage = result?.response?.usageMetadata || {};
+    recordAiUsageSafe({
+      kind: "gemini",
+      promptTokens: usage.promptTokenCount,
+      completionTokens: usage.candidatesTokenCount,
+      totalTokens: usage.totalTokenCount,
+    });
+
+    return result.response.text();
+  } catch (err) {
+    recordAiUsageSafe({ kind: "gemini", error: true });
+    throw err;
+  }
 };
 
 /**
@@ -811,4 +825,122 @@ Return ONLY a valid JSON object matching this structure (no markdown formatting,
   }
 
   return parsed;
+};
+
+export const generateSeriesRetrospectiveSummary = async (
+  seriesTitle,
+  metricsData,
+) => {
+  if (!GEMINI_API_KEY) {
+    throw new Error(
+      "Series Retrospective generation is unavailable: GEMINI_API_KEY is not configured.",
+    );
+  }
+
+  const prompt = `
+You are an AI meeting assistant. Your task is to generate a narrative retrospective summary for a meeting series.
+Series Title: "${seriesTitle}"
+
+Here is the aggregated metrics data for the series:
+${JSON.stringify(metricsData, null, 2)}
+
+Based on this data, provide a professional, 3-4 paragraph narrative summarizing the evolution of this meeting series.
+Focus on:
+1. Are topics recurring too often without resolution?
+2. Are action items being completed consistently, or are there chronic carryovers?
+3. How is the attendance trend?
+4. How is the overall sentiment evolving?
+5. Are decisions actually being followed through?
+
+Return ONLY a valid JSON object matching this structure (no markdown formatting, no commentary):
+{
+  "summary": "The narrative summary..."
+}
+`;
+
+  let outputText;
+  try {
+    outputText = await generateText(prompt, "Gemini series retrospective");
+  } catch (err) {
+    console.error("❌ Series retrospective generation failed:", err.message);
+    throw new Error(
+      `Series retrospective generation failed (${err.kind ?? AI_ERROR_KIND.UNKNOWN}): ${err.message}`,
+    );
+  }
+
+  const parsed = parseJsonOutput(outputText);
+  if (!parsed || !parsed.summary) {
+    throw new Error(
+      "Failed to parse Gemini JSON output for series retrospective",
+    );
+  }
+
+  return parsed.summary;
+};
+
+export const generateStandupReportAI = async (
+  userName,
+  timeframe,
+  meetingsContext,
+  completedItemsContext,
+  upcomingItemsContext,
+  blockersContext,
+  decisionsContext,
+) => {
+  if (!GEMINI_API_KEY) {
+    throw new Error(
+      "Standup report generation is unavailable: GEMINI_API_KEY is not configured.",
+    );
+  }
+
+  const prompt = `
+You are an AI assistant tasked with writing a concise, professional standup report for a team member named ${userName}.
+The timeframe for this report is: ${timeframe}.
+
+Here is the data context for ${userName}:
+
+Attended Meetings:
+${meetingsContext}
+
+Decisions Participated In:
+${decisionsContext}
+
+Completed Action Items:
+${completedItemsContext}
+
+Upcoming Action Items:
+${upcomingItemsContext}
+
+Overdue/Blocked Action Items:
+${blockersContext}
+
+Write a standup-style report (written in the first person, as if ${userName} is speaking) covering:
+1. What I did (accomplishments, completed items, meetings attended)
+2. What I will do (upcoming tasks, ongoing focus)
+3. Blockers (anything overdue or explicitly marked blocked)
+
+Keep it concise, actionable, and suitable for a team update. Do not invent information; only use what is provided. If a section is empty, summarize appropriately without making things up.
+
+Return ONLY a valid JSON object matching this structure (no markdown formatting, no commentary):
+{
+  "summary": "A 2-3 paragraph standup report"
+}
+`;
+
+  let outputText;
+  try {
+    outputText = await generateText(prompt, "Gemini standup report");
+  } catch (err) {
+    console.error("❌ Standup report generation failed:", err.message);
+    throw new Error(
+      `Standup report generation failed (${err.kind ?? AI_ERROR_KIND.UNKNOWN}): ${err.message}`,
+    );
+  }
+
+  const parsed = parseJsonOutput(outputText);
+  if (!parsed || !parsed.summary) {
+    throw new Error("Failed to parse Gemini JSON output for standup report");
+  }
+
+  return parsed.summary;
 };

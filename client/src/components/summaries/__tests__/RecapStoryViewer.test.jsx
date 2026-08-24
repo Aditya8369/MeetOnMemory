@@ -29,8 +29,16 @@ describe("RecapStoryViewer (#1800)", () => {
       data: {
         success: true,
         story: [
-          { title: "Key Discussion", content: "Discussed Q3 goals", theme: "blue" },
-          { title: "Action Items", content: "Alice to draft RFC", theme: "green" },
+          {
+            title: "Key Discussion",
+            content: "Discussed Q3 goals",
+            theme: "blue",
+          },
+          {
+            title: "Action Items",
+            content: "Alice to draft RFC",
+            theme: "green",
+          },
         ],
       },
     });
@@ -53,7 +61,9 @@ describe("RecapStoryViewer (#1800)", () => {
     render(<RecapStoryViewer meetingId="mtg-123" onClose={onClose} />);
 
     await waitFor(() => {
-      expect(screen.getByRole("dialog", { name: /recap story error/i })).toBeInTheDocument();
+      expect(
+        screen.getByRole("dialog", { name: /recap story error/i }),
+      ).toBeInTheDocument();
       expect(screen.getByText("Unable to Load Story")).toBeInTheDocument();
     });
 
@@ -91,7 +101,9 @@ describe("RecapStoryViewer (#1800)", () => {
       expect(screen.getByTestId("react-insta-stories")).toBeInTheDocument();
     });
 
-    const closeBtn = screen.getByRole("button", { name: /close story viewer/i });
+    const closeBtn = screen.getByRole("button", {
+      name: /close story viewer/i,
+    });
     fireEvent.click(closeBtn);
 
     expect(onClose).toHaveBeenCalledTimes(1);

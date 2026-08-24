@@ -8,6 +8,8 @@ import PublicRoutes from "./routes/PublicRoutes.jsx";
 import ProtectedRoutes from "./routes/ProtectedRoutes.jsx";
 
 import NotFound from "./pages/NotFound.jsx";
+import RiskRegister from "./pages/RiskRegister.jsx";
+import ProtectedRoute from "./components/ProtectedRoute.jsx";
 
 import ScrollNavigator from "./components/ScrollNavigator";
 import FloatingAssistant from "./components/FloatingAssistant.jsx";
@@ -53,6 +55,14 @@ const App = () => {
           <Routes>
             {PublicRoutes}
             {ProtectedRoutes}
+            <Route
+              path="/risks"
+              element={
+                <ProtectedRoute>
+                  <RiskRegister />
+                </ProtectedRoute>
+              }
+            />
             {/* ✅ Fallback route — send unknown routes to NotFound */}
             <Route path="*" element={<NotFound />} />
           </Routes>

@@ -5,16 +5,32 @@ import {
   applySuggestionToMeeting,
   getMeetingSuggestions,
 } from "../../services/agendaSuggestionApi";
+import {
+  Sparkles,
+  Check,
+  Edit2,
+  X,
+  RotateCcw,
+  AlertCircle,
+  Clock,
+  Tag,
+  HelpCircle,
+} from "lucide-react";
 
 const SmartAgendaGenerator = ({
   organizationId,
   meetingId,
+  currentAgenda = [],
   onApplySuccess,
 }) => {
   const [loading, setLoading] = useState(false);
   const [suggestions, setSuggestions] = useState(null);
   const [editingItemId, setEditingItemId] = useState(null);
   const [editText, setEditText] = useState("");
+  const [errorText, setErrorText] = useState(null);
+  const [toastMessage, setToastMessage] = useState(null);
+  const [previousAgendaBackup, setPreviousAgendaBackup] = useState(null);
+  const [showConfirmApply, setShowConfirmApply] = useState(false);
 
   const loadExistingSuggestions = useCallback(async () => {
     try {
@@ -35,12 +51,18 @@ const SmartAgendaGenerator = ({
 
   const handleGenerate = async () => {
     setLoading(true);
+    setErrorText(null);
+    setSuggestions(null);
     try {
       const data = await generateAgendaSuggestions(organizationId, meetingId);
       setSuggestions(data);
     } catch (error) {
       console.error("Failed to generate agenda:", error);
-      alert("Error generating agenda suggestions.");
+      setErrorText(
+        error.response?.data?.message ||
+          error.message ||
+          "Error generating agenda suggestions.",
+      );
     } finally {
       setLoading(false);
     }
@@ -48,6 +70,7 @@ const SmartAgendaGenerator = ({
 
   const handleUpdateStatus = async (itemId, status, text = null) => {
     if (!suggestions) return;
+    setErrorText(null);
     try {
       const updated = await updateSuggestionItemStatus(
         suggestions._id,
@@ -59,190 +82,382 @@ const SmartAgendaGenerator = ({
       setEditingItemId(null);
     } catch (error) {
       console.error("Failed to update status:", error);
+      setErrorText(
+        error.response?.data?.message ||
+          error.message ||
+          "Failed to update status.",
+      );
     }
   };
 
-  const handleApply = async () => {
+  const handleApplyClick = () => {
     if (!suggestions) return;
+
+    const itemsToApply = suggestions.suggestions.filter(
+      (s) => s.status === "accepted" || s.status === "edited",
+    );
+
+    if (itemsToApply.length === 0) {
+      setErrorText(
+        "Please accept or edit at least one suggestion before applying to the agenda.",
+      );
+      return;
+    }
+
+    if (currentAgenda && currentAgenda.length > 0) {
+      setShowConfirmApply(true);
+    } else {
+      handleApply("replace");
+    }
+  };
+
+  const handleApply = async (applyMode) => {
+    if (!suggestions) return;
+    setErrorText(null);
     try {
       if (meetingId) {
         await applySuggestionToMeeting(suggestions._id, meetingId);
       }
-      if (onApplySuccess) {
-        const itemsToApply = suggestions.suggestions.filter(
-          (s) => s.status === "accepted" || s.status === "edited",
-        );
-        onApplySuccess(itemsToApply);
+
+      const itemsToApply = suggestions.suggestions.filter(
+        (s) => s.status === "accepted" || s.status === "edited",
+      );
+
+      const formattedItems = itemsToApply.map((i) => ({
+        text: i.status === "edited" ? i.acceptedText : i.text,
+        description: i.description || "",
+        duration: i.estimatedDuration || 15,
+        id: crypto.randomUUID?.() || String(Date.now() + Math.random()),
+      }));
+
+      // Backup previous agenda
+      setPreviousAgendaBackup([...currentAgenda]);
+
+      let updatedAgenda;
+      if (applyMode === "append") {
+        updatedAgenda = [...currentAgenda, ...formattedItems];
+      } else {
+        updatedAgenda = formattedItems;
       }
+
+      if (onApplySuccess) {
+        onApplySuccess(updatedAgenda);
+      }
+
+      setShowConfirmApply(false);
+      setToastMessage(
+        "AI Suggestions successfully applied to your meeting timeline.",
+      );
+      setTimeout(() => setToastMessage(null), 8000);
     } catch (error) {
       console.error("Failed to apply suggestions:", error);
-      alert("Error applying agenda suggestions.");
+      setErrorText(
+        error.response?.data?.message ||
+          error.message ||
+          "Error applying agenda suggestions.",
+      );
     }
   };
 
-  // Removed strict organizationId check to allow backend to resolve it via session
-
-  if (loading) {
-    return (
-      <div className="p-6 border border-blue-200 dark:border-blue-900 bg-blue-50 dark:bg-blue-900/20 rounded-lg flex items-center justify-center space-x-3">
-        <div className="w-5 h-5 border-2 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
-        <span className="text-blue-700 dark:text-blue-300 font-medium">
-          Analyzing past meetings and organization context...
-        </span>
-      </div>
-    );
-  }
-
-  if (!suggestions) {
-    return (
-      <div className="p-6 border border-gray-200 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-900 text-center">
-        <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
-          ✨ Smart Agenda Generator
-        </h3>
-        <p className="text-gray-600 dark:text-gray-400 mb-4">
-          Automatically suggest an agenda based on open action items, deferred
-          decisions, and recent topics.
-        </p>
-        <button
-          onClick={handleGenerate}
-          className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded shadow transition-colors"
-        >
-          Generate Agenda
-        </button>
-      </div>
-    );
-  }
+  const handleUndoApply = () => {
+    if (previousAgendaBackup) {
+      if (onApplySuccess) {
+        onApplySuccess(previousAgendaBackup);
+      }
+      setPreviousAgendaBackup(null);
+      setToastMessage("Changes reverted. Previous agenda restored.");
+      setTimeout(() => setToastMessage(null), 3000);
+    }
+  };
 
   return (
-    <div className="p-4 border border-indigo-200 dark:border-indigo-900 rounded-lg bg-white dark:bg-gray-900 shadow-sm">
-      <div className="flex items-center justify-between mb-4">
-        <h3 className="text-lg font-semibold text-gray-900 dark:text-white flex items-center">
-          <span className="mr-2">✨</span> AI Agenda Suggestions
-        </h3>
-        <button
-          onClick={handleGenerate}
-          className="text-sm text-indigo-600 dark:text-indigo-400 hover:underline"
-        >
-          Regenerate
-        </button>
-      </div>
-
-      <div className="space-y-3 mb-6">
-        {suggestions.suggestions.map((item) => (
-          <div
-            key={item._id}
-            className={`p-4 border rounded-md ${
-              item.status === "accepted" || item.status === "edited"
-                ? "border-green-300 bg-green-50 dark:bg-green-900/20 dark:border-green-800"
-                : item.status === "rejected"
-                  ? "border-gray-200 bg-gray-50 opacity-60 dark:bg-gray-800 dark:border-gray-700"
-                  : "border-gray-200 bg-white dark:bg-gray-800 dark:border-gray-700"
-            }`}
-          >
-            {editingItemId === item._id ? (
-              <div className="flex flex-col space-y-2">
-                <input
-                  type="text"
-                  value={editText}
-                  onChange={(e) => setEditText(e.target.value)}
-                  className="px-3 py-2 border rounded text-sm w-full dark:bg-gray-700 dark:border-gray-600"
-                />
-                <div className="flex justify-end space-x-2">
-                  <button
-                    onClick={() => setEditingItemId(null)}
-                    className="text-xs text-gray-500 hover:text-gray-700"
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    onClick={() =>
-                      handleUpdateStatus(item._id, "edited", editText)
-                    }
-                    className="text-xs px-2 py-1 bg-green-600 text-white rounded"
-                  >
-                    Save
-                  </button>
-                </div>
-              </div>
-            ) : (
-              <div>
-                <div className="flex justify-between items-start mb-1">
-                  <h4 className="font-medium text-gray-900 dark:text-gray-100">
-                    {item.status === "edited" ? item.acceptedText : item.text}
-                  </h4>
-                  <div className="flex items-center space-x-2">
-                    {item.status === "pending" && (
-                      <>
-                        <button
-                          onClick={() =>
-                            handleUpdateStatus(item._id, "accepted")
-                          }
-                          className="text-green-600 hover:text-green-700 p-1"
-                          title="Accept"
-                        >
-                          ✓
-                        </button>
-                        <button
-                          onClick={() => {
-                            setEditingItemId(item._id);
-                            setEditText(item.text);
-                          }}
-                          className="text-blue-600 hover:text-blue-700 p-1"
-                          title="Edit"
-                        >
-                          ✎
-                        </button>
-                        <button
-                          onClick={() =>
-                            handleUpdateStatus(item._id, "rejected")
-                          }
-                          className="text-red-600 hover:text-red-700 p-1"
-                          title="Reject"
-                        >
-                          ✕
-                        </button>
-                      </>
-                    )}
-                    {(item.status === "accepted" ||
-                      item.status === "edited" ||
-                      item.status === "rejected") && (
-                      <button
-                        onClick={() => handleUpdateStatus(item._id, "pending")}
-                        className="text-xs text-gray-500 hover:underline"
-                      >
-                        Undo
-                      </button>
-                    )}
-                  </div>
-                </div>
-                <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">
-                  {item.description}
-                </p>
-                <div className="flex items-center text-xs space-x-3">
-                  <span className="text-gray-500 dark:text-gray-500">
-                    ⏱ {item.estimatedDuration} min
-                  </span>
-                  <span className="px-2 py-0.5 bg-indigo-100 text-indigo-700 dark:bg-indigo-900/50 dark:text-indigo-300 rounded-full font-medium">
-                    {item.source.title || "AI Suggestion"}
-                  </span>
-                </div>
-              </div>
-            )}
+    <div className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 shadow-sm mb-6 transition-all duration-200">
+      {/* Header */}
+      <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-4 mb-4">
+        <div className="flex items-center gap-3">
+          <div className="p-2 bg-indigo-50 dark:bg-indigo-950/40 text-indigo-600 dark:text-indigo-400 rounded-xl">
+            <Sparkles size={20} className="animate-pulse" />
           </div>
-        ))}
+          <div>
+            <h3 className="text-base font-bold text-slate-900 dark:text-white">
+              Smart Agenda Builder
+            </h3>
+            <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+              Synthesize structured meeting timelines with AI acceleration.
+            </p>
+          </div>
+        </div>
+        {suggestions && !loading && (
+          <button
+            onClick={handleGenerate}
+            disabled={loading}
+            type="button"
+            className="text-xs font-semibold text-indigo-600 dark:text-indigo-400 hover:text-indigo-700 dark:hover:text-indigo-300 transition flex items-center gap-1.5 cursor-pointer"
+          >
+            Regenerate
+          </button>
+        )}
       </div>
 
-      <div className="flex justify-end">
-        <button
-          onClick={handleApply}
-          disabled={suggestions.appliedAt !== null}
-          className="px-5 py-2 bg-green-600 hover:bg-green-700 disabled:bg-gray-400 disabled:cursor-not-allowed text-white font-medium rounded shadow transition-colors"
-        >
-          {suggestions.appliedAt !== null
-            ? "Applied to Meeting"
-            : "Apply to Agenda"}
-        </button>
-      </div>
+      {/* Floating System Custom Toast Notifications Block */}
+      {toastMessage && (
+        <div className="mb-4 p-3.5 bg-emerald-50 dark:bg-emerald-950/20 border border-emerald-200 dark:border-emerald-900/40 text-emerald-800 dark:text-emerald-300 text-xs font-semibold rounded-xl flex items-center justify-between gap-4 animate-slideDown shadow-sm">
+          <span className="flex items-center gap-2">🎉 {toastMessage}</span>
+          {previousAgendaBackup && (
+            <button
+              onClick={handleUndoApply}
+              type="button"
+              className="text-xs font-black uppercase tracking-wider text-emerald-700 dark:text-emerald-400 hover:text-emerald-900 dark:hover:text-emerald-200 flex items-center gap-1.5 cursor-pointer underline hover:no-underline"
+            >
+              <RotateCcw size={12} /> Undo
+            </button>
+          )}
+        </div>
+      )}
+
+      {/* Error Alert Display Box */}
+      {errorText && (
+        <div className="mb-4 p-3 bg-rose-50 dark:bg-rose-950/20 border border-rose-200 dark:border-rose-900/40 text-rose-600 dark:text-rose-400 text-xs rounded-xl flex items-start gap-2">
+          <AlertCircle size={16} className="shrink-0 mt-0.5" />
+          <div className="flex-1">
+            <strong>Generation Error:</strong> {errorText}
+          </div>
+          <button
+            type="button"
+            onClick={() => setErrorText(null)}
+            className="text-rose-400 hover:text-rose-600 dark:hover:text-rose-300 p-0.5 cursor-pointer"
+          >
+            <X size={14} />
+          </button>
+        </div>
+      )}
+
+      {/* Loading Skeletons State During AI Requests */}
+      {loading && (
+        <div className="space-y-4 py-2 animate-pulse">
+          <div className="text-center py-2 text-xs font-medium text-slate-500 dark:text-slate-400">
+            Analyzing organization context (action items, decisions, and
+            follow-ups)...
+          </div>
+          {[1, 2, 3].map((idx) => (
+            <div
+              key={idx}
+              className="p-4 bg-slate-50 dark:bg-slate-800/40 rounded-xl border border-slate-100 dark:border-slate-800/60 flex justify-between items-center"
+            >
+              <div className="space-y-2 w-2/3">
+                <div className="h-3.5 bg-slate-200 dark:bg-slate-700 rounded w-3/4" />
+                <div className="h-3 bg-slate-100 dark:bg-slate-800 rounded w-1/2" />
+              </div>
+              <div className="h-4 bg-slate-200 dark:bg-slate-700 rounded w-12" />
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Empty / Failure Actionable States Case Container */}
+      {!loading && !suggestions && (
+        <div className="text-center py-8 border-2 border-dashed border-slate-200 dark:border-slate-800 rounded-2xl p-6">
+          <div className="w-12 h-12 rounded-full bg-slate-50 dark:bg-slate-800/50 flex items-center justify-center mx-auto mb-3">
+            <Sparkles
+              className="text-slate-400 dark:text-slate-500"
+              size={24}
+            />
+          </div>
+          <h4 className="text-sm font-bold text-slate-850 dark:text-slate-200">
+            No Suggestions Generated Yet
+          </h4>
+          <p className="text-xs text-slate-500 dark:text-slate-400 max-w-sm mx-auto mt-1 mb-4 leading-normal">
+            Synthesize a draft agenda tailored to open action items, deferred
+            decisions, and recent topics from your organization.
+          </p>
+          <button
+            onClick={handleGenerate}
+            type="button"
+            className="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 dark:bg-indigo-600 dark:hover:bg-indigo-700 text-white text-xs font-bold rounded-xl transition duration-150 shadow-sm cursor-pointer"
+          >
+            ⚡ Generate Suggestions
+          </button>
+        </div>
+      )}
+
+      {/* Confirm Apply Options Dialog */}
+      {showConfirmApply && (
+        <div className="mb-6 p-4 border border-indigo-100 dark:border-indigo-900/60 bg-indigo-50/30 dark:bg-indigo-950/10 rounded-2xl animate-fadeIn">
+          <h4 className="text-xs font-bold text-slate-900 dark:text-white flex items-center gap-1.5 mb-2">
+            <HelpCircle size={14} className="text-indigo-500" /> Apply Option
+            Confirmation
+          </h4>
+          <p className="text-xs text-slate-600 dark:text-slate-400 mb-4">
+            You already have items in your current meeting agenda. How would you
+            like to apply these suggestions?
+          </p>
+          <div className="flex flex-wrap gap-2">
+            <button
+              onClick={() => handleApply("replace")}
+              type="button"
+              className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold rounded-lg transition cursor-pointer"
+            >
+              Replace Existing
+            </button>
+            <button
+              onClick={() => handleApply("append")}
+              type="button"
+              className="px-4 py-2 bg-slate-200 hover:bg-slate-350 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 text-xs font-semibold rounded-lg transition cursor-pointer"
+            >
+              Append to Existing
+            </button>
+            <button
+              onClick={() => setShowConfirmApply(false)}
+              type="button"
+              className="px-4 py-2 bg-transparent text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200 text-xs font-semibold rounded-lg transition cursor-pointer"
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Populated Suggestion Item Stream Deck */}
+      {!loading && suggestions && (
+        <div className="space-y-4">
+          <div className="space-y-2.5 max-h-80 overflow-y-auto pr-1">
+            {suggestions.suggestions.map((item) => {
+              const isAccepted =
+                item.status === "accepted" || item.status === "edited";
+              const isRejected = item.status === "rejected";
+              const isEditing = editingItemId === item._id;
+
+              return (
+                <div
+                  key={item._id}
+                  className={`p-3.5 border rounded-xl flex flex-col gap-2 transition duration-150 ${
+                    isAccepted
+                      ? "border-emerald-250 dark:border-emerald-900/40 bg-emerald-50/20 dark:bg-emerald-950/10"
+                      : isRejected
+                        ? "border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/30 opacity-60"
+                        : "border-slate-100 dark:border-slate-800 bg-slate-50/20 dark:bg-slate-800/10"
+                  }`}
+                >
+                  {isEditing ? (
+                    <div className="flex flex-col gap-2">
+                      <input
+                        type="text"
+                        value={editText}
+                        onChange={(e) => setEditText(e.target.value)}
+                        className="px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-lg text-sm w-full dark:bg-slate-800 dark:text-white outline-none focus:ring-2 focus:ring-indigo-500"
+                        autoFocus
+                      />
+                      <div className="flex justify-end gap-2">
+                        <button
+                          type="button"
+                          onClick={() => setEditingItemId(null)}
+                          className="text-xs px-2.5 py-1 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 rounded cursor-pointer"
+                        >
+                          Cancel
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() =>
+                            handleUpdateStatus(item._id, "edited", editText)
+                          }
+                          className="text-xs px-2.5 py-1 bg-emerald-600 hover:bg-emerald-700 text-white rounded cursor-pointer font-semibold"
+                        >
+                          Save
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div>
+                      <div className="flex justify-between items-start gap-3 mb-1">
+                        <h4 className="font-semibold text-sm text-slate-800 dark:text-slate-100 leading-snug">
+                          {item.status === "edited"
+                            ? item.acceptedText
+                            : item.text}
+                        </h4>
+
+                        <div className="flex items-center gap-1 shrink-0">
+                          {item.status === "pending" ? (
+                            <>
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  handleUpdateStatus(item._id, "accepted")
+                                }
+                                className="p-1 rounded-lg hover:bg-emerald-50 dark:hover:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400 transition cursor-pointer"
+                                title="Accept"
+                              >
+                                <Check size={16} />
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setEditingItemId(item._id);
+                                  setEditText(item.text);
+                                }}
+                                className="p-1 rounded-lg hover:bg-indigo-50 dark:hover:bg-indigo-950/40 text-indigo-600 dark:text-indigo-400 transition cursor-pointer"
+                                title="Edit"
+                              >
+                                <Edit2 size={14} />
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  handleUpdateStatus(item._id, "rejected")
+                                }
+                                className="p-1 rounded-lg hover:bg-rose-50 dark:hover:bg-rose-955/40 text-rose-600 dark:text-rose-400 transition cursor-pointer"
+                                title="Reject"
+                              >
+                                <X size={16} />
+                              </button>
+                            </>
+                          ) : (
+                            <button
+                              type="button"
+                              onClick={() =>
+                                handleUpdateStatus(item._id, "pending")
+                              }
+                              className="text-xs text-slate-500 hover:text-slate-700 dark:hover:text-slate-350 font-semibold hover:underline flex items-center gap-1 cursor-pointer"
+                            >
+                              <RotateCcw size={11} /> Undo
+                            </button>
+                          )}
+                        </div>
+                      </div>
+
+                      <p className="text-xs text-slate-500 dark:text-slate-400 mb-2 leading-relaxed">
+                        {item.description}
+                      </p>
+
+                      <div className="flex items-center gap-3 text-xs">
+                        <span className="flex items-center gap-1 text-slate-400 dark:text-slate-500 font-medium">
+                          <Clock size={12} /> {item.estimatedDuration} min
+                        </span>
+                        <span className="flex items-center gap-1 px-2.5 py-0.5 bg-indigo-50 text-indigo-700 dark:bg-indigo-950/40 dark:text-indigo-300 rounded-full font-semibold text-[10px]">
+                          <Tag size={10} />{" "}
+                          {item.source?.title || "AI Suggestion"}
+                        </span>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+
+          <div className="flex justify-end pt-2 border-t border-slate-100 dark:border-slate-800">
+            <button
+              onClick={handleApplyClick}
+              disabled={suggestions.appliedAt !== null}
+              type="button"
+              className="px-5 py-2.5 bg-green-600 hover:bg-green-700 disabled:opacity-40 disabled:cursor-not-allowed text-white text-xs font-bold rounded-xl shadow-sm transition duration-150 cursor-pointer"
+            >
+              {suggestions.appliedAt !== null
+                ? "Applied to Meeting"
+                : "📋 Apply Suggestions to Agenda"}
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

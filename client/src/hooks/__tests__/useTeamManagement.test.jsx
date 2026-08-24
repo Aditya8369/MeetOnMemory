@@ -12,6 +12,7 @@ vi.mock("../../services", () => ({
   invitationApi: {
     getOrganizationInvitations: vi.fn(),
     createInvitation: vi.fn(),
+    bulkImportInvitations: vi.fn(),
     resendInvitation: vi.fn(),
     revokeInvitation: vi.fn(),
     expireInvitation: vi.fn(),
@@ -117,5 +118,36 @@ describe("useTeamManagement", () => {
       email: "test@example.com",
     });
     expect(onSuccess).toHaveBeenCalled();
+  });
+
+  it("handles bulk invite", async () => {
+    const mockBulkResponse = {
+      success: true,
+      totalRows: 2,
+      successful: 2,
+      failed: 0,
+      results: [],
+    };
+    invitationApi.bulkImportInvitations.mockResolvedValueOnce({
+      data: mockBulkResponse,
+    });
+    const onSuccess = vi.fn();
+
+    const { result } = renderHook(() => useTeamManagement("invitations"), {
+      wrapper,
+    });
+
+    const formData = new FormData();
+    formData.append("file", new Blob(["email,role\na@b.com,member"]));
+
+    let response;
+    await act(async () => {
+      response = await result.current.handleBulkInvite(formData, onSuccess);
+    });
+
+    expect(invitationApi.bulkImportInvitations).toHaveBeenCalledWith(formData);
+    expect(formData.get("organizationId")).toBe("org1");
+    expect(onSuccess).toHaveBeenCalledWith(mockBulkResponse);
+    expect(response).toEqual(mockBulkResponse);
   });
 });

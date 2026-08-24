@@ -50,6 +50,20 @@ const meetingSeriesSchema = new mongoose.Schema(
       type: Boolean,
       default: true,
     },
+    enableRoleRotation: {
+      type: Boolean,
+      default: false,
+    },
+    roleRotationPool: [
+      {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "User",
+      },
+    ],
+    auditNote: {
+      type: String,
+      default: "",
+    },
   },
   { timestamps: true },
 );

@@ -107,4 +107,3 @@ describe("LanguagePreferences (#1407, #1802)", () => {
     });
   });
 });
-

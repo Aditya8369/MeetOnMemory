@@ -16,14 +16,14 @@ const LiveMeeting = ({ hookProps }) => {
   } = hookProps;
 
   return (
-    <div className="bg-white shadow-lg rounded-2xl p-8">
+    <div className="bg-white dark:bg-slate-900 border border-gray-200 dark:border-gray-800 shadow-lg rounded-2xl p-8">
       <div className="flex items-center gap-3 mb-6">
-        <Video className="text-indigo-600" size={28} />
+        <Video className="text-indigo-600 dark:text-indigo-400" size={28} />
         <div>
-          <h2 className="text-2xl font-bold text-gray-900">
+          <h2 className="text-2xl font-bold text-gray-900 dark:text-white">
             Start Live Meeting
           </h2>
-          <p className="text-sm text-gray-600">
+          <p className="text-sm text-gray-600 dark:text-gray-400">
             Add participants and start a live meeting with optional AI
             transcription
           </p>
@@ -45,7 +45,7 @@ const LiveMeeting = ({ hookProps }) => {
         type="button"
         onClick={handleStartLiveMeeting}
         disabled={liveParticipants.length === 0}
-        className={`w-full px-6 py-3 bg-indigo-600 text-white rounded-lg font-semibold transition flex items-center justify-center gap-2 shadow-md hover:shadow-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed enabled:hover:bg-indigo-700`}
+        className={`w-full px-6 py-3 bg-indigo-600 text-white rounded-lg font-semibold transition flex items-center justify-center gap-2 shadow-md hover:shadow-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed enabled:hover:bg-indigo-700 cursor-pointer`}
       >
         <Video size={18} /> 🚀 Start Live Meeting
       </button>

@@ -13,6 +13,8 @@ vi.mock("../../services/recapScheduleApi", () => ({
   recapScheduleApi: {
     getSchedule: vi.fn(),
     getDeliveryHistory: vi.fn(),
+    getFailedDeliveries: vi.fn().mockResolvedValue({ data: [] }),
+    dryRun: vi.fn(),
     upsertSchedule: vi.fn(),
     retryDelivery: vi.fn(),
   },

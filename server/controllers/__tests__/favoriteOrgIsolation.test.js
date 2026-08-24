@@ -1,10 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import mongoose from "mongoose";
-import {
-  toggleFavorite,
-  getFavorites,
-  getFavoriteStatus,
-} from "../favoriteController.js";
+import { getFavorites, getFavoriteStatus } from "../favoriteController.js";
 import Favorite from "../../models/favoriteModel.js";
 import Meeting from "../../models/meetingModel.js";
 

@@ -1,5 +1,6 @@
 import SavedFilter from "../models/savedFilterModel.js";
 import Meeting from "../models/meetingModel.js";
+import { escapeRegex } from "../utils/regex.js";
 
 class SavedFilterService {
   /**
@@ -14,7 +15,10 @@ class SavedFilterService {
 
     // Search Query
     if (filters.searchQuery && filters.searchQuery.trim()) {
-      const searchRegex = new RegExp(filters.searchQuery.trim(), "i");
+      const searchRegex = new RegExp(
+        escapeRegex(filters.searchQuery.trim()),
+        "i",
+      );
       query.$or = [
         { title: searchRegex },
         { summary: searchRegex },

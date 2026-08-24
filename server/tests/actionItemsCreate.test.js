@@ -34,14 +34,6 @@ function response() {
   };
 }
 
-function populated(item) {
-  return {
-    populate: vi.fn().mockReturnThis(),
-    then: undefined,
-    ...item,
-  };
-}
-
 describe("createActionItem", () => {
   beforeEach(() => {
     vi.clearAllMocks();

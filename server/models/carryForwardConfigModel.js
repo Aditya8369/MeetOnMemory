@@ -29,6 +29,22 @@ const carryForwardConfigSchema = new mongoose.Schema(
         max: 50,
       },
     },
+    history: [
+      {
+        executedAt: {
+          type: Date,
+          default: Date.now,
+        },
+        targetMeetingTitle: {
+          type: String,
+          required: true,
+        },
+        itemsCount: {
+          type: Number,
+          required: true,
+        },
+      },
+    ],
   },
   { timestamps: true },
 );

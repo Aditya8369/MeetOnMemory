@@ -3,22 +3,35 @@ import Meeting from "../models/meetingModel.js";
 import ActionItem from "../models/actionItemModel.js";
 import Decision from "../models/decisionModel.js";
 import MeetingAnalytics from "../models/MeetingAnalytics.js";
-import GenerativeAIService from "./GenerativeAIService.js";
+import * as GenerativeAIService from "./GenerativeAIService.js";
 
 class ParticipantEngagementService {
   /**
-   * Re-calculates and updates the participant's scorecard for a given organization.
+   * Re-calculates and updates the participant's scorecard for a given organization
+   * using real database aggregations instead of placeholder heuristics.
    */
   static async updateScorecard(userId, orgId) {
     try {
-      // 1. Gather historical metrics
+      // 1. Gather historical metrics from database collections
       const metrics = await this.aggregateParticipantMetrics(userId, orgId);
 
-      // 2. Compute dimensional scores
-      const speakingScore = Math.min(
-        100,
-        (metrics.totalSpeakingTimeMinutes / 60) * 100,
-      ); // placeholder heuristic
+      // 2. Compute dimensional scores based on real database aggregations (0 - 100)
+      const speakingScore =
+        metrics.meetingsAttended > 0
+          ? Math.min(
+              100,
+              Math.max(
+                0,
+                Math.round(
+                  (metrics.totalSpeakingTimeMinutes /
+                    (metrics.meetingsAttended * 5)) *
+                    100,
+                ),
+              ),
+            )
+          : metrics.totalSpeakingTimeMinutes > 0
+            ? 100
+            : 0;
 
       const aiScore =
         metrics.actionItemsAssigned > 0
@@ -28,12 +41,32 @@ class ParticipantEngagementService {
             )
           : 100;
 
-      const decisionsScore = Math.min(100, metrics.decisionsInvolved * 10); // placeholder heuristic
+      const decisionsScore =
+        metrics.meetingsAttended > 0
+          ? Math.min(
+              100,
+              Math.round(
+                (metrics.decisionsInvolved / metrics.meetingsAttended) * 100,
+              ),
+            )
+          : metrics.decisionsInvolved > 0
+            ? 100
+            : 0;
 
-      // We assume they attended these meetings vs total meetings (placeholder calculation)
-      const attendanceScore = Math.min(100, metrics.meetingsAttended * 10);
+      const attendanceScore =
+        metrics.totalOrgMeetings > 0
+          ? Math.min(
+              100,
+              Math.round(
+                (metrics.meetingsAttended / metrics.totalOrgMeetings) * 100,
+              ),
+            )
+          : 100;
 
-      const aiQuality = 85; // Placeholder AI quality score
+      const aiQuality = Math.min(
+        100,
+        Math.max(0, Math.round(aiScore * 0.5 + attendanceScore * 0.5)),
+      );
 
       const dimensionalScores = {
         speaking: speakingScore,
@@ -45,25 +78,30 @@ class ParticipantEngagementService {
 
       // 3. Compute overall score (weighted average)
       const overallScore = Math.round(
-        dimensionalScores.speaking * 0.15 +
-          dimensionalScores.actionItems * 0.3 +
+        dimensionalScores.speaking * 0.2 +
+          dimensionalScores.actionItems * 0.25 +
           dimensionalScores.decisions * 0.2 +
-          dimensionalScores.attendance * 0.15 +
-          dimensionalScores.aiQuality * 0.2,
+          dimensionalScores.attendance * 0.2 +
+          dimensionalScores.aiQuality * 0.15,
       );
 
       // 4. Generate AI Insights (Strengths/Growth Areas)
       let aiInsights = {
-        strengths: ["Consistent contributor to decisions"],
-        growthAreas: ["Could participate more in discussions"],
+        strengths: ["Active participant in organizational meetings"],
+        growthAreas: ["Continue driving decision follow-throughs"],
         lastGeneratedAt: new Date(),
       };
 
       try {
-        const insights =
-          await GenerativeAIService.generateAIInsightsForEngagement(metrics);
-        if (insights) {
-          aiInsights = insights;
+        if (
+          typeof GenerativeAIService.generateAIInsightsForEngagement ===
+          "function"
+        ) {
+          const insights =
+            await GenerativeAIService.generateAIInsightsForEngagement(metrics);
+          if (insights) {
+            aiInsights = insights;
+          }
         }
       } catch (err) {
         console.warn("Could not generate AI insights", err);
@@ -97,44 +135,139 @@ class ParticipantEngagementService {
   }
 
   /**
-   * Aggregates base metrics from other collections.
+   * Aggregates real base metrics from database collections:
+   * Meeting, ActionItem, Decision, and MeetingAnalytics.
    */
   static async aggregateParticipantMetrics(userId, orgId) {
-    // Meetings attended
+    // Meetings attended by user
     const meetingsAttended = await Meeting.countDocuments({
       organization: orgId,
-      participants: { $elemMatch: { userId: userId } },
+      $or: [
+        {
+          participants: {
+            $elemMatch: { userId: userId, role: { $ne: "observer" } },
+          },
+        },
+        {
+          participants: {
+            $elemMatch: { user: userId, role: { $ne: "observer" } },
+          },
+        },
+        { host: userId },
+        { organizer: userId },
+        { createdBy: userId },
+      ],
     });
 
-    // Action Items
+    const totalOrgMeetings = await Meeting.countDocuments({
+      organization: orgId,
+    });
+
+    // Action Items assigned and completed
     const actionItemsAssigned = await ActionItem.countDocuments({
       organization: orgId,
-      assignee: userId,
+      $or: [{ assignee: userId }, { assignedTo: userId }],
     });
 
     const actionItemsCompleted = await ActionItem.countDocuments({
       organization: orgId,
-      assignee: userId,
-      status: { $in: ["completed", "resolved"] },
+      $or: [{ assignee: userId }, { assignedTo: userId }],
+      status: { $in: ["completed", "resolved", "done"] },
     });
 
     // Decisions involved
     const decisionsInvolved = await Decision.countDocuments({
       organization: orgId,
-      involvedUsers: userId,
+      $or: [
+        { involvedUsers: userId },
+        { creator: userId },
+        { owner: userId },
+        { author: userId },
+      ],
     });
 
-    // We can compute speaking time via MeetingAnalytics
-    // (mocking the aggregation for brevity)
-    const totalSpeakingTimeMinutes = 15;
+    // Find meetings where this user was an observer
+    const observerMeetings = await Meeting.find({
+      organization: orgId,
+      $or: [
+        { participants: { $elemMatch: { userId: userId, role: "observer" } } },
+        { participants: { $elemMatch: { user: userId, role: "observer" } } },
+      ],
+    })
+      .select("_id")
+      .lean();
+    const observerMeetingIds = observerMeetings.map((m) => m._id);
+
+    // Real speaking time aggregated from MeetingAnalytics docs
+    let totalSpeakingSeconds = 0;
+    const analyticsDocs = await MeetingAnalytics.find({
+      organization: orgId,
+      meeting: { $nin: observerMeetingIds },
+      $or: [
+        { "speakers.userId": userId },
+        { "speakingTimeDistribution.userId": userId },
+      ],
+    }).lean();
+
+    analyticsDocs.forEach((doc) => {
+      if (Array.isArray(doc.speakers)) {
+        doc.speakers.forEach((spk) => {
+          if (spk.userId && spk.userId.toString() === userId.toString()) {
+            totalSpeakingSeconds += spk.totalTime || 0;
+          }
+        });
+      }
+      if (Array.isArray(doc.speakingTimeDistribution)) {
+        doc.speakingTimeDistribution.forEach((dist) => {
+          if (dist.userId && dist.userId.toString() === userId.toString()) {
+            totalSpeakingSeconds += dist.duration || 0;
+          }
+        });
+      }
+    });
+
+    const totalSpeakingTimeMinutes = Math.round(totalSpeakingSeconds / 60);
 
     return {
       meetingsAttended,
+      totalOrgMeetings,
       totalSpeakingTimeMinutes,
       actionItemsAssigned,
       actionItemsCompleted,
       decisionsInvolved,
     };
+  }
+
+  /**
+   * Asynchronous background job to recompute scorecards for all participants in an organization.
+   */
+  static async recomputeAllScorecards(orgId) {
+    try {
+      const meetings = await Meeting.find({ organization: orgId })
+        .select("participants host organizer createdBy")
+        .lean();
+      const userIds = new Set();
+
+      meetings.forEach((m) => {
+        if (m.host) userIds.add(m.host.toString());
+        if (m.organizer) userIds.add(m.organizer.toString());
+        if (m.createdBy) userIds.add(m.createdBy.toString());
+        if (Array.isArray(m.participants)) {
+          m.participants.forEach((p) => {
+            const id = p.userId || p.user || p._id;
+            if (id) userIds.add(id.toString());
+          });
+        }
+      });
+
+      for (const userId of userIds) {
+        await this.updateScorecard(userId, orgId);
+      }
+      return { totalRecomputed: userIds.size };
+    } catch (err) {
+      console.error("Error in recomputeAllScorecards:", err);
+      throw err;
+    }
   }
 
   /**

@@ -1,6 +1,14 @@
 import React, { useState, useEffect } from "react";
 import { toast } from "react-toastify";
-import { Plus, Trash2, Power, PowerOff, Activity, Sliders } from "lucide-react";
+import {
+  Plus,
+  Trash2,
+  Power,
+  PowerOff,
+  Activity,
+  Sliders,
+  Edit2,
+} from "lucide-react";
 import * as api from "../services/automationRuleApi";
 import ConfirmModal from "../components/ConfirmModal.jsx";
 import Navbar from "../components/Navbar.jsx";
@@ -16,6 +24,7 @@ const AutomationRules = () => {
   const [rules, setRules] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showBuilder, setShowBuilder] = useState(false);
+  const [editingRuleId, setEditingRuleId] = useState(null);
   const [newRule, setNewRule] = useState({
     name: "",
     description: "",
@@ -70,21 +79,48 @@ const AutomationRules = () => {
     }
   };
 
-  const handleCreate = async (e) => {
+  const handleEditClick = (rule) => {
+    setEditingRuleId(rule._id);
+    setNewRule({
+      name: rule.name || "",
+      description: rule.description || "",
+      trigger: rule.trigger || { event: "meeting.created", filters: {} },
+      actions:
+        rule.actions && rule.actions.length > 0
+          ? rule.actions
+          : [{ type: "slack", config: { channelId: "" } }],
+    });
+    setShowBuilder(true);
+  };
+
+  const handleCancelBuilder = () => {
+    setShowBuilder(false);
+    setEditingRuleId(null);
+    setNewRule({
+      name: "",
+      description: "",
+      trigger: { event: "meeting.created", filters: {} },
+      actions: [{ type: "slack", config: { channelId: "" } }],
+    });
+  };
+
+  const handleSave = async (e) => {
     e.preventDefault();
     try {
-      await api.createRule(newRule);
-      toast.success("Rule created successfully");
-      setShowBuilder(false);
-      setNewRule({
-        name: "",
-        description: "",
-        trigger: { event: "meeting.created", filters: {} },
-        actions: [{ type: "slack", config: { channelId: "" } }],
-      });
+      if (editingRuleId) {
+        await api.updateRule(editingRuleId, newRule);
+        toast.success("Rule updated successfully");
+      } else {
+        await api.createRule(newRule);
+        toast.success("Rule created successfully");
+      }
+      handleCancelBuilder();
       loadRules();
     } catch (err) {
-      toast.error(err.response?.data?.message || "Failed to create rule");
+      toast.error(
+        err.response?.data?.message ||
+          `Failed to ${editingRuleId ? "update" : "create"} rule`,
+      );
     }
   };
 
@@ -126,7 +162,13 @@ const AutomationRules = () => {
           </div>
           <button
             type="button"
-            onClick={() => setShowBuilder(!showBuilder)}
+            onClick={() => {
+              if (showBuilder) {
+                handleCancelBuilder();
+              } else {
+                setShowBuilder(true);
+              }
+            }}
             className="bg-indigo-600 hover:bg-indigo-700 dark:bg-indigo-500 dark:hover:bg-indigo-600 text-white px-4 py-2 rounded-lg flex items-center transition-colors shadow-sm cursor-pointer"
           >
             {showBuilder ? (
@@ -140,17 +182,24 @@ const AutomationRules = () => {
         </div>
 
         {showBuilder && (
-          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-md p-6 mb-8 border border-gray-200 dark:border-gray-700">
+          <div
+            role="region"
+            aria-label={
+              editingRuleId ? "Edit Automation Rule" : "Create New Rule"
+            }
+            className="bg-white dark:bg-gray-800 rounded-xl shadow-md p-6 mb-8 border border-gray-200 dark:border-gray-700"
+          >
             <h2 className="text-xl font-semibold mb-6 text-gray-800 dark:text-gray-100">
-              Create New Rule
+              {editingRuleId ? "Edit Automation Rule" : "Create New Rule"}
             </h2>
-            <form onSubmit={handleCreate} className="space-y-6">
+            <form onSubmit={handleSave} className="space-y-6">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
                   <label className={LABEL_CLASS}>Rule Name</label>
                   <input
                     type="text"
                     required
+                    data-testid="rule-name-input"
                     className={FIELD_CLASS}
                     value={newRule.name}
                     onChange={(e) =>
@@ -163,6 +212,7 @@ const AutomationRules = () => {
                   <label className={LABEL_CLASS}>Description</label>
                   <input
                     type="text"
+                    data-testid="rule-description-input"
                     className={FIELD_CLASS}
                     value={newRule.description}
                     onChange={(e) =>
@@ -178,13 +228,13 @@ const AutomationRules = () => {
                 <h3 className="text-md font-semibold text-gray-800 dark:text-gray-100 mb-4 flex items-center">
                   <Activity
                     size={18}
-                    className="mr-2 text-indigo-500 dark:text-indigo-400"
+                    className="mr-2 text-indigo-600 dark:text-indigo-400"
                   />{" "}
-                  When this happens... (Trigger)
+                  Trigger Configuration
                 </h3>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div>
-                    <label className={LABEL_CLASS}>Event Type</label>
+                    <label className={LABEL_CLASS}>Event</label>
                     <select
                       className={FIELD_CLASS}
                       value={newRule.trigger.event}
@@ -199,130 +249,128 @@ const AutomationRules = () => {
                       }
                     >
                       <option value="meeting.created">Meeting Created</option>
-                      <option value="transcript.processed">
-                        Transcript Processed
+                      <option value="meeting.summary_generated">
+                        Summary Generated
                       </option>
-                      <option value="action_item.assigned">
-                        Action Item Assigned
+                      <option value="action_item.created">
+                        Action Item Created
                       </option>
                     </select>
                   </div>
-
-                  {newRule.trigger.event === "meeting.created" && (
-                    <div>
-                      <label className={LABEL_CLASS}>
-                        Filter by Tag (Optional)
-                      </label>
-                      <input
-                        type="text"
-                        className={FIELD_CLASS}
-                        placeholder="e.g. urgent"
-                        onChange={(e) =>
-                          handleFilterChange("tag", e.target.value)
-                        }
-                      />
-                    </div>
-                  )}
+                  <div>
+                    <label className={LABEL_CLASS}>
+                      Filter by Tag (Optional)
+                    </label>
+                    <input
+                      type="text"
+                      className={FIELD_CLASS}
+                      value={newRule.trigger.filters.tag || ""}
+                      onChange={(e) =>
+                        handleFilterChange("tag", e.target.value)
+                      }
+                      placeholder="e.g. executive"
+                    />
+                  </div>
                 </div>
               </div>
 
-              {/* Actions Config */}
+              {/* Action Config */}
               <div className="border-t border-gray-200 dark:border-gray-700 pt-6">
                 <h3 className="text-md font-semibold text-gray-800 dark:text-gray-100 mb-4 flex items-center">
                   <Sliders
                     size={18}
-                    className="mr-2 text-indigo-500 dark:text-indigo-400"
+                    className="mr-2 text-indigo-600 dark:text-indigo-400"
                   />{" "}
-                  Do this... (Actions)
+                  Actions
                 </h3>
-                {newRule.actions.map((action, index) => (
+                {newRule.actions.map((action, idx) => (
                   <div
-                    key={index}
-                    className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4 bg-gray-50 dark:bg-gray-900/50 p-4 rounded-lg border border-transparent dark:border-gray-700"
+                    key={idx}
+                    className="bg-gray-50 dark:bg-gray-700/50 p-4 rounded-lg border border-gray-200 dark:border-gray-600 mb-4 space-y-4"
                   >
-                    <div>
-                      <label className={LABEL_CLASS}>Action Type</label>
-                      <select
-                        className={FIELD_CLASS}
-                        value={action.type}
-                        onChange={(e) =>
-                          handleActionChange(index, "type", e.target.value)
-                        }
-                      >
-                        <option value="slack">Send Slack Notification</option>
-                        <option value="email">Send Email</option>
-                        <option value="webhook">Trigger Webhook</option>
-                      </select>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <label className={LABEL_CLASS}>Action Type</label>
+                        <select
+                          className={FIELD_CLASS}
+                          value={action.type}
+                          onChange={(e) =>
+                            handleActionChange(idx, "type", e.target.value)
+                          }
+                        >
+                          <option value="slack">Post to Slack</option>
+                          <option value="webhook">Call Webhook</option>
+                          <option value="email">Send Email</option>
+                        </select>
+                      </div>
+                      {action.type === "slack" && (
+                        <div>
+                          <label className={LABEL_CLASS}>Channel ID</label>
+                          <input
+                            type="text"
+                            required
+                            className={FIELD_CLASS}
+                            value={action.config.channelId || ""}
+                            onChange={(e) =>
+                              handleActionChange(
+                                idx,
+                                "channelId",
+                                e.target.value,
+                              )
+                            }
+                            placeholder="C12345678"
+                          />
+                        </div>
+                      )}
+                      {action.type === "webhook" && (
+                        <div>
+                          <label className={LABEL_CLASS}>Webhook URL</label>
+                          <input
+                            type="url"
+                            required
+                            className={FIELD_CLASS}
+                            value={action.config.url || ""}
+                            onChange={(e) =>
+                              handleActionChange(idx, "url", e.target.value)
+                            }
+                            placeholder="https://api.example.com/webhook"
+                          />
+                        </div>
+                      )}
+                      {action.type === "email" && (
+                        <div>
+                          <label className={LABEL_CLASS}>Recipient Email</label>
+                          <input
+                            type="email"
+                            required
+                            className={FIELD_CLASS}
+                            value={action.config.to || ""}
+                            onChange={(e) =>
+                              handleActionChange(idx, "to", e.target.value)
+                            }
+                            placeholder="user@example.com"
+                          />
+                        </div>
+                      )}
                     </div>
-
-                    {action.type === "slack" && (
-                      <div>
-                        <label className={LABEL_CLASS}>Channel ID</label>
-                        <input
-                          type="text"
-                          required
-                          className={FIELD_CLASS}
-                          placeholder="e.g. #general"
-                          value={action.config.channelId || ""}
-                          onChange={(e) =>
-                            handleActionChange(
-                              index,
-                              "channelId",
-                              e.target.value,
-                            )
-                          }
-                        />
-                      </div>
-                    )}
-
-                    {action.type === "email" && (
-                      <div>
-                        <label className={LABEL_CLASS}>Recipient Email</label>
-                        <input
-                          type="email"
-                          required
-                          className={FIELD_CLASS}
-                          placeholder="user@example.com"
-                          value={action.config.email || ""}
-                          onChange={(e) =>
-                            handleActionChange(index, "email", e.target.value)
-                          }
-                        />
-                      </div>
-                    )}
-
-                    {action.type === "webhook" && (
-                      <div className="md:col-span-2">
-                        <label className={LABEL_CLASS}>Webhook URL</label>
-                        <input
-                          type="url"
-                          required
-                          className={FIELD_CLASS}
-                          placeholder="https://api.example.com/webhook"
-                          value={action.config.url || ""}
-                          onChange={(e) =>
-                            handleActionChange(index, "url", e.target.value)
-                          }
-                        />
-                      </div>
-                    )}
                   </div>
                 ))}
               </div>
 
-              <div className="flex justify-end space-x-4">
+              <div className="flex justify-end space-x-4 pt-4 border-t border-gray-200 dark:border-gray-700">
                 <button
                   type="button"
-                  onClick={() => setShowBuilder(false)}
-                  className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 cursor-pointer transition-colors"
+                  onClick={handleCancelBuilder}
+                  className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors cursor-pointer"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
+                  data-testid="save-rule-button"
                   className="bg-indigo-600 hover:bg-indigo-700 dark:bg-indigo-500 dark:hover:bg-indigo-600 text-white px-6 py-2 rounded-lg font-medium shadow-sm transition-colors cursor-pointer"
                 >
-                  Save Rule
+                  {editingRuleId ? "Update Rule" : "Save Rule"}
                 </button>
               </div>
             </form>
@@ -390,6 +438,15 @@ const AutomationRules = () => {
                 </div>
 
                 <div className="flex items-center space-x-3 self-end md:self-center">
+                  <button
+                    type="button"
+                    onClick={() => handleEditClick(rule)}
+                    className="p-2 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 rounded-lg transition-colors cursor-pointer"
+                    title="Edit Rule"
+                    aria-label={`Edit rule ${rule.name}`}
+                  >
+                    <Edit2 size={20} />
+                  </button>
                   <button
                     type="button"
                     onClick={() => handleToggle(rule._id, rule.isActive)}

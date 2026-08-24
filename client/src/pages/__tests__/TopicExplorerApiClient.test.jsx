@@ -1,7 +1,12 @@
 import React from "react";
 import { render, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { BrowserRouter } from "react-router-dom";
 import TopicExplorer from "../TopicExplorer.jsx";
+
+vi.mock("../../components/Navbar.jsx", () => ({
+  default: () => <nav data-testid="shared-navbar">Shared Navbar</nav>,
+}));
 
 vi.mock("../../services/apiClient.js", () => ({
   default: {
@@ -36,7 +41,11 @@ describe("TopicExplorer uses Clerk-aware apiClient (#1407)", () => {
   });
 
   it("fetches topic clusters through apiClient without manual getToken headers", async () => {
-    render(<TopicExplorer />);
+    render(
+      <BrowserRouter>
+        <TopicExplorer />
+      </BrowserRouter>,
+    );
 
     await waitFor(() => {
       expect(apiClient.get).toHaveBeenCalledWith(

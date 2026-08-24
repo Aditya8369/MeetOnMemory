@@ -46,6 +46,7 @@ const createMeetingSchema = z.object({
   agendaItems: z.array(z.record(z.unknown())).optional().default([]),
   policyDetails: z.record(z.unknown()).nullable().optional(),
   recordingType: z.enum(["upload", "live"]).optional().default("upload"),
+  auditNote: z.string().optional().default(""),
 });
 
 const uploadMeetingSchema = z.object({
@@ -745,5 +746,33 @@ export const getMeetingClip = async (req, res) => {
     res
       .status(500)
       .json({ success: false, message: "Server error fetching clip" });
+  }
+};
+
+export const getPurgePreviewController = async (req, res, next) => {
+  try {
+    const preview = await MeetingService.getPurgePreview(req.user.organization);
+    return sendSuccess(res, preview);
+  } catch (err) {
+    next(err);
+  }
+};
+
+export const purgeTrashController = async (req, res, next) => {
+  try {
+    const actorId = getUserId(req);
+    const result = await MeetingService.purgeTrash(req.user.organization);
+
+    await AuditService.logAction({
+      actorId,
+      action: "RECYCLE_BIN_PURGED",
+      entity: "Meeting",
+      organizationId: req.user.organization,
+      details: { deletedCount: result.deletedCount },
+    });
+
+    return sendSuccess(res, result, "Recycle bin purged successfully");
+  } catch (err) {
+    next(err);
   }
 };

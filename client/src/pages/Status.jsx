@@ -492,6 +492,26 @@ const Status = () => {
                       {service.message}
                     </p>
                   )}
+                  {service.id === "redis" &&
+                    service.status !== "operational" && (
+                      <div className="mt-3 p-3 bg-amber-50 dark:bg-amber-950/20 border border-amber-100 dark:border-amber-900/30 rounded-xl text-xs text-amber-800 dark:text-amber-300">
+                        <p className="font-bold">Service Impact:</p>
+                        <p className="mt-0.5 leading-relaxed">
+                          With Redis unavailable, rate-limiting is handled
+                          in-memory and real-time document synchronization
+                          fallback mode is active. Administrators can configure
+                          Redis to restore optimal caching and performance.
+                        </p>
+                        <a
+                          href="https://docs.meetonmemory.com/redis-setup"
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-block mt-2 font-bold text-amber-700 hover:text-amber-800 dark:text-amber-400 dark:hover:text-amber-300 underline"
+                        >
+                          Learn how to enable Redis →
+                        </a>
+                      </div>
+                    )}
                 </div>
               );
             })}
@@ -672,7 +692,15 @@ const Status = () => {
               Status reflects live checks against{" "}
               <code className="text-[11px]">/api/status</code>, backed by the
               same dependency probes as{" "}
-              <code className="text-[11px]">/health</code>.
+              <code className="text-[11px]">/health</code>. Admins can inspect
+              background queues on the{" "}
+              <a
+                href="/admin-panel?module=jobs"
+                className="text-blue-600 dark:text-blue-400 font-semibold hover:underline"
+              >
+                Jobs dashboard
+              </a>
+              .
             </p>
           </div>
           <a

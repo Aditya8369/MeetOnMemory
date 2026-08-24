@@ -1,6 +1,7 @@
 import RealtimeTranslationCache from "../models/TranslationCache.js";
 import UserLanguagePreference from "../models/UserLanguagePreference.js";
 import Meeting from "../models/meetingModel.js";
+import { escapeRegex } from "../utils/regex.js";
 
 /**
  * Real-time Translation Service
@@ -146,13 +147,6 @@ const applyGlossary = async (
     console.error("Glossary application error:", error);
     return text;
   }
-};
-
-/**
- * Escape regex special characters
- */
-const escapeRegex = (string) => {
-  return string.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 };
 
 /**

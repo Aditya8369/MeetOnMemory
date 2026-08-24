@@ -1,4 +1,5 @@
-import React from "react";
+import React, { useContext } from "react";
+import AppContent from "../../context/AppContent.js";
 import {
   Clock,
   Users,
@@ -8,6 +9,10 @@ import {
   Captions,
   FileText,
   Lightbulb,
+  DoorOpen,
+  BarChart3,
+  Timer,
+  ShieldAlert,
 } from "lucide-react";
 
 export default function MeetingHeader({
@@ -19,7 +24,11 @@ export default function MeetingHeader({
   onTogglePanel,
   transcriptionEnabled,
   toggleTranscription,
+  userRole: propUserRole,
 }) {
+  const { userData } = useContext(AppContent);
+  const userRole = propUserRole || userData?.role || "member";
+  const isViewerOrGuest = userRole === "viewer" || userRole === "guest";
   const formatTime = (seconds) => {
     const hrs = Math.floor(seconds / 3600);
     const mins = Math.floor((seconds % 3600) / 60);
@@ -30,6 +39,9 @@ export default function MeetingHeader({
   const isNotesOpen = activePanel === "notes";
   const isParkingLotOpen = activePanel === "parkingLot";
   const isTranscriptOpen = activePanel === "transcript";
+  const isBreakoutRoomsOpen = activePanel === "breakoutRooms";
+  const isPollsOpen = activePanel === "polls";
+  const isAgendaOpen = activePanel === "agenda";
 
   return (
     <header
@@ -41,6 +53,12 @@ export default function MeetingHeader({
         <h2 className="text-lg font-bold text-white truncate max-w-xs md:max-w-md">
           Room: {roomId}
         </h2>
+        {isViewerOrGuest && (
+          <span className="flex items-center gap-1.5 px-3 py-1 bg-amber-950/70 border border-amber-600/60 text-amber-300 rounded-full text-xs font-bold uppercase tracking-wider">
+            <ShieldAlert className="w-3.5 h-3.5 text-amber-400" />
+            Read-Only ({userRole})
+          </span>
+        )}
         <div className="flex items-center gap-2 text-gray-300 bg-gray-800 px-3 py-1 rounded-full text-sm font-mono">
           <Clock size={14} />
           <span>{formatTime(duration)}</span>
@@ -51,92 +69,165 @@ export default function MeetingHeader({
         </div>
       </div>
 
-      <button
-        type="button"
-        onClick={copyLink}
-        className="text-gray-300 hover:text-white flex items-center gap-1.5 text-sm font-semibold bg-gray-800 hover:bg-gray-700 px-4 py-2 rounded-xl transition-all cursor-pointer"
-      >
-        <Copy size={16} />
-        <span className="hidden sm:inline">Copy Link</span>
-      </button>
+      <div className="flex items-center gap-2">
+        <button
+          type="button"
+          onClick={copyLink}
+          className="text-gray-300 hover:text-white flex items-center gap-1.5 text-sm font-semibold bg-gray-800 hover:bg-gray-700 px-4 py-2 rounded-xl transition-all cursor-pointer"
+        >
+          <Copy size={16} />
+          <span className="hidden sm:inline">Copy Link</span>
+        </button>
 
-      {/* Notes Toggle */}
-      <button
-        type="button"
-        onClick={() => onTogglePanel("notes")}
-        aria-pressed={isNotesOpen}
-        className={`flex items-center gap-1.5 text-sm font-semibold px-4 py-2 rounded-xl transition-all cursor-pointer ${
-          isNotesOpen
-            ? "bg-indigo-600 text-white hover:bg-indigo-700"
-            : "bg-gray-800 text-gray-300 hover:text-white hover:bg-gray-700"
-        }`}
-        title={isNotesOpen ? "Hide notes" : "Open collaborative notes"}
-      >
-        {isNotesOpen ? (
-          <PanelRightClose size={16} />
-        ) : (
-          <NotebookPen size={16} />
+        {/* Notes Toggle */}
+        <button
+          type="button"
+          onClick={() => onTogglePanel("notes")}
+          aria-pressed={isNotesOpen}
+          className={`flex items-center gap-1.5 text-sm font-semibold px-4 py-2 rounded-xl transition-all cursor-pointer ${
+            isNotesOpen
+              ? "bg-indigo-600 text-white hover:bg-indigo-700"
+              : "bg-gray-800 text-gray-300 hover:text-white hover:bg-gray-700"
+          }`}
+          title={isNotesOpen ? "Hide notes" : "Open collaborative notes"}
+        >
+          {isNotesOpen ? (
+            <PanelRightClose size={16} />
+          ) : (
+            <NotebookPen size={16} />
+          )}
+          <span className="hidden sm:inline">
+            {isNotesOpen ? "Hide Notes" : "Notes"}
+          </span>
+        </button>
+
+        {/* Parking Lot Toggle */}
+        <button
+          type="button"
+          onClick={() => onTogglePanel("parkingLot")}
+          aria-pressed={isParkingLotOpen}
+          className={`flex items-center gap-1.5 text-sm font-semibold px-4 py-2 rounded-xl transition-all cursor-pointer ${
+            isParkingLotOpen
+              ? "bg-indigo-600 text-white hover:bg-indigo-700"
+              : "bg-gray-800 text-gray-300 hover:text-white hover:bg-gray-700"
+          }`}
+          title={isParkingLotOpen ? "Hide parking lot" : "Open parking lot"}
+        >
+          <Lightbulb size={16} />
+          <span className="hidden sm:inline">
+            {isParkingLotOpen ? "Hide Ideas" : "Parking Lot"}
+          </span>
+        </button>
+
+        {/* Breakout Rooms Toggle (hidden for viewers & guests) */}
+        {!isViewerOrGuest && (
+          <button
+            type="button"
+            onClick={() => onTogglePanel("breakoutRooms")}
+            aria-pressed={isBreakoutRoomsOpen}
+            className={`flex items-center gap-1.5 text-sm font-semibold px-4 py-2 rounded-xl transition-all cursor-pointer ${
+              isBreakoutRoomsOpen
+                ? "bg-indigo-600 text-white hover:bg-indigo-700"
+                : "bg-gray-800 text-gray-300 hover:text-white hover:bg-gray-700"
+            }`}
+            title={
+              isBreakoutRoomsOpen
+                ? "Hide breakout rooms"
+                : "Open breakout rooms"
+            }
+          >
+            <DoorOpen size={16} />
+            <span className="hidden sm:inline">
+              {isBreakoutRoomsOpen ? "Hide Breakout" : "Breakout"}
+            </span>
+          </button>
         )}
-        <span className="hidden sm:inline">
-          {isNotesOpen ? "Hide Notes" : "Notes"}
-        </span>
-      </button>
 
-      <button
-        type="button"
-        onClick={() => onTogglePanel("parkingLot")}
-        aria-pressed={isParkingLotOpen}
-        className={`flex items-center gap-1.5 text-sm font-semibold px-4 py-2 rounded-xl transition-all cursor-pointer ${
-          isParkingLotOpen
-            ? "bg-indigo-600 text-white hover:bg-indigo-700"
-            : "bg-gray-800 text-gray-300 hover:text-white hover:bg-gray-700"
-        }`}
-        title={isParkingLotOpen ? "Hide parking lot" : "Open parking lot"}
-      >
-        <Lightbulb size={16} />
-        <span className="hidden sm:inline">
-          {isParkingLotOpen ? "Hide Ideas" : "Parking Lot"}
-        </span>
-      </button>
+        {/* Polls Toggle */}
+        <button
+          type="button"
+          onClick={() => onTogglePanel("polls")}
+          aria-pressed={isPollsOpen}
+          className={`flex items-center gap-1.5 text-sm font-semibold px-4 py-2 rounded-xl transition-all cursor-pointer ${
+            isPollsOpen
+              ? "bg-indigo-600 text-white hover:bg-indigo-700"
+              : "bg-gray-800 text-gray-300 hover:text-white hover:bg-gray-700"
+          }`}
+          title={isPollsOpen ? "Hide live polls" : "Open live polls"}
+        >
+          <BarChart3 size={16} />
+          <span className="hidden sm:inline">
+            {isPollsOpen ? "Hide Polls" : "Polls"}
+          </span>
+        </button>
 
-      {/* Transcription Toggle */}
-      <button
-        type="button"
-        onClick={toggleTranscription}
-        className={`flex items-center gap-1.5 text-sm font-semibold px-4 py-2 rounded-xl transition-all cursor-pointer ${
-          transcriptionEnabled
-            ? "bg-green-600 text-white hover:bg-green-700"
-            : "bg-gray-800 text-gray-300 hover:text-white hover:bg-gray-700"
-        }`}
-        title={
-          transcriptionEnabled
-            ? "Stop transcription"
-            : "Start live transcription"
-        }
-      >
-        <Captions size={16} />
-        <span className="hidden sm:inline">
-          {transcriptionEnabled ? "Stop" : "Captions"}
-        </span>
-      </button>
+        {/* Agenda Timer Toggle */}
+        <button
+          type="button"
+          onClick={() => onTogglePanel("agenda")}
+          aria-pressed={isAgendaOpen}
+          className={`flex items-center gap-1.5 text-sm font-semibold px-4 py-2 rounded-xl transition-all cursor-pointer ${
+            isAgendaOpen
+              ? "bg-indigo-600 text-white hover:bg-indigo-700"
+              : "bg-gray-800 text-gray-300 hover:text-white hover:bg-gray-700"
+          }`}
+          title={isAgendaOpen ? "Hide live agenda" : "Open live agenda"}
+        >
+          <Timer size={16} />
+          <span className="hidden sm:inline">
+            {isAgendaOpen ? "Hide Agenda" : "Agenda"}
+          </span>
+        </button>
 
-      {/* Transcript Toggle */}
-      <button
-        type="button"
-        onClick={() => onTogglePanel("transcript")}
-        aria-pressed={isTranscriptOpen}
-        className={`flex items-center gap-1.5 text-sm font-semibold px-4 py-2 rounded-xl transition-all cursor-pointer ${
-          isTranscriptOpen
-            ? "bg-indigo-600 text-white hover:bg-indigo-700"
-            : "bg-gray-800 text-gray-300 hover:text-white hover:bg-gray-700"
-        }`}
-        title={isTranscriptOpen ? "Hide transcript" : "Show transcript"}
-      >
-        <FileText size={16} />
-        <span className="hidden sm:inline">
-          {isTranscriptOpen ? "Hide" : "Transcript"}
-        </span>
-      </button>
+        {/* Transcription Toggle (gated to non-viewer/guest) */}
+        {!isViewerOrGuest ? (
+          <button
+            type="button"
+            onClick={toggleTranscription}
+            className={`flex items-center gap-1.5 text-sm font-semibold px-4 py-2 rounded-xl transition-all cursor-pointer ${
+              transcriptionEnabled
+                ? "bg-green-600 text-white hover:bg-green-700"
+                : "bg-gray-800 text-gray-300 hover:text-white hover:bg-gray-700"
+            }`}
+            title={
+              transcriptionEnabled
+                ? "Stop transcription"
+                : "Start live transcription"
+            }
+          >
+            <Captions size={16} />
+            <span className="hidden sm:inline">
+              {transcriptionEnabled ? "Stop" : "Captions"}
+            </span>
+          </button>
+        ) : (
+          <div
+            className="flex items-center gap-1.5 text-sm font-semibold px-3 py-2 rounded-xl bg-gray-800/50 text-gray-500 cursor-not-allowed select-none"
+            title="Transcription controls restricted to hosts and members"
+          >
+            <Captions size={16} className="opacity-50" />
+            <span className="hidden sm:inline">Captions</span>
+          </div>
+        )}
+
+        {/* Transcript Toggle */}
+        <button
+          type="button"
+          onClick={() => onTogglePanel("transcript")}
+          aria-pressed={isTranscriptOpen}
+          className={`flex items-center gap-1.5 text-sm font-semibold px-4 py-2 rounded-xl transition-all cursor-pointer ${
+            isTranscriptOpen
+              ? "bg-indigo-600 text-white hover:bg-indigo-700"
+              : "bg-gray-800 text-gray-300 hover:text-white hover:bg-gray-700"
+          }`}
+          title={isTranscriptOpen ? "Hide transcript" : "Show transcript"}
+        >
+          <FileText size={16} />
+          <span className="hidden sm:inline">
+            {isTranscriptOpen ? "Hide" : "Transcript"}
+          </span>
+        </button>
+      </div>
     </header>
   );
 }

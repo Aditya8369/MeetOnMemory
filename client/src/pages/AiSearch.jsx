@@ -1,6 +1,7 @@
-import React, { useEffect, useState, useRef, useId } from "react";
+import React, { useCallback, useEffect, useRef, useState, useId } from "react";
 import { useTranslation } from "react-i18next";
-import { X } from "lucide-react";
+import { useSearchParams } from "react-router-dom";
+import { History, X, Globe, Mic } from "lucide-react";
 import Navbar from "../components/Navbar.jsx";
 import SearchBar from "../components/ai-search/SearchBar.jsx";
 import SearchFilters from "../components/ai-search/SearchFilters.jsx";
@@ -9,14 +10,31 @@ import HybridResultCard from "../components/ai-search/HybridResultCard.jsx";
 import HybridSearchToggle from "../components/ai-search/HybridSearchToggle.jsx";
 import SearchSkeleton from "../components/ai-search/SearchSkeleton.jsx";
 import SearchEmptyState from "../components/ai-search/SearchEmptyState.jsx";
-import { apiClient } from "../services";
+import VoiceSearchBar from "../components/VoiceSearchBar.jsx";
+import { searchApi } from "../services";
 import { sanitizeHtml } from "../utils/sanitizeHtml";
+import {
+  clearSearchHistory,
+  loadSearchHistory,
+  paramsToSearchState,
+  saveSearchHistoryEntry,
+  searchStateToParams,
+} from "../utils/searchHistory.js";
 import { toast } from "react-toastify";
 
 const FOCUSABLE_SELECTOR =
   'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
 
-// Modal Component for showing full details
+const DEFAULT_FILTERS = {
+  resultType: "all",
+  dateFrom: "",
+  dateTo: "",
+  sortBy: "relevance",
+  meetingType: "",
+  speaker: "",
+  tag: "",
+};
+
 const ResultModal = ({ result, onClose }) => {
   const { t } = useTranslation();
   const titleId = useId();
@@ -101,11 +119,18 @@ const ResultModal = ({ result, onClose }) => {
         </div>
 
         <div className="space-y-4">
+          {(result.organizationName || result.workspaceName) && (
+            <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-indigo-50 dark:bg-indigo-950/50 border border-indigo-200 dark:border-indigo-800 text-indigo-700 dark:text-indigo-300 rounded-full text-xs font-bold">
+              <Globe className="w-3.5 h-3.5" />
+              Workspace: {result.organizationName || result.workspaceName}
+            </div>
+          )}
+
           <div>
             <h3 className="text-sm font-semibold text-gray-500 dark:text-gray-400 uppercase">
               {t("aiSearch.summary")}
             </h3>
-            <p className="text-gray-700 mt-1 leading-relaxed">
+            <p className="text-gray-700 dark:text-gray-300 mt-1 leading-relaxed">
               {result.summary || result.transcript || t("aiSearch.noSummary")}
             </p>
           </div>
@@ -115,7 +140,7 @@ const ResultModal = ({ result, onClose }) => {
               <h3 className="text-sm font-semibold text-gray-500 uppercase">
                 {t("aiSearch.transcript")}
               </h3>
-              <p className="text-gray-600 text-sm mt-1 leading-relaxed max-h-40 overflow-y-auto bg-gray-50 p-3 rounded-lg">
+              <p className="text-gray-600 dark:text-gray-400 text-sm mt-1 leading-relaxed max-h-40 overflow-y-auto bg-gray-50 dark:bg-gray-900 p-3 rounded-lg">
                 {result.transcript}
               </p>
             </div>
@@ -124,7 +149,7 @@ const ResultModal = ({ result, onClose }) => {
           <div className="grid grid-cols-2 gap-4 text-sm">
             <div>
               <span className="text-gray-500">{t("aiSearch.date")}</span>
-              <p className="font-medium text-gray-800">
+              <p className="font-medium text-gray-800 dark:text-gray-200">
                 {result.createdAt
                   ? new Date(result.createdAt).toLocaleDateString("en-US", {
                       year: "numeric",
@@ -138,8 +163,8 @@ const ResultModal = ({ result, onClose }) => {
               <span className="text-gray-500">
                 {t("aiSearch.similarityScore")}
               </span>
-              <p className="font-medium text-gray-800">
-                {result.similarityScore || "N/A"}
+              <p className="font-medium text-gray-800 dark:text-gray-200">
+                {result.similarityScore || result.score || "N/A"}
               </p>
             </div>
           </div>
@@ -153,7 +178,7 @@ const ResultModal = ({ result, onClose }) => {
                 {result.tags.map((tag) => (
                   <span
                     key={tag}
-                    className="bg-blue-100 text-blue-700 px-3 py-1 rounded-full text-xs"
+                    className="bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300 px-3 py-1 rounded-full text-xs font-bold"
                   >
                     #{tag}
                   </span>
@@ -164,6 +189,7 @@ const ResultModal = ({ result, onClose }) => {
         </div>
 
         <button
+          type="button"
           onClick={onClose}
           className="mt-6 w-full bg-blue-600 text-white py-3 rounded-xl font-semibold hover:bg-blue-700 transition"
         >
@@ -176,92 +202,175 @@ const ResultModal = ({ result, onClose }) => {
 
 const AiSearch = () => {
   const { t } = useTranslation();
-  const [query, setQuery] = useState("");
+  const [searchParams, setSearchParams] = useSearchParams();
+  const bootstrapped = useRef(false);
+
+  const initial = paramsToSearchState(searchParams);
+
+  const [query, setQuery] = useState(initial.query);
   const [results, setResults] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [selectedResult, setSelectedResult] = useState(null);
   const [hasSearched, setHasSearched] = useState(false);
+  const [showVoiceBar, setShowVoiceBar] = useState(false);
   const [filters, setFilters] = useState({
-    resultType: "all",
-    dateFrom: "",
-    dateTo: "",
-    sortBy: "relevance",
+    ...DEFAULT_FILTERS,
+    ...initial.filters,
   });
-  const [searchMode, setSearchMode] = useState("standard"); // "standard" | "hybrid"
-  const [hybridWeights, setHybridWeights] = useState({
-    semanticWeight: 0.7,
-    graphWeight: 0.3,
-  });
+  const [searchMode, setSearchMode] = useState(initial.mode || "standard");
+  const [hybridWeights, setHybridWeights] = useState(initial.weights);
+  const [history, setHistory] = useState(() => loadSearchHistory());
 
-  const handleSearch = async () => {
-    if (!query.trim()) {
-      setError(t("aiSearch.enterQuery"));
-      return;
-    }
+  const syncUrl = useCallback(
+    (next) => {
+      const params = searchStateToParams(next);
+      setSearchParams(params, { replace: true });
+    },
+    [setSearchParams],
+  );
 
-    setLoading(true);
-    setError("");
-    setResults([]);
-    setHasSearched(true);
+  const runSearch = useCallback(
+    async ({
+      nextQuery = query,
+      nextMode = searchMode,
+      nextFilters = filters,
+      nextWeights = hybridWeights,
+      persistHistory = true,
+    } = {}) => {
+      if (!nextQuery.trim()) {
+        setError(t("aiSearch.enterQuery"));
+        return;
+      }
 
-    try {
-      if (searchMode === "hybrid") {
-        const res = await apiClient.post("/api/search/hybrid", {
-          query,
-          ...hybridWeights,
-        });
-        setResults(res.data.results || []);
-      } else {
-        const res = await apiClient.post("/api/ai", { query, filters });
-        const data = res.data;
+      setLoading(true);
+      setError("");
+      setResults([]);
+      setHasSearched(true);
+      syncUrl({
+        query: nextQuery,
+        mode: nextMode,
+        filters: nextFilters,
+        weights: nextWeights,
+      });
 
-        let sortedResults = data.results || [];
+      try {
+        if (nextMode === "federated") {
+          const res = await searchApi.federatedSearch({
+            query: nextQuery,
+            dateFrom: nextFilters.dateFrom || undefined,
+            dateTo: nextFilters.dateTo || undefined,
+            meetingType: nextFilters.meetingType || undefined,
+            speaker: nextFilters.speaker || undefined,
+            tag: nextFilters.tag || undefined,
+          });
+          setResults(res.results || res.data?.results || []);
+        } else if (nextMode === "hybrid") {
+          const res = await searchApi.hybridSearch({
+            query: nextQuery,
+            ...nextWeights,
+            dateFrom: nextFilters.dateFrom || undefined,
+            dateTo: nextFilters.dateTo || undefined,
+            meetingType: nextFilters.meetingType || undefined,
+            speaker: nextFilters.speaker || undefined,
+            tag: nextFilters.tag || undefined,
+          });
+          setResults(res.results || res.data?.results || []);
+        } else {
+          const res = await searchApi.semanticSearch({
+            query: nextQuery,
+            filters: nextFilters,
+          });
+          let sortedResults = res.results || res.data?.results || [];
 
-        if (filters.sortBy === "date-desc") {
-          sortedResults.sort(
-            (a, b) => new Date(b.createdAt) - new Date(a.createdAt),
-          );
-        } else if (filters.sortBy === "date-asc") {
-          sortedResults.sort(
-            (a, b) => new Date(a.createdAt) - new Date(b.createdAt),
-          );
+          if (nextFilters.sortBy === "date-desc") {
+            sortedResults = [...sortedResults].sort(
+              (a, b) => new Date(b.createdAt) - new Date(a.createdAt),
+            );
+          } else if (nextFilters.sortBy === "date-asc") {
+            sortedResults = [...sortedResults].sort(
+              (a, b) => new Date(a.createdAt) - new Date(b.createdAt),
+            );
+          }
+
+          setResults(sortedResults);
         }
 
-        setResults(sortedResults);
-      }
-    } catch (err) {
-      console.error("❌ Search error:", err);
+        if (persistHistory) {
+          setHistory(
+            saveSearchHistoryEntry({
+              query: nextQuery,
+              mode: nextMode,
+              filters: nextFilters,
+              weights: nextWeights,
+            }),
+          );
+        }
+      } catch (err) {
+        console.error("❌ Search error:", err);
+        const message =
+          err?.response?.data?.message ||
+          err?.message ||
+          t("aiSearch.fetchFailed");
 
-      if (err.message === "Failed to fetch") {
-        setError(t("aiSearch.unableToConnect"));
-      } else if (err.message.includes("500")) {
-        setError(t("aiSearch.serverError"));
-      } else if (err.message.includes("404")) {
-        setError(t("aiSearch.serviceNotFound"));
-      } else {
-        setError(err.message || t("aiSearch.fetchFailed"));
+        if (message === "Failed to fetch" || err?.code === "ERR_NETWORK") {
+          setError(t("aiSearch.unableToConnect"));
+        } else {
+          setError(message);
+        }
+        setResults([]);
+      } finally {
+        setLoading(false);
       }
-    } finally {
-      setLoading(false);
+    },
+    [query, searchMode, filters, hybridWeights, syncUrl, t],
+  );
+
+  useEffect(() => {
+    if (bootstrapped.current) return;
+    bootstrapped.current = true;
+    if (initial.query.trim().length >= 3) {
+      runSearch({ persistHistory: false });
     }
-  };
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- bootstrap once from URL
+  }, []);
+
+  const handleSearch = () => runSearch();
 
   const handleClear = () => {
     setQuery("");
     setResults([]);
     setError("");
     setHasSearched(false);
+    setFilters({ ...DEFAULT_FILTERS });
+    setSearchParams({}, { replace: true });
   };
 
-  const handleViewDetails = (result) => {
-    setSelectedResult(result);
+  const handleClearFilters = () => {
+    const cleared = { ...DEFAULT_FILTERS };
+    setFilters(cleared);
+    if (query.trim()) {
+      runSearch({ nextFilters: cleared });
+    }
   };
 
+  const handleRerunHistory = (entry) => {
+    setQuery(entry.query);
+    setSearchMode(entry.mode);
+    setFilters({ ...DEFAULT_FILTERS, ...(entry.filters || {}) });
+    if (entry.weights) setHybridWeights(entry.weights);
+    runSearch({
+      nextQuery: entry.query,
+      nextMode: entry.mode,
+      nextFilters: { ...DEFAULT_FILTERS, ...(entry.filters || {}) },
+      nextWeights: entry.weights || hybridWeights,
+    });
+  };
+
+  const handleViewDetails = (result) => setSelectedResult(result);
   const handleOpenMeeting = (result) => {
-    window.open(`/meeting/${result.meetingId}`, "_blank");
+    window.open(`/meeting/${result.meetingId || result._id}`, "_blank");
   };
-
   const handleOpenMeetingById = (meetingId) => {
     if (meetingId) window.open(`/meeting/${meetingId}`, "_blank");
   };
@@ -283,25 +392,48 @@ const AiSearch = () => {
       <Navbar />
 
       <div className="max-w-4xl mx-auto pt-28 px-6 flex flex-col items-center text-center">
-        {/* Header */}
         <h1 className="text-4xl md:text-5xl font-extrabold text-gray-900 dark:text-gray-100 mb-3 tracking-tight">
           {t("aiSearch.title")}
         </h1>
         <p
-          className="text-gray-600 dark:text-gray-400 mb-8 text-sm md:text-base max-w-2xl"
+          className="text-gray-600 dark:text-gray-400 mb-6 text-sm md:text-base max-w-2xl"
           dangerouslySetInnerHTML={{
             __html: sanitizeHtml(t("aiSearch.subtitle")),
           }}
         />
 
-        {/* Search Input */}
-        <SearchBar
-          query={query}
-          setQuery={setQuery}
-          onSearch={handleSearch}
-          loading={loading}
-          onClear={handleClear}
-        />
+        {/* Voice Search Toggle Header Action */}
+        <div className="w-full flex justify-end mb-3">
+          <button
+            type="button"
+            onClick={() => setShowVoiceBar((prev) => !prev)}
+            className="inline-flex items-center gap-1.5 px-3.5 py-1.5 bg-blue-50 dark:bg-blue-950/60 border border-blue-200 dark:border-blue-800 text-blue-700 dark:text-blue-300 rounded-full text-xs font-bold hover:bg-blue-100 transition cursor-pointer"
+          >
+            <Mic className="w-4 h-4" />
+            {showVoiceBar ? "Hide Voice Search" : "🎙️ Use Voice Search Bar"}
+          </button>
+        </div>
+
+        {/* Voice Search Bar Component Mounting (#2010) */}
+        {showVoiceBar ? (
+          <div className="w-full mb-4">
+            <VoiceSearchBar
+              onQueryChange={(q) => setQuery(q)}
+              onResults={(voiceResults) => {
+                setResults(voiceResults || []);
+                setHasSearched(true);
+              }}
+            />
+          </div>
+        ) : (
+          <SearchBar
+            query={query}
+            setQuery={setQuery}
+            onSearch={handleSearch}
+            loading={loading}
+            onClear={handleClear}
+          />
+        )}
 
         <HybridSearchToggle
           mode={searchMode}
@@ -310,7 +442,52 @@ const AiSearch = () => {
           setWeights={setHybridWeights}
         />
 
-        {/* Error Message */}
+        <div className="mt-4 w-full">
+          <SearchFilters
+            filters={filters}
+            setFilters={setFilters}
+            resultCount={results.length}
+            advanced={searchMode === "hybrid" || searchMode === "federated"}
+          />
+        </div>
+
+        {history.length > 0 && (
+          <div className="w-full text-left mb-2">
+            <div className="flex items-center justify-between mb-2">
+              <p className="text-xs font-semibold uppercase tracking-wide text-gray-500 flex items-center gap-1.5">
+                <History className="w-3.5 h-3.5" /> Recent searches
+              </p>
+              <button
+                type="button"
+                onClick={() => setHistory(clearSearchHistory())}
+                className="text-xs text-gray-400 hover:text-gray-600 cursor-pointer"
+              >
+                Clear history
+              </button>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              {history.slice(0, 6).map((entry) => (
+                <button
+                  key={`${entry.at}-${entry.query}-${entry.mode}`}
+                  type="button"
+                  onClick={() => handleRerunHistory(entry)}
+                  className="text-xs px-3 py-1.5 rounded-full bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-200 hover:border-blue-400 cursor-pointer"
+                  title={entry.mode}
+                >
+                  {entry.query.length > 40
+                    ? `${entry.query.slice(0, 37)}…`
+                    : entry.query}
+                  {entry.mode === "hybrid"
+                    ? " · hybrid"
+                    : entry.mode === "federated"
+                      ? " · federated"
+                      : ""}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
         {error && (
           <div className="mt-4 p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl text-red-700 dark:text-red-400 text-sm text-left w-full">
             <span className="font-semibold">
@@ -324,48 +501,50 @@ const AiSearch = () => {
           </div>
         )}
 
-        {/* Search Results Section */}
         <div className="mt-10 w-full text-left">
           {loading && <SearchSkeleton />}
 
           {!loading && results.length > 0 && (
-            <>
-              {searchMode === "standard" && (
-                <SearchFilters
-                  filters={filters}
-                  setFilters={setFilters}
-                  resultCount={results.length}
-                />
-              )}
-              <div className="space-y-5">
-                {searchMode === "hybrid"
-                  ? results.map((result, index) => (
+            <div className="space-y-5">
+              {searchMode === "hybrid" || searchMode === "federated"
+                ? results.map((result, index) => (
+                    <div
+                      key={result.key || result._id || index}
+                      className="relative"
+                    >
+                      {(result.organizationName || result.workspaceName) && (
+                        <div className="mb-1 inline-flex items-center gap-1 px-2.5 py-0.5 bg-indigo-100 dark:bg-indigo-900/40 text-indigo-700 dark:text-indigo-300 text-[10px] font-bold rounded-full">
+                          <Globe className="w-3 h-3" />
+                          {result.organizationName || result.workspaceName}
+                        </div>
+                      )}
                       <HybridResultCard
-                        key={result.key || index}
                         result={result}
                         onOpenMeeting={handleOpenMeetingById}
                       />
-                    ))
-                  : results.map((result, index) => (
-                      <SearchResultCard
-                        key={result.meetingId || index}
-                        result={result}
-                        onViewDetails={handleViewDetails}
-                        onOpenMeeting={handleOpenMeeting}
-                        onCopySummary={handleCopySummary}
-                      />
-                    ))}
-              </div>
-            </>
+                    </div>
+                  ))
+                : results.map((result, index) => (
+                    <SearchResultCard
+                      key={result.meetingId || result._id || index}
+                      result={result}
+                      onViewDetails={handleViewDetails}
+                      onOpenMeeting={handleOpenMeeting}
+                      onCopySummary={handleCopySummary}
+                    />
+                  ))}
+            </div>
           )}
 
-          {!loading && results.length === 0 && (
-            <SearchEmptyState hasSearched={hasSearched} />
+          {!loading && results.length === 0 && !error && (
+            <SearchEmptyState
+              hasSearched={hasSearched}
+              onClearFilters={handleClearFilters}
+            />
           )}
         </div>
       </div>
 
-      {/* Result Modal */}
       {selectedResult && (
         <ResultModal
           result={selectedResult}

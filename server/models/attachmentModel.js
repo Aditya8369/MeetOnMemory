@@ -38,6 +38,7 @@ const attachmentSchema = new mongoose.Schema(
 );
 
 attachmentSchema.index({ meeting: 1, createdAt: -1 });
+attachmentSchema.index({ uploadedBy: 1 });
 
 const Attachment = mongoose.model("Attachment", attachmentSchema);
 export default Attachment;

@@ -18,9 +18,19 @@ import {
   getAttendanceHeatmap,
   getAttendanceTrends,
   getMeetingTypeBreakdown,
+  exportAttendanceCSV,
 } from "../services/attendanceApi";
-import { Calendar, Users, BarChart2, Filter } from "lucide-react";
+import {
+  Calendar,
+  Users,
+  BarChart2,
+  Filter,
+  Download,
+  Loader2,
+} from "lucide-react";
+import Navbar from "../components/Navbar.jsx";
 import useTheme from "../context/useTheme.jsx";
+import { toast } from "react-toastify";
 
 const COLORS = ["#0088FE", "#00C49F", "#FFBB28", "#FF8042", "#8884d8"];
 
@@ -58,6 +68,7 @@ const AttendanceAnalytics = () => {
   const [trendsData, setTrendsData] = useState([]);
   const [typeBreakdown, setTypeBreakdown] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [exporting, setExporting] = useState(false);
 
   useEffect(() => {
     // Validate date range ordering (#1367)
@@ -110,6 +121,34 @@ const AttendanceAnalytics = () => {
     setDateRange({ ...dateRange, [e.target.name]: e.target.value });
   };
 
+  const handleExportCSV = async () => {
+    setExporting(true);
+    try {
+      const params = {
+        startDate: dateRange.startDate,
+        endDate: dateRange.endDate,
+      };
+      const blob = await exportAttendanceCSV(params);
+      const url = window.URL.createObjectURL(new Blob([blob]));
+      const link = document.createElement("a");
+      link.href = url;
+      link.setAttribute(
+        "download",
+        `attendance_analytics_${dateRange.startDate}_to_${dateRange.endDate}.csv`,
+      );
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+      toast.success("Attendance report downloaded successfully");
+    } catch (err) {
+      console.error("Failed to export attendance CSV:", err);
+      toast.error("Failed to download CSV report");
+    } finally {
+      setExporting(false);
+    }
+  };
+
   const renderHeatmap = () => {
     if (!dateRange.startDate || !dateRange.endDate) return null;
     const start = parseISO(dateRange.startDate);
@@ -160,7 +199,8 @@ const AttendanceAnalytics = () => {
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
-      <div className="p-6 max-w-7xl mx-auto space-y-6">
+      <Navbar />
+      <div className="pt-20 p-6 max-w-7xl mx-auto space-y-6">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <h1 className="text-3xl font-bold text-gray-800 dark:text-gray-100 flex items-center gap-2">
             <BarChart2 className="w-8 h-8 text-blue-600 dark:text-blue-400" />
@@ -198,6 +238,19 @@ const AttendanceAnalytics = () => {
               <option value="weekly">Weekly</option>
               <option value="monthly">Monthly</option>
             </select>
+            <button
+              type="button"
+              onClick={handleExportCSV}
+              disabled={exporting}
+              className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-50 rounded-md transition-colors"
+            >
+              {exporting ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                <Download className="w-4 h-4" />
+              )}
+              Export CSV
+            </button>
           </div>
         </div>
 

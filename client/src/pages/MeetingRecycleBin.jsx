@@ -6,6 +6,7 @@ import Navbar from "../components/Navbar.jsx";
 import ConfirmModal from "../components/ConfirmModal.jsx";
 import AppContent from "../context/AppContent.js";
 import { meetingApi } from "../services/meetingApi.js";
+import PurgeRecycleBinModal from "../components/PurgeRecycleBinModal.jsx";
 
 const MeetingRecycleBin = () => {
   const navigate = useNavigate();
@@ -19,6 +20,7 @@ const MeetingRecycleBin = () => {
   // Modal target state (#1341)
   const [restoreTarget, setRestoreTarget] = useState(null);
   const [purgeTarget, setPurgeTarget] = useState(null);
+  const [isPurgeModalOpen, setIsPurgeModalOpen] = useState(false);
   const [actionLoading, setActionLoading] = useState(false);
 
   const loadMeetings = useCallback(
@@ -94,26 +96,36 @@ const MeetingRecycleBin = () => {
               Deleted meetings can be restored before permanent removal.
             </p>
           </div>
-          <form
-            onSubmit={(event) => {
-              event.preventDefault();
-              loadMeetings(1, search);
-            }}
-            className="flex gap-2"
-          >
-            <input
-              value={search}
-              onChange={(event) => setSearch(event.target.value)}
-              placeholder="Search deleted meetings"
-              className="rounded-lg border px-3 py-2 bg-white dark:bg-gray-900"
-            />
-            <button
-              className="rounded-lg bg-blue-600 px-4 py-2 text-white"
-              aria-label="Search"
+          <div className="flex flex-wrap items-center gap-3">
+            <form
+              onSubmit={(event) => {
+                event.preventDefault();
+                loadMeetings(1, search);
+              }}
+              className="flex gap-2"
             >
-              <Search size={18} />
-            </button>
-          </form>
+              <input
+                value={search}
+                onChange={(event) => setSearch(event.target.value)}
+                placeholder="Search deleted meetings"
+                className="rounded-lg border px-3 py-2 bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-800"
+              />
+              <button
+                className="rounded-lg bg-blue-600 px-4 py-2 text-white"
+                aria-label="Search"
+              >
+                <Search size={18} />
+              </button>
+            </form>
+            {canPurge && meetings.length > 0 && (
+              <button
+                onClick={() => setIsPurgeModalOpen(true)}
+                className="inline-flex items-center gap-2 rounded-lg bg-red-600 hover:bg-red-700 px-4 py-2.5 text-white font-semibold text-sm cursor-pointer transition-colors shadow-sm"
+              >
+                <Trash2 size={16} /> Purge Recycle Bin
+              </button>
+            )}
+          </div>
         </div>
 
         {loading ? (
@@ -210,6 +222,12 @@ const MeetingRecycleBin = () => {
         confirmText="Delete Forever"
         variant="danger"
         isLoading={actionLoading}
+      />
+
+      <PurgeRecycleBinModal
+        isOpen={isPurgeModalOpen}
+        onClose={() => setIsPurgeModalOpen(false)}
+        onSuccess={() => loadMeetings(1)}
       />
     </div>
   );

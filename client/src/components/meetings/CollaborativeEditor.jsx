@@ -1,18 +1,24 @@
-import React, { useMemo } from "react";
+import React, { useMemo, useState, useCallback } from "react";
 import { useEditor, EditorContent } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import Collaboration from "@tiptap/extension-collaboration";
 import CollaborationCursor from "@tiptap/extension-collaboration-cursor";
 import Placeholder from "@tiptap/extension-placeholder";
+import { History } from "lucide-react";
 import { useCollaborativeNote } from "../../hooks/useCollaborativeNote";
 import PresenceAvatars from "./PresenceAvatars";
 import VersionHistory from "./VersionHistory";
+import NoteVersionHistory from "../NoteVersionHistory";
 
 /**
- * @desc Main collaborative editor component integrating Tiptap with Yjs.
- * Handles real-time sync, cursor presence, and read-only modes.
+ * @desc Main collaborative editor pane (Tiptap + Yjs). Remount via `key` after
+ * a note-version restore so the CRDT reconnects to the restored document.
  */
-const CollaborativeEditor = ({ meetingId, isReadOnly = false }) => {
+const CollaborativeEditorPane = ({
+  meetingId,
+  isReadOnly = false,
+  onOpenHistory,
+}) => {
   const {
     ydoc,
     isConnected,
@@ -77,14 +83,12 @@ const CollaborativeEditor = ({ meetingId, isReadOnly = false }) => {
           "prose prose-sm sm:prose lg:prose-lg xl:prose-xl max-w-none focus:outline-none dark:prose-invert min-h-[400px] px-8 py-4",
       },
     },
-    onUpdate: ({ editor }) => {
-      // Broadcast cursor position on every update (typing)
-      const { from, to } = editor.state.selection;
+    onUpdate: ({ editor: ed }) => {
+      const { from, to } = ed.state.selection;
       broadcastCursor(from, to);
     },
-    onSelectionUpdate: ({ editor }) => {
-      // Broadcast cursor position on selection change (clicking/arrow keys)
-      const { from, to } = editor.state.selection;
+    onSelectionUpdate: ({ editor: ed }) => {
+      const { from, to } = ed.state.selection;
       broadcastCursor(from, to);
     },
   });
@@ -101,7 +105,11 @@ const CollaborativeEditor = ({ meetingId, isReadOnly = false }) => {
     <div className="flex h-[calc(100vh-200px)] bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700 overflow-hidden">
       {/* Left Sidebar: Version History */}
       <div className="w-64 border-r border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/50 flex-shrink-0 hidden md:block">
-        <VersionHistory meetingId={meetingId} onSaveSnapshot={saveSnapshot} />
+        <VersionHistory
+          meetingId={meetingId}
+          onSaveSnapshot={saveSnapshot}
+          onOpenFullHistory={onOpenHistory}
+        />
       </div>
 
       {/* Main Editor Area */}
@@ -121,7 +129,18 @@ const CollaborativeEditor = ({ meetingId, isReadOnly = false }) => {
             </span>
           </div>
 
-          <PresenceAvatars users={activeUsers} />
+          <div className="flex items-center gap-3">
+            <button
+              type="button"
+              onClick={onOpenHistory}
+              className="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-800 px-2.5 py-1.5 text-xs font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700"
+              data-testid="open-note-version-history"
+            >
+              <History className="w-3.5 h-3.5" />
+              Diff & Restore
+            </button>
+            <PresenceAvatars users={activeUsers} />
+          </div>
         </div>
 
         {/* Tiptap Editor Content */}
@@ -156,6 +175,39 @@ const CollaborativeEditor = ({ meetingId, isReadOnly = false }) => {
         }
       `}</style>
     </div>
+  );
+};
+
+/**
+ * @desc Collaborative notes editor with NoteVersionHistory restore/diff dialog.
+ */
+const CollaborativeEditor = ({ meetingId, isReadOnly = false }) => {
+  const [showHistory, setShowHistory] = useState(false);
+  const [reloadKey, setReloadKey] = useState(0);
+
+  const handleRestored = useCallback(() => {
+    setShowHistory(false);
+    // Remount so the CRDT reconnects against the restored meeting state
+    setReloadKey((key) => key + 1);
+  }, []);
+
+  return (
+    <>
+      <CollaborativeEditorPane
+        key={reloadKey}
+        meetingId={meetingId}
+        isReadOnly={isReadOnly}
+        onOpenHistory={() => setShowHistory(true)}
+      />
+      {showHistory && (
+        <NoteVersionHistory
+          meetingId={meetingId}
+          field="collaborativeNotes"
+          onClose={() => setShowHistory(false)}
+          onRestored={handleRestored}
+        />
+      )}
+    </>
   );
 };
 

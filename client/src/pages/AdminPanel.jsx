@@ -1,6 +1,12 @@
-import React, { useState, useEffect, useRef, useContext, useCallback } from "react";
+import React, {
+  useState,
+  useEffect,
+  useRef,
+  useContext,
+  useCallback,
+} from "react";
 import { useTranslation } from "react-i18next";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import {
   LayoutDashboard,
   Building2,
@@ -12,6 +18,7 @@ import {
   Settings,
   Activity,
   Menu,
+  ShieldAlert,
   X,
   Sparkles,
   ClipboardList,
@@ -20,12 +27,25 @@ import {
   Loader2,
   Clock,
   RefreshCw,
+  ListTodo,
+  Database,
+  ShieldCheck,
+  BrainCircuit,
+  Cpu,
 } from "lucide-react";
 import Navbar from "../components/Navbar.jsx";
 import TemplateBuilder from "../components/admin/TemplateBuilder.jsx";
 import TestimonialsModeration from "../components/admin/TestimonialsModeration.jsx";
+import JobsDashboard from "../components/admin/JobsDashboard.jsx";
+import EmbeddingReindexAdmin from "../components/admin/EmbeddingReindexAdmin.jsx";
+import RbacPermissionExplorer from "../components/admin/RbacPermissionExplorer.jsx";
+import ImportanceRecalculationAdmin from "../components/admin/ImportanceRecalculationAdmin.jsx";
+import AiUsageMetrics from "../components/admin/AiUsageMetrics.jsx";
 import MembershipRequests from "../components/organization/MembershipRequests.jsx";
+import ResourceManagement from "./Admin/ResourceManagement.jsx";
+
 import AppContent from "../context/AppContent.js";
+import { fetchPlatformStatus } from "../services/statusApi.js";
 import {
   organizationApi,
   meetingApi,
@@ -92,12 +112,48 @@ const MODULES = [
     iconColor: "text-sky-600 dark:text-sky-400",
   },
   {
-    id: "policies",
-    labelKey: "adminPanel.policies",
-    descriptionKey: "adminPanel.policiesDesc",
-    icon: Shield,
+    id: "jobs",
+    labelKey: "Jobs",
+    descriptionKey: "Background queues, failures, and retries",
+    icon: ListTodo,
+    iconBg: "bg-teal-50 dark:bg-teal-900/30",
+    iconColor: "text-teal-600 dark:text-teal-400",
+  },
+  {
+    id: "embeddings",
+    labelKey: "Embeddings",
+    descriptionKey: "Pinecone index health and reindex actions",
+    icon: Database,
     iconBg: "bg-cyan-50 dark:bg-cyan-900/30",
     iconColor: "text-cyan-600 dark:text-cyan-400",
+  },
+  {
+    id: "importance",
+    labelKey: "Importance Score Engine",
+    descriptionKey: "Trigger score recalculations and view job diagnostics",
+    icon: BrainCircuit,
+    iconBg: "bg-indigo-50 dark:bg-indigo-900/30",
+    iconColor: "text-indigo-600 dark:text-indigo-400",
+  },
+  {
+    id: "aiUsage",
+    labelKey: "AI Usage",
+    descriptionKey: "Gemini and embedding cost/usage over time",
+    icon: Cpu,
+    iconBg: "bg-violet-50 dark:bg-violet-900/30",
+    iconColor: "text-violet-600 dark:text-violet-400",
+  },
+  {
+    id: "policies",
+    label: "adminPanel.policies",
+    icon: <ShieldAlert className="w-5 h-5" />,
+    roles: ["admin", "owner", "compliance_officer"],
+  },
+  {
+    id: "resources",
+    label: "Physical Resources",
+    icon: <Building2 className="w-5 h-5" />,
+    roles: ["admin", "owner"],
   },
   {
     id: "reports",
@@ -123,17 +179,63 @@ const MODULES = [
     iconBg: "bg-orange-50 dark:bg-orange-900/30",
     iconColor: "text-orange-600 dark:text-orange-400",
   },
+  {
+    id: "health",
+    labelKey: "System Health",
+    descriptionKey: "Live dependency statuses and system diagnostics",
+    icon: Activity,
+    iconBg: "bg-red-50 dark:bg-red-900/30",
+    iconColor: "text-red-600 dark:text-red-400",
+  },
+  {
+    id: "permissions",
+    labelKey: "Permissions Matrix",
+    descriptionKey: "Role × action permission matrix and access explainer",
+    icon: ShieldCheck,
+    iconBg: "bg-purple-50 dark:bg-purple-900/30",
+    iconColor: "text-purple-600 dark:text-purple-400",
+  },
 ];
 
 const AdminPanel = () => {
   const { t } = useTranslation();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { userData } = useContext(AppContent) || {};
   const orgId = userData?.organization?._id || userData?.organization;
 
-  const [activeModule, setActiveModule] = useState("overview");
+  const initialModule = (() => {
+    const requested = searchParams.get("module");
+    if (requested && MODULES.some((m) => m.id === requested)) return requested;
+    return "overview";
+  })();
+
+  const [activeModule, setActiveModule] = useState(initialModule);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const sidebarRef = useRef(null);
+  const [redisDegraded, setRedisDegraded] = useState(false);
+
+  useEffect(() => {
+    const checkRedisStatus = async () => {
+      try {
+        const res = await fetchPlatformStatus();
+        if (res.ok && res.data?.services) {
+          const redisService = res.data.services.find((s) => s.id === "redis");
+          if (
+            redisService &&
+            (redisService.status === "degraded" ||
+              redisService.status === "outage" ||
+              redisService.status === "unknown")
+          ) {
+            setRedisDegraded(true);
+          }
+        }
+      } catch (err) {
+        console.error("Failed to fetch status for Redis check", err);
+      }
+    };
+    checkRedisStatus();
+  }, []);
 
   // Overview Data
   const [loadingOverview, setLoadingOverview] = useState(true);
@@ -201,7 +303,8 @@ const AdminPanel = () => {
         totalUsers:
           membersRes.status === "fulfilled" && membersRes.value.data?.members
             ? membersRes.value.data.members.length
-            : membersRes.status === "fulfilled" && membersRes.value.data?.success
+            : membersRes.status === "fulfilled" &&
+                membersRes.value.data?.success
               ? 0
               : null,
         activeOrgs:
@@ -217,13 +320,15 @@ const AdminPanel = () => {
             ? (meetingsRes.value.data.meetings?.length ??
               meetingsRes.value.data.total ??
               0)
-            : meetingsRes.status === "fulfilled" && meetingsRes.value.data?.success
+            : meetingsRes.status === "fulfilled" &&
+                meetingsRes.value.data?.success
               ? 0
               : null,
         pendingRequests:
           requestsRes.status === "fulfilled" && requestsRes.value.data?.requests
             ? requestsRes.value.data.requests.length
-            : requestsRes.status === "fulfilled" && requestsRes.value.data?.success
+            : requestsRes.status === "fulfilled" &&
+                requestsRes.value.data?.success
               ? 0
               : null,
       });
@@ -248,6 +353,10 @@ const AdminPanel = () => {
       activeModule === "overview" ||
       activeModule === "templates" ||
       activeModule === "testimonials" ||
+      activeModule === "jobs" ||
+      activeModule === "embeddings" ||
+      activeModule === "importance" ||
+      activeModule === "aiUsage" ||
       activeModule === "joinRequests"
     ) {
       return;
@@ -281,7 +390,9 @@ const AdminPanel = () => {
           }
         } else if (activeModule === "activity") {
           if (orgId) {
-            const res = await organizationApi.getAuditLogs(orgId, { limit: 20 });
+            const res = await organizationApi.getAuditLogs(orgId, {
+              limit: 20,
+            });
             if (res.data?.logs) {
               setModuleData((prev) => ({ ...prev, auditLogs: res.data.logs }));
             }
@@ -351,6 +462,10 @@ const AdminPanel = () => {
   ];
 
   const selectModule = (id) => {
+    if (id === "health") {
+      navigate("/admin/health");
+      return;
+    }
     setActiveModule(id);
     setSidebarOpen(false);
   };
@@ -425,6 +540,28 @@ const AdminPanel = () => {
 
         {/* Main content */}
         <div className="flex-1 min-w-0 px-4 sm:px-6 lg:px-8 py-6">
+          {redisDegraded && (
+            <div className="mb-6 p-4 bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-900/40 text-amber-800 dark:text-amber-300 text-sm rounded-2xl flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 shadow-xs">
+              <div className="flex items-start gap-3">
+                <span className="text-lg">⚠️</span>
+                <div>
+                  <strong className="font-bold">
+                    Redis Cache & Real-Time Support is Degraded:
+                  </strong>{" "}
+                  Rate limiting fallback is active and real-time features may
+                  experience lag or cache misses.
+                </div>
+              </div>
+              <a
+                href="https://docs.meetonmemory.com/redis-setup"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-xs font-bold text-amber-700 hover:text-amber-800 dark:text-amber-400 dark:hover:text-amber-300 underline shrink-0 whitespace-nowrap"
+              >
+                Enable Redis in Docs →
+              </a>
+            </div>
+          )}
           <div className="flex items-start gap-3 mb-6">
             <button
               type="button"
@@ -506,7 +643,9 @@ const AdminPanel = () => {
                             </p>
                             <p className="text-xs text-slate-500 dark:text-slate-400 truncate">
                               {log.user?.name || log.user?.email || "System"} •{" "}
-                              {log.details || log.targetType || "Action recorded"}
+                              {log.details ||
+                                log.targetType ||
+                                "Action recorded"}
                             </p>
                           </div>
                         </div>
@@ -525,10 +664,22 @@ const AdminPanel = () => {
                 )}
               </div>
             </div>
+          ) : activeModule === "resources" ? (
+            <ResourceManagement />
           ) : activeModule === "templates" ? (
             <TemplateBuilder />
           ) : activeModule === "testimonials" ? (
             <TestimonialsModeration />
+          ) : activeModule === "jobs" ? (
+            <JobsDashboard />
+          ) : activeModule === "embeddings" ? (
+            <EmbeddingReindexAdmin />
+          ) : activeModule === "permissions" ? (
+            <RbacPermissionExplorer />
+          ) : activeModule === "importance" ? (
+            <ImportanceRecalculationAdmin />
+          ) : activeModule === "aiUsage" ? (
+            <AiUsageMetrics />
           ) : activeModule === "joinRequests" ? (
             <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-2xl p-6 shadow-sm">
               <MembershipRequests organizationId={orgId} />
@@ -637,18 +788,28 @@ const AdminPanel = () => {
             </div>
           ) : activeModule === "meetings" ? (
             <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-2xl p-6 shadow-sm space-y-4">
-              <div className="flex items-center justify-between">
+              <div className="flex items-center justify-between gap-3 flex-wrap">
                 <h3 className="text-lg font-bold text-slate-900 dark:text-white">
                   Meeting Records
                 </h3>
-                <button
-                  type="button"
-                  onClick={() => navigate("/meetings")}
-                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-rose-50 dark:bg-rose-900/30 text-rose-700 dark:text-rose-300 hover:bg-rose-100 dark:hover:bg-rose-900/50 cursor-pointer"
-                >
-                  <span>View All Meetings</span>
-                  <ExternalLink className="w-3.5 h-3.5" />
-                </button>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => selectModule("embeddings")}
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-teal-50 dark:bg-teal-900/30 text-teal-700 dark:text-teal-300 hover:bg-teal-100 dark:hover:bg-teal-900/50 cursor-pointer"
+                  >
+                    <Database className="w-3.5 h-3.5" />
+                    Embedding reindex
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => navigate("/meetings")}
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-rose-50 dark:bg-rose-900/30 text-rose-700 dark:text-rose-300 hover:bg-rose-100 dark:hover:bg-rose-900/50 cursor-pointer"
+                  >
+                    <span>View All Meetings</span>
+                    <ExternalLink className="w-3.5 h-3.5" />
+                  </button>
+                </div>
               </div>
 
               {loadingModule ? (
@@ -668,8 +829,21 @@ const AdminPanel = () => {
                         </h4>
                         <p className="text-xs text-slate-400 dark:text-slate-500 flex items-center gap-1 mt-0.5">
                           <Clock className="w-3 h-3" />
-                          {m.date ? new Date(m.date).toLocaleDateString() : "No date"}
+                          {m.date
+                            ? new Date(m.date).toLocaleDateString()
+                            : "No date"}
+                          {m.embeddingIndex?.lastIndexedAt
+                            ? ` · indexed ${new Date(m.embeddingIndex.lastIndexedAt).toLocaleDateString()}`
+                            : ""}
+                          {m.embeddingIndex?.status
+                            ? ` · ${m.embeddingIndex.status}`
+                            : ""}
                         </p>
+                        {m.embeddingIndex?.lastError ? (
+                          <p className="text-xs text-rose-500 mt-1">
+                            {m.embeddingIndex.lastError}
+                          </p>
+                        ) : null}
                       </div>
                       <span className="text-xs font-semibold px-2.5 py-0.5 rounded-full bg-rose-50 dark:bg-rose-900/30 text-rose-700 dark:text-rose-300">
                         {m.status || "Recorded"}

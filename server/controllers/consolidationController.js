@@ -1,3 +1,4 @@
+import mongoose from "mongoose";
 import AuditLog from "../models/auditLogModel.js";
 import {
   consolidateMemories,
@@ -19,6 +20,14 @@ function parseModelsParam(rawModels) {
   return requested.filter(Boolean);
 }
 
+const getValidOrgId = (user) => {
+  const org = (user?.organization?._id || user?.organization)?.toString();
+  if (!org || !mongoose.Types.ObjectId.isValid(org)) {
+    return null;
+  }
+  return org;
+};
+
 /**
  * POST /api/knowledge/consolidate
  * Runs the Memory Consolidation Engine for the caller's organization.
@@ -27,7 +36,16 @@ function parseModelsParam(rawModels) {
  */
 export const runConsolidation = async (req, res) => {
   try {
-    const organization = req.user.organization || null;
+    const organization = getValidOrgId(req.user);
+
+    if (!organization) {
+      return sendError(
+        res,
+        400,
+        "Organization ID is required and must be a valid ObjectId",
+      );
+    }
+
     const {
       dryRun = true,
       models,
@@ -110,7 +128,16 @@ export const runConsolidation = async (req, res) => {
  */
 export const getConsolidationHistory = async (req, res) => {
   try {
-    const organization = req.user.organization || null;
+    const organization = getValidOrgId(req.user);
+
+    if (!organization) {
+      return sendError(
+        res,
+        400,
+        "Organization ID is required and must be a valid ObjectId",
+      );
+    }
+
     const { model = "decision" } = req.query;
 
     if (!VALID_MODEL_TYPES.includes(model)) {

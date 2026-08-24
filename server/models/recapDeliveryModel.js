@@ -16,6 +16,23 @@ const recapDeliverySchema = new mongoose.Schema(
       type: Date,
       default: Date.now,
     },
+    // Issue #2069 — ops triage for failed deliveries
+    status: {
+      type: String,
+      enum: ["delivered", "failed", "pending"],
+      default: "delivered",
+      index: true,
+    },
+    channel: {
+      type: String,
+      enum: ["email", "webhook", "in_app"],
+      default: "email",
+    },
+    errorMessage: {
+      type: String,
+      maxlength: 500,
+      default: null,
+    },
   },
   { timestamps: true },
 );

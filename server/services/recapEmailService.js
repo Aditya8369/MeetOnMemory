@@ -145,7 +145,9 @@ class RecapEmailService {
             meetingId,
             userId: user._id,
           });
-          if (alreadyDelivered) continue;
+          if (alreadyDelivered && alreadyDelivered.status !== "failed") {
+            continue;
+          }
 
           // Get preferences
           let preferences = await RecapPreference.findOne({ userId: user._id });
@@ -161,6 +163,13 @@ class RecapEmailService {
           }
 
           if (preferences.deliveryTiming !== "immediate") continue;
+
+          if (await this.isEmailUnsubscribed(user._id, "daily")) {
+            console.log(
+              `[RecapEmailService] Skipping immediate recap for ${user.email} due to email preference opt-out.`,
+            );
+            continue;
+          }
 
           if (this.isQuietHours(preferences)) {
             console.log(
@@ -179,12 +188,44 @@ class RecapEmailService {
           });
 
           // Mark as delivered (unique index prevents duplicates)
-          await RecapDelivery.create({ meetingId, userId: user._id });
+          await RecapDelivery.findOneAndUpdate(
+            { meetingId, userId: user._id },
+            {
+              $set: {
+                status: "delivered",
+                channel: "email",
+                errorMessage: null,
+                deliveredAt: new Date(),
+              },
+              $setOnInsert: { meetingId, userId: user._id },
+            },
+            { upsert: true },
+          );
         } catch (userErr) {
           console.error(
             `[RecapEmailService] Immediate recap failed for user ${user._id}:`,
             userErr,
           );
+          try {
+            await RecapDelivery.findOneAndUpdate(
+              { meetingId, userId: user._id },
+              {
+                $set: {
+                  status: "failed",
+                  channel: "email",
+                  errorMessage: String(userErr?.message || userErr).slice(
+                    0,
+                    500,
+                  ),
+                  deliveredAt: new Date(),
+                },
+                $setOnInsert: { meetingId, userId: user._id },
+              },
+              { upsert: true },
+            );
+          } catch {
+            /* best-effort failure record */
+          }
         }
       }
     } catch (err) {

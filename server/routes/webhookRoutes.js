@@ -9,6 +9,8 @@ import {
   deleteWebhook,
   getWebhookDeliveries,
   redeliverWebhookPayload,
+  rotateWebhookSecret,
+  pingWebhook,
 } from "../controllers/webhookController.js";
 
 const router = express.Router();
@@ -69,6 +71,24 @@ router.post(
   requireOrgMembership,
   requirePermission("settings", "edit"),
   redeliverWebhookPayload,
+);
+
+// Rotate Webhook Secret
+router.post(
+  "/:id/rotate-secret",
+  writeLimiter,
+  requireOrgMembership,
+  requirePermission("settings", "edit"),
+  rotateWebhookSecret,
+);
+
+// Trigger a Test Ping
+router.post(
+  "/:id/ping",
+  writeLimiter,
+  requireOrgMembership,
+  requirePermission("settings", "edit"),
+  pingWebhook,
 );
 
 export default router;

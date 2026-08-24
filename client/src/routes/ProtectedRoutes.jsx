@@ -23,11 +23,14 @@ import Policies from "../pages/Policies.jsx";
 import AiSummaryTemplates from "../pages/AiSummaryTemplates.jsx";
 import Summaries from "../pages/Summaries.jsx";
 import Reports from "../pages/Reports.jsx";
+import WeeklyInsights from "../pages/WeeklyInsights.jsx";
 import ReportBuilder from "../pages/ReportBuilder.jsx";
 import AiSearch from "../pages/AiSearch.jsx";
 import AiAssistant from "../pages/AiAssistant.jsx";
 import MeetingDetails from "../pages/MeetingDetails.jsx";
 import MeetingBriefing from "../pages/MeetingBriefing.jsx";
+import MeetingQuality from "../pages/MeetingQuality.jsx";
+import MeetingEffectiveness from "../pages/MeetingEffectiveness.jsx";
 import MeetingRecycleBin from "../pages/MeetingRecycleBin.jsx";
 import MeetingRoom from "../pages/MeetingRoom.jsx";
 import TranscriptViewer from "../pages/TranscriptViewer.jsx";
@@ -43,16 +46,20 @@ import KnowledgeArchive from "../pages/KnowledgeArchive.jsx";
 import GraphSnapshots from "../pages/GraphSnapshots.jsx";
 import KnowledgeGraph from "../pages/KnowledgeGraph.jsx";
 import DecisionGraph from "../pages/DecisionGraph.jsx";
+import DecisionLog from "../pages/DecisionLog.jsx";
 import PolicyCompliance from "../pages/PolicyCompliance.jsx";
 import Settings from "../pages/Settings.jsx";
 import MembershipRequests from "../pages/MembershipRequests.jsx";
 import MembersManagement from "../pages/Admin/MembersManagement.jsx";
 import AuditLogViewer from "../pages/Admin/AuditLogViewer.jsx";
+import AdminHealth from "../pages/Admin/AdminHealth.jsx";
 import AdminPanel from "../pages/AdminPanel.jsx";
+import ResourceManagement from "../pages/Admin/ResourceManagement.jsx";
 import Bookmarks from "../pages/Bookmarks.jsx";
 import ActivityFeed from "../pages/ActivityFeed.jsx";
 import TagBrowser from "../pages/TagBrowser.jsx";
 import AttendanceAnalytics from "../pages/AttendanceAnalytics.jsx";
+import RsvpInbox from "../pages/RsvpInbox.jsx";
 import MeetingCostAnalytics from "../pages/MeetingCostAnalytics.jsx";
 import RecapScheduleDashboard from "../pages/RecapScheduleDashboard.jsx";
 import MeetingHealthDashboard from "../pages/MeetingHealthDashboard.jsx";
@@ -60,11 +67,26 @@ import AutomationRules from "../pages/AutomationRules.jsx";
 import TopicExplorer from "../pages/TopicExplorer.jsx";
 import ConflictResolution from "../pages/ConflictResolution.jsx";
 import SpeakingTimeTrends from "../pages/SpeakingTimeTrends.jsx";
+import SpeakingTimeCompare from "../pages/SpeakingTimeCompare.jsx";
 import Leaderboard from "../pages/Leaderboard.jsx";
+import Badges from "../pages/Badges.jsx";
 import ParticipantEngagement from "../pages/ParticipantEngagement.jsx";
+import ActionItemAnalytics from "../pages/ActionItemAnalytics.jsx";
+import ActionItemsDashboard from "../pages/ActionItemsDashboard.jsx";
+import WorkloadDashboard from "../pages/WorkloadDashboard.jsx";
 import MyDelegations from "../pages/MyDelegations.jsx";
 import MeetingPatterns from "../pages/MeetingPatterns.jsx";
 import FocusTime from "../pages/FocusTime.jsx";
+import SeriesRetrospective from "../pages/SeriesRetrospective.jsx";
+import MeetingSeriesList from "../pages/MeetingSeriesList.jsx";
+import DataRetentionSettings from "../pages/DataRetentionSettings.jsx";
+import FollowUpDashboard from "../pages/FollowUpDashboard.jsx";
+import EscalationDashboard from "../pages/EscalationDashboard.jsx";
+import Glossary from "../pages/Glossary.jsx";
+import StandupReports from "../pages/StandupReports.jsx";
+import SlaCompliance from "../pages/SlaCompliance.jsx";
+import TeamAvailability from "../pages/TeamAvailability.jsx";
+import ActionItemTemplates from "../pages/ActionItemTemplates.jsx";
 
 const ProtectedRoutes = (
   <React.Fragment>
@@ -93,10 +115,34 @@ const ProtectedRoutes = (
       }
     />
     <Route
+      path="/meeting-series"
+      element={
+        <ProtectedRoute resource="meetings" action="view">
+          <MeetingSeriesList />
+        </ProtectedRoute>
+      }
+    />
+    <Route
+      path="/meeting-series/:seriesId/retrospective"
+      element={
+        <ProtectedRoute resource="meetings" action="view">
+          <SeriesRetrospective />
+        </ProtectedRoute>
+      }
+    />
+    <Route
       path="/knowledge/conflicts"
       element={
         <ProtectedRoute resource="knowledge" action="view">
           <ConflictResolution />
+        </ProtectedRoute>
+      }
+    />
+    <Route
+      path="/glossary"
+      element={
+        <ProtectedRoute resource="knowledge" action="view">
+          <Glossary />
         </ProtectedRoute>
       }
     />
@@ -157,6 +203,14 @@ const ProtectedRoutes = (
       }
     />
     <Route
+      path="/decision-log"
+      element={
+        <ProtectedRoute resource="knowledge" action="view">
+          <DecisionLog />
+        </ProtectedRoute>
+      }
+    />
+    <Route
       path="/admin/members"
       element={
         <ProtectedRoute resource="team_members" action="view">
@@ -169,6 +223,30 @@ const ProtectedRoutes = (
       element={
         <ProtectedRoute resource="audit_logs" action="view">
           <AuditLogViewer />
+        </ProtectedRoute>
+      }
+    />
+    <Route
+      path="/admin/health"
+      element={
+        <ProtectedRoute
+          resource="admin_panel"
+          action="view"
+          forbiddenFallback={<AccessDenied />}
+        >
+          <AdminHealth />
+        </ProtectedRoute>
+      }
+    />
+    <Route
+      path="/admin/resources"
+      element={
+        <ProtectedRoute
+          resource="admin_panel"
+          action="view"
+          forbiddenFallback={<AccessDenied />}
+        >
+          <ResourceManagement />
         </ProtectedRoute>
       }
     />
@@ -237,6 +315,14 @@ const ProtectedRoutes = (
       }
     />
     <Route
+      path="/data-retention-settings"
+      element={
+        <ProtectedRoute resource="organizations" action="view">
+          <DataRetentionSettings />
+        </ProtectedRoute>
+      }
+    />
+    <Route
       path="/dashboard"
       element={
         <ProtectedRoute>
@@ -265,6 +351,14 @@ const ProtectedRoutes = (
       element={
         <ProtectedRoute>
           <FocusTime />
+        </ProtectedRoute>
+      }
+    />
+    <Route
+      path="/escalations"
+      element={
+        <ProtectedRoute>
+          <EscalationDashboard />
         </ProtectedRoute>
       }
     />
@@ -327,6 +421,14 @@ const ProtectedRoutes = (
       }
     />
     <Route
+      path="/reports/weekly-insights"
+      element={
+        <ProtectedRoute resource="reports" action="view">
+          <WeeklyInsights />
+        </ProtectedRoute>
+      }
+    />
+    <Route
       path="/reports/builder/:templateId?"
       element={
         <ProtectedRoute resource="reports" action="view">
@@ -367,10 +469,26 @@ const ProtectedRoutes = (
       }
     />
     <Route
-      path="/meetings/:id/briefing"
+      path="/meeting/:id/briefing"
       element={
         <ProtectedRoute resource="meetings" action="view">
           <MeetingBriefing />
+        </ProtectedRoute>
+      }
+    />
+    <Route
+      path="/meeting/:id/quality"
+      element={
+        <ProtectedRoute resource="meetings" action="view">
+          <MeetingQuality />
+        </ProtectedRoute>
+      }
+    />
+    <Route
+      path="/effectiveness/:meetingId?"
+      element={
+        <ProtectedRoute resource="reports" action="view">
+          <MeetingEffectiveness />
         </ProtectedRoute>
       }
     />
@@ -423,10 +541,74 @@ const ProtectedRoutes = (
       }
     />
     <Route
+      path="/action-items"
+      element={
+        <ProtectedRoute resource="tasks" action="view">
+          <ActionItemsDashboard />
+        </ProtectedRoute>
+      }
+    />
+    <Route
+      path="/workload"
+      element={
+        <ProtectedRoute resource="tasks" action="view">
+          <WorkloadDashboard />
+        </ProtectedRoute>
+      }
+    />
+    <Route
+      path="/followup"
+      element={
+        <ProtectedRoute resource="tasks" action="view">
+          <FollowUpDashboard />
+        </ProtectedRoute>
+      }
+    />
+    <Route
+      path="/follow-up-dashboard"
+      element={
+        <ProtectedRoute resource="tasks" action="view">
+          <FollowUpDashboard />
+        </ProtectedRoute>
+      }
+    />
+    <Route
+      path="/followup-dashboard"
+      element={
+        <ProtectedRoute resource="tasks" action="view">
+          <FollowUpDashboard />
+        </ProtectedRoute>
+      }
+    />
+    <Route
+      path="/followup/tasks/:id"
+      element={
+        <ProtectedRoute resource="tasks" action="view">
+          <FollowUpDashboard />
+        </ProtectedRoute>
+      }
+    />
+    <Route
       path="/policy-compliance"
       element={
         <ProtectedRoute resource="policies" action="view">
           <PolicyCompliance />
+        </ProtectedRoute>
+      }
+    />
+    <Route
+      path="/sla-compliance"
+      element={
+        <ProtectedRoute resource="reports" action="view">
+          <SlaCompliance />
+        </ProtectedRoute>
+      }
+    />
+    <Route
+      path="/action-item-templates"
+      element={
+        <ProtectedRoute resource="reports" action="view">
+          <ActionItemTemplates />
         </ProtectedRoute>
       }
     />
@@ -487,6 +669,14 @@ const ProtectedRoutes = (
       }
     />
     <Route
+      path="/action-item-analytics"
+      element={
+        <ProtectedRoute resource="reports" action="view">
+          <ActionItemAnalytics />
+        </ProtectedRoute>
+      }
+    />
+    <Route
       path="/recap-schedule"
       element={
         <ProtectedRoute resource="settings" action="view">
@@ -510,7 +700,14 @@ const ProtectedRoutes = (
         </ProtectedRoute>
       }
     />
-    <Route path="/meeting-templates" element={<MeetingTemplates />} />
+    <Route
+      path="/speaking-time-compare"
+      element={
+        <ProtectedRoute resource="reports" action="view">
+          <SpeakingTimeCompare />
+        </ProtectedRoute>
+      }
+    />
     <Route
       path="/ai-summary-templates"
       element={
@@ -533,6 +730,14 @@ const ProtectedRoutes = (
       }
     />
     <Route
+      path="/badges"
+      element={
+        <ProtectedRoute>
+          <Badges />
+        </ProtectedRoute>
+      }
+    />
+    <Route
       path="/engagement"
       element={
         <ProtectedRoute resource="reports" action="view">
@@ -548,7 +753,31 @@ const ProtectedRoutes = (
         </ProtectedRoute>
       }
     />
+    <Route
+      path="/standups"
+      element={
+        <ProtectedRoute resource="reports" action="view">
+          <StandupReports />
+        </ProtectedRoute>
+      }
+    />
+    <Route
+      path="/team-availability"
+      element={
+        <ProtectedRoute resource="reports" action="view">
+          <TeamAvailability />
+        </ProtectedRoute>
+      }
+    />
 
+    <Route
+      path="/rsvps"
+      element={
+        <ProtectedRoute>
+          <RsvpInbox />
+        </ProtectedRoute>
+      }
+    />
     <Route
       path="/admin-panel"
       element={

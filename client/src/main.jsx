@@ -11,8 +11,17 @@ import { PreferencesProvider } from "./context/PreferencesContext.jsx";
 import { ClerkAuthProvider } from "./context/ClerkAuthProvider.jsx";
 import { ClerkSessionSync } from "./components/ClerkSessionSync.jsx";
 import { AssistantProvider } from "./context/AssistantContext.jsx";
+import { PwaProvider } from "./context/PwaContext.jsx";
 import { registerSW } from "virtual:pwa-register";
 registerSW({ immediate: true });
+
+import {
+  getCookiePreferences,
+  applyCookiePreferences,
+} from "./utils/cookieManager.js";
+
+// Initialize and apply stored cookie consent preferences on application boot
+applyCookiePreferences(getCookiePreferences());
 
 // Prevent FOUC by applying theme class before render
 const savedTheme = localStorage.getItem("theme");
@@ -30,10 +39,12 @@ createRoot(document.getElementById("root")).render(
       <ThemeProvider>
         <PreferencesProvider>
           <AppContextProvider>
-            <ClerkSessionSync />
-            <AssistantProvider>
-              <App />
-            </AssistantProvider>
+            <PwaProvider>
+              <ClerkSessionSync />
+              <AssistantProvider>
+                <App />
+              </AssistantProvider>
+            </PwaProvider>
           </AppContextProvider>
         </PreferencesProvider>
       </ThemeProvider>

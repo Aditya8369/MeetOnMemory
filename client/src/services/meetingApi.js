@@ -28,6 +28,10 @@ export const meetingApi = {
   permanentlyDeleteMeeting: (id) =>
     apiClient.delete(`/api/meetings/${id}/permanent`),
 
+  getPurgePreview: () => apiClient.get("/api/meetings/trash/purge-preview"),
+
+  purgeTrash: () => apiClient.delete("/api/meetings/trash/purge"),
+
   updateMeeting: (id, data) => apiClient.patch(`/api/meetings/${id}`, data),
 
   exportMeeting: (id, format) =>
