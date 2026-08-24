@@ -25,6 +25,15 @@ export const attachmentApi = {
     );
   },
 
+  previewAttachment: (meetingId, attachmentId) => {
+    return apiClient.get(
+      `/api/meetings/${meetingId}/attachments/${attachmentId}/download?inline=true`,
+      {
+        responseType: "blob",
+      },
+    );
+  },
+
   deleteAttachment: (meetingId, attachmentId) => {
     return apiClient.delete(
       `/api/meetings/${meetingId}/attachments/${attachmentId}`,

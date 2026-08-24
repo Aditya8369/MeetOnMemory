@@ -1,6 +1,8 @@
 import Transcript from "../models/transcriptModel.js";
+import RecordingSession from "../models/RecordingSession.js";
 import { translateContent } from "../services/translationService.js";
 import Meeting from "../models/meetingModel.js";
+import AuditLog from "../models/auditLogModel.js";
 import { transcribeFileWithSegments } from "../services/TranscriptionService.js";
 import {
   indexTranscript,
@@ -413,6 +415,30 @@ export const uploadTranscriptChunk = async (req, res) => {
       fs.unlinkSync(tempFilePath);
     }
 
+    // Update RecordingSession metric
+    try {
+      let session = await RecordingSession.findOne({
+        meeting: meetingId,
+        status: "IN_PROGRESS",
+      });
+      if (!session) {
+        session = await RecordingSession.create({
+          meeting: meetingId,
+          user: userId,
+          organization: meeting.organization || null,
+          status: "IN_PROGRESS",
+          startedAt: new Date(),
+          lastHeartbeatAt: new Date(),
+        });
+      }
+      session.chunkCount += 1;
+      session.duration += 5;
+      session.lastHeartbeatAt = new Date();
+      await session.save();
+    } catch (sessionErr) {
+      console.warn("Failed to update RecordingSession for chunk:", sessionErr);
+    }
+
     res.status(200).json({
       success: true,
       text: newText,
@@ -423,6 +449,29 @@ export const uploadTranscriptChunk = async (req, res) => {
     if (tempFilePath && fs.existsSync(tempFilePath)) {
       fs.unlinkSync(tempFilePath);
     }
+
+    try {
+      const { meetingId } = req.params;
+      const session = await RecordingSession.findOne({
+        meeting: meetingId,
+        status: "IN_PROGRESS",
+      });
+      if (session) {
+        session.retryCount += 1;
+        session.failureReason =
+          error.message || "Failed to process audio chunk";
+        session.failureHistory.push({
+          reason: error.message || "Failed to process audio chunk",
+          timestamp: new Date(),
+          chunkIndex: session.chunkCount,
+        });
+        session.lastHeartbeatAt = new Date();
+        await session.save();
+      }
+    } catch (recErr) {
+      console.warn("Failed to record error on RecordingSession:", recErr);
+    }
+
     res.status(500).json({
       success: false,
       message: error.message || "Failed to process audio chunk",
@@ -1163,5 +1212,216 @@ export const updateSpeakers = async (req, res) => {
   } catch (error) {
     console.error("Error updating speakers:", error);
     sendError(res, 500, "Failed to update speakers");
+  }
+};
+
+/**
+ * Update transcript segment (text, startTime, endTime, speaker) with audit logging and re-indexing (#2251)
+ */
+export const updateTranscriptSegment = async (req, res) => {
+  try {
+    const { id, meetingId, segmentIndex } = req.params;
+    const { text, startTime, endTime, speaker } = req.body || {};
+
+    if (
+      text === undefined &&
+      startTime === undefined &&
+      endTime === undefined &&
+      speaker === undefined
+    ) {
+      return sendError(
+        res,
+        400,
+        "At least one field (text, startTime, endTime, speaker) is required to update segment",
+      );
+    }
+
+    let transcript;
+    if (id) {
+      transcript = await Transcript.findById(id).populate("meeting");
+    } else if (meetingId) {
+      transcript = await Transcript.findOne({ meeting: meetingId }).populate(
+        "meeting",
+      );
+    }
+
+    if (!transcript) {
+      return sendError(res, 404, "Transcript not found");
+    }
+
+    const meeting = transcript.meeting;
+    if (!meeting) {
+      return sendError(res, 404, "Associated meeting not found");
+    }
+
+    const userId = (req.user._id || req.user.id)?.toString();
+    const isOwner = meeting.uploadedBy?.toString() === userId;
+    const isAdminInSameOrg =
+      (req.user.role === "admin" || req.user.role === "owner") &&
+      meeting.organization &&
+      req.user.organization &&
+      meeting.organization.toString() === req.user.organization.toString();
+
+    // Check if user is owner, org admin/owner, or has permission
+    if (!isOwner && !isAdminInSameOrg) {
+      return sendError(
+        res,
+        403,
+        "Forbidden: You don't have permission to edit this transcript",
+      );
+    }
+
+    if (!transcript.segments || transcript.segments.length === 0) {
+      return sendError(res, 404, "Transcript has no segments to update");
+    }
+
+    // Identify target segment by index or _id
+    let parsedIndex = -1;
+    if (segmentIndex !== undefined && segmentIndex !== null) {
+      const idx = Number(segmentIndex);
+      if (
+        Number.isInteger(idx) &&
+        idx >= 0 &&
+        idx < transcript.segments.length
+      ) {
+        parsedIndex = idx;
+      } else {
+        // Try finding by segment _id
+        parsedIndex = transcript.segments.findIndex(
+          (s) => s._id && s._id.toString() === segmentIndex.toString(),
+        );
+      }
+    }
+
+    if (parsedIndex === -1) {
+      return sendError(
+        res,
+        400,
+        `Invalid segment index or ID: ${segmentIndex}`,
+      );
+    }
+
+    const targetSegment = transcript.segments[parsedIndex];
+
+    // Validate timestamps if provided
+    let newStartTime = targetSegment.startTime;
+    let newEndTime = targetSegment.endTime;
+
+    if (startTime !== undefined && startTime !== null) {
+      const numStart = Number(startTime);
+      if (isNaN(numStart) || numStart < 0) {
+        return sendError(res, 400, "startTime must be a non-negative number");
+      }
+      newStartTime = numStart;
+    }
+
+    if (endTime !== undefined && endTime !== null) {
+      const numEnd = Number(endTime);
+      if (isNaN(numEnd) || numEnd < 0) {
+        return sendError(res, 400, "endTime must be a non-negative number");
+      }
+      newEndTime = numEnd;
+    }
+
+    if (newEndTime < newStartTime) {
+      return sendError(res, 400, "endTime cannot be less than startTime");
+    }
+
+    // Capture old values for audit logging
+    const oldValues = {
+      text: targetSegment.text,
+      startTime: targetSegment.startTime,
+      endTime: targetSegment.endTime,
+      speaker: targetSegment.speaker,
+    };
+
+    // Apply updates
+    if (text !== undefined && text !== null) {
+      targetSegment.text = String(text);
+    }
+    if (speaker !== undefined && speaker !== null) {
+      targetSegment.speaker = String(speaker).trim();
+    }
+    targetSegment.startTime = newStartTime;
+    targetSegment.endTime = newEndTime;
+    targetSegment.isEdited = true;
+    targetSegment.editedAt = new Date();
+    targetSegment.editedBy = req.user._id || req.user.id;
+
+    // Recalculate fullText and wordCount
+    transcript.fullText = transcript.segments
+      .map((s) => s.text)
+      .join(" ")
+      .trim();
+    transcript.wordCount = transcript.fullText
+      ? transcript.fullText.split(/\s+/).filter(Boolean).length
+      : 0;
+
+    await transcript.save();
+
+    // Update meeting transcript text
+    meeting.transcript = transcript.fullText;
+    await meeting.save();
+
+    // Record Audit Log if in an organization
+    const orgId = meeting.organization || req.user.organization;
+    if (orgId) {
+      try {
+        await AuditLog.create({
+          organization: orgId,
+          actor: req.user._id || req.user.id,
+          action: "TRANSCRIPT_SEGMENT_UPDATED",
+          entity: "Transcript",
+          entityId: transcript._id,
+          details: {
+            meetingId: meeting._id,
+            segmentIndex: parsedIndex,
+            segmentId: targetSegment._id,
+            previous: oldValues,
+            updated: {
+              text: targetSegment.text,
+              startTime: targetSegment.startTime,
+              endTime: targetSegment.endTime,
+              speaker: targetSegment.speaker,
+            },
+          },
+        });
+      } catch (auditError) {
+        console.error(
+          "Failed to create audit log for segment update:",
+          auditError,
+        );
+      }
+    }
+
+    // Background re-indexing if transcript is completed
+    if (transcript.status === "completed") {
+      try {
+        indexMeeting(meeting).catch((err) =>
+          console.error("Failed to re-index meeting in background:", err),
+        );
+        indexTranscriptChunks(transcript, meeting).catch((err) =>
+          console.error(
+            "Failed to re-index transcript chunks in background:",
+            err,
+          ),
+        );
+      } catch (indexError) {
+        console.error("Failed to trigger re-indexing:", indexError);
+      }
+    }
+
+    return sendSuccess(
+      res,
+      {
+        transcript,
+        segment: targetSegment,
+        segmentIndex: parsedIndex,
+      },
+      "Transcript segment updated successfully",
+    );
+  } catch (error) {
+    console.error("Error updating transcript segment:", error);
+    return sendError(res, 500, "Failed to update transcript segment");
   }
 };

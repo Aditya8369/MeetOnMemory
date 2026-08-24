@@ -43,6 +43,7 @@ const MeetingRecorder = ({
   const recognitionRef = useRef(null);
   const transcriptContainerRef = useRef(null);
   const activeMeetingIdRef = useRef(meetingId);
+  const recordingSessionIdRef = useRef(null);
 
   activeMeetingIdRef.current = meetingId;
 
@@ -208,6 +209,25 @@ const MeetingRecorder = ({
         }
       }
 
+      // Initialize RecordingSession backend tracking
+      try {
+        const sessionRes = await apiClient.post(
+          "/api/recording-sessions/start",
+          {
+            meetingId: activeMeetingId,
+            metadata: { userAgent: navigator.userAgent },
+          },
+        );
+        if (sessionRes.data?.session?._id) {
+          recordingSessionIdRef.current = sessionRes.data.session._id;
+        }
+      } catch (sessErr) {
+        console.warn(
+          "Failed to initialize RecordingSession tracking:",
+          sessErr,
+        );
+      }
+
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       streamRef.current = stream;
 
@@ -345,6 +365,21 @@ const MeetingRecorder = ({
       setRecordingState("stopped");
       setAudioLevel(0);
       saveDraftLocally(liveTranscript, duration, "stopped");
+
+      if (recordingSessionIdRef.current) {
+        apiClient
+          .post(
+            `/api/recording-sessions/${recordingSessionIdRef.current}/status`,
+            {
+              status: "COMPLETED",
+              duration,
+            },
+          )
+          .catch((err) =>
+            console.warn("Failed to mark session COMPLETED:", err),
+          );
+      }
+
       toast.info("Recording stopped. Ready to finalize.");
     }
   };

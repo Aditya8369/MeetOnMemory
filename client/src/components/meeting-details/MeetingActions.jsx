@@ -2,9 +2,10 @@ import React, { useState, useRef, useEffect, useContext } from "react";
 import { useNavigate } from "react-router-dom";
 import AppContent from "../../context/AppContent.js";
 import useExport from "../../hooks/useExport.js";
-import { Mic, MicOff, Loader2 } from "lucide-react";
+import { Mic, MicOff, Loader2, Mail, Send, Eye, X } from "lucide-react";
 import { toast } from "react-toastify";
 import apiClient from "../../services/apiClient";
+import { meetingApi } from "../../services/meetingApi.js";
 import ConfirmModal from "../ConfirmModal.jsx";
 import { usePolling } from "../../hooks/usePolling.js";
 import {
@@ -32,6 +33,13 @@ const MeetingActions = ({ meeting, onDelete, onRename }) => {
   const [showExportMenu, setShowExportMenu] = useState(false);
   const [showCalendarMenu, setShowCalendarMenu] = useState(false);
   const { exportMeeting, isExporting } = useExport();
+
+  // Email MoM modal state (#2254)
+  const [showEmailModal, setShowEmailModal] = useState(false);
+  const [sendingEmail, setSendingEmail] = useState(false);
+  const [emailPreviewHtml, setEmailPreviewHtml] = useState("");
+  const [showEmailPreview, setShowEmailPreview] = useState(false);
+  const [emailPreviewLoading, setEmailPreviewLoading] = useState(false);
 
   // Recording state
   const [isRecording, setIsRecording] = useState(false);
@@ -81,19 +89,67 @@ const MeetingActions = ({ meeting, onDelete, onRename }) => {
     setShowDeleteModal(true);
   };
 
+  const handleOpenEmailModal = () => {
+    setShowEmailModal(true);
+    setShowEmailPreview(false);
+    setEmailPreviewHtml("");
+  };
+
+  const handleToggleEmailPreview = async () => {
+    if (showEmailPreview) {
+      setShowEmailPreview(false);
+      return;
+    }
+    setShowEmailPreview(true);
+    if (!emailPreviewHtml) {
+      setEmailPreviewLoading(true);
+      try {
+        const response = await meetingApi.previewMeetingDigest(meeting._id);
+        setEmailPreviewHtml(response.data);
+      } catch (err) {
+        console.error("Failed to load email preview:", err);
+        toast.error("Failed to load email digest preview");
+      } finally {
+        setEmailPreviewLoading(false);
+      }
+    }
+  };
+
+  const handleSendEmailMoM = async () => {
+    setSendingEmail(true);
+    try {
+      const { data } = await meetingApi.sendMeetingDigest(meeting._id);
+      const count = data?.data?.recipientsSentTo ?? data?.recipientsSentTo ?? 0;
+      toast.success(
+        count > 0
+          ? `Meeting MoM successfully sent to ${count} participant${count !== 1 ? "s" : ""}!`
+          : "Meeting MoM email distribution completed!",
+      );
+      setShowEmailModal(false);
+    } catch (err) {
+      console.error("Failed to send meeting MoM email:", err);
+      toast.error(
+        err.response?.data?.message || "Failed to send meeting MoM email",
+      );
+    } finally {
+      setSendingEmail(false);
+    }
+  };
+
   useEffect(() => {
     const handleKeyDown = (e) => {
       if (e.key === "Escape") {
         if (showDeleteModal) setShowDeleteModal(false);
         if (showRenameModal) setShowRenameModal(false);
+        if (showEmailModal) setShowEmailModal(false);
       }
     };
 
-    if (showDeleteModal || showRenameModal) {
+    if (showDeleteModal || showRenameModal || showEmailModal) {
       window.addEventListener("keydown", handleKeyDown);
     }
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [showDeleteModal, showRenameModal]);
+  }, [showDeleteModal, showRenameModal, showEmailModal]);
 
   const handleBackdropClick = (e, closeModal) => {
     if (e.target === e.currentTarget) {
@@ -217,11 +273,6 @@ const MeetingActions = ({ meeting, onDelete, onRename }) => {
       setIsProcessing(true);
       toast.success("Recording stopped, transcription started");
 
-      // The transcription poll used to keep its interval id in a `const` local
-      // to this handler, so it survived unmount and had no deadline at all —
-      // it only stopped if the transcript reached a terminal status. The
-      // sibling `recordingIntervalRef` was already torn down properly; this one
-      // was not (Issue #1455).
       startPolling(
         async ({ signal }) => {
           const { data: transcriptData } = await apiClient.get(
@@ -490,6 +541,16 @@ const MeetingActions = ({ meeting, onDelete, onRename }) => {
             )}
           </div>
 
+          <button
+            onClick={handleOpenEmailModal}
+            className="flex items-center justify-center gap-2 px-4 py-2 bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-950/40 dark:hover:bg-indigo-900/60 text-indigo-700 dark:text-indigo-300 rounded-lg transition-colors text-sm font-medium cursor-pointer"
+            title="Email MoM / summary to meeting participants"
+            aria-label="Email MoM to participants"
+          >
+            <Mail className="w-4 h-4" />
+            Email MoM
+          </button>
+
           {!isViewerOrGuest && (
             <>
               <button
@@ -555,6 +616,135 @@ const MeetingActions = ({ meeting, onDelete, onRename }) => {
           Back to Meeting Repository
         </button>
       </div>
+
+      {/* Email MoM Modal (#2254) */}
+      {showEmailModal && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-label="Email MoM to Participants Modal"
+          className="fixed inset-0 bg-black/60 backdrop-blur-xs flex items-center justify-center z-50 p-4"
+          onClick={(e) => {
+            if (e.target === e.currentTarget) setShowEmailModal(false);
+          }}
+        >
+          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 max-w-lg w-full shadow-2xl space-y-4 max-h-[90vh] flex flex-col">
+            <div className="flex items-center justify-between pb-2 border-b border-gray-100 dark:border-slate-800">
+              <h3 className="text-lg font-bold text-gray-900 dark:text-white flex items-center gap-2">
+                <Mail className="w-5 h-5 text-indigo-600 dark:text-indigo-400" />
+                Email MoM to Participants
+              </h3>
+              <button
+                type="button"
+                onClick={() => setShowEmailModal(false)}
+                className="p-1 rounded-lg text-gray-400 hover:text-gray-600 dark:hover:text-gray-200"
+                aria-label="Close email modal"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="space-y-3 flex-1 overflow-y-auto pr-1">
+              <div>
+                <label className="block text-xs font-semibold uppercase text-gray-500 dark:text-slate-400 mb-1">
+                  Meeting
+                </label>
+                <p className="text-sm font-semibold text-gray-800 dark:text-slate-200 truncate">
+                  {meeting.title}
+                </p>
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold uppercase text-gray-500 dark:text-slate-400 mb-1">
+                  Recipients ({meeting.participants?.length || 0})
+                </label>
+                <div className="bg-gray-50 dark:bg-slate-800/50 p-3 rounded-xl max-h-32 overflow-y-auto space-y-1">
+                  {meeting.participants && meeting.participants.length > 0 ? (
+                    meeting.participants.map((p, idx) => (
+                      <div
+                        key={idx}
+                        className="text-xs text-gray-700 dark:text-slate-300 flex items-center justify-between"
+                      >
+                        <span className="font-medium truncate">
+                          {p.name || p.email}
+                        </span>
+                        <span className="text-gray-400 dark:text-slate-500 text-[11px]">
+                          {p.email}
+                        </span>
+                      </div>
+                    ))
+                  ) : (
+                    <p className="text-xs text-gray-400 italic">
+                      No participants registered for this meeting.
+                    </p>
+                  )}
+                </div>
+              </div>
+
+              <div>
+                <button
+                  type="button"
+                  onClick={handleToggleEmailPreview}
+                  className="text-xs font-semibold text-indigo-600 dark:text-indigo-400 hover:underline flex items-center gap-1 cursor-pointer"
+                >
+                  <Eye className="w-3.5 h-3.5" />
+                  {showEmailPreview
+                    ? "Hide Email Preview"
+                    : "Preview Digest Email HTML"}
+                </button>
+
+                {showEmailPreview && (
+                  <div className="mt-2 border border-gray-200 dark:border-slate-700 rounded-xl overflow-hidden bg-white dark:bg-slate-950 p-3">
+                    {emailPreviewLoading ? (
+                      <div className="py-6 flex items-center justify-center text-xs text-gray-500">
+                        <Loader2 className="w-4 h-4 animate-spin mr-2" />{" "}
+                        Loading preview...
+                      </div>
+                    ) : (
+                      <div
+                        className="text-xs max-h-48 overflow-y-auto prose dark:prose-invert"
+                        dangerouslySetInnerHTML={{
+                          __html:
+                            emailPreviewHtml || "<p>No preview generated.</p>",
+                        }}
+                      />
+                    )}
+                  </div>
+                )}
+              </div>
+            </div>
+
+            <div className="flex gap-3 justify-end pt-3 border-t border-gray-100 dark:border-slate-800">
+              <button
+                type="button"
+                onClick={() => setShowEmailModal(false)}
+                className="px-4 py-2 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 rounded-xl text-xs font-semibold cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                data-testid="confirm-send-email-mom-button"
+                onClick={handleSendEmailMoM}
+                disabled={sendingEmail}
+                className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold inline-flex items-center gap-1.5 cursor-pointer shadow-sm disabled:opacity-50"
+              >
+                {sendingEmail ? (
+                  <>
+                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                    Sending...
+                  </>
+                ) : (
+                  <>
+                    <Send className="w-3.5 h-3.5" />
+                    Send Email MoM
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Delete Confirmation Modal */}
       <ConfirmModal

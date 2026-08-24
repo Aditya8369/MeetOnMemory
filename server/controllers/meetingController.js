@@ -62,6 +62,7 @@ const summarizeMeetingSchema = z.object({
   transcript: z.string().optional(),
   date: z.string({ required_error: "Meeting date is required." }),
   title: z.string().optional(),
+  templateId: z.string().optional(),
 });
 
 const updateMeetingSchema = z.object({
@@ -382,6 +383,7 @@ export const summarizeMeeting = async (req, res, next) => {
       validated.transcript || "",
       validated.date,
       validated.title || null,
+      validated.templateId || null,
     );
 
     if (result.queued) {

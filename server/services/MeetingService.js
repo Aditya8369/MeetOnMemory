@@ -367,6 +367,7 @@ export const generateMeetingMoM = async (
   transcript,
   date,
   title,
+  templateId = null,
 ) => {
   const user = await User.findById(userId);
   if (!user) throw new ForbiddenError("User not found");
@@ -415,7 +416,16 @@ export const generateMeetingMoM = async (
 
   let customInstructions = null;
   try {
-    if (meeting) {
+    if (templateId && isValidObjectId(templateId)) {
+      const template = await AiSummaryTemplate.findById(templateId);
+      if (template) {
+        customInstructions = template.customInstructions;
+        if (meeting) {
+          meeting.aiSummaryTemplate = template._id;
+          await meeting.save();
+        }
+      }
+    } else if (meeting) {
       if (meeting.aiSummaryTemplate) {
         const template = await AiSummaryTemplate.findById(
           meeting.aiSummaryTemplate,

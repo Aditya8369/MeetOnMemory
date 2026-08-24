@@ -1,5 +1,5 @@
 import React from "react";
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { render, screen, waitFor, fireEvent } from "@testing-library/react";
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import AttachmentPanel from "../AttachmentPanel";
 import { toast } from "react-toastify";
@@ -16,6 +16,7 @@ vi.mock("../../../services", () => ({
     getAttachments: vi.fn(),
     uploadAttachment: vi.fn(),
     downloadAttachment: vi.fn(),
+    previewAttachment: vi.fn(),
     deleteAttachment: vi.fn(),
   },
 
@@ -47,12 +48,12 @@ const renderPanel = (props = {}) =>
     />,
   );
 
-describe("AttachmentPanel accessibility & Dark Mode (#1227)", () => {
+describe("AttachmentPanel accessibility & Inline Preview (#2253)", () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });
 
-  it("exposes accessible names for icon-only attachment actions", async () => {
+  it("exposes accessible names for icon-only attachment actions including preview", async () => {
     attachmentApi.getAttachments.mockResolvedValue({
       data: {
         success: true,
@@ -67,11 +68,61 @@ describe("AttachmentPanel accessibility & Dark Mode (#1227)", () => {
     });
 
     expect(
-      screen.getByRole("button", { name: "Download attachment" }),
+      screen.getByRole("button", { name: "Preview attachment agenda.pdf" }),
     ).toBeInTheDocument();
     expect(
-      screen.getByRole("button", { name: "Delete attachment" }),
+      screen.getByRole("button", { name: "Download attachment agenda.pdf" }),
     ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Delete attachment agenda.pdf" }),
+    ).toBeInTheDocument();
+  });
+
+  it("opens inline preview modal when preview is clicked and closes on close button", async () => {
+    attachmentApi.getAttachments.mockResolvedValue({
+      data: {
+        success: true,
+        attachments: [
+          {
+            _id: "att-img",
+            fileName: "architecture.png",
+            mimeType: "image/png",
+            fileSize: 2048,
+            uploadedBy: { name: "Bob" },
+            createdAt: "2024-01-16T00:00:00.000Z",
+          },
+        ],
+      },
+    });
+    attachmentApi.previewAttachment.mockResolvedValue({
+      data: new ArrayBuffer(8),
+    });
+
+    renderPanel();
+
+    await waitFor(() => {
+      expect(screen.getByText("architecture.png")).toBeInTheDocument();
+    });
+
+    // Click preview
+    fireEvent.click(
+      screen.getByRole("button", {
+        name: "Preview attachment architecture.png",
+      }),
+    );
+
+    await waitFor(() => {
+      expect(
+        screen.getByRole("dialog", { name: "Attachment Preview Dialog" }),
+      ).toBeInTheDocument();
+    });
+
+    // Close preview
+    fireEvent.click(screen.getByRole("button", { name: "Close preview" }));
+
+    expect(
+      screen.queryByRole("dialog", { name: "Attachment Preview Dialog" }),
+    ).not.toBeInTheDocument();
   });
 
   it("applies dark mode CSS classes for complete theme support", async () => {
@@ -196,7 +247,7 @@ describe("AttachmentPanel (#1988)", () => {
     await screen.findByText("agenda.pdf");
 
     fireEvent.click(
-      screen.getByRole("button", { name: "Download attachment" }),
+      screen.getByRole("button", { name: "Download attachment agenda.pdf" }),
     );
 
     await waitFor(() => {
@@ -222,7 +273,9 @@ describe("AttachmentPanel (#1988)", () => {
     renderPanel();
     await screen.findByText("agenda.pdf");
 
-    fireEvent.click(screen.getByRole("button", { name: "Delete attachment" }));
+    fireEvent.click(
+      screen.getByRole("button", { name: "Delete attachment agenda.pdf" }),
+    );
 
     await waitFor(() => {
       expect(attachmentApi.deleteAttachment).toHaveBeenCalledWith(
@@ -245,10 +298,10 @@ describe("AttachmentPanel (#1988)", () => {
       screen.queryByRole("button", { name: /upload file/i }),
     ).not.toBeInTheDocument();
     expect(
-      screen.queryByRole("button", { name: "Delete attachment" }),
+      screen.queryByRole("button", { name: "Delete attachment agenda.pdf" }),
     ).not.toBeInTheDocument();
     expect(
-      screen.getByRole("button", { name: "Download attachment" }),
+      screen.getByRole("button", { name: "Download attachment agenda.pdf" }),
     ).toBeInTheDocument();
   });
 
@@ -261,7 +314,7 @@ describe("AttachmentPanel (#1988)", () => {
 
     await screen.findByText("agenda.pdf");
     expect(
-      screen.queryByRole("button", { name: "Download attachment" }),
+      screen.queryByRole("button", { name: "Download attachment agenda.pdf" }),
     ).not.toBeInTheDocument();
     expect(
       screen.queryByRole("button", { name: /upload file/i }),
