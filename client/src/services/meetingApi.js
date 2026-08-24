@@ -40,6 +40,11 @@ export const meetingApi = {
       timeout: 60000,
     }),
 
+  sendMeetingDigest: (id) =>
+    apiClient.post(`/api/meetings/${id}/digest/resend`),
+  previewMeetingDigest: (id) =>
+    apiClient.get(`/api/meetings/${id}/digest/preview`),
+
   getReactionSummary: (id) =>
     apiClient.get(`/api/meetings/${id}/reactions/summary`),
   getReactionTimeline: (id) =>
