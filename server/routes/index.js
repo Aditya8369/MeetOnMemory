@@ -268,4 +268,7 @@ router.use("/api/action-item-templates", actionItemTemplateRoutes);
 import observerRoutes from "./observerRoutes.js";
 router.use("/api/observers", observerRoutes);
 
+import skillEndorsementRoutes from "./skillEndorsementRoutes.js";
+router.use("/api/skill-endorsements", skillEndorsementRoutes);
+
 export default router;
