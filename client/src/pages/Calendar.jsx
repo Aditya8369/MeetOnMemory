@@ -17,6 +17,7 @@ import {
   Loader2,
   Inbox,
   Cloud,
+  Users,
 } from "lucide-react";
 
 const Calendar = () => {
@@ -134,6 +135,13 @@ const Calendar = () => {
 
           <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full md:w-auto">
             <CalendarSyncPanel onSyncComplete={invalidateCache} isCompact />
+            <button
+              onClick={() => navigate("/team-availability")}
+              className="inline-flex items-center gap-2 px-4 py-2 text-xs font-bold text-slate-700 dark:text-slate-200 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 active:bg-slate-300 rounded-xl transition-all cursor-pointer w-full md:w-auto justify-center"
+            >
+              <Users className="w-4 h-4" />
+              Team Availability
+            </button>
             <RoleGate resource="meetings" action="create">
               <button
                 onClick={() => navigate("/create-meeting")}
