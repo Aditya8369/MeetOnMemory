@@ -31,6 +31,7 @@ import RoleRotationConfig from "../components/meetings/RoleRotationConfig";
 import DuplicateDetectionPanel from "../components/meeting-details/DuplicateDetectionPanel";
 import MeetingTimeline from "../components/meeting-details/MeetingTimeline";
 import RecapStoryViewer from "../components/summaries/RecapStoryViewer";
+import ReactionSummaryCard from "../components/meeting-details/ReactionSummaryCard";
 import { useUser } from "@clerk/clerk-react";
 import Navbar from "../components/Navbar.jsx";
 import BriefingBanner from "../components/meeting-details/BriefingBanner";
@@ -517,6 +518,9 @@ const MeetingDetails = () => {
           <div className="mt-6 mb-6">
             <SentimentTimeline meetingId={meeting._id} />
           </div>
+
+          {/* Reaction Summary Card (Issue #1993) */}
+          <ReactionSummaryCard meetingId={meeting._id} />
 
           {/* Speaking Time Analytics Section */}
           <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 mt-6 mb-6 p-6">

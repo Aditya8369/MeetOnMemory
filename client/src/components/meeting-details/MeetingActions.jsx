@@ -156,7 +156,9 @@ const MeetingActions = ({ meeting, onDelete, onRename }) => {
             await apiClient.post(
               `/api/meetings/${meeting._id}/transcript/upload`,
               formData,
-              { withCredentials: true },
+              {
+                withCredentials: true,
+              },
             );
             chunksRef.current = [];
           } catch (error) {
@@ -191,7 +193,9 @@ const MeetingActions = ({ meeting, onDelete, onRename }) => {
         await apiClient.post(
           `/api/meetings/${meeting._id}/transcript/upload`,
           formData,
-          { withCredentials: true },
+          {
+            withCredentials: true,
+          },
         );
       } catch (error) {
         console.error("Error uploading final audio chunk:", error);
