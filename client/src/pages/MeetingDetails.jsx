@@ -61,6 +61,7 @@ import RetentionQuizSection from "../components/meetings/RetentionQuizSection";
 import ResourceConflictsPanel from "../components/meeting-details/ResourceConflictsPanel";
 import SkillEndorsementModal from "../components/meetings/SkillEndorsementModal";
 import DebriefQAPanel from "../components/meetings/DebriefQAPanel";
+import DelegationPanel from "../components/meetings/DelegationPanel";
 
 const MeetingDetails = () => {
   const { id } = useParams();
@@ -87,6 +88,17 @@ const MeetingDetails = () => {
       p.user?.toString() === dbUserId || p.user?._id?.toString() === dbUserId,
   );
   const userRole = participant?.role || null;
+  const isOrganizer =
+    userData?.role === "admin" ||
+    userData?.role === "owner" ||
+    userRole === "host" ||
+    userRole === "organizer" ||
+    (dbUserId &&
+      (meeting?.uploadedBy?._id?.toString() === dbUserId ||
+        meeting?.uploadedBy?.toString() === dbUserId)) ||
+    (userData?._id &&
+      (meeting?.uploadedBy?._id?.toString() === userData._id.toString() ||
+        meeting?.uploadedBy?.toString() === userData._id.toString()));
 
   const handleCitationClick = (citation) => {
     if (citation.type === "transcript" && citation.timestamp !== null) {
@@ -684,6 +696,12 @@ const MeetingDetails = () => {
           )}
           {currentUser?.publicMetadata?.dbUserId === meeting.uploadedBy && (
             <GuestAccessManager meetingId={meeting._id} />
+          )}
+          {isOrganizer && (
+            <DelegationPanel
+              meetingId={meeting._id}
+              participants={meeting.participants}
+            />
           )}
           <MeetingActions
             meeting={meeting}
