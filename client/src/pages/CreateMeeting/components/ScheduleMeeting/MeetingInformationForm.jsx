@@ -1,5 +1,6 @@
 import React from "react";
 import RecurrenceSelector from "../../../../components/meetings/RecurrenceSelector";
+import VenueMapPreview from "../../../../components/meetings/VenueMapPreview";
 import TagAutocomplete from "../../../../components/meetings/TagAutocomplete.jsx";
 
 const MeetingInformationForm = ({
@@ -152,6 +153,25 @@ const MeetingInformationForm = ({
           />
         </div>
       </div>
+
+      {/* Venue Map Preview for physical venues or virtual links */}
+      {scheduleData.venue && (
+        <div className="mb-6">
+          <label className="block mb-2 font-semibold text-gray-700 dark:text-gray-300 text-sm">
+            Venue Preview
+          </label>
+          <VenueMapPreview
+            venue={scheduleData.venue}
+            coordinates={scheduleData.venueCoordinates}
+            onCoordinatesResolved={(coords) => {
+              setScheduleData((prev) => ({
+                ...prev,
+                venueCoordinates: coords,
+              }));
+            }}
+          />
+        </div>
+      )}
 
       {/* Recurrence Selector */}
       <RecurrenceSelector

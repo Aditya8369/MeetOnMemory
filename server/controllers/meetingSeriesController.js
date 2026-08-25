@@ -44,6 +44,13 @@ const createSeriesSchema = z.object({
   duration: z.number().optional().default(60),
   location: z.string().optional(),
   venue: z.string().optional(),
+  venueCoordinates: z
+    .object({
+      lat: z.number().finite().nullable().optional(),
+      lng: z.number().finite().nullable().optional(),
+    })
+    .nullable()
+    .optional(),
   participants: z
     .array(
       z.object({
@@ -83,6 +90,7 @@ export const createSeries = async (req, res) => {
       duration,
       location,
       venue,
+      venueCoordinates,
       participants,
       agendaItems,
       auditNote,
@@ -155,6 +163,7 @@ export const createSeries = async (req, res) => {
       duration,
       location,
       venue,
+      venueCoordinates: venueCoordinates || { lat: null, lng: null },
       participants,
       // `insertMany` bypasses the document `pre("validate")` hook that
       // normally runs `normalizeAgendaItems`, so series-created meetings had
