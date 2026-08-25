@@ -90,12 +90,29 @@ import SlaCompliance from "../pages/SlaCompliance.jsx";
 import TeamAvailability from "../pages/TeamAvailability.jsx";
 import ActionItemTemplates from "../pages/ActionItemTemplates.jsx";
 import IntegrationMarketplaceHub from "../pages/IntegrationMarketplaceHub.jsx";
-import AbsenteeCatchUpInbox from "../pages/AbsenteeCatchUpInbox.jsx";
+import SentimentTrends from "../pages/SentimentTrends.jsx";
 
 const ProtectedRoutes = (
   <React.Fragment>
     <Route
+      path="/sentiment-trends"
+      element={
+        <ProtectedRoute resource="meetings" action="view">
+          <SentimentTrends />
+        </ProtectedRoute>
+      }
+    />
+    <Route
+      path="/analytics/sentiment-trends"
+      element={
+        <ProtectedRoute resource="meetings" action="view">
+          <SentimentTrends />
+        </ProtectedRoute>
+      }
+    />
+    <Route
       path="/integrations/marketplace"
+
       element={
         <ProtectedRoute resource="organizations" action="view">
           <IntegrationMarketplaceHub />

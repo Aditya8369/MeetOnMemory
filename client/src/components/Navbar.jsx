@@ -73,6 +73,7 @@ import {
   Layers,
   ListTodo,
   CheckCheck,
+  Smile,
   Lightbulb,
 } from "lucide-react";
 
@@ -635,6 +636,12 @@ const Navbar = () => {
             label: t("navbar.engagement"),
             href: "/engagement",
             icon: LineChart,
+            permission: { resource: "reports", action: "view" },
+          },
+          {
+            label: t("navbar.sentimentTrends", "Sentiment Trends"),
+            href: "/sentiment-trends",
+            icon: Smile,
             permission: { resource: "reports", action: "view" },
           },
           {
