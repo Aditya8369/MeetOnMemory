@@ -58,6 +58,7 @@ import AdminPanel from "../pages/AdminPanel.jsx";
 import ResourceManagement from "../pages/Admin/ResourceManagement.jsx";
 import Bookmarks from "../pages/Bookmarks.jsx";
 import ActivityFeed from "../pages/ActivityFeed.jsx";
+import AbsenteeCatchUpInbox from "../pages/AbsenteeCatchUpInbox.jsx";
 import TagBrowser from "../pages/TagBrowser.jsx";
 import AttendanceAnalytics from "../pages/AttendanceAnalytics.jsx";
 import RsvpInbox from "../pages/RsvpInbox.jsx";

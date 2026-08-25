@@ -482,7 +482,7 @@ export const getPublicResource = async (req, res) => {
     if (link.resourceModel === "Meeting") {
       const meeting = await Meeting.findById(link.resourceId)
         .select(
-          "title description date time location " +
+          "title description date time location venue venueCoordinates " +
             "participants summary structuredMoM",
         )
         .lean();
@@ -499,6 +499,8 @@ export const getPublicResource = async (req, res) => {
         date: meeting.date,
         time: meeting.time,
         location: meeting.location,
+        venue: meeting.venue || "",
+        venueCoordinates: meeting.venueCoordinates || null,
         summary: meeting.summary,
         structuredMoM: meeting.structuredMoM,
         participants: meeting.participants

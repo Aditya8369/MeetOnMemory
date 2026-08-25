@@ -173,6 +173,7 @@ export const buildDuplicateMeetingData = (meeting) => {
     duration: plain.duration ?? null,
     location: plain.location || "",
     venue: plain.venue || "",
+    venueCoordinates: plain.venueCoordinates || { lat: null, lng: null },
     participants: (plain.participants || []).map((participant) => ({
       name: participant.name || "",
       email: participant.email || "",
@@ -208,6 +209,7 @@ export const createMeeting = async (uploaderId, orgId, data) => {
     duration: data.duration || null,
     location: data.location || "",
     venue: data.venue || "",
+    venueCoordinates: data.venueCoordinates || { lat: null, lng: null },
     participants: data.participants || [],
     agendaItems: normalizeAgendaItems(data.agendaItems),
     policyDetails: data.policyDetails || null,
@@ -668,6 +670,7 @@ export const updateMeeting = async (userId, meetingId, data, doc = null) => {
     duration,
     location,
     venue,
+    venueCoordinates,
     tags,
     agendaItems,
   } = data;
@@ -680,6 +683,8 @@ export const updateMeeting = async (userId, meetingId, data, doc = null) => {
   if (duration !== undefined) meeting.duration = duration;
   if (location !== undefined) meeting.location = location;
   if (venue !== undefined) meeting.venue = venue;
+  if (venueCoordinates !== undefined)
+    meeting.venueCoordinates = venueCoordinates;
   if (tags) meeting.tags = tags;
   if (agendaItems !== undefined) {
     meeting.agendaItems = normalizeAgendaItems(agendaItems);

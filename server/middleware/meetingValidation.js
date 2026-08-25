@@ -84,6 +84,14 @@ export const createMeetingSchema = z
       .default(null),
     location: textField(500, "Meeting location").optional().default(""),
     venue: textField(1000, "Meeting venue").optional().default(""),
+    venueCoordinates: z
+      .object({
+        lat: z.number().finite().nullable().optional(),
+        lng: z.number().finite().nullable().optional(),
+      })
+      .nullable()
+      .optional()
+      .default(null),
     participants: z
       .array(participantSchema)
       .max(500, "A meeting cannot have more than 500 participants")
