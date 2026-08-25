@@ -210,6 +210,8 @@ router.use("/api/rsvps", meetingRsvpRoutes);
 router.use("/api/testimonials", testimonialRoutes);
 router.use("/api/admin/testimonials", adminTestimonialRouter);
 router.use("/api/absentee-catchup", absenteeCatchUpRoutes);
+import debriefQARoutes from "./debriefQARoutes.js";
+router.use("/api/debrief", debriefQARoutes);
 import adminJobsRoutes from "./adminJobsRoutes.js";
 router.use("/api/admin/jobs", adminJobsRoutes);
 import adminReindexRoutes from "./adminReindexRoutes.js";

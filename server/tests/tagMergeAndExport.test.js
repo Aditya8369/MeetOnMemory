@@ -24,7 +24,7 @@ jest.unstable_mockModule("../models/meetingModel.js", () => ({
   },
 }));
 
-const { mergeTags, bulkRetag, exportTags } =
+const { mergeTags, exportTags } =
   await import("../controllers/tagController.js");
 
 describe("Tag Taxonomy Administration Controllers (#2244)", () => {
