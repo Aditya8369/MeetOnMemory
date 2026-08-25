@@ -5,7 +5,7 @@
  * @param {Number} impact (1-5)
  * @returns {Number} Score (1-25)
  */
-exports.calculateRiskScore = (probability, impact) => {
+export const calculateRiskScore = (probability, impact) => {
   const p = Math.max(1, Math.min(5, Number(probability) || 3));
   const i = Math.max(1, Math.min(5, Number(impact) || 3));
   return p * i;
@@ -16,7 +16,7 @@ exports.calculateRiskScore = (probability, impact) => {
  * @param {Number} score (1-25)
  * @returns {String} Level
  */
-exports.getRiskLevel = (score) => {
+export const getRiskLevel = (score) => {
   if (score >= 15) return "Critical";
   if (score >= 10) return "High";
   if (score >= 5) return "Medium";

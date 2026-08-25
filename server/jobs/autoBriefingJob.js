@@ -1,6 +1,6 @@
 import cron from "node-cron";
 import Meeting from "../models/meetingModel.js";
-import { generateBriefing } from "../services/preMeetingBriefingService.js";
+import { generatePreMeetingBriefing } from "../services/preMeetingBriefingService.js";
 
 /** @type {import("node-cron").ScheduledTask | null} */
 let autoBriefingTask = null;
@@ -44,7 +44,7 @@ export const initAutoBriefingJob = () => {
 
       for (const meeting of upcomingMeetings) {
         try {
-          await generateBriefing(meeting._id);
+          await generatePreMeetingBriefing(meeting);
           console.log(
             `[AutoBriefing] Successfully generated briefing for meeting ${meeting._id}`,
           );

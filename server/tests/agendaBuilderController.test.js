@@ -5,9 +5,6 @@ import {
   verifyMeetingOrgAccess,
   getAgendas,
   createAgendaItem,
-  voteAgendaItem,
-  reorderAgendaItems,
-  finalizeAgenda,
 } from "../controllers/agendaBuilderController.js";
 
 describe("Agenda Builder Security & Access Control Tests (IDOR Defense)", () => {

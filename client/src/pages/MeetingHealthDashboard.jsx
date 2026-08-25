@@ -1,59 +1,71 @@
-import React, { useState, useEffect } from "react";
-import { useAuth } from "@clerk/clerk-react";
+import React, { useState, useEffect, useContext, useCallback } from "react";
+import AppContent from "../context/AppContent";
 import { meetingHealthApi } from "../services/meetingHealthApi";
+import OrganizationEmptyState from "../components/organization/OrganizationEmptyState";
 
 const MeetingHealthDashboard = () => {
-  const { user } = useAuth();
+  const { userData, loading: authLoading } = useContext(AppContent) || {};
+  const organizationId =
+    userData?.organization?._id || userData?.organization || null;
+
   const [trends, setTrends] = useState([]);
   const [benchmarks, setBenchmarks] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+
+  const fetchTrends = useCallback(async () => {
+    if (!organizationId) {
+      setTrends([]);
+      setBenchmarks(null);
+      setError("");
+      setLoading(false);
+      return;
+    }
+
+    try {
+      setLoading(true);
+      setError("");
+      const res =
+        await meetingHealthApi.getOrganizationHealthTrends(organizationId);
+      if (res.success) {
+        setTrends(res.data?.trends || []);
+        setBenchmarks(res.data?.benchmarks || null);
+      } else {
+        setTrends([]);
+        setBenchmarks(null);
+        setError(res.message || "Failed to load meeting health trends");
+      }
+    } catch (err) {
+      console.error("Failed to fetch trends", err);
+      setTrends([]);
+      setBenchmarks(null);
+      setError(
+        err.response?.data?.message || "Failed to load meeting health trends",
+      );
+    } finally {
+      setLoading(false);
+    }
+  }, [organizationId]);
 
   useEffect(() => {
-    const fetchTrends = async () => {
-      try {
-        if (!user?.organization) return;
-        setLoading(true);
-        const res = await meetingHealthApi.getOrganizationHealthTrends(
-          user.organization,
-        );
-        if (res.success) {
-          setTrends(res.data.trends);
-          setBenchmarks(res.data.benchmarks);
-        }
-      } catch (error) {
-        console.error("Failed to fetch trends", error);
-      } finally {
-        setLoading(false);
-      }
-    };
+    if (authLoading) return;
     fetchTrends();
-  }, [user]);
+  }, [authLoading, fetchTrends]);
 
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 p-6 flex justify-center items-center">
-        <div className="animate-pulse h-32 w-full max-w-4xl bg-gray-200 dark:bg-gray-700 rounded-lg"></div>
-      </div>
-    );
-  }
-
-  // Draw simple SVG line chart
   const renderLineChart = () => {
-    if (trends.length === 0)
+    if (trends.length === 0) {
       return (
-        <div className="text-gray-500">
+        <p role="status" className="text-gray-500 dark:text-gray-400">
           No meeting health data available yet.
-        </div>
+        </p>
       );
+    }
 
     const width = 800;
     const height = 300;
     const padding = 40;
-
-    // Scale data to fit within padding
     const maxScore = 100;
     const minScore = 0;
-
     const xScale = (width - padding * 2) / Math.max(1, trends.length - 1);
     const yScale = (height - padding * 2) / (maxScore - minScore);
 
@@ -73,7 +85,6 @@ const MeetingHealthDashboard = () => {
         className="w-full"
         aria-label="Meeting health composite score chart"
       >
-        {/* Y Axis */}
         <line
           x1={padding}
           y1={padding}
@@ -82,7 +93,6 @@ const MeetingHealthDashboard = () => {
           stroke="currentColor"
           className="text-gray-300 dark:text-gray-600"
         />
-        {/* X Axis */}
         <line
           x1={padding}
           y1={height - padding}
@@ -92,7 +102,6 @@ const MeetingHealthDashboard = () => {
           className="text-gray-300 dark:text-gray-600"
         />
 
-        {/* Grid lines & Y labels */}
         {[0, 25, 50, 75, 100].map((val) => (
           <g key={val}>
             <line
@@ -117,7 +126,6 @@ const MeetingHealthDashboard = () => {
           </g>
         ))}
 
-        {/* Data Line */}
         <polyline
           fill="none"
           stroke="#3B82F6"
@@ -125,12 +133,11 @@ const MeetingHealthDashboard = () => {
           points={points}
         />
 
-        {/* Data Points */}
         {trends.map((t, i) => {
           const x = padding + i * xScale;
           const y = height - padding - (t.compositeScore - minScore) * yScale;
           return (
-            <g key={t._id}>
+            <g key={t._id || i}>
               <circle cx={x} cy={y} r="4" fill="#2563EB" />
               <title>
                 {t.meetingId?.title || "Meeting"}: {t.compositeScore}
@@ -142,15 +149,76 @@ const MeetingHealthDashboard = () => {
     );
   };
 
+  const pageShellClass =
+    "min-h-screen bg-gray-50 dark:bg-gray-900 p-6 flex justify-center items-center";
+
+  if (authLoading || loading) {
+    return (
+      <div className={pageShellClass}>
+        <div
+          data-testid="meeting-health-loading"
+          role="status"
+          aria-label="Loading meeting health trends"
+          aria-busy="true"
+          className="animate-pulse h-32 w-full max-w-4xl bg-gray-200 dark:bg-gray-700 rounded-lg"
+        />
+      </div>
+    );
+  }
+
+  if (!organizationId) {
+    return (
+      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 p-6">
+        <div
+          data-testid="meeting-health-no-org"
+          className="max-w-6xl mx-auto bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700"
+        >
+          <OrganizationEmptyState />
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 p-6">
+        <div className="max-w-6xl mx-auto">
+          <div
+            data-testid="meeting-health-error"
+            role="alert"
+            className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700"
+          >
+            <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-2">
+              Organization Meeting Health
+            </h1>
+            <p className="text-sm text-red-600 dark:text-red-400 mb-4">
+              {error}
+            </p>
+            <button
+              type="button"
+              onClick={fetchTrends}
+              className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-md transition-colors"
+            >
+              Retry
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 p-6">
+    <div
+      data-testid="meeting-health-dashboard"
+      data-organization-id={String(organizationId)}
+      className="min-h-screen bg-gray-50 dark:bg-gray-900 p-6"
+    >
       <div className="max-w-6xl mx-auto space-y-6">
         <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">
           Organization Meeting Health
         </h1>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          {/* Composite Score Card */}
           <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
             <h3 className="text-gray-500 dark:text-gray-400 text-sm font-medium">
               Average Composite Score
@@ -177,7 +245,6 @@ const MeetingHealthDashboard = () => {
           </div>
         </div>
 
-        {/* Trend Chart */}
         <div
           role="region"
           aria-label="Composite score trend chart"
@@ -189,7 +256,6 @@ const MeetingHealthDashboard = () => {
           <div className="overflow-x-auto">{renderLineChart()}</div>
         </div>
 
-        {/* Factors Breakdown */}
         {benchmarks && (
           <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
             <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">
@@ -230,9 +296,15 @@ const MeetingHealthDashboard = () => {
                     className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2"
                   >
                     <div
-                      className={`h-2 rounded-full ${factor.value >= 80 ? "bg-green-500" : factor.value >= 60 ? "bg-yellow-500" : "bg-red-500"}`}
+                      className={`h-2 rounded-full ${
+                        factor.value >= 80
+                          ? "bg-green-500"
+                          : factor.value >= 60
+                            ? "bg-yellow-500"
+                            : "bg-red-500"
+                      }`}
                       style={{ width: `${factor.value}%` }}
-                    ></div>
+                    />
                   </div>
                 </div>
               ))}

@@ -21,6 +21,9 @@ import {
   ChevronLeft,
   Calendar,
   Loader2,
+  Download,
+  FileText,
+  FileSpreadsheet,
 } from "lucide-react";
 import { toast } from "react-toastify";
 import Navbar from "../components/Navbar.jsx";
@@ -53,6 +56,7 @@ const ReportBuilder = () => {
 
   const [generatedReport, setGeneratedReport] = useState(null);
   const [generating, setGenerating] = useState(false);
+  const [exportingFormat, setExportingFormat] = useState(null);
   const [titleError, setTitleError] = useState("");
 
   const fetchTemplate = useCallback(async () => {
@@ -108,6 +112,35 @@ const ReportBuilder = () => {
       toast.error("Failed to generate report");
     } finally {
       setGenerating(false);
+    }
+  };
+
+  const handleExport = async (format) => {
+    if (!templateId) {
+      toast.error("Please save the template first before exporting.");
+      return;
+    }
+    setExportingFormat(format);
+    try {
+      const response = await reportApi.exportReport(templateId, format);
+      const blob = new Blob([response.data], {
+        type: response.headers["content-type"] || "application/octet-stream",
+      });
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      const ext = format === "pdf" ? "html" : format;
+      const filename = `${(template.name || "report").toLowerCase().replace(/[^a-z0-9]/g, "_")}_${Date.now()}.${ext}`;
+      link.href = url;
+      link.setAttribute("download", filename);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+      toast.success(`Exported report as ${format.toUpperCase()}!`);
+    } catch {
+      toast.error(`Failed to export report as ${format.toUpperCase()}`);
+    } finally {
+      setExportingFormat(null);
     }
   };
 
@@ -344,7 +377,7 @@ const ReportBuilder = () => {
               </p>
             </div>
           </div>
-          <div className="flex items-center space-x-3">
+          <div className="flex flex-wrap items-center gap-3">
             <button
               onClick={handleSave}
               className="flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700"
@@ -360,6 +393,47 @@ const ReportBuilder = () => {
               <Play size={16} className="mr-2" />
               {generating ? "Generating..." : "Generate Preview"}
             </button>
+            <div className="flex items-center space-x-1 border-l border-gray-300 dark:border-gray-700 pl-3">
+              <button
+                onClick={() => handleExport("csv")}
+                disabled={!templateId || exportingFormat !== null}
+                className="flex items-center px-3 py-2 border border-gray-300 dark:border-gray-600 text-xs font-medium rounded-md text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50"
+                title="Export CSV"
+              >
+                {exportingFormat === "csv" ? (
+                  <Loader2 size={14} className="animate-spin mr-1" />
+                ) : (
+                  <FileSpreadsheet size={14} className="mr-1 text-green-600" />
+                )}
+                CSV
+              </button>
+              <button
+                onClick={() => handleExport("md")}
+                disabled={!templateId || exportingFormat !== null}
+                className="flex items-center px-3 py-2 border border-gray-300 dark:border-gray-600 text-xs font-medium rounded-md text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50"
+                title="Export Markdown"
+              >
+                {exportingFormat === "md" ? (
+                  <Loader2 size={14} className="animate-spin mr-1" />
+                ) : (
+                  <FileText size={14} className="mr-1 text-blue-600" />
+                )}
+                MD
+              </button>
+              <button
+                onClick={() => handleExport("pdf")}
+                disabled={!templateId || exportingFormat !== null}
+                className="flex items-center px-3 py-2 border border-gray-300 dark:border-gray-600 text-xs font-medium rounded-md text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50"
+                title="Export PDF HTML"
+              >
+                {exportingFormat === "pdf" ? (
+                  <Loader2 size={14} className="animate-spin mr-1" />
+                ) : (
+                  <Download size={14} className="mr-1 text-purple-600" />
+                )}
+                PDF
+              </button>
+            </div>
           </div>
         </div>
 
@@ -580,9 +654,38 @@ const ReportBuilder = () => {
                       {new Date(generatedReport.generatedAt).toLocaleString()}
                     </p>
                     <p>Based on {generatedReport.meetingCount} meetings</p>
+                    <div className="mt-3 flex items-center justify-end space-x-2">
+                      <button
+                        onClick={() => handleExport("csv")}
+                        disabled={exportingFormat !== null}
+                        className="px-2.5 py-1 text-xs font-medium border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-200 hover:bg-gray-50 flex items-center"
+                      >
+                        <FileSpreadsheet
+                          size={12}
+                          className="mr-1 text-green-600"
+                        />
+                        Export CSV
+                      </button>
+                      <button
+                        onClick={() => handleExport("md")}
+                        disabled={exportingFormat !== null}
+                        className="px-2.5 py-1 text-xs font-medium border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-200 hover:bg-gray-50 flex items-center"
+                      >
+                        <FileText size={12} className="mr-1 text-blue-600" />
+                        Export MD
+                      </button>
+                      <button
+                        onClick={() => handleExport("pdf")}
+                        disabled={exportingFormat !== null}
+                        className="px-2.5 py-1 text-xs font-medium border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-200 hover:bg-gray-50 flex items-center"
+                      >
+                        <Download size={12} className="mr-1 text-purple-600" />
+                        Export PDF
+                      </button>
+                    </div>
                     <button
                       onClick={() => setGeneratedReport(null)}
-                      className="mt-4 text-blue-600 hover:text-blue-700 font-medium"
+                      className="mt-3 text-blue-600 hover:text-blue-700 font-medium text-xs block ml-auto"
                     >
                       Back to Edit Template
                     </button>

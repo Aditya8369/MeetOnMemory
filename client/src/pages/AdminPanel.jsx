@@ -18,6 +18,7 @@ import {
   Settings,
   Activity,
   Menu,
+  ShieldAlert,
   X,
   Sparkles,
   ClipboardList,
@@ -30,6 +31,7 @@ import {
   Database,
   ShieldCheck,
   BrainCircuit,
+  Cpu,
 } from "lucide-react";
 import Navbar from "../components/Navbar.jsx";
 import TemplateBuilder from "../components/admin/TemplateBuilder.jsx";
@@ -38,7 +40,9 @@ import JobsDashboard from "../components/admin/JobsDashboard.jsx";
 import EmbeddingReindexAdmin from "../components/admin/EmbeddingReindexAdmin.jsx";
 import RbacPermissionExplorer from "../components/admin/RbacPermissionExplorer.jsx";
 import ImportanceRecalculationAdmin from "../components/admin/ImportanceRecalculationAdmin.jsx";
+import AiUsageMetrics from "../components/admin/AiUsageMetrics.jsx";
 import MembershipRequests from "../components/organization/MembershipRequests.jsx";
+import ResourceManagement from "./Admin/ResourceManagement.jsx";
 
 import AppContent from "../context/AppContent.js";
 import { fetchPlatformStatus } from "../services/statusApi.js";
@@ -132,13 +136,30 @@ const MODULES = [
     iconColor: "text-indigo-600 dark:text-indigo-400",
   },
   {
+    id: "aiUsage",
+    labelKey: "AI Usage",
+    descriptionKey: "Gemini and embedding cost/usage over time",
+    icon: Cpu,
+    iconBg: "bg-violet-50 dark:bg-violet-900/30",
+    iconColor: "text-violet-600 dark:text-violet-400",
+  },
+  {
     id: "policies",
-
     labelKey: "adminPanel.policies",
-    descriptionKey: "adminPanel.policiesDesc",
-    icon: Shield,
-    iconBg: "bg-cyan-50 dark:bg-cyan-900/30",
-    iconColor: "text-cyan-600 dark:text-cyan-400",
+    descriptionKey: "Organization security and data access rules",
+    icon: ShieldAlert,
+    iconBg: "bg-emerald-50 dark:bg-emerald-900/30",
+    iconColor: "text-emerald-600 dark:text-emerald-400",
+    roles: ["admin", "owner", "compliance_officer"],
+  },
+  {
+    id: "resources",
+    labelKey: "Physical Resources",
+    descriptionKey: "Manage meeting rooms and office hardware",
+    icon: Building2,
+    iconBg: "bg-blue-50 dark:bg-blue-900/30",
+    iconColor: "text-blue-600 dark:text-blue-400",
+    roles: ["admin", "owner"],
   },
   {
     id: "reports",
@@ -341,6 +362,7 @@ const AdminPanel = () => {
       activeModule === "jobs" ||
       activeModule === "embeddings" ||
       activeModule === "importance" ||
+      activeModule === "aiUsage" ||
       activeModule === "joinRequests"
     ) {
       return;
@@ -648,6 +670,8 @@ const AdminPanel = () => {
                 )}
               </div>
             </div>
+          ) : activeModule === "resources" ? (
+            <ResourceManagement />
           ) : activeModule === "templates" ? (
             <TemplateBuilder />
           ) : activeModule === "testimonials" ? (
@@ -660,6 +684,8 @@ const AdminPanel = () => {
             <RbacPermissionExplorer />
           ) : activeModule === "importance" ? (
             <ImportanceRecalculationAdmin />
+          ) : activeModule === "aiUsage" ? (
+            <AiUsageMetrics />
           ) : activeModule === "joinRequests" ? (
             <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-2xl p-6 shadow-sm">
               <MembershipRequests organizationId={orgId} />

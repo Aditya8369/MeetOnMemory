@@ -1,11 +1,10 @@
 import mongoose from "mongoose";
-import { vi, describe, beforeAll, beforeEach, it, expect } from "vitest";
+import { vi, describe, beforeEach, it, expect } from "vitest";
 import { checkQuietHours } from "../utils/quietHours.js";
 import NotificationPreference from "../models/notificationPreferenceModel.js";
 import MeetingDigestService from "../services/MeetingDigestService.js";
 import reminderScheduler from "../services/reminderScheduler.js";
 import EmailService from "../services/EmailService.js";
-import emailService from "../services/emailService.js";
 import { createNotification } from "../services/notificationService.js";
 
 // Mock models and services
@@ -18,12 +17,6 @@ vi.mock("../models/notificationPreferenceModel.js", () => ({
 vi.mock("../services/EmailService.js", () => ({
   default: {
     sendMail: vi.fn(),
-  },
-}));
-
-vi.mock("../services/emailService.js", () => ({
-  default: {
-    send: vi.fn(),
   },
 }));
 
@@ -160,7 +153,7 @@ describe("Quiet Hours Enforcements (#2065)", () => {
 
       // Verify notification and email are suppressed
       expect(createNotification).not.toHaveBeenCalled();
-      expect(emailService.send).not.toHaveBeenCalled();
+      expect(EmailService.sendMail).not.toHaveBeenCalled();
 
       global.Date = originalDate;
     });

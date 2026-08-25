@@ -1,8 +1,8 @@
-const MeetingRisk = require("../models/meetingRiskModel");
-const Meeting = require("../models/meetingModel");
-const { calculateRiskScore } = require("../services/riskScoringService");
+import MeetingRisk from "../models/meetingRiskModel.js";
+import Meeting from "../models/meetingModel.js";
+import { calculateRiskScore } from "../services/riskScoringService.js";
 
-exports.createRisk = async (req, res) => {
+export const createRisk = async (req, res) => {
   try {
     const {
       meetingId,
@@ -45,7 +45,7 @@ exports.createRisk = async (req, res) => {
   }
 };
 
-exports.getRisksByOrganization = async (req, res) => {
+export const getRisksByOrganization = async (req, res) => {
   try {
     const { organizationId } = req.params;
     const risks = await MeetingRisk.find({ organizationId })
@@ -61,7 +61,7 @@ exports.getRisksByOrganization = async (req, res) => {
   }
 };
 
-exports.getRisksByMeeting = async (req, res) => {
+export const getRisksByMeeting = async (req, res) => {
   try {
     const { meetingId } = req.params;
     const risks = await MeetingRisk.find({ meetingId })
@@ -76,7 +76,7 @@ exports.getRisksByMeeting = async (req, res) => {
   }
 };
 
-exports.updateRisk = async (req, res) => {
+export const updateRisk = async (req, res) => {
   try {
     const { riskId } = req.params;
     const {
@@ -119,7 +119,7 @@ exports.updateRisk = async (req, res) => {
   }
 };
 
-exports.deleteRisk = async (req, res) => {
+export const deleteRisk = async (req, res) => {
   try {
     const { riskId } = req.params;
     const risk = await MeetingRisk.findByIdAndDelete(riskId);
@@ -135,7 +135,7 @@ exports.deleteRisk = async (req, res) => {
   }
 };
 
-exports.linkActionItem = async (req, res) => {
+export const linkActionItem = async (req, res) => {
   try {
     const { riskId } = req.params;
     const { actionItemId } = req.body;

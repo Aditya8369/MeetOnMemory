@@ -2,7 +2,7 @@ import React from "react";
 import { act, render, screen } from "@testing-library/react";
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { MemoryRouter } from "react-router-dom";
-import AppContent from "../../context/AppContent.jsx";
+import AppContent from "../../context/AppContent.js";
 import i18n from "../../i18n.js";
 import Tasks from "../Tasks.jsx";
 import Profile from "../Profile.jsx";
@@ -55,11 +55,23 @@ vi.mock("../../hooks/useRBAC.js", () => ({
   useRBAC: () => ({ hasPermission: () => false }),
 }));
 
-vi.mock("axios", () => ({
-  default: {
+vi.mock("axios", () => {
+  const mockInstance = {
     get: vi.fn().mockResolvedValue({ data: { success: true, data: {} } }),
-  },
-}));
+    post: vi.fn().mockResolvedValue({ data: { success: true, data: {} } }),
+    request: vi.fn().mockResolvedValue({ data: { success: true, data: {} } }),
+    interceptors: {
+      request: { use: vi.fn(), eject: vi.fn() },
+      response: { use: vi.fn(), eject: vi.fn() },
+    },
+  };
+  return {
+    default: {
+      ...mockInstance,
+      create: vi.fn(() => mockInstance),
+    },
+  };
+});
 
 vi.mock("react-toastify", () => ({
   toast: {
@@ -78,21 +90,23 @@ const renderTasks = () =>
 
 const renderProfile = () =>
   render(
-    <AppContent.Provider
-      value={{
-        userData: {
-          name: "Alex Doe",
-          email: "alex@example.com",
-          role: "member",
-          bio: "Hello",
-          isAccountVerified: true,
-          createdAt: "2025-03-01T00:00:00.000Z",
-        },
-        setUserData: vi.fn(),
-      }}
-    >
-      <Profile />
-    </AppContent.Provider>,
+    <MemoryRouter>
+      <AppContent.Provider
+        value={{
+          userData: {
+            name: "Alex Doe",
+            email: "alex@example.com",
+            role: "member",
+            bio: "Hello",
+            isAccountVerified: true,
+            createdAt: "2025-03-01T00:00:00.000Z",
+          },
+          setUserData: vi.fn(),
+        }}
+      >
+        <Profile />
+      </AppContent.Provider>
+    </MemoryRouter>,
   );
 
 describe("Tasks and Profile i18n (#1661)", () => {

@@ -24,6 +24,13 @@ export const getSession = async (sessionId, userId) => {
   return session;
 };
 
+export const renameSession = async (sessionId, userId, title) => {
+  const session = await getSession(sessionId, userId);
+  session.title = title;
+  await session.save();
+  return session;
+};
+
 export const deleteSession = async (sessionId, userId) => {
   return await ChatSession.findOneAndDelete({ _id: sessionId, userId });
 };

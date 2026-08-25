@@ -1,4 +1,4 @@
-import apiClient from "./apiClient";
+import apiClient from "./apiClient.js";
 
 export const getCostConfig = async () => {
   const response = await apiClient.get("/api/meeting-cost/config");

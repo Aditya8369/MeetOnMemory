@@ -1,6 +1,5 @@
 import WeeklyInsight from "../models/weeklyInsightModel.js";
 import { generateInsight } from "../services/weeklyInsightService.js";
-import { NotFoundError } from "../utils/errors.js";
 
 export const getLatestInsight = async (req, res, next) => {
   try {

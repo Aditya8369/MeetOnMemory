@@ -8,6 +8,7 @@ import {
   updateReportTemplate,
   deleteReportTemplate,
   generateReportData,
+  exportReportFormatted,
 } from "../controllers/reportController.js";
 
 const router = express.Router();
@@ -48,5 +49,6 @@ router
   .delete(deleteReportTemplate);
 
 router.post("/generate/:id", generateReportData);
+router.post("/export/:id", exportReportFormatted);
 
 export default router;

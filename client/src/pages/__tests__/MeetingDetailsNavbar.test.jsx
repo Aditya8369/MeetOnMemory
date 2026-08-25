@@ -91,6 +91,9 @@ vi.mock("../../components/meetings/CarryForwardConfig", () => ({
 vi.mock("../../components/meeting-details/DuplicateDetectionPanel", () => ({
   default: () => null,
 }));
+vi.mock("../../components/meeting-details/CommentSection", () => ({
+  default: () => null,
+}));
 vi.mock("../../components/meeting-details/MeetingTimeline", () => ({
   default: () => null,
 }));
@@ -121,6 +124,55 @@ vi.mock("../../components/meeting-details/FeedbackForm", () => ({
       Feedback for {meetingId}
     </div>
   ),
+}));
+vi.mock("../../components/meeting-details/AgendaTimer", () => ({
+  default: ({ meeting, readOnly }) => (
+    <div
+      data-testid="agenda-timer"
+      data-meeting-id={meeting?._id}
+      data-readonly={readOnly ? "yes" : "no"}
+    >
+      Agenda for {meeting?._id}
+    </div>
+  ),
+}));
+vi.mock("../../components/meeting-details/HealthScoreCard", () => ({
+  default: ({ meetingId, organizationId }) => (
+    <div
+      data-testid="meeting-health-score-card"
+      data-meeting-id={meetingId}
+      data-organization-id={organizationId || ""}
+    >
+      Health for {meetingId}
+    </div>
+  ),
+}));
+vi.mock("../../components/meeting-details/AgendaPacingReport", () => ({
+  default: ({ meetingId }) => (
+    <div data-testid="agenda-pacing-report" data-meeting-id={meetingId}>
+      Pacing for {meetingId}
+    </div>
+  ),
+}));
+vi.mock("../../components/meeting-details/ClipManager", () => ({
+  default: ({ meetingId, canManage }) => (
+    <div
+      data-testid="clip-manager"
+      data-meeting-id={meetingId}
+      data-can-manage={canManage ? "yes" : "no"}
+    >
+      Clips for {meetingId}
+    </div>
+  ),
+}));
+vi.mock("../../components/meeting-details/AttachmentPanel", () => ({
+  default: () => null,
+}));
+vi.mock("../../components/meeting-details/DigestActions", () => ({
+  default: () => null,
+}));
+vi.mock("../../components/meeting-details/TopicSummary", () => ({
+  default: () => null,
 }));
 
 import { meetingApi } from "../../services";
@@ -177,6 +229,14 @@ describe("MeetingDetails Navbar Integration (#1637)", () => {
     expect(feedbackForm).toHaveTextContent("Feedback for 123");
     expect(feedbackForm).toHaveAttribute("data-meeting-id", "123");
     expect(feedbackForm).toHaveAttribute("data-organization-id", "org-42");
+    const agendaTimer = screen.getByTestId("agenda-timer");
+    expect(agendaTimer).toHaveTextContent("Agenda for 123");
+    expect(agendaTimer).toHaveAttribute("data-meeting-id", "123");
+    expect(agendaTimer).toHaveAttribute("data-readonly", "yes");
+    const healthCard = screen.getByTestId("meeting-health-score-card");
+    expect(healthCard).toHaveTextContent("Health for 123");
+    expect(healthCard).toHaveAttribute("data-meeting-id", "123");
+    expect(healthCard).toHaveAttribute("data-organization-id", "org-42");
   });
 
   it("renders Navbar in error state", async () => {

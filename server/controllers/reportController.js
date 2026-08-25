@@ -283,3 +283,161 @@ export const generateReportData = async (req, res) => {
     res.status(500).json({ success: false, message: "Server error" });
   }
 };
+
+// @desc    Export generated report in CSV, MD, or PDF format
+// @route   POST /api/reports/export/:id
+// @access  Private (reports:view)
+export const exportReportFormatted = async (req, res) => {
+  try {
+    const templateId = req.params.id;
+    if (invalidTemplateId(res, templateId)) return;
+
+    const { format = "csv", filterOverrides = {} } = req.body || {};
+    const reportData = await generateReport(
+      templateId,
+      filterOverrides,
+      req.user,
+      callerOrganization(req),
+    );
+
+    const safeTitle = (reportData.templateName || "report")
+      .toLowerCase()
+      .replace(/[^a-z0-9]/g, "_");
+    const timestamp = Date.now();
+
+    if (format === "csv") {
+      let csvContent = `Report Title,${reportData.templateName || ""}\nDescription,${reportData.description || ""}\nGenerated At,${reportData.generatedAt}\nMeeting Count,${reportData.meetingCount}\n\n`;
+
+      reportData.sections.forEach((section) => {
+        csvContent += `--- Section: ${section.title} (${section.type}) ---\n`;
+        if (Array.isArray(section.data)) {
+          if (section.data.length > 0) {
+            const keys = Object.keys(section.data[0]);
+            csvContent += keys.join(",") + "\n";
+            section.data.forEach((row) => {
+              const vals = keys.map((k) => {
+                const val =
+                  row[k] === null || row[k] === undefined ? "" : String(row[k]);
+                return `"${val.replace(/"/g, '""')}"`;
+              });
+              csvContent += vals.join(",") + "\n";
+            });
+          } else {
+            csvContent += "No data available\n";
+          }
+        } else if (section.data && typeof section.data === "object") {
+          Object.entries(section.data).forEach(([k, v]) => {
+            csvContent += `"${k}","${String(v).replace(/"/g, '""')}"\n`;
+          });
+        }
+        csvContent += "\n";
+      });
+
+      res.setHeader("Content-Type", "text/csv");
+      res.setHeader(
+        "Content-Disposition",
+        `attachment; filename="${safeTitle}_${timestamp}.csv"`,
+      );
+      return res.status(200).send(csvContent);
+    }
+
+    if (format === "md" || format === "markdown") {
+      let mdContent = `# ${reportData.templateName || "Report"}\n\n`;
+      if (reportData.description) {
+        mdContent += `> ${reportData.description}\n\n`;
+      }
+      mdContent += `- **Generated At**: ${new Date(reportData.generatedAt).toLocaleString()}\n`;
+      mdContent += `- **Meetings Included**: ${reportData.meetingCount}\n\n`;
+
+      reportData.sections.forEach((section) => {
+        mdContent += `## ${section.title}\n\n`;
+        if (Array.isArray(section.data)) {
+          if (section.data.length > 0) {
+            const keys = Object.keys(section.data[0]);
+            mdContent += `| ${keys.join(" | ")} |\n`;
+            mdContent += `| ${keys.map(() => "---").join(" | ")} |\n`;
+            section.data.forEach((row) => {
+              const vals = keys.map((k) =>
+                row[k] === null || row[k] === undefined
+                  ? ""
+                  : String(row[k]).replace(/\|/g, "\\|"),
+              );
+              mdContent += `| ${vals.join(" | ")} |\n`;
+            });
+            mdContent += "\n";
+          } else {
+            mdContent += "*No data available*\n\n";
+          }
+        } else if (section.data && typeof section.data === "object") {
+          if (section.data.text) {
+            mdContent += `${section.data.text}\n\n`;
+          } else {
+            Object.entries(section.data).forEach(([k, v]) => {
+              mdContent += `- **${k}**: ${v}\n`;
+            });
+            mdContent += "\n";
+          }
+        }
+      });
+
+      res.setHeader("Content-Type", "text/markdown");
+      res.setHeader(
+        "Content-Disposition",
+        `attachment; filename="${safeTitle}_${timestamp}.md"`,
+      );
+      return res.status(200).send(mdContent);
+    }
+
+    if (format === "pdf") {
+      let htmlContent = `<!DOCTYPE html><html><head><title>${reportData.templateName}</title><style>body{font-family:sans-serif;padding:20px;}h1{color:#1e293b;}h2{color:#334155;border-bottom:1px solid #e2e8f0;padding-bottom:5px;}table{width:100%;border-collapse:collapse;margin:10px 0;}th,td{border:1px solid #cbd5e1;padding:8px;text-align:left;}th{background:#f1f5f9;}</style></head><body>`;
+      htmlContent += `<h1>${reportData.templateName || "Report"}</h1>`;
+      if (reportData.description)
+        htmlContent += `<p><em>${reportData.description}</em></p>`;
+      htmlContent += `<p><strong>Generated At:</strong> ${new Date(reportData.generatedAt).toLocaleString()}<br/><strong>Meetings Included:</strong> ${reportData.meetingCount}</p><hr/>`;
+
+      reportData.sections.forEach((section) => {
+        htmlContent += `<h2>${section.title}</h2>`;
+        if (Array.isArray(section.data)) {
+          if (section.data.length > 0) {
+            const keys = Object.keys(section.data[0]);
+            htmlContent += `<table><thead><tr>${keys.map((k) => `<th>${k}</th>`).join("")}</tr></thead><tbody>`;
+            section.data.forEach((row) => {
+              htmlContent += `<tr>${keys.map((k) => `<td>${row[k] !== undefined && row[k] !== null ? row[k] : ""}</td>`).join("")}</tr>`;
+            });
+            htmlContent += `</tbody></table>`;
+          } else {
+            htmlContent += `<p>No data available</p>`;
+          }
+        } else if (section.data && typeof section.data === "object") {
+          if (section.data.text) {
+            htmlContent += `<p>${section.data.text}</p>`;
+          } else {
+            htmlContent += `<ul>${Object.entries(section.data)
+              .map(([k, v]) => `<li><strong>${k}:</strong> ${v}</li>`)
+              .join("")}</ul>`;
+          }
+        }
+      });
+      htmlContent += `</body></html>`;
+
+      res.setHeader("Content-Type", "text/html");
+      res.setHeader(
+        "Content-Disposition",
+        `attachment; filename="${safeTitle}_${timestamp}.html"`,
+      );
+      return res.status(200).send(htmlContent);
+    }
+
+    res
+      .status(400)
+      .json({ success: false, message: "Unsupported export format" });
+  } catch (error) {
+    if (error instanceof AppError) {
+      return res
+        .status(error.statusCode)
+        .json({ success: false, message: error.message });
+    }
+    console.error("Error exporting report:", error);
+    res.status(500).json({ success: false, message: "Server error" });
+  }
+};

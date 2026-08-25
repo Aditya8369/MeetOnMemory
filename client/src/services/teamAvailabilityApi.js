@@ -2,27 +2,27 @@ import api from "./apiClient.js";
 
 const teamAvailabilityApi = {
   getPreferences: async () => {
-    const response = await api.get("/team-availability/preferences");
+    const response = await api.get("/api/team-availability/preferences");
     return response.data;
   },
 
   updatePreferences: async (preferences) => {
     const response = await api.put(
-      "/team-availability/preferences",
+      "/api/team-availability/preferences",
       preferences,
     );
     return response.data;
   },
 
   getHeatmapData: async (startDate, endDate) => {
-    const response = await api.get("/team-availability/heatmap", {
+    const response = await api.get("/api/team-availability/heatmap", {
       params: { startDate, endDate },
     });
     return response.data;
   },
 
   findFreeSlots: async (userIds, durationMinutes, startDate, endDate) => {
-    const response = await api.post("/team-availability/free-slots", {
+    const response = await api.post("/api/team-availability/free-slots", {
       userIds,
       durationMinutes,
       startDate,
@@ -32,7 +32,7 @@ const teamAvailabilityApi = {
   },
 
   getLoadDistribution: async (startDate, endDate) => {
-    const response = await api.get("/team-availability/load-distribution", {
+    const response = await api.get("/api/team-availability/load-distribution", {
       params: { startDate, endDate },
     });
     return response.data;

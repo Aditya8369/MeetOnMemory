@@ -1,14 +1,26 @@
 import React from "react";
 import { renderHook, act, waitFor } from "@testing-library/react";
 import { describe, it, expect, vi, beforeEach } from "vitest";
+import AppContent from "../../../../context/AppContent";
 import { useScheduleMeeting } from "../useScheduleMeeting";
 import { focusTimeApi } from "../../../../api/focusTimeApi";
 import { meetingApi } from "../../../../services";
 
-// Mock services/apis
 vi.mock("../../../../api/focusTimeApi", () => ({
   focusTimeApi: {
     getBlocks: vi.fn(),
+  },
+}));
+
+vi.mock("../../../../api/calendarAvailabilityApi", () => ({
+  calendarAvailabilityApi: {
+    getFreeBusy: vi.fn().mockResolvedValue({ calendars: {} }),
+  },
+}));
+
+vi.mock("../../../../api/customFieldApi", () => ({
+  customFieldApi: {
+    setMeetingFields: vi.fn(),
   },
 }));
 
@@ -20,10 +32,12 @@ vi.mock("../../../../services", () => ({
     createSeries: vi.fn(),
   },
   meetingTemplateApi: {
-    getTemplates: vi.fn(),
+    getTemplates: vi
+      .fn()
+      .mockResolvedValue({ data: { success: true, templates: [] } }),
   },
   aiSummaryTemplateApi: {
-    getTemplates: vi.fn(),
+    getTemplates: vi.fn().mockResolvedValue({ data: [] }),
   },
 }));
 
@@ -31,28 +45,39 @@ vi.mock("react-toastify", () => ({
   toast: {
     success: vi.fn(),
     error: vi.fn(),
+    info: vi.fn(),
   },
 }));
 
 describe("useScheduleMeeting Focus Conflict & Audit Note (#2067)", () => {
-  const wrapper = ({ children }) => <div>{children}</div>;
+  const mockUserData = {
+    _id: "user-123",
+    organization: { _id: "org-456" },
+  };
+
+  const wrapper = ({ children }) => (
+    <AppContent.Provider value={{ userData: mockUserData }}>
+      {children}
+    </AppContent.Provider>
+  );
 
   beforeEach(() => {
     vi.clearAllMocks();
   });
 
   it("warns user and includes auditNote on conflict scheduling", async () => {
-    // Mock focus block at 10:00 AM on 2026-08-23
+    // Build focus block in local timezone so it overlaps meeting slot on any CI host
+    const focusStart = new Date(2026, 7, 23, 10, 0, 0, 0);
+    const focusEnd = new Date(2026, 7, 23, 12, 0, 0, 0);
     const focusBlock = {
       _id: "fb1",
       title: "Deep Work",
-      startTime: "2026-08-23T10:00:00.000Z",
-      endTime: "2026-08-23T12:00:00.000Z",
+      startTime: focusStart.toISOString(),
+      endTime: focusEnd.toISOString(),
       isRecurring: false,
     };
     focusTimeApi.getBlocks.mockResolvedValue([focusBlock]);
 
-    // Mock window prompt/confirm
     const confirmSpy = vi.spyOn(window, "confirm").mockReturnValue(true);
     const promptSpy = vi
       .spyOn(window, "prompt")
@@ -64,23 +89,26 @@ describe("useScheduleMeeting Focus Conflict & Audit Note (#2067)", () => {
       expect(focusTimeApi.getBlocks).toHaveBeenCalled();
     });
 
-    // Set meeting date and time that overlaps (10:30 AM, 60 min duration)
     act(() => {
-      result.current.setScheduleData({
+      result.current.setScheduleData((prev) => ({
+        ...prev,
         title: "Team Sync",
         description: "Weekly sync",
         meetingType: "conference",
         date: "2026-08-23",
-        time: "10:30:00",
+        time: "10:30",
         duration: 60,
-      });
+      }));
+    });
+
+    await waitFor(() => {
+      expect(result.current.focusConflicts.length).toBeGreaterThan(0);
     });
 
     meetingApi.scheduleMeeting.mockResolvedValue({
       data: { success: true },
     });
 
-    // Submit scheduling
     await act(async () => {
       await result.current.handleScheduleSubmit({ preventDefault: () => {} });
     });

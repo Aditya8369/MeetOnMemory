@@ -1,5 +1,4 @@
 import StandupReport from "../models/standupReportModel.js";
-import StandupPreference from "../models/standupPreferenceModel.js";
 import ActionItem from "../models/actionItemModel.js";
 import Meeting from "../models/meetingModel.js";
 import Decision from "../models/decisionModel.js";

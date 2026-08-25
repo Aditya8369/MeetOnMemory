@@ -7,6 +7,7 @@ import { FaTrash, FaEdit, FaStar, FaRegStar, FaPlay } from "react-icons/fa";
 const AiSummaryTemplates = () => {
   const [templates, setTemplates] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
 
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState(null);
@@ -29,9 +30,11 @@ const AiSummaryTemplates = () => {
   const fetchTemplates = async () => {
     try {
       setLoading(true);
+      setError("");
       const res = await aiSummaryTemplateApi.getTemplates();
-      setTemplates(res.data);
+      setTemplates(res.data || []);
     } catch {
+      setError("Failed to load templates. Please try again.");
       toast.error("Failed to load templates");
     } finally {
       setLoading(false);
@@ -158,6 +161,12 @@ const AiSummaryTemplates = () => {
           )}
         </div>
 
+        {error && (
+          <div className="mb-6 p-4 bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-900/60 rounded-xl text-red-700 dark:text-red-400">
+            {error}
+          </div>
+        )}
+
         {showForm ? (
           <div className="bg-white dark:bg-gray-900 p-6 rounded-xl shadow border border-gray-200 dark:border-gray-800">
             <h2 className="text-xl font-semibold mb-4">
@@ -259,8 +268,15 @@ const AiSummaryTemplates = () => {
             )}
           </div>
         ) : loading ? (
-          <div className="text-center py-12">Loading templates...</div>
-        ) : templates.length === 0 ? (
+          <div className="text-center py-12">
+            <div
+              className="animate-spin inline-block w-8 h-8 border-4 border-current border-t-transparent text-blue-600 rounded-full"
+              role="status"
+            >
+              <span className="sr-only">Loading...</span>
+            </div>
+          </div>
+        ) : error ? null : templates.length === 0 ? (
           <div className="text-center py-16 bg-white dark:bg-gray-900 rounded-xl shadow border border-gray-200 dark:border-gray-800">
             <h3 className="text-xl font-medium mb-2">No templates found</h3>
             <p className="text-gray-500 mb-4">

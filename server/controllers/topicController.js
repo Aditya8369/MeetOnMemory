@@ -225,3 +225,163 @@ export const triggerClustering = async (req, res) => {
       .json({ success: false, error: "An internal server error occurred" });
   }
 };
+
+const mergeClustersSchema = z.object({
+  targetClusterId: z
+    .string()
+    .trim()
+    .min(1, "Target cluster ID is required")
+    .refine(isValidId, "Invalid target cluster ID format"),
+});
+
+export const deleteCluster = async (req, res) => {
+  try {
+    const { clusterId } = req.params;
+
+    if (!isValidId(clusterId)) {
+      return res
+        .status(400)
+        .json({ success: false, error: "Invalid cluster ID" });
+    }
+
+    const orgId = req.user.organization;
+    const cluster = await TopicCluster.findOneAndDelete({
+      _id: clusterId,
+      organization: orgId,
+    });
+
+    if (!cluster) {
+      return res
+        .status(404)
+        .json({ success: false, error: "Cluster not found" });
+    }
+
+    // Unset clusterId from any MeetingTopic subdocuments referencing this cluster
+    await MeetingTopic.updateMany(
+      { organization: orgId, "topics.clusterId": clusterId },
+      { $set: { "topics.$[elem].clusterId": null } },
+      { arrayFilters: [{ "elem.clusterId": clusterId }] },
+    );
+
+    res
+      .status(200)
+      .json({ success: true, message: "Cluster deleted successfully" });
+  } catch (error) {
+    console.error("Error deleting cluster:", error);
+    res
+      .status(500)
+      .json({ success: false, error: "An internal server error occurred" });
+  }
+};
+
+export const mergeClusters = async (req, res) => {
+  try {
+    const { clusterId } = req.params;
+
+    if (!isValidId(clusterId)) {
+      return res
+        .status(400)
+        .json({ success: false, error: "Invalid source cluster ID" });
+    }
+
+    const parsed = mergeClustersSchema.safeParse(req.body);
+    if (!parsed.success) {
+      return res.status(400).json({
+        success: false,
+        error: parsed.error.issues[0]?.message || "Validation error",
+      });
+    }
+
+    const { targetClusterId } = parsed.data;
+
+    if (clusterId === targetClusterId) {
+      return res.status(400).json({
+        success: false,
+        error: "Cannot merge a cluster into itself",
+      });
+    }
+
+    const orgId = req.user.organization;
+    const [sourceCluster, targetCluster] = await Promise.all([
+      TopicCluster.findOne({ _id: clusterId, organization: orgId }),
+      TopicCluster.findOne({ _id: targetClusterId, organization: orgId }),
+    ]);
+
+    if (!sourceCluster) {
+      return res
+        .status(404)
+        .json({ success: false, error: "Source cluster not found" });
+    }
+    if (!targetCluster) {
+      return res
+        .status(404)
+        .json({ success: false, error: "Target cluster not found" });
+    }
+
+    // Reassign all topics pointing to sourceCluster to targetCluster
+    await MeetingTopic.updateMany(
+      { organization: orgId, "topics.clusterId": clusterId },
+      { $set: { "topics.$[elem].clusterId": targetCluster._id } },
+      { arrayFilters: [{ "elem.clusterId": clusterId }] },
+    );
+
+    // Re-aggregate topics for targetCluster
+    const meetingTopics = await MeetingTopic.find({
+      organization: orgId,
+      "topics.clusterId": targetCluster._id,
+    });
+
+    const topicsInTarget = [];
+    meetingTopics.forEach((mt) => {
+      mt.topics.forEach((t) => {
+        if (String(t.clusterId) === String(targetCluster._id)) {
+          topicsInTarget.push({
+            name: t.name,
+            embedding: t.embedding,
+            meetingId: mt.meeting?.toString() || mt._id.toString(),
+          });
+        }
+      });
+    });
+
+    const canonicalNames = [
+      ...new Set([
+        ...(targetCluster.canonicalTopicNames || []),
+        ...(sourceCluster.canonicalTopicNames || []),
+        ...topicsInTarget.map((t) => t.name),
+      ]),
+    ].slice(0, 10);
+
+    const uniqueMeetings = new Set(topicsInTarget.map((t) => t.meetingId));
+    targetCluster.canonicalTopicNames = canonicalNames;
+    targetCluster.meetingCount =
+      uniqueMeetings.size ||
+      targetCluster.meetingCount + (sourceCluster.meetingCount || 0);
+
+    // Delete the source cluster
+    await TopicCluster.findByIdAndDelete(clusterId);
+    await targetCluster.save();
+
+    res.status(200).json({ success: true, data: targetCluster });
+  } catch (error) {
+    console.error("Error merging clusters:", error);
+    res
+      .status(500)
+      .json({ success: false, error: "An internal server error occurred" });
+  }
+};
+
+export const extractForOrganization = async (req, res) => {
+  try {
+    if (rejectMismatchedOrgParam(req, res)) return;
+
+    const orgId = req.user.organization;
+    const result = await topicExtractionService.extractAllForOrg(orgId);
+    res.status(200).json({ success: true, data: result });
+  } catch (error) {
+    console.error("Error extracting topics for organization:", error);
+    res
+      .status(500)
+      .json({ success: false, error: "An internal server error occurred" });
+  }
+};

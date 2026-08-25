@@ -6,6 +6,7 @@ import Navbar from "../components/Navbar.jsx";
 import { toast } from "react-toastify";
 import { userApi } from "../services";
 import AppContent from "../context/AppContent";
+import { useSkillEndorsements } from "../hooks/useSkillEndorsements";
 import {
   User,
   Mail,
@@ -28,6 +29,10 @@ const Profile = () => {
   const [profilePicFailed, setProfilePicFailed] = useState(false);
   const [gamificationData, setGamificationData] = useState(null);
 
+  const [endorsements, setEndorsements] = useState([]);
+  const { getUserEndorsements, loading: endorsementsLoading } =
+    useSkillEndorsements();
+
   useEffect(() => {
     setProfilePicFailed(false);
   }, [userData?.profilePic]);
@@ -46,6 +51,13 @@ const Profile = () => {
         );
     }
   }, [userData]);
+
+  useEffect(() => {
+    if (userData?._id || userData?.id) {
+      const id = userData._id || userData.id;
+      getUserEndorsements(id).then((data) => setEndorsements(data || []));
+    }
+  }, [userData, getUserEndorsements]);
 
   // Form State
   const [name, setName] = useState("");
@@ -358,6 +370,61 @@ const Profile = () => {
                   )}
                 </div>
               )}
+
+              {/* Endorsements Section */}
+              <div className="pt-6 border-t border-slate-100 dark:border-slate-800 space-y-4">
+                <div className="flex items-center justify-between gap-2">
+                  <div className="text-[11px] text-slate-400 dark:text-slate-500 font-bold uppercase tracking-wider">
+                    {t("profile.endorsements") || "Peer Endorsements"}
+                  </div>
+                </div>
+
+                {endorsementsLoading ? (
+                  <div className="flex items-center justify-center p-4">
+                    <Loader2 className="animate-spin w-5 h-5 text-blue-500" />
+                  </div>
+                ) : endorsements.length > 0 ? (
+                  <div className="space-y-4 mt-2">
+                    {endorsements.map((skill, idx) => (
+                      <div
+                        key={idx}
+                        className="bg-slate-50 dark:bg-slate-800/50 p-4 rounded-xl border border-slate-100 dark:border-slate-700/50"
+                      >
+                        <div className="flex items-center justify-between mb-2">
+                          <h4 className="font-bold text-slate-800 dark:text-slate-200">
+                            {skill.skillTag}
+                          </h4>
+                          <span className="bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300 text-xs font-semibold px-2.5 py-0.5 rounded-full">
+                            {skill.count} endorsements
+                          </span>
+                        </div>
+                        <div className="space-y-2">
+                          {skill.endorsements.map((end, eIdx) => (
+                            <div
+                              key={eIdx}
+                              className="text-sm text-slate-600 dark:text-slate-400 bg-white dark:bg-slate-800 p-2 rounded-lg border border-slate-100 dark:border-slate-700"
+                            >
+                              {end.comment && (
+                                <p className="italic mb-1">"{end.comment}"</p>
+                              )}
+                              <Link
+                                to={`/meeting/${end.meetingId}`}
+                                className="text-xs text-blue-500 hover:underline"
+                              >
+                                View Meeting ↗
+                              </Link>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-xs text-slate-500 dark:text-slate-400">
+                    No endorsements yet.
+                  </p>
+                )}
+              </div>
             </div>
           ) : (
             // ================= EDIT STATE =================

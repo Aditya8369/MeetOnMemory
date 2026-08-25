@@ -8,7 +8,17 @@ export default function TranscriptPanel({
   transcriptSegments = [],
   meetingId,
 }) {
-  const [activeTab, setActiveTab] = useState("translations"); // "translations" | "raw"
+  const [activeTab, setActiveTab] = useState(() => {
+    return (
+      localStorage.getItem(`transcriptPanelActiveTab-${meetingId}`) ||
+      "translations"
+    );
+  });
+
+  const handleTabChange = (tab) => {
+    setActiveTab(tab);
+    localStorage.setItem(`transcriptPanelActiveTab-${meetingId}`, tab);
+  };
 
   if (!showTranscript) return null;
 
@@ -27,8 +37,8 @@ export default function TranscriptPanel({
         <div className="flex items-center gap-2">
           <button
             type="button"
-            onClick={() => setActiveTab("translations")}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${
+            onClick={() => handleTabChange("translations")}
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors cursor-pointer ${
               activeTab === "translations"
                 ? "bg-indigo-600 text-white"
                 : "bg-gray-800 text-gray-300 hover:text-white"
@@ -39,8 +49,8 @@ export default function TranscriptPanel({
           </button>
           <button
             type="button"
-            onClick={() => setActiveTab("raw")}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${
+            onClick={() => handleTabChange("raw")}
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors cursor-pointer ${
               activeTab === "raw"
                 ? "bg-indigo-600 text-white"
                 : "bg-gray-800 text-gray-300 hover:text-white"

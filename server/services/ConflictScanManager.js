@@ -1,6 +1,5 @@
 // services/ConflictScanManager.js
 import cron from "node-cron";
-import ConflictResolution from "../components/ConflictResolution.jsx"; // Adjust import path
 
 const localStorage = {
   store: {},

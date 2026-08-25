@@ -62,6 +62,7 @@ const summarizeMeetingSchema = z.object({
   transcript: z.string().optional(),
   date: z.string({ required_error: "Meeting date is required." }),
   title: z.string().optional(),
+  templateId: z.string().optional(),
 });
 
 const updateMeetingSchema = z.object({
@@ -382,6 +383,7 @@ export const summarizeMeeting = async (req, res, next) => {
       validated.transcript || "",
       validated.date,
       validated.title || null,
+      validated.templateId || null,
     );
 
     if (result.queued) {
@@ -746,5 +748,33 @@ export const getMeetingClip = async (req, res) => {
     res
       .status(500)
       .json({ success: false, message: "Server error fetching clip" });
+  }
+};
+
+export const getPurgePreviewController = async (req, res, next) => {
+  try {
+    const preview = await MeetingService.getPurgePreview(req.user.organization);
+    return sendSuccess(res, preview);
+  } catch (err) {
+    next(err);
+  }
+};
+
+export const purgeTrashController = async (req, res, next) => {
+  try {
+    const actorId = getUserId(req);
+    const result = await MeetingService.purgeTrash(req.user.organization);
+
+    await AuditService.logAction({
+      actorId,
+      action: "RECYCLE_BIN_PURGED",
+      entity: "Meeting",
+      organizationId: req.user.organization,
+      details: { deletedCount: result.deletedCount },
+    });
+
+    return sendSuccess(res, result, "Recycle bin purged successfully");
+  } catch (err) {
+    next(err);
   }
 };

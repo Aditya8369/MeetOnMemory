@@ -1,42 +1,50 @@
-# Memory Lifecycle Management
+# Memory Lifecycle
 
-Implements Issue #377. This document explains how memories move through
-lifecycle states over time, how retention policies are configured, and how
-archived memories come back when they're needed again.
+## Bulk lifecycle transitions
 
-## Why this exists
+The Memory Lifecycle page supports selecting multiple memories from the current
+result page and applying a single lifecycle transition to them.
 
-The knowledge graph stores "memories" as `Decision` and `ActionItem`
-documents. As meetings accumulate over months, many memories stop being
-useful day-to-day without ever becoming _wrong_ — they're just old. Without
-some notion of lifecycle, every memory (an important architectural decision
-from last quarter, or a one-off follow-up nobody ever checks again) is
-retrieved and weighted identically, which both hurts retrieval quality and
-lets storage grow unbounded.
+Supported bulk targets:
 
-This is deliberately a separate concern from **Dynamic Memory Importance
-Scoring** (`server/services/importanceScoringService.js`, Issue #269).
-Importance scoring answers "how relevant is this memory _right now_, among
-the ones being shown"; lifecycle management answers "should this memory be
-shown by default at all". The lifecycle engine reuses the importance score
-as one of its signals (see below) rather than duplicating that logic.
+- Active
+- Dormant
+- Archived
+- Expired
 
-## Lifecycle states
+The client sends selections in chunks of 25 to keep requests bounded. The
+server accepts at most 200 memories per request, validates every ID and memory
+type, and scopes every lookup to the authenticated organization.
 
+Each transition is persisted through the existing lifecycle service, so
+`lifecycleHistory` remains the audit source of truth.
+
+## Organization retention policy
+
+Administrators with the existing `knowledge.manage_lifecycle` permission can
+read and update organization-specific lifecycle thresholds.
+
+The effective policy contains:
+
+| Setting               |  Default |
+| --------------------- | -------: |
+| Dormant after         |  30 days |
+| Archive after         |  90 days |
+| Expire after          | 365 days |
+| Importance protection |       70 |
+| Hard delete expired   |    false |
+
+Overrides are stored under the existing organization `metadata` document as
+`memoryLifecyclePolicy`; this avoids a schema migration while preserving
+organization-level persistence.
+
+The thresholds must remain ordered:
+
+```text
+dormantAfterDays < archivedAfterDays < expiredAfterDays
 ```
- active ──(inactive ≥ dormantAfterDays)──▶ dormant
-   ▲                                          │
-   │                              (inactive ≥ archivedAfterDays,
-   │                               importanceScore below the
-   │                               protection threshold)
-   │                                          ▼
-   └──────────(referenced again)──────── archived
-   ▲                                          │
-   │                              (inactive ≥ expiredAfterDays
-   │                               while still archived)
-   │                                          ▼
-   └──────────(manually restored)────────  expired
-```
+
+feature/unify-retention-settings-2267
 
 - **active** — default state. Shown in normal listings and search.
 - **dormant** — inactive for a while; still shown, but flagged as
@@ -127,15 +135,31 @@ come back.
 exclude `archived` and `expired` memories by default. Pass
 `?includeArchived=true` to include them (e.g. for an admin retention view).
 
-## What's intentionally out of scope for this change
+## Unified Retention Management
 
-- A dedicated retention analytics dashboard (UI). The data needed for one
-  (per-organization counts by state, transition history) is already
-  produced by `runLifecycleSweep`'s summary and each memory's
-  `lifecycleHistory`; wiring that into a frontend view is a natural
-  fast-follow rather than part of the core mechanism.
-- Per-organization, DB-configurable policies (vs. the current
-  environment-variable-based global policy). Env vars satisfy "retention
-  rules can be modified without code changes" for now; a settings-panel-
-  backed per-org override is a reasonable follow-up if different orgs need
-  different thresholds.
+With the addition of the `RetentionManagementWizard`, there is now a single admin entry point for managing retention policies.
+
+- **Unified Dashboard**: Admins can now configure memory lifecycle policies alongside meeting audio/log retention and document attachment retention in one centralized interface.
+- **Dynamic Deletion Simulation**: The UI provides a real-time projection of database indices and binary blocks scheduled for extraction based on the active policy sliders (e.g., number of expired context vectors, meeting logs, and binary attachment size).
+- **Consolidated Backends**: The policies save to the correct backends (Memory Service and Data Retention Service) simultaneously via unified controllers, deprecating the previously duplicated manual controls.
+
+## Future Enhancements
+
+- Per-organization, DB-configurable policies (vs. the current environment-variable-based global policy). Env vars satisfy "retention rules can be modified without code changes" for now; a settings-panel-backed per-org override is a reasonable follow-up if different orgs need different thresholds.
+
+Hard deletion remains opt-in. The default sweep only transitions memories; it
+does not permanently delete expired records.
+
+## Sweep integration
+
+Lifecycle sweeps automatically read the organization's stored policy when an
+organization is supplied. Existing environment variables remain the global
+fallback when no organization override exists.
+
+## Security
+
+Bulk transitions and retention-policy changes use the existing
+`knowledge.manage_lifecycle` RBAC permission and authenticated organization
+membership. Memory IDs are validated before querying, and database lookups are
+organization-scoped.
+main

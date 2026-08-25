@@ -8,7 +8,6 @@ import {
 } from "../speakerMappingController.js";
 import Meeting from "../../models/meetingModel.js";
 import SpeakerMapping from "../../models/speakerMappingModel.js";
-import speakerIdentificationService from "../../services/speakerIdentificationService.js";
 
 vi.mock("../../models/meetingModel.js");
 vi.mock("../../models/speakerMappingModel.js");
@@ -20,7 +19,6 @@ describe("Speaker Mapping Security & Validation (#1851)", () => {
   });
 
   const validMeetingId = new mongoose.Types.ObjectId().toString();
-  const validMappingId = new mongoose.Types.ObjectId().toString();
   const userOrgId = new mongoose.Types.ObjectId().toString();
   const foreignOrgId = new mongoose.Types.ObjectId().toString();
 

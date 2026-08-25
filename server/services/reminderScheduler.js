@@ -1,7 +1,8 @@
 import cron from "node-cron";
 import ActionItem from "../models/actionItemModel.js";
 import Meeting from "../models/meetingModel.js";
-import emailService from "./emailService.js";
+import NotificationPreference from "../models/notificationPreferenceModel.js";
+import EmailService from "./EmailService.js";
 import { createNotification } from "./notificationService.js";
 import { checkQuietHours } from "../utils/quietHours.js";
 
@@ -207,17 +208,27 @@ class ReminderScheduler {
           },
         });
 
-        await emailService.send({
-          to: recipient.email,
-          subject,
-          template: "meetingReminder",
-          data: {
-            userName: recipient.name,
-            meetingTitle,
-            reminderMinutes,
-            meetingDate: meetingDateTime,
-          },
-        });
+        // Respect emailMeetingReminders preference (#2021)
+        const notifPref = await NotificationPreference.findOne({
+          user: recipient.userId,
+        })
+          .select("emailMeetingReminders")
+          .lean();
+
+        if (!notifPref || notifPref.emailMeetingReminders !== false) {
+          await EmailService.sendMail({
+            from: process.env.SENDER_EMAIL || "no-reply@meetonmemory.com",
+            to: recipient.email,
+            subject,
+            html: `
+              <div style="font-family: sans-serif; padding: 20px; color: #333;">
+                <p>Hi ${recipient.name || "there"},</p>
+                <p>Your meeting <strong>${meetingTitle}</strong> starts in ${reminderMinutes} minutes.</p>
+                <p><strong>When:</strong> ${meetingDateTime.toLocaleString()}</p>
+              </div>
+            `,
+          });
+        }
       } catch (error) {
         console.error(
           `[ReminderScheduler] Failed to notify ${recipient.email}:`,
@@ -339,16 +350,27 @@ class ReminderScheduler {
       title: subjectMap[type],
     });
 
-    await emailService.send({
-      to: item.assignee.email,
-      subject: subjectMap[type],
-      template: "actionItemReminder",
-      data: {
-        userName: item.assignee.name,
-        taskTitle,
-        type,
-      },
-    });
+    // Respect emailTaskAssignments preference (#2021)
+    const notifPref = await NotificationPreference.findOne({
+      user: item.assignee._id,
+    })
+      .select("emailTaskAssignments")
+      .lean();
+
+    if (!notifPref || notifPref.emailTaskAssignments !== false) {
+      await EmailService.sendMail({
+        from: process.env.SENDER_EMAIL || "no-reply@meetonmemory.com",
+        to: item.assignee.email,
+        subject: subjectMap[type],
+        html: `
+          <div style="font-family: sans-serif; padding: 20px; color: #333;">
+            <p>Hi ${item.assignee.name || "there"},</p>
+            <p>${subjectMap[type]}</p>
+            <p>Task: <strong>${taskTitle}</strong></p>
+          </div>
+        `,
+      });
+    }
 
     await ActionItem.updateOne(
       { _id: item._id },

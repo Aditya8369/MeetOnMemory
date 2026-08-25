@@ -1,7 +1,7 @@
 import GithubIntegration from "../models/githubIntegrationModel.js";
 import ActionItem from "../models/actionItemModel.js";
 import { syncActionItemToGitHub } from "../services/githubSyncService.js";
-import { encryptToken, decryptToken } from "../utils/crypto.js";
+import { encryptToken } from "../utils/crypto.js";
 import { sendSuccess, sendError } from "../utils/responseHandler.js";
 import { ValidationError } from "../utils/errors.js";
 import axios from "axios";
@@ -217,6 +217,84 @@ export const disconnect = async (req, res) => {
   } catch (error) {
     logger.error("Disconnect Error:", error);
     sendError(res, 500, "Failed to disconnect GitHub.");
+  }
+};
+
+import WebhookDeliveryLog from "../models/webhookDeliveryLogModel.js";
+import { decryptToken } from "../utils/crypto.js";
+
+/**
+ * Fetch recent webhook delivery logs for GitHub integration.
+ */
+export const getWebhookEvents = async (req, res) => {
+  try {
+    const events = await WebhookDeliveryLog.find({ provider: "github" })
+      .sort({ createdAt: -1 })
+      .limit(20)
+      .lean();
+
+    return sendSuccess(res, { events }, "Webhook events retrieved.");
+  } catch (error) {
+    logger.error("Get Webhook Events Error:", error);
+    sendError(res, 500, "Failed to get webhook events.");
+  }
+};
+
+/**
+ * Fetch available GitHub repositories for the linked organization.
+ */
+export const getRepositories = async (req, res) => {
+  try {
+    const organizationId = req.params.organizationId;
+    const integration = await GithubIntegration.findOne({
+      organization: organizationId,
+    });
+
+    if (!integration || !integration.accessToken) {
+      return sendSuccess(res, { repositories: [] });
+    }
+
+    try {
+      const token = decryptToken(integration.accessToken);
+      const ghRes = await axios.get("https://api.github.com/user/repos", {
+        headers: {
+          Authorization: `token ${token}`,
+          Accept: "application/vnd.github.v3+json",
+        },
+        params: { sort: "updated", per_page: 50 },
+        timeout: 5000,
+      });
+
+      const repositories = (ghRes.data || []).map((r) => ({
+        id: r.id,
+        name: r.name,
+        fullName: r.full_name,
+        private: r.private,
+        description: r.description,
+        url: r.html_url,
+      }));
+
+      return sendSuccess(res, { repositories });
+    } catch (_ghErr) {
+      // Fallback if token is expired or sandbox mode
+      return sendSuccess(res, {
+        repositories: integration.repositoryFullName
+          ? [
+              {
+                id: 1,
+                name:
+                  integration.repositoryFullName.split("/")[1] ||
+                  integration.repositoryFullName,
+                fullName: integration.repositoryFullName,
+                url: `https://github.com/${integration.repositoryFullName}`,
+              },
+            ]
+          : [],
+      });
+    }
+  } catch (error) {
+    logger.error("Get Repositories Error:", error);
+    sendError(res, 500, "Failed to fetch repositories.");
   }
 };
 

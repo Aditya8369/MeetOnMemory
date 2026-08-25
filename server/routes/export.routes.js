@@ -137,7 +137,7 @@ const getTemplateById = async (req, res) => {
     }
 
     res.status(200).json({ success: true, data: template });
-  } catch (error) {
+  } catch (_error) {
     res.status(500).json({ success: false, error: "Server error" });
   }
 };
@@ -179,7 +179,7 @@ const deleteTemplate = async (req, res) => {
 
     await ExportTemplate.findByIdAndDelete(id);
     res.status(200).json({ success: true, data: {} });
-  } catch (error) {
+  } catch (_error) {
     res.status(500).json({ success: false, error: "Server error" });
   }
 };

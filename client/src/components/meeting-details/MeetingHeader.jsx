@@ -1,6 +1,7 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useContext } from "react";
 import { format } from "date-fns";
 import { useNavigate } from "react-router-dom";
+import AppContent from "../../context/AppContent.js";
 import CalendarSyncBadge from "../CalendarSyncBadge.jsx";
 import {
   Share2,
@@ -10,6 +11,7 @@ import {
   Link2,
   BellOff,
   Bell,
+  ShieldAlert,
 } from "lucide-react";
 import { toast } from "react-toastify";
 import { toggleBookmarkAPI, getBookmarkStatusAPI } from "../../api/bookmarkApi";
@@ -23,6 +25,9 @@ import {
 
 const MeetingHeader = ({ meeting, onShare, onShareInvite, onPresent }) => {
   const navigate = useNavigate();
+  const { userData } = useContext(AppContent);
+  const isViewerOrGuest =
+    userData?.role === "viewer" || userData?.role === "guest";
   const [isBookmarked, setIsBookmarked] = useState(false);
   const [isLoadingBookmark, setIsLoadingBookmark] = useState(false);
   const [isMuted, setIsMuted] = useState(false);
@@ -178,6 +183,12 @@ const MeetingHeader = ({ meeting, onShare, onShareInvite, onPresent }) => {
           </div>
         </div>
         <div className="flex flex-col sm:flex-row items-center gap-3">
+          {isViewerOrGuest && (
+            <span className="flex items-center gap-1.5 px-3 py-1 bg-amber-100 dark:bg-amber-900/40 text-amber-800 dark:text-amber-300 border border-amber-300 dark:border-amber-700/60 rounded-full text-xs font-bold uppercase tracking-wider">
+              <ShieldAlert className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />
+              Read-Only {userData?.role ? `(${userData.role})` : ""}
+            </span>
+          )}
           <CalendarSyncBadge
             externalCalendarRefs={meeting.externalCalendarRefs}
           />
@@ -243,12 +254,14 @@ const MeetingHeader = ({ meeting, onShare, onShareInvite, onPresent }) => {
           >
             <MessageSquare className="w-4 h-4" /> Ask Assistant
           </button>
-          <button
-            onClick={onShareInvite}
-            className="flex items-center gap-2 px-3 py-1.5 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 dark:bg-emerald-900/30 dark:text-emerald-300 dark:hover:bg-emerald-900/50 rounded-lg text-sm font-medium transition-colors"
-          >
-            <Link2 className="w-4 h-4" /> Share Invite
-          </button>
+          {!isViewerOrGuest && onShareInvite && (
+            <button
+              onClick={onShareInvite}
+              className="flex items-center gap-2 px-3 py-1.5 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 dark:bg-emerald-900/30 dark:text-emerald-300 dark:hover:bg-emerald-900/50 rounded-lg text-sm font-medium transition-colors"
+            >
+              <Link2 className="w-4 h-4" /> Share Invite
+            </button>
+          )}
           <button
             onClick={onShare}
             className="flex items-center gap-2 px-3 py-1.5 bg-indigo-50 text-indigo-700 hover:bg-indigo-100 dark:bg-indigo-900/30 dark:text-indigo-300 dark:hover:bg-indigo-900/50 rounded-lg text-sm font-medium transition-colors"

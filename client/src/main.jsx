@@ -11,6 +11,7 @@ import { PreferencesProvider } from "./context/PreferencesContext.jsx";
 import { ClerkAuthProvider } from "./context/ClerkAuthProvider.jsx";
 import { ClerkSessionSync } from "./components/ClerkSessionSync.jsx";
 import { AssistantProvider } from "./context/AssistantContext.jsx";
+import { PwaProvider } from "./context/PwaContext.jsx";
 import { registerSW } from "virtual:pwa-register";
 registerSW({ immediate: true });
 
@@ -38,10 +39,12 @@ createRoot(document.getElementById("root")).render(
       <ThemeProvider>
         <PreferencesProvider>
           <AppContextProvider>
-            <ClerkSessionSync />
-            <AssistantProvider>
-              <App />
-            </AssistantProvider>
+            <PwaProvider>
+              <ClerkSessionSync />
+              <AssistantProvider>
+                <App />
+              </AssistantProvider>
+            </PwaProvider>
           </AppContextProvider>
         </PreferencesProvider>
       </ThemeProvider>

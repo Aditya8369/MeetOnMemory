@@ -1,7 +1,6 @@
 import mongoose from "mongoose";
 import { describe, it, expect, beforeEach, vi } from "vitest";
 import Webhook from "../models/Webhook.js";
-import WebhookDelivery from "../models/WebhookDelivery.js";
 import {
   rotateWebhookSecret,
   pingWebhook,

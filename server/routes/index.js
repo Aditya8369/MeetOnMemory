@@ -19,6 +19,7 @@ import knowledgeGraphRoutes from "./knowledgeGraphRoutes.js";
 import policyComplianceRoutes from "./policyComplianceRoutes.js";
 import sessionRoutes from "./sessionRoutes.js";
 import transcriptRoutes from "./transcriptRoutes.js";
+import transcriptChapterRoutes from "./transcriptChapterRoutes.js";
 import customFieldRoutes from "./customFieldRoutes.js";
 import sharedLinkRoutes from "./sharedLinkRoutes.js";
 import meetingTemplateRoutes from "./meetingTemplateRoutes.js";
@@ -77,6 +78,7 @@ import favoriteRoutes from "./favoriteRoutes.js";
 import testimonialRoutes, {
   adminTestimonialRouter,
 } from "./testimonialRoutes.js";
+import absenteeCatchUpRoutes from "./absenteeCatchUpRoutes.js";
 
 import calendarRoutes from "./calendarRoutes.js";
 import assistantRoutes from "./assistantRoutes.js";
@@ -96,6 +98,10 @@ import actionItemsRoutes from "./actionItems.routes.js";
 import workloadRoutes from "./workloadRoutes.js";
 import minutesApprovalRoutes from "./minutesApprovalRoutes.js";
 import teamAvailabilityRoutes from "./teamAvailabilityRoutes.js";
+import icebreakerRoutes from "./icebreakerRoutes.js";
+import meetingQuizRoutes from "./meetingQuizRoutes.js";
+import resourceBookingRoutes from "./resourceBookingRoutes.js";
+import recordingSessionRoutes from "./recordingSessionRoutes.js";
 
 const router = express.Router();
 
@@ -114,6 +120,7 @@ router.use("/api/meetings/timer", agendaTimerRoutes);
 router.use("/api/meetings/:meetingId/checklist", meetingChecklistRoutes);
 router.use("/api/meetings/:id/duplicates", meetingDuplicateRoutes);
 router.use("/api/delegations", meetingDelegationRoutes);
+router.use("/api/meetings/:meetingId/quiz", meetingQuizRoutes);
 router.use("/api/meetings", meetingRoutes);
 router.use("/api/meetings", meetingTimelineRoutes);
 router.use("/api/meetings", highlightReelRoutes);
@@ -135,8 +142,10 @@ router.use("/api/graph", knowledgeGraphRoutes);
 router.use("/api/calendar", calendarRoutes);
 router.use("/api/policy-compliance", policyComplianceRoutes);
 router.use("/api/sessions", sessionRoutes);
+router.use("/api/recording-sessions", recordingSessionRoutes);
 router.use("/api/assistant", assistantRoutes);
 router.use("/api/transcripts", transcriptRoutes);
+router.use("/api/meetings/:meetingId/chapters", transcriptChapterRoutes);
 router.use("/api/shared-links", sharedLinkRoutes);
 router.use("/api/templates", meetingTemplateRoutes);
 router.use("/api/bookmarks", bookmarkRoutes);
@@ -148,6 +157,8 @@ router.use("/api/meetings/:meetingId/topics", topicRoutes);
 router.use("/api/meetings/:meetingId/breakout-rooms", breakoutRoomRoutes);
 router.use("/api/workload", workloadRoutes);
 router.use("/api/meetings/:meetingId/attachments", attachmentRoutes);
+router.use("/api/icebreakers", icebreakerRoutes);
+router.use("/api/physical-resources", resourceBookingRoutes);
 router.use("/api/meetings/:meetingId/minutes-approval", minutesApprovalRoutes);
 router.use("/api/meeting-series", meetingSeriesRoutes);
 router.use("/api/meeting-series", carryForwardRoutes);
@@ -198,6 +209,9 @@ router.use("/api/sentiment-timeline", sentimentTimelineRoutes);
 router.use("/api/rsvps", meetingRsvpRoutes);
 router.use("/api/testimonials", testimonialRoutes);
 router.use("/api/admin/testimonials", adminTestimonialRouter);
+router.use("/api/absentee-catchup", absenteeCatchUpRoutes);
+import debriefQARoutes from "./debriefQARoutes.js";
+router.use("/api/debrief", debriefQARoutes);
 import adminJobsRoutes from "./adminJobsRoutes.js";
 router.use("/api/admin/jobs", adminJobsRoutes);
 import adminReindexRoutes from "./adminReindexRoutes.js";
@@ -208,9 +222,12 @@ import adminHealthRoutes from "./adminHealthRoutes.js";
 router.use("/api/admin/health", adminHealthRoutes);
 import adminRbacRoutes from "./adminRbacRoutes.js";
 router.use("/api/admin/rbac", adminRbacRoutes);
+import adminAiUsageRoutes from "./adminAiUsageRoutes.js";
+router.use("/api/admin/ai-usage", adminAiUsageRoutes);
 router.use("/api/alerts/keywords", keywordAlertRoutes);
+import integrationMarketplaceRoutes from "./integrationMarketplaceRoutes.js";
+router.use("/api/integrations", integrationMarketplaceRoutes);
 router.use("/api/integrations/notion", notionIntegrationRoutes);
-
 import githubIntegrationRoutes from "./githubIntegrationRoutes.js";
 router.use("/api/github", githubIntegrationRoutes);
 
@@ -258,5 +275,20 @@ router.use("/api/action-item-sla", actionItemSlaRoutes);
 router.use("/api/team-availability", teamAvailabilityRoutes);
 import actionItemTemplateRoutes from "./actionItemTemplateRoutes.js";
 router.use("/api/action-item-templates", actionItemTemplateRoutes);
+
+import observerRoutes from "./observerRoutes.js";
+router.use("/api/observers", observerRoutes);
+
+import skillEndorsementRoutes from "./skillEndorsementRoutes.js";
+router.use("/api/skill-endorsements", skillEndorsementRoutes);
+
+import semanticKnowledgeGraphRoutes from "./semanticKnowledgeGraphRoutes.js";
+router.use("/api/semantic-graph", semanticKnowledgeGraphRoutes);
+import calendarConflictRoutes from "./calendarConflictRoutes.js";
+router.use("/api/calendar-sync", calendarConflictRoutes);
+import complianceRoutes from "./complianceRoutes.js";
+router.use("/api/compliance", complianceRoutes);
+import actionItemGraphRoutes from "./actionItemGraphRoutes.js";
+router.use("/api/action-item-graph", actionItemGraphRoutes);
 
 export default router;

@@ -40,5 +40,17 @@ export const organizationApi = {
   removeMember: (orgId, userId) =>
     apiClient.delete(`/api/organizations/${orgId}/members/${userId}`),
   getAuditLogs: (orgId, params) =>
-    apiClient.get(`/api/organizations/${orgId}/audit-log`, { params }),
+    apiClient.get(`/api/organizations/${orgId}/audit-logs`, { params }),
+  exportAuditLogs: (orgId, params) =>
+    apiClient.get(`/api/organizations/${orgId}/audit-logs`, {
+      params,
+      responseType: "blob",
+    }),
+  getAuditLogExport: (orgId, exportId) =>
+    apiClient.get(`/api/organizations/${orgId}/audit-log-exports/${exportId}`),
+  downloadAuditLogExport: (orgId, exportId) =>
+    apiClient.get(
+      `/api/organizations/${orgId}/audit-log-exports/${exportId}/download`,
+      { responseType: "blob" },
+    ),
 };

@@ -51,17 +51,12 @@ describe("InviteMemberForm", () => {
       />,
     );
 
-    // Attempt to submit without email (HTML5 validation should ideally stop it,
-    // but in case it goes through or we test the handler)
     const form = screen
       .getByRole("button", { name: /send invitation/i })
       .closest("form");
 
-    // Simulate handler being called without email (bypassing native validation for the sake of the test)
     fireEvent.submit(form);
 
-    // Note: since email is marked required, if we use fireEvent.submit it triggers the synthetic event
-    // The component's handleSubmit has `if (!inviteEmail) { toast.error... }`
     await waitFor(() => {
       expect(mockOnSendInvite).not.toHaveBeenCalled();
     });
@@ -98,6 +93,26 @@ describe("InviteMemberForm", () => {
         expect.any(Function),
       );
     });
+  });
+
+  it("calls onOpenBulkImport and onClose when clicking bulk import link", () => {
+    const mockOnOpenBulkImport = vi.fn();
+    render(
+      <InviteMemberForm
+        onClose={mockOnClose}
+        onSendInvite={mockOnSendInvite}
+        onOpenBulkImport={mockOnOpenBulkImport}
+      />,
+    );
+
+    const bulkBtn = screen.getByText(
+      /need to invite multiple members\? import csv/i,
+    );
+    expect(bulkBtn).toBeInTheDocument();
+    fireEvent.click(bulkBtn);
+
+    expect(mockOnClose).toHaveBeenCalledTimes(1);
+    expect(mockOnOpenBulkImport).toHaveBeenCalledTimes(1);
   });
 
   it("exposes WAI-ARIA dialog attributes and handles Escape key", () => {

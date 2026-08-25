@@ -37,6 +37,19 @@ const transcriptSegmentSchema = new mongoose.Schema({
     type: [String],
     default: [],
   },
+  isEdited: {
+    type: Boolean,
+    default: false,
+  },
+  editedAt: {
+    type: Date,
+    default: null,
+  },
+  editedBy: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "user",
+    default: null,
+  },
 });
 
 const transcriptSchema = new mongoose.Schema(
@@ -119,6 +132,7 @@ const transcriptSchema = new mongoose.Schema(
 transcriptSchema.index({ meeting: 1 });
 transcriptSchema.index({ status: 1 });
 transcriptSchema.index({ createdAt: -1 });
+transcriptSchema.index({ organizationId: 1 });
 
 const Transcript = mongoose.model("Transcript", transcriptSchema);
 export default Transcript;

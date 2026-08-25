@@ -2,7 +2,11 @@ import apiClient from "../services/apiClient";
 
 const API_URL = "/api/comments";
 
-export const createComment = async (meetingId, body, parentComment = null) => {
+export const createComment = async ({
+  meetingId,
+  body,
+  parentComment = null,
+}) => {
   const response = await apiClient.post(
     `${API_URL}`,
     {
@@ -20,10 +24,10 @@ export const getCommentsByMeeting = async (meetingId, page = 1, limit = 50) => {
     `${API_URL}/meeting/${meetingId}?page=${page}&limit=${limit}`,
     { withCredentials: true },
   );
-  return response.data;
+  return response.data.comments ?? [];
 };
 
-export const updateComment = async (commentId, body) => {
+export const updateComment = async (commentId, { body }) => {
   const response = await apiClient.patch(
     `${API_URL}/${commentId}`,
     { body },

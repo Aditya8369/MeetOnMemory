@@ -9,6 +9,18 @@ export const meetingApi = {
   uploadMeeting: (formData, config) =>
     apiClient.post("/api/meetings/upload", formData, config),
 
+  // Resumable Chunk Upload Endpoints (#2268)
+  initResumableUpload: (data) =>
+    apiClient.post("/api/meetings/upload/init", data),
+  uploadChunk: (formData, config) =>
+    apiClient.post("/api/meetings/upload/chunk", formData, config),
+  getUploadStatus: (uploadId) =>
+    apiClient.get(`/api/meetings/upload/status/${uploadId}`),
+  completeResumableUpload: (data) =>
+    apiClient.post("/api/meetings/upload/complete", data),
+  abortResumableUpload: (data) =>
+    apiClient.post("/api/meetings/upload/abort", data),
+
   summarizeMeeting: (data) => apiClient.post("/api/meetings/summarize", data),
 
   getAllMeetings: (params = {}, config = {}) =>
@@ -28,6 +40,10 @@ export const meetingApi = {
   permanentlyDeleteMeeting: (id) =>
     apiClient.delete(`/api/meetings/${id}/permanent`),
 
+  getPurgePreview: () => apiClient.get("/api/meetings/trash/purge-preview"),
+
+  purgeTrash: () => apiClient.delete("/api/meetings/trash/purge"),
+
   updateMeeting: (id, data) => apiClient.patch(`/api/meetings/${id}`, data),
 
   exportMeeting: (id, format) =>
@@ -35,6 +51,11 @@ export const meetingApi = {
       responseType: "blob",
       timeout: 60000,
     }),
+
+  sendMeetingDigest: (id) =>
+    apiClient.post(`/api/meetings/${id}/digest/resend`),
+  previewMeetingDigest: (id) =>
+    apiClient.get(`/api/meetings/${id}/digest/preview`),
 
   getReactionSummary: (id) =>
     apiClient.get(`/api/meetings/${id}/reactions/summary`),
@@ -57,4 +78,13 @@ export const meetingApi = {
   updateInvite: (meetingId, data) =>
     apiClient.patch(`/api/meetings/${meetingId}/invite`, data),
   resolveInvite: (code) => apiClient.get(`/api/meetings/invite/${code}`),
+
+  resendDigest: (meetingId) =>
+    apiClient.post(`/api/meetings/${meetingId}/digest/resend`),
+  previewDigest: (meetingId) =>
+    apiClient.get(`/api/meetings/${meetingId}/digest/preview`, {
+      responseType: "text",
+    }),
+  getDigestStatus: (meetingId) =>
+    apiClient.get(`/api/meetings/${meetingId}/digest/status`),
 };

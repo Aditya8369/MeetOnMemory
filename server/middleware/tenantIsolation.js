@@ -4,13 +4,13 @@
  * Ensures queries are strictly scoped to the authenticated organization.
  */
 
-const mongoose = require("mongoose");
+import mongoose from "mongoose";
 
 /**
  * Middleware to extract organization context from the request and bind
  * a tenant-scoped mock model adapter to prevent cross-tenant data leaks.
  */
-const requireTenantIsolation = async (req, res, next) => {
+const tenantIsolation = async (req, res, next) => {
   try {
     const organizationId = req.user?.organizationId;
 
@@ -29,14 +29,19 @@ const requireTenantIsolation = async (req, res, next) => {
       model: (modelName) => {
         const Base = mongoose.model(modelName);
         return {
-          find: (query = {}) => Base.find({ ...query, organizationId }),
-          findOne: (query = {}) => Base.findOne({ ...query, organizationId }),
-          create: (data) => Base.create({ ...data, organizationId }),
-          // Add other Mongoose methods as needed...
+          find: (filter = {}, ...args) =>
+            Base.find({ ...filter, organization: organizationId }, ...args),
+          findOne: (filter = {}, ...args) =>
+            Base.findOne({ ...filter, organization: organizationId }, ...args),
+          findById: (id, ...args) =>
+            Base.findOne({ _id: id, organization: organizationId }, ...args),
+          create: (doc, ...args) =>
+            Base.create({ ...doc, organization: organizationId }, ...args),
         };
       },
     };
 
+    req.organizationId = organizationId;
     next();
   } catch (error) {
     console.error(
@@ -47,4 +52,5 @@ const requireTenantIsolation = async (req, res, next) => {
   }
 };
 
-module.exports = requireTenantIsolation;
+export default tenantIsolation;
+export { tenantIsolation };

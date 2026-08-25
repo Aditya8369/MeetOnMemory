@@ -7,6 +7,10 @@ import CalendarNotice from "./CalendarNotice";
 import DraftRecoveryBanner from "./DraftRecoveryBanner";
 import SmartAgendaGenerator from "../../../../components/meetings/SmartAgendaGenerator";
 import CustomFieldsEditor from "../../../../components/meetings/CustomFieldsEditor";
+import ConflictWarning from "./ConflictWarning";
+import { useIcebreakers } from "../../../../hooks/useIcebreakers";
+import IcebreakerWidget from "../../../../components/meetings/IcebreakerWidget";
+import PhysicalResourcesSection from "./PhysicalResourcesSection";
 
 const ScheduleMeeting = ({ hookProps, loadingDuplicate = false }) => {
   const {
@@ -26,7 +30,6 @@ const ScheduleMeeting = ({ hookProps, loadingDuplicate = false }) => {
     handleScheduleChange,
     addParticipant,
     removeParticipant,
-    importParticipants,
     addAgendaItem,
     removeAgendaItem,
     reorderAgendaItem,
@@ -45,10 +48,23 @@ const ScheduleMeeting = ({ hookProps, loadingDuplicate = false }) => {
     customFields,
     setCustomFields,
     userData,
-    actionItemTemplates,
-    selectedActionItemTemplateId,
-    setSelectedActionItemTemplateId,
+    focusConflicts,
+    busyParticipants,
+    checkingConflicts,
+    conflictCheckError,
+    conflictMode,
+    setConflictMode,
+    selectedResources,
+    setSelectedResources,
   } = hookProps;
+
+  const {
+    icebreakers,
+    loading: icebreakersLoading,
+    selectedIcebreaker,
+    generate,
+    select,
+  } = useIcebreakers(null); // null meetingId for Create mode
 
   return (
     <div className="bg-white dark:bg-slate-900 border border-gray-200 dark:border-gray-800 shadow-lg rounded-2xl p-8">
@@ -82,6 +98,23 @@ const ScheduleMeeting = ({ hookProps, loadingDuplicate = false }) => {
           onRestore={restoreDraft}
           onDiscard={discardDraft}
         />
+        <ConflictWarning
+          focusConflicts={focusConflicts}
+          busyParticipants={busyParticipants}
+          loading={checkingConflicts}
+          mode={conflictMode}
+          onModeChange={setConflictMode}
+          enabled={Boolean(scheduleData.date && scheduleData.time)}
+        />
+        {conflictCheckError && (
+          <p
+            className="mb-6 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-xs text-amber-800 dark:border-amber-900/60 dark:bg-amber-950/30 dark:text-amber-300"
+            role="status"
+          >
+            {conflictCheckError}
+          </p>
+        )}
+
         <MeetingInformationForm
           scheduleData={scheduleData}
           setScheduleData={setScheduleData}
@@ -94,7 +127,13 @@ const ScheduleMeeting = ({ hookProps, loadingDuplicate = false }) => {
           setNewParticipant={setNewParticipant}
           addParticipant={addParticipant}
           removeParticipant={removeParticipant}
-          importParticipants={importParticipants}
+        />
+
+        <PhysicalResourcesSection
+          scheduleData={scheduleData}
+          userData={userData}
+          selectedResources={selectedResources}
+          setSelectedResources={setSelectedResources}
         />
 
         {templates && templates.length > 0 && (
@@ -137,34 +176,8 @@ const ScheduleMeeting = ({ hookProps, loadingDuplicate = false }) => {
               ))}
             </select>
             <p className="text-xs text-indigo-700 dark:text-indigo-400 mt-2">
-              custom instructions allow you to dictate exactly how the AI will
+              Custom instructions allow you to dictate exactly how the AI will
               write the MoM (e.g. Sales BANT, Sprint Retro).
-            </p>
-          </div>
-        )}
-
-        {actionItemTemplates && actionItemTemplates.length > 0 && (
-          <div className="mb-6 bg-emerald-50/50 dark:bg-emerald-950/30 p-4 rounded-xl border border-emerald-100 dark:border-emerald-900/50">
-            <label className="flex items-center gap-2 text-sm font-semibold text-emerald-900 dark:text-emerald-300 mb-2">
-              <FileText size={16} /> Action Item Template
-            </label>
-            <select
-              value={selectedActionItemTemplateId || ""}
-              onChange={(e) => setSelectedActionItemTemplateId(e.target.value)}
-              className="w-full px-4 py-2 bg-white dark:bg-slate-800 border border-emerald-200 dark:border-emerald-800 rounded-lg focus:ring-2 focus:ring-emerald-400 outline-none text-sm text-gray-700 dark:text-gray-200"
-            >
-              <option value="">
-                -- Let standard tasks generate automatically --
-              </option>
-              {actionItemTemplates.map((t) => (
-                <option key={t._id} value={t._id}>
-                  {t.name} ({t.items?.length || 0} tasks)
-                </option>
-              ))}
-            </select>
-            <p className="text-xs text-emerald-700 dark:text-emerald-400 mt-2">
-              Manually apply a specific set of standard action items for this
-              meeting.
             </p>
           </div>
         )}
@@ -180,6 +193,35 @@ const ScheduleMeeting = ({ hookProps, loadingDuplicate = false }) => {
           currentAgenda={agendaItems}
           onApplySuccess={setAgendaItems}
         />
+
+        <div className="mb-6 bg-cyan-50/50 dark:bg-cyan-950/30 p-4 rounded-xl border border-cyan-100 dark:border-cyan-900/50">
+          <div className="flex justify-between items-center mb-2">
+            <label className="flex items-center gap-2 text-sm font-semibold text-cyan-900 dark:text-cyan-300">
+              🧊 Team Icebreaker
+            </label>
+            <button
+              type="button"
+              onClick={() => {
+                const pIds = participants.map((p) => p._id || p.id || p.value);
+                generate(pIds);
+              }}
+              disabled={icebreakersLoading}
+              className="px-3 py-1 bg-cyan-600 hover:bg-cyan-700 text-white text-xs font-medium rounded transition-colors disabled:opacity-50"
+            >
+              {icebreakersLoading ? "Generating..." : "Generate Icebreaker"}
+            </button>
+          </div>
+          <p className="text-xs text-cyan-700 dark:text-cyan-400 mb-3">
+            Start the meeting on a high note by generating context-aware
+            icebreakers based on the participants.
+          </p>
+          <IcebreakerWidget
+            icebreakers={icebreakers}
+            loading={icebreakersLoading}
+            onSelect={select}
+            selectedIcebreaker={selectedIcebreaker}
+          />
+        </div>
 
         <AgendaSection
           agendaItems={agendaItems}

@@ -3,7 +3,24 @@ import { describe, it, expect, beforeEach, vi as jest } from "vitest";
 jest.mock("../models/transcriptModel.js", () => ({
   default: {
     findById: jest.fn(),
+    findOne: jest.fn(),
   },
+}));
+
+jest.mock("../models/auditLogModel.js", () => ({
+  default: {
+    create: jest.fn(),
+  },
+}));
+
+jest.mock("../utils/embeddingUtils.js", () => ({
+  indexMeeting: jest.fn().mockResolvedValue(),
+  indexTranscript: jest.fn().mockResolvedValue(),
+  searchVectorStore: jest.fn().mockResolvedValue(),
+}));
+
+jest.mock("../utils/transcriptEmbeddingUtils.js", () => ({
+  indexTranscriptChunks: jest.fn().mockResolvedValue(),
 }));
 
 jest.mock("../utils/responseHandler.js", () => ({
@@ -11,9 +28,10 @@ jest.mock("../utils/responseHandler.js", () => ({
   sendError: jest.fn(),
 }));
 
-const { updateSpeakers } =
+const { updateSpeakers, updateTranscriptSegment } =
   await import("../controllers/transcriptController.js");
 const Transcript = (await import("../models/transcriptModel.js")).default;
+const AuditLog = (await import("../models/auditLogModel.js")).default;
 const { sendSuccess, sendError } = await import("../utils/responseHandler.js");
 
 describe("transcriptController - updateSpeakers", () => {
@@ -191,6 +209,193 @@ describe("transcriptController - updateSpeakers", () => {
       res,
       500,
       "Failed to update speakers",
+    );
+  });
+});
+
+describe("transcriptController - updateTranscriptSegment (#2251)", () => {
+  let req;
+  let res;
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+
+    req = {
+      params: { id: "transcript_123", segmentIndex: "0" },
+      body: {
+        text: "Updated segment text",
+        startTime: 5,
+        endTime: 15,
+        speaker: "Alice Updated",
+      },
+      user: { _id: "user_1", role: "user", organization: "org_1" },
+    };
+
+    res = {
+      status: jest.fn().mockReturnThis(),
+      json: jest.fn(),
+    };
+  });
+
+  it("should return 400 if no fields are provided in body", async () => {
+    req.body = {};
+
+    await updateTranscriptSegment(req, res);
+
+    expect(sendError).toHaveBeenCalledWith(
+      res,
+      400,
+      "At least one field (text, startTime, endTime, speaker) is required to update segment",
+    );
+  });
+
+  it("should return 404 if transcript is not found", async () => {
+    const mockQuery = {
+      populate: jest.fn().mockResolvedValue(null),
+    };
+    Transcript.findById.mockReturnValue(mockQuery);
+
+    await updateTranscriptSegment(req, res);
+
+    expect(sendError).toHaveBeenCalledWith(res, 404, "Transcript not found");
+  });
+
+  it("should return 403 if user lacks permission", async () => {
+    const mockTranscript = {
+      _id: "transcript_123",
+      meeting: {
+        _id: "meeting_123",
+        uploadedBy: "other_user",
+        organization: "other_org",
+      },
+      segments: [
+        { text: "Original", startTime: 0, endTime: 10, speaker: "Alice" },
+      ],
+    };
+    const mockQuery = {
+      populate: jest.fn().mockResolvedValue(mockTranscript),
+    };
+    Transcript.findById.mockReturnValue(mockQuery);
+
+    await updateTranscriptSegment(req, res);
+
+    expect(sendError).toHaveBeenCalledWith(
+      res,
+      403,
+      "Forbidden: You don't have permission to edit this transcript",
+    );
+  });
+
+  it("should return 400 if segment index is invalid", async () => {
+    req.params.segmentIndex = "99";
+    const mockTranscript = {
+      _id: "transcript_123",
+      meeting: {
+        _id: "meeting_123",
+        uploadedBy: "user_1",
+        organization: "org_1",
+        save: jest.fn().mockResolvedValue(true),
+      },
+      segments: [
+        { text: "Original", startTime: 0, endTime: 10, speaker: "Alice" },
+      ],
+    };
+    const mockQuery = {
+      populate: jest.fn().mockResolvedValue(mockTranscript),
+    };
+    Transcript.findById.mockReturnValue(mockQuery);
+
+    await updateTranscriptSegment(req, res);
+
+    expect(sendError).toHaveBeenCalledWith(
+      res,
+      400,
+      "Invalid segment index or ID: 99",
+    );
+  });
+
+  it("should return 400 if endTime is less than startTime", async () => {
+    req.body = { startTime: 20, endTime: 10 };
+    const mockTranscript = {
+      _id: "transcript_123",
+      meeting: {
+        _id: "meeting_123",
+        uploadedBy: "user_1",
+        organization: "org_1",
+      },
+      segments: [
+        { text: "Original", startTime: 0, endTime: 10, speaker: "Alice" },
+      ],
+    };
+    const mockQuery = {
+      populate: jest.fn().mockResolvedValue(mockTranscript),
+    };
+    Transcript.findById.mockReturnValue(mockQuery);
+
+    await updateTranscriptSegment(req, res);
+
+    expect(sendError).toHaveBeenCalledWith(
+      res,
+      400,
+      "endTime cannot be less than startTime",
+    );
+  });
+
+  it("should successfully update segment text, timestamps, and log audit event", async () => {
+    const mockTranscript = {
+      _id: "transcript_123",
+      status: "completed",
+      meeting: {
+        _id: "meeting_123",
+        uploadedBy: "user_1",
+        organization: "org_1",
+        transcript: "",
+        save: jest.fn().mockResolvedValue(true),
+      },
+      segments: [
+        {
+          _id: "seg_1",
+          text: "Original text",
+          startTime: 0,
+          endTime: 10,
+          speaker: "Alice",
+        },
+      ],
+      fullText: "Original text",
+      wordCount: 2,
+      save: jest.fn().mockResolvedValue(true),
+    };
+    const mockQuery = {
+      populate: jest.fn().mockResolvedValue(mockTranscript),
+    };
+    Transcript.findById.mockReturnValue(mockQuery);
+
+    await updateTranscriptSegment(req, res);
+
+    expect(mockTranscript.segments[0].text).toBe("Updated segment text");
+    expect(mockTranscript.segments[0].startTime).toBe(5);
+    expect(mockTranscript.segments[0].endTime).toBe(15);
+    expect(mockTranscript.segments[0].speaker).toBe("Alice Updated");
+    expect(mockTranscript.segments[0].isEdited).toBe(true);
+    expect(mockTranscript.fullText).toBe("Updated segment text");
+    expect(mockTranscript.wordCount).toBe(3);
+    expect(mockTranscript.meeting.transcript).toBe("Updated segment text");
+
+    expect(mockTranscript.save).toHaveBeenCalled();
+    expect(mockTranscript.meeting.save).toHaveBeenCalled();
+    expect(AuditLog.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        action: "TRANSCRIPT_SEGMENT_UPDATED",
+        entity: "Transcript",
+        entityId: "transcript_123",
+      }),
+    );
+    expect(sendSuccess).toHaveBeenCalledWith(
+      res,
+      expect.objectContaining({
+        segmentIndex: 0,
+      }),
+      "Transcript segment updated successfully",
     );
   });
 });

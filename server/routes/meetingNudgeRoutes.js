@@ -4,7 +4,7 @@ import {
   updateNudge,
   getReadiness,
 } from "../controllers/meetingNudgeController.js";
-import { protect } from "../middleware/authMiddleware.js";
+import protect from "../middleware/userAuth.js";
 
 const router = express.Router();
 

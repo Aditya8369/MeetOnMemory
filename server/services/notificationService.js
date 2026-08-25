@@ -254,3 +254,12 @@ export const createNotification = async (
 
   return notification ?? null;
 };
+
+/** @deprecated Prefer createNotification with explicit title/description. */
+export const notifyUser = async (
+  userId,
+  category,
+  description,
+  metadata = {},
+) =>
+  createNotification(userId, category, description, category, "", "", metadata);

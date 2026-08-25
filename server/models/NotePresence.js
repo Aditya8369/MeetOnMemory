@@ -1,4 +1,4 @@
-const mongoose = require("mongoose");
+import mongoose from "mongoose";
 
 /**
  * @desc Tracks real-time presence and cursor positions of users in a collaborative note.
@@ -46,4 +46,4 @@ const notePresenceSchema = new mongoose.Schema(
 // Compound index to ensure one presence record per user per note
 notePresenceSchema.index({ noteId: 1, userId: 1 }, { unique: true });
 
-module.exports = mongoose.model("NotePresence", notePresenceSchema);
+export default mongoose.model("NotePresence", notePresenceSchema);

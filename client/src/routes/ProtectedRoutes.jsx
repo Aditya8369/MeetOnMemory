@@ -2,6 +2,7 @@ import React from "react";
 import { Route } from "react-router-dom";
 
 import ProtectedRoute from "../components/ProtectedRoute.jsx";
+import RouteErrorBoundary from "../components/RouteErrorBoundary.jsx";
 import AccessDenied from "../pages/AccessDenied.jsx";
 
 // --- Protected Pages ---
@@ -54,15 +55,18 @@ import MembersManagement from "../pages/Admin/MembersManagement.jsx";
 import AuditLogViewer from "../pages/Admin/AuditLogViewer.jsx";
 import AdminHealth from "../pages/Admin/AdminHealth.jsx";
 import AdminPanel from "../pages/AdminPanel.jsx";
+import ResourceManagement from "../pages/Admin/ResourceManagement.jsx";
 import Bookmarks from "../pages/Bookmarks.jsx";
 import ActivityFeed from "../pages/ActivityFeed.jsx";
 import TagBrowser from "../pages/TagBrowser.jsx";
 import AttendanceAnalytics from "../pages/AttendanceAnalytics.jsx";
+import RsvpInbox from "../pages/RsvpInbox.jsx";
 import MeetingCostAnalytics from "../pages/MeetingCostAnalytics.jsx";
 import RecapScheduleDashboard from "../pages/RecapScheduleDashboard.jsx";
 import MeetingHealthDashboard from "../pages/MeetingHealthDashboard.jsx";
 import AutomationRules from "../pages/AutomationRules.jsx";
 import TopicExplorer from "../pages/TopicExplorer.jsx";
+import ParkingLotBacklogPage from "../pages/ParkingLotBacklogPage.jsx";
 import ConflictResolution from "../pages/ConflictResolution.jsx";
 import SpeakingTimeTrends from "../pages/SpeakingTimeTrends.jsx";
 import SpeakingTimeCompare from "../pages/SpeakingTimeCompare.jsx";
@@ -85,9 +89,36 @@ import StandupReports from "../pages/StandupReports.jsx";
 import SlaCompliance from "../pages/SlaCompliance.jsx";
 import TeamAvailability from "../pages/TeamAvailability.jsx";
 import ActionItemTemplates from "../pages/ActionItemTemplates.jsx";
+import IntegrationMarketplaceHub from "../pages/IntegrationMarketplaceHub.jsx";
+import SentimentTrends from "../pages/SentimentTrends.jsx";
 
 const ProtectedRoutes = (
   <React.Fragment>
+    <Route
+      path="/sentiment-trends"
+      element={
+        <ProtectedRoute resource="meetings" action="view">
+          <SentimentTrends />
+        </ProtectedRoute>
+      }
+    />
+    <Route
+      path="/analytics/sentiment-trends"
+      element={
+        <ProtectedRoute resource="meetings" action="view">
+          <SentimentTrends />
+        </ProtectedRoute>
+      }
+    />
+    <Route
+      path="/integrations/marketplace"
+
+      element={
+        <ProtectedRoute resource="organizations" action="view">
+          <IntegrationMarketplaceHub />
+        </ProtectedRoute>
+      }
+    />
     <Route
       path="/meetings"
       element={
@@ -212,7 +243,9 @@ const ProtectedRoutes = (
       path="/admin/members"
       element={
         <ProtectedRoute resource="team_members" action="view">
-          <MembersManagement />
+          <RouteErrorBoundary section="Admin">
+            <MembersManagement />
+          </RouteErrorBoundary>
         </ProtectedRoute>
       }
     />
@@ -220,7 +253,9 @@ const ProtectedRoutes = (
       path="/admin/audit-logs"
       element={
         <ProtectedRoute resource="audit_logs" action="view">
-          <AuditLogViewer />
+          <RouteErrorBoundary section="Admin">
+            <AuditLogViewer />
+          </RouteErrorBoundary>
         </ProtectedRoute>
       }
     />
@@ -232,7 +267,23 @@ const ProtectedRoutes = (
           action="view"
           forbiddenFallback={<AccessDenied />}
         >
-          <AdminHealth />
+          <RouteErrorBoundary section="Admin">
+            <AdminHealth />
+          </RouteErrorBoundary>
+        </ProtectedRoute>
+      }
+    />
+    <Route
+      path="/admin/resources"
+      element={
+        <ProtectedRoute
+          resource="admin_panel"
+          action="view"
+          forbiddenFallback={<AccessDenied />}
+        >
+          <RouteErrorBoundary section="Admin">
+            <ResourceManagement />
+          </RouteErrorBoundary>
         </ProtectedRoute>
       }
     />
@@ -280,7 +331,9 @@ const ProtectedRoutes = (
       path="/organization/settings"
       element={
         <ProtectedRoute resource="organizations" action="view">
-          <OrganizationSettings />
+          <RouteErrorBoundary section="Org Settings">
+            <OrganizationSettings />
+          </RouteErrorBoundary>
         </ProtectedRoute>
       }
     />
@@ -288,7 +341,9 @@ const ProtectedRoutes = (
       path="/organizations/settings"
       element={
         <ProtectedRoute resource="organizations" action="view">
-          <OrganizationSettings />
+          <RouteErrorBoundary section="Org Settings">
+            <OrganizationSettings />
+          </RouteErrorBoundary>
         </ProtectedRoute>
       }
     />
@@ -296,7 +351,9 @@ const ProtectedRoutes = (
       path="/organization-settings"
       element={
         <ProtectedRoute resource="organizations" action="view">
-          <OrganizationSettings />
+          <RouteErrorBoundary section="Org Settings">
+            <OrganizationSettings />
+          </RouteErrorBoundary>
         </ProtectedRoute>
       }
     />
@@ -312,7 +369,9 @@ const ProtectedRoutes = (
       path="/dashboard"
       element={
         <ProtectedRoute>
-          <Dashboard />
+          <RouteErrorBoundary section="Dashboard">
+            <Dashboard />
+          </RouteErrorBoundary>
         </ProtectedRoute>
       }
     />
@@ -321,6 +380,14 @@ const ProtectedRoutes = (
       element={
         <ProtectedRoute resource="reports" action="view">
           <TopicExplorer />
+        </ProtectedRoute>
+      }
+    />
+    <Route
+      path="/parking-lot"
+      element={
+        <ProtectedRoute resource="meetings" action="view">
+          <ParkingLotBacklogPage />
         </ProtectedRoute>
       }
     />
@@ -450,7 +517,9 @@ const ProtectedRoutes = (
       path="/meeting/:id"
       element={
         <ProtectedRoute resource="meetings" action="view">
-          <MeetingDetails />
+          <RouteErrorBoundary section="Meeting Details">
+            <MeetingDetails />
+          </RouteErrorBoundary>
         </ProtectedRoute>
       }
     />
@@ -482,7 +551,9 @@ const ProtectedRoutes = (
       path="/meeting-room/:roomId"
       element={
         <ProtectedRoute resource="meetings" action="view">
-          <MeetingRoom />
+          <RouteErrorBoundary section="Meeting Room">
+            <MeetingRoom />
+          </RouteErrorBoundary>
         </ProtectedRoute>
       }
     />
@@ -757,6 +828,22 @@ const ProtectedRoutes = (
     />
 
     <Route
+      path="/rsvps"
+      element={
+        <ProtectedRoute>
+          <RsvpInbox />
+        </ProtectedRoute>
+      }
+    />
+    <Route
+      path="/catch-up"
+      element={
+        <ProtectedRoute>
+          <AbsenteeCatchUpInbox />
+        </ProtectedRoute>
+      }
+    />
+    <Route
       path="/admin-panel"
       element={
         <ProtectedRoute
@@ -764,7 +851,9 @@ const ProtectedRoutes = (
           action="view"
           forbiddenFallback={<AccessDenied />}
         >
-          <AdminPanel />
+          <RouteErrorBoundary section="Admin">
+            <AdminPanel />
+          </RouteErrorBoundary>
         </ProtectedRoute>
       }
     />

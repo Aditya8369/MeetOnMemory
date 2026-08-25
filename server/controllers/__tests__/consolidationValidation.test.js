@@ -4,10 +4,7 @@ import {
   runConsolidation,
   getConsolidationHistory,
 } from "../consolidationController.js";
-import {
-  consolidateMemories,
-  getConsolidatedMemories,
-} from "../../services/memoryConsolidationService.js";
+import { consolidateMemories } from "../../services/memoryConsolidationService.js";
 
 vi.mock("../../services/memoryConsolidationService.js", () => ({
   MODEL_REGISTRY: { decision: {}, actionItem: {} },

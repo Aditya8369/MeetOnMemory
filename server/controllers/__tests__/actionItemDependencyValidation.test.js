@@ -17,7 +17,6 @@ describe("Action Item Dependency Parameter & Org Validation (#1960)", () => {
   const validOrgId = new mongoose.Types.ObjectId().toString();
   const validDependentId = new mongoose.Types.ObjectId().toString();
   const validBlockerId = new mongoose.Types.ObjectId().toString();
-  const validItemId = new mongoose.Types.ObjectId().toString();
 
   const user = {
     _id: new mongoose.Types.ObjectId(),

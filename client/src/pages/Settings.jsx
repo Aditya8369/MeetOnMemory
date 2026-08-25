@@ -40,6 +40,10 @@ import {
 } from "../utils/validateCalendarOAuthRedirect.js";
 import { validateRedirect } from "../utils/validateRedirect.js";
 import { usePolling } from "../hooks/usePolling.js";
+import PushNotificationManager from "../components/notifications/PushNotificationManager.jsx";
+import PwaInstallButton from "../components/pwa/PwaInstallButton.jsx";
+import DataExportSection from "../components/settings/DataExportSection.jsx";
+import ClerkSecuritySection from "../components/settings/ClerkSecuritySection.jsx";
 
 const clerkPubKey = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY;
 
@@ -431,6 +435,9 @@ const Settings = () => {
           </p>
         </div>
 
+        {/* PWA Install Banner */}
+        <PwaInstallButton variant="banner" className="mb-6" />
+
         <div className="space-y-6">
           {/* Account Settings Section */}
           <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-2xl p-6 shadow-sm fade-in-up stagger-2">
@@ -575,6 +582,43 @@ const Settings = () => {
             </div>
           </div>
 
+          {/* Availability Settings Section */}
+          <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-2xl p-6 shadow-sm fade-in-up stagger-3">
+            <div className="flex items-center gap-3 mb-6">
+              <div className="p-2 bg-indigo-50 dark:bg-indigo-900/30 rounded-xl">
+                <Clock className="w-5 h-5 text-indigo-600 dark:text-indigo-400" />
+              </div>
+              <div>
+                <h2 className="text-lg font-bold text-slate-900 dark:text-white">
+                  Availability Preferences
+                </h2>
+                <p className="text-xs text-slate-500 dark:text-slate-400">
+                  Manage weekly hours and find slot heatmaps
+                </p>
+              </div>
+            </div>
+
+            <div className="space-y-4">
+              <div className="flex items-center justify-between py-3">
+                <div>
+                  <p className="text-sm font-semibold text-slate-900 dark:text-slate-200">
+                    Team Availability & Heatmaps
+                  </p>
+                  <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                    Configure your working hours and view team availability
+                  </p>
+                </div>
+                <button
+                  onClick={() => navigate("/team-availability")}
+                  className="text-xs font-semibold text-indigo-600 hover:text-indigo-800 dark:hover:text-indigo-400 flex items-center gap-1 transition-colors cursor-pointer"
+                >
+                  Manage Availability
+                  <ChevronRight className="w-3 h-3" />
+                </button>
+              </div>
+            </div>
+          </div>
+
           {/* Notification Preferences Section */}
           <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-2xl p-6 shadow-sm fade-in-up stagger-4">
             <div className="flex items-center gap-3 mb-6">
@@ -698,7 +742,8 @@ const Settings = () => {
                         Email Notifications
                       </p>
                       <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-                        Receive notifications via email
+                        Receive meeting reminders, digests, and action item
+                        emails
                       </p>
                     </div>
                     <button
@@ -756,6 +801,11 @@ const Settings = () => {
                 </>
               )}
             </div>
+          </div>
+
+          {/* Web Push Notifications Section */}
+          <div className="fade-in-up stagger-4">
+            <PushNotificationManager />
           </div>
 
           {/* Keyword Watchlist Section */}
@@ -964,39 +1014,7 @@ const Settings = () => {
                 </div>
               )}
 
-              <div className="w-full flex items-center justify-between py-3 px-4 rounded-xl opacity-50 cursor-not-allowed">
-                <div className="flex items-center gap-3">
-                  <Shield className="w-4 h-4 text-slate-400" />
-                  <div className="text-left">
-                    <p className="text-sm font-semibold text-slate-900 dark:text-slate-200">
-                      Two-Factor Authentication
-                    </p>
-                    <p className="text-xs text-slate-500 dark:text-slate-400">
-                      Coming soon
-                    </p>
-                  </div>
-                </div>
-                <span className="text-xs font-semibold text-slate-400 dark:text-slate-500 bg-slate-100 dark:bg-slate-800 px-2 py-1 rounded-full">
-                  Soon
-                </span>
-              </div>
-
-              <div className="w-full flex items-center justify-between py-3 px-4 rounded-xl opacity-50 cursor-not-allowed">
-                <div className="flex items-center gap-3">
-                  <Globe className="w-4 h-4 text-slate-400" />
-                  <div className="text-left">
-                    <p className="text-sm font-semibold text-slate-900 dark:text-slate-200">
-                      Active Sessions
-                    </p>
-                    <p className="text-xs text-slate-500 dark:text-slate-400">
-                      Manage your active sessions
-                    </p>
-                  </div>
-                </div>
-                <span className="text-xs font-semibold text-slate-400 dark:text-slate-500 bg-slate-100 dark:bg-slate-800 px-2 py-1 rounded-full">
-                  Soon
-                </span>
-              </div>
+              <ClerkSecuritySection />
 
               <hr className="border-slate-100 dark:border-slate-800" />
 
@@ -1018,6 +1036,11 @@ const Settings = () => {
                 )}
               </button>
             </div>
+          </div>
+
+          {/* Privacy & GDPR Data Export Section */}
+          <div className="fade-in-up stagger-5">
+            <DataExportSection />
           </div>
 
           {/* Preferences Section */}

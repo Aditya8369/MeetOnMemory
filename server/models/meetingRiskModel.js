@@ -1,4 +1,4 @@
-const mongoose = require("mongoose");
+import mongoose from "mongoose";
 
 const meetingRiskSchema = new mongoose.Schema(
   {
@@ -89,4 +89,4 @@ const meetingRiskSchema = new mongoose.Schema(
 meetingRiskSchema.index({ organizationId: 1, status: 1 });
 meetingRiskSchema.index({ meetingId: 1, status: 1 });
 
-module.exports = mongoose.model("MeetingRisk", meetingRiskSchema);
+export default mongoose.model("MeetingRisk", meetingRiskSchema);

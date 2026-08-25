@@ -3,10 +3,17 @@ import { toast } from "react-toastify";
 import { Users, Check, X, Wand2, Trash2 } from "lucide-react";
 import { speakerMappingApi } from "../../services/speakerMappingApi";
 
-const SpeakerAttribution = ({ meetingId, participants }) => {
+const apiErrorMessage = (error, fallback) =>
+  error.response?.data?.message || fallback;
+
+const participantName = (participant) =>
+  typeof participant === "string" ? participant : participant?.name;
+
+const SpeakerAttribution = ({ meetingId, participants, onMappingChange }) => {
   const [mappings, setMappings] = useState([]);
   const [suggestions, setSuggestions] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [saving, setSaving] = useState(false);
 
   const [newLabel, setNewLabel] = useState("");
   const [newName, setNewName] = useState("");
@@ -14,9 +21,10 @@ const SpeakerAttribution = ({ meetingId, participants }) => {
   const fetchMappings = async () => {
     try {
       const response = await speakerMappingApi.getMappings(meetingId);
-      setMappings(response.data.data);
+      setMappings(response.data.data || []);
     } catch (error) {
       console.error("Failed to load speaker mappings", error);
+      toast.error(apiErrorMessage(error, "Failed to load speaker mappings"));
     }
   };
 
@@ -24,10 +32,10 @@ const SpeakerAttribution = ({ meetingId, participants }) => {
     setLoading(true);
     try {
       const response = await speakerMappingApi.suggestMappings(meetingId);
-      setSuggestions(response.data.data);
+      setSuggestions(response.data.data || []);
     } catch (error) {
       console.error(error);
-      toast.error("Failed to fetch suggestions");
+      toast.error(apiErrorMessage(error, "Failed to fetch suggestions"));
     } finally {
       setLoading(false);
     }
@@ -41,7 +49,8 @@ const SpeakerAttribution = ({ meetingId, participants }) => {
   }, [meetingId]);
 
   const handleApply = async (originalLabel, mappedName) => {
-    if (!originalLabel || !mappedName) return;
+    if (!originalLabel || !mappedName || saving) return;
+    setSaving(true);
     try {
       await speakerMappingApi.saveAndApplyMapping(
         meetingId,
@@ -49,30 +58,36 @@ const SpeakerAttribution = ({ meetingId, participants }) => {
         mappedName,
       );
       toast.success("Mapping applied successfully");
-      fetchMappings();
-      // Clear inputs if it was a manual mapping
+      await fetchMappings();
       if (newLabel === originalLabel) {
         setNewLabel("");
         setNewName("");
       }
-      // Remove from suggestions
-      setSuggestions(
-        suggestions.filter((s) => s.originalLabel !== originalLabel),
+      setSuggestions((prev) =>
+        prev.filter((s) => s.originalLabel !== originalLabel),
       );
+      onMappingChange?.();
     } catch (error) {
       console.error(error);
-      toast.error("Failed to apply mapping");
+      toast.error(apiErrorMessage(error, "Failed to apply mapping"));
+    } finally {
+      setSaving(false);
     }
   };
 
   const handleRevert = async (mappingId) => {
+    if (saving) return;
+    setSaving(true);
     try {
       await speakerMappingApi.revertMapping(meetingId, mappingId);
       toast.success("Mapping reverted");
-      fetchMappings();
+      await fetchMappings();
+      onMappingChange?.();
     } catch (error) {
       console.error(error);
-      toast.error("Failed to revert mapping");
+      toast.error(apiErrorMessage(error, "Failed to revert mapping"));
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -123,17 +138,18 @@ const SpeakerAttribution = ({ meetingId, participants }) => {
             list="participants-list-attribution"
           />
           <datalist id="participants-list-attribution">
-            {participants?.map((p, i) => (
-              <option key={i} value={p.name} />
-            ))}
+            {participants?.map((p, i) => {
+              const name = participantName(p);
+              return name ? <option key={i} value={name} /> : null;
+            })}
           </datalist>
         </div>
         <button
           onClick={() => handleApply(newLabel, newName)}
-          disabled={!newLabel || !newName}
+          disabled={!newLabel || !newName || saving}
           className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 disabled:bg-indigo-400 text-white rounded-md transition-colors"
         >
-          Apply
+          {saving ? "Saving..." : "Apply"}
         </button>
       </div>
 
@@ -166,7 +182,8 @@ const SpeakerAttribution = ({ meetingId, participants }) => {
                         suggestion.options[0]?.name,
                       )
                     }
-                    className="p-1 text-green-600 hover:bg-green-50 rounded"
+                    disabled={saving || !suggestion.options[0]?.name}
+                    className="p-1 text-green-600 hover:bg-green-50 rounded disabled:opacity-50"
                     title="Accept suggestion"
                   >
                     <Check size={16} />
@@ -179,7 +196,8 @@ const SpeakerAttribution = ({ meetingId, participants }) => {
                         ),
                       )
                     }
-                    className="p-1 text-gray-400 hover:bg-gray-100 rounded"
+                    disabled={saving}
+                    className="p-1 text-gray-400 hover:bg-gray-100 rounded disabled:opacity-50"
                     title="Dismiss"
                   >
                     <X size={16} />
@@ -220,7 +238,8 @@ const SpeakerAttribution = ({ meetingId, participants }) => {
                   <td className="px-6 py-4 whitespace-nowrap text-right text-sm">
                     <button
                       onClick={() => handleRevert(mapping._id)}
-                      className="text-red-500 hover:text-red-700 transition-colors"
+                      disabled={saving}
+                      className="text-red-500 hover:text-red-700 transition-colors disabled:opacity-50"
                       title="Revert mapping"
                     >
                       <Trash2 size={16} />

@@ -6,10 +6,6 @@ import {
 } from "../highlightReelService.js";
 import HighlightReel from "../../models/highlightReelModel.js";
 import Meeting from "../../models/meetingModel.js";
-import Transcript from "../../models/transcriptModel.js";
-import KeyMoment from "../../models/keyMomentModel.js";
-import SentimentTimeline from "../../models/sentimentTimelineModel.js";
-import * as GenerativeAIService from "../GenerativeAIService.js";
 
 jest.mock("../GenerativeAIService.js", () => ({
   __esModule: true,

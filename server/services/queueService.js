@@ -11,6 +11,7 @@ import memoryLifecycleJob from "../jobs/memoryLifecycleJob.js";
 import policyComplianceReevaluationJob from "../jobs/policyComplianceReevaluationJob.js";
 import RecapEmailService from "./recapEmailService.js";
 import embeddingReindexJob from "../jobs/embeddingReindexJob.js";
+import meetingQuizJob from "../jobs/meetingQuizJob.js";
 import queueRegistry, {
   readPositiveIntEnv,
   resolveJobOptions,
@@ -145,6 +146,7 @@ const createQueueFacade = (name) => ({
 
 export const aiQueue = createQueueFacade("ai-mom-generation");
 export const aiResultsQueue = createQueueFacade("ai-mom-results");
+export const meetingQuizQueue = createQueueFacade("meeting-quiz-queue");
 
 export const dataExportQueue = createQueueFacade("data-export-queue");
 
@@ -236,6 +238,13 @@ export const initAiResultsWorker = (app) =>
     name: "ai-mom-results",
     label: "AI Results Worker",
     processor: async (job) => await processAiResultJob(job, app),
+  });
+
+export const initMeetingQuizWorker = (app) =>
+  createWorker({
+    name: "meeting-quiz-queue",
+    label: "Meeting Quiz Worker",
+    processor: async (job) => await meetingQuizJob(job, app),
   });
 
 export const initAiGenerationWorker = (app) =>
@@ -421,6 +430,7 @@ export const KNOWN_QUEUE_NAMES = Object.freeze([
   "policy-compliance-retry-queue",
   "webhook-dispatches",
   "embedding-reindex-queue",
+  "meeting-quiz-queue",
 ]);
 
 /**
