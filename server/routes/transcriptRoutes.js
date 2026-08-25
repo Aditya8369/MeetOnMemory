@@ -12,6 +12,7 @@ import {
   translateTranscript,
   updateSpeakers,
   updateTranscriptSegment,
+  persistCaptionSegments,
 } from "../controllers/transcriptController.js";
 
 const router = express.Router();
@@ -87,6 +88,15 @@ router.patch(
   requireOrgAccess(Meeting),
   requirePermission("meetings", "edit"),
   updateTranscriptSegment,
+);
+
+// Persist live caption segments (#2246)
+router.post(
+  "/meeting/:meetingId/captions",
+  userAuth,
+  requireOrgAccess(Meeting),
+  requirePermission("meetings", "edit"),
+  persistCaptionSegments,
 );
 
 export default router;
