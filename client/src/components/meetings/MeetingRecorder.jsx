@@ -25,6 +25,9 @@ const MeetingRecorder = ({
   title,
   date,
   tags,
+  deviceStream = null,
+  autoStart = false,
+  onDeviceSetupNeeded,
 }) => {
   const [recordingState, setRecordingState] = useState("idle"); // 'idle' | 'recording' | 'paused' | 'stopped'
   const [error, setError] = useState(null);
@@ -185,6 +188,14 @@ const MeetingRecorder = ({
   const startRecording = async () => {
     try {
       setError(null);
+
+      // DeviceSetupModal performs the browser/device preflight. Never start a
+      // recording without giving Upload/Record users the same setup flow.
+      if (!deviceStream?.getAudioTracks?.().length && onDeviceSetupNeeded) {
+        onDeviceSetupNeeded();
+        return;
+      }
+
       let activeMeetingId = meetingId;
 
       if (!activeMeetingId) {
@@ -228,7 +239,9 @@ const MeetingRecorder = ({
         );
       }
 
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const stream = deviceStream?.getAudioTracks?.().length
+        ? new MediaStream(deviceStream.getAudioTracks())
+        : await navigator.mediaDevices.getUserMedia({ audio: true });
       streamRef.current = stream;
 
       const mediaRecorder = new MediaRecorder(stream, {
@@ -294,6 +307,17 @@ const MeetingRecorder = ({
       toast.error("Failed to access microphone.");
     }
   };
+
+  // If the user clicked Record while setup was required, automatically
+  // continue once DeviceSetupModal hands us a validated stream.
+  useEffect(() => {
+    if (autoStart && deviceStream?.getAudioTracks?.().length) {
+      startRecording();
+    }
+    // startRecording intentionally omitted: it is recreated with recorder state.
+    // autoStart/deviceStream are the parent-controlled trigger.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [autoStart, deviceStream]);
 
   // Pause Recording
   const pauseRecording = () => {
