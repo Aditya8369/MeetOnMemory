@@ -4,7 +4,7 @@ import {
   submitQuizResponse,
   getQuizAnalytics,
 } from "../controllers/meetingQuizController.js";
-import { requireAuth } from "../middleware/authMiddleware.js";
+import requireAuth from "../middleware/userAuth.js";
 
 const router = express.Router({ mergeParams: true });
 

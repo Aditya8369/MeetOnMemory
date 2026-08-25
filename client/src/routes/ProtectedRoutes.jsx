@@ -87,6 +87,7 @@ import StandupReports from "../pages/StandupReports.jsx";
 import SlaCompliance from "../pages/SlaCompliance.jsx";
 import TeamAvailability from "../pages/TeamAvailability.jsx";
 import ActionItemTemplates from "../pages/ActionItemTemplates.jsx";
+import OrgTimelineDashboard from "../pages/OrgTimelineDashboard.jsx";
 
 const ProtectedRoutes = (
   <React.Fragment>
@@ -585,6 +586,14 @@ const ProtectedRoutes = (
       element={
         <ProtectedRoute resource="tasks" action="view">
           <FollowUpDashboard />
+        </ProtectedRoute>
+      }
+    />
+    <Route
+      path="/timeline"
+      element={
+        <ProtectedRoute resource="meetings" action="view">
+          <OrgTimelineDashboard />
         </ProtectedRoute>
       }
     />

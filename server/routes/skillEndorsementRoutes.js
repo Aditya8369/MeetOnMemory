@@ -4,7 +4,7 @@ import {
   getMeetingEndorsements,
   getUserEndorsements,
 } from "../controllers/skillEndorsementController.js";
-import { requireAuth } from "../middlewares/requireAuth.js";
+import requireAuth from "../middleware/userAuth.js";
 
 const router = express.Router();
 

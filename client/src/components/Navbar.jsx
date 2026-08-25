@@ -441,6 +441,12 @@ const Navbar = () => {
       permission: { resource: "meetings", action: "view" },
     },
     {
+      label: "Org Timeline",
+      href: "/timeline",
+      icon: History,
+      permission: { resource: "meetings", action: "view" },
+    },
+    {
       label: t("navbar.tasks"),
       href: "/tasks",
       icon: CheckSquare,
