@@ -52,6 +52,7 @@ export const buildDuplicateScheduleState = (duplicateData = {}) => ({
     syncToCalendar: true,
     reminderEnabled: duplicateData.reminderEnabled || false,
     reminderMinutesBefore: duplicateData.reminderMinutesBefore || 30,
+    tags: duplicateData.tags || [],
   },
   participants: (duplicateData.participants || []).map(
     (participant, index) => ({
@@ -90,6 +91,7 @@ export const useScheduleMeeting = ({
     reminderMinutesBefore: 30,
     recurrencePattern: "none",
     endDate: "",
+    tags: [],
   });
   const [participants, setParticipants] = useState([]);
   const [newParticipant, setNewParticipant] = useState({ name: "", email: "" });
@@ -497,10 +499,18 @@ export const useScheduleMeeting = ({
 
     setLoading(true);
     try {
+      const selectedTags =
+        Array.isArray(scheduleData.tags) && scheduleData.tags.length > 0
+          ? scheduleData.tags
+          : duplicateMetadata.tags || [];
+
       const payload = {
         ...scheduleData,
         participants,
-        tags: duplicateMetadata.tags,
+        tags: selectedTags,
+        metadata: {
+          tags: selectedTags,
+        },
         policyDetails: duplicateMetadata.policyDetails,
         recordingType: duplicateMetadata.recordingType,
         agendaItems: normalizeAgendaItems(agendaItems),
