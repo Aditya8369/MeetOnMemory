@@ -59,6 +59,7 @@ import ExportDialog from "../components/export/ExportDialog";
 import RetentionQuizSection from "../components/meetings/RetentionQuizSection";
 import ResourceConflictsPanel from "../components/meeting-details/ResourceConflictsPanel";
 import SkillEndorsementModal from "../components/meetings/SkillEndorsementModal";
+import DebriefQAPanel from "../components/meetings/DebriefQAPanel";
 
 const MeetingDetails = () => {
   const { id } = useParams();
@@ -85,6 +86,28 @@ const MeetingDetails = () => {
       p.user?.toString() === dbUserId || p.user?._id?.toString() === dbUserId,
   );
   const userRole = participant?.role || null;
+
+  const handleCitationClick = (citation) => {
+    if (citation.type === "transcript" && citation.timestamp !== null) {
+      const event = new CustomEvent("seekToTimestamp", {
+        detail: citation.timestamp,
+      });
+      window.dispatchEvent(event);
+      const transcriptEl = document.querySelector(
+        `[data-start-time="${citation.timestamp}"]`,
+      );
+      if (transcriptEl) {
+        transcriptEl.scrollIntoView({ behavior: "smooth", block: "center" });
+      }
+    } else if (citation.type === "decision") {
+      const decisionEl = document.querySelector(
+        `[data-decision-id="${citation.refId}"]`,
+      );
+      if (decisionEl) {
+        decisionEl.scrollIntoView({ behavior: "smooth", block: "center" });
+      }
+    }
+  };
 
   const handleGenerateBriefing = async () => {
     setBriefingStatus("generating");
@@ -488,7 +511,17 @@ const MeetingDetails = () => {
             />
           </div>
 
-          <MeetingTranscript meeting={meeting} />
+          <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
+            <div className="xl:col-span-2">
+              <MeetingTranscript meeting={meeting} />
+            </div>
+            <div className="xl:col-span-1 h-[600px]">
+              <DebriefQAPanel
+                meetingId={meeting._id}
+                onCitationClick={handleCitationClick}
+              />
+            </div>
+          </div>
           <div className="mt-6 mb-6">
             <TopicSummary
               meetingId={meeting._id}
