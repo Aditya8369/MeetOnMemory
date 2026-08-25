@@ -1,4 +1,10 @@
-import React, { useEffect, useState, useCallback, useContext } from "react";
+import React, {
+  useEffect,
+  useState,
+  useCallback,
+  useContext,
+  useRef,
+} from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import Navbar from "../components/Navbar.jsx";
 import api from "../services/apiClient.js";
@@ -21,6 +27,7 @@ import {
 import { toast } from "react-toastify";
 import MeetingSentimentChart from "../components/MeetingSentimentChart";
 import SpeakerAttribution from "../components/meeting-details/SpeakerAttribution";
+import TranscriptTimelineScrubber from "../components/meeting-details/TranscriptTimelineScrubber";
 import AppContent from "../context/AppContent.js";
 
 const HighlightedText = ({ text, query }) => {
@@ -50,6 +57,8 @@ const TranscriptViewer = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [searchResults, setSearchResults] = useState([]);
   const [highlightedSegment, setHighlightedSegment] = useState(null);
+  const [playbackTime, setPlaybackTime] = useState(0);
+  const mediaSeekRef = useRef(null);
 
   const { userData } = useContext(AppContent) || {};
   const [editingSpeakerIndex, setEditingSpeakerIndex] = useState(null);
@@ -338,12 +347,16 @@ const TranscriptViewer = () => {
     return `${mins.toString().padStart(2, "0")}:${secs.toString().padStart(2, "0")}`;
   };
 
-  const scrollToSegment = (index) => {
+  const scrollToSegment = (index, { seek = false } = {}) => {
+    if (index == null || index < 0) return;
     setHighlightedSegment(index);
     const element = document.getElementById(`segment-${index}`);
     if (element) {
       element.scrollIntoView({ behavior: "smooth", block: "center" });
       setTimeout(() => setHighlightedSegment(null), 3000);
+    }
+    if (seek && transcript?.segments?.[index]) {
+      mediaSeekRef.current?.(transcript.segments[index].startTime || 0);
     }
   };
 
@@ -389,6 +402,17 @@ const TranscriptViewer = () => {
   }
 
   const meeting = transcript.meeting;
+
+  const activePlaybackSegment = (() => {
+    const segs = transcript.segments || [];
+    if (!segs.length) return null;
+    const idx = segs.findIndex((s) => {
+      const start = s.startTime || 0;
+      const end = s.endTime ?? start + 0.25;
+      return playbackTime >= start && playbackTime < end;
+    });
+    return idx >= 0 ? idx : null;
+  })();
 
   const canEdit =
     userData &&
@@ -547,6 +571,15 @@ const TranscriptViewer = () => {
               onMappingChange={fetchTranscript}
             />
           </div>
+
+          <TranscriptTimelineScrubber
+            meetingId={meetingId}
+            meeting={meeting}
+            transcript={transcript}
+            onCurrentTimeChange={setPlaybackTime}
+            seekRef={mediaSeekRef}
+          />
+
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             {/* Transcript Content */}
             <div className="lg:col-span-2 space-y-4">
@@ -602,12 +635,28 @@ const TranscriptViewer = () => {
                   <div
                     key={index}
                     id={`segment-${index}`}
+                    role={editingSegmentIndex === index ? undefined : "button"}
+                    tabIndex={editingSegmentIndex === index ? undefined : 0}
+                    onClick={() => {
+                      if (editingSegmentIndex === index) return;
+                      scrollToSegment(index, { seek: true });
+                    }}
+                    onKeyDown={(e) => {
+                      if (editingSegmentIndex === index) return;
+                      if (e.key === "Enter" || e.key === " ") {
+                        e.preventDefault();
+                        scrollToSegment(index, { seek: true });
+                      }
+                    }}
                     className={`bg-white dark:bg-slate-800 rounded-lg p-4 border ${
                       editingSegmentIndex === index
                         ? "border-indigo-500 ring-2 ring-indigo-200 dark:ring-indigo-800"
-                        : highlightedSegment === index
-                          ? "border-indigo-500 ring-2 ring-indigo-200 dark:ring-indigo-800"
-                          : "border-gray-200 dark:border-gray-700"
+                        : `cursor-pointer ${
+                            highlightedSegment === index ||
+                            activePlaybackSegment === index
+                              ? "border-indigo-500 ring-2 ring-indigo-200 dark:ring-indigo-800 bg-indigo-50/40 dark:bg-indigo-950/20"
+                              : "border-gray-200 dark:border-gray-700"
+                          }`
                     } transition-all`}
                   >
                     {editingSegmentIndex === index ? (
@@ -762,7 +811,8 @@ const TranscriptViewer = () => {
                               </div>
                             ) : (
                               <span
-                                onClick={() => {
+                                onClick={(e) => {
+                                  e.stopPropagation();
                                   if (canEdit) {
                                     setEditingSpeakerIndex(index);
                                     setNewSpeakerName(segment.speaker);
@@ -804,7 +854,10 @@ const TranscriptViewer = () => {
                           {canEdit && (
                             <button
                               type="button"
-                              onClick={() => startEditSegment(index, segment)}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                startEditSegment(index, segment);
+                              }}
                               className="px-2 py-1 hover:bg-gray-100 dark:hover:bg-slate-700 rounded text-gray-500 hover:text-indigo-600 dark:hover:text-indigo-400 text-xs flex items-center gap-1 transition-colors"
                               title="Edit segment text and timestamps"
                               aria-label="Edit segment"

@@ -5,7 +5,6 @@ import {
   recordChunk,
   updateSessionStatus,
   getRecordingSessionMetrics,
-  getStuckSessions,
   resolveStuckSession,
 } from "../controllers/recordingSessionController.js";
 import Meeting from "../models/meetingModel.js";

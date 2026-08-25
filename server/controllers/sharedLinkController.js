@@ -511,7 +511,8 @@ export const getPublicResource = async (req, res) => {
 
       const meeting = await Meeting.findById(link.resourceId)
         .select(
-          "title description date time location participants summary structuredMoM transcript organization",
+          "title description date time location venue venueCoordinates " +
+            "participants summary structuredMoM transcript organization",
         )
         .lean();
 

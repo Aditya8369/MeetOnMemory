@@ -35,6 +35,7 @@ import ReactionSummaryCard from "../components/meeting-details/ReactionSummaryCa
 import { useUser } from "@clerk/clerk-react";
 import Navbar from "../components/Navbar.jsx";
 import BriefingBanner from "../components/meeting-details/BriefingBanner";
+import CompareButton from "../components/meeting-details/CompareButton";
 import AgendaBuilder from "../components/meetings/AgendaBuilder";
 import IcebreakerSection from "../components/meetings/IcebreakerSection";
 import { getBriefing } from "../services/briefingApi";
@@ -59,6 +60,8 @@ import ExportDialog from "../components/export/ExportDialog";
 import RetentionQuizSection from "../components/meetings/RetentionQuizSection";
 import ResourceConflictsPanel from "../components/meeting-details/ResourceConflictsPanel";
 import SkillEndorsementModal from "../components/meetings/SkillEndorsementModal";
+import DebriefQAPanel from "../components/meetings/DebriefQAPanel";
+import DelegationPanel from "../components/meetings/DelegationPanel";
 
 const MeetingDetails = () => {
   const { id } = useParams();
@@ -85,6 +88,39 @@ const MeetingDetails = () => {
       p.user?.toString() === dbUserId || p.user?._id?.toString() === dbUserId,
   );
   const userRole = participant?.role || null;
+  const isOrganizer =
+    userData?.role === "admin" ||
+    userData?.role === "owner" ||
+    userRole === "host" ||
+    userRole === "organizer" ||
+    (dbUserId &&
+      (meeting?.uploadedBy?._id?.toString() === dbUserId ||
+        meeting?.uploadedBy?.toString() === dbUserId)) ||
+    (userData?._id &&
+      (meeting?.uploadedBy?._id?.toString() === userData._id.toString() ||
+        meeting?.uploadedBy?.toString() === userData._id.toString()));
+
+  const handleCitationClick = (citation) => {
+    if (citation.type === "transcript" && citation.timestamp !== null) {
+      const event = new CustomEvent("seekToTimestamp", {
+        detail: citation.timestamp,
+      });
+      window.dispatchEvent(event);
+      const transcriptEl = document.querySelector(
+        `[data-start-time="${citation.timestamp}"]`,
+      );
+      if (transcriptEl) {
+        transcriptEl.scrollIntoView({ behavior: "smooth", block: "center" });
+      }
+    } else if (citation.type === "decision") {
+      const decisionEl = document.querySelector(
+        `[data-decision-id="${citation.refId}"]`,
+      );
+      if (decisionEl) {
+        decisionEl.scrollIntoView({ behavior: "smooth", block: "center" });
+      }
+    }
+  };
 
   const handleGenerateBriefing = async () => {
     setBriefingStatus("generating");
@@ -311,6 +347,7 @@ const MeetingDetails = () => {
           )}
 
           <div className="mb-4 flex justify-end gap-3">
+            <CompareButton meetingId={meeting._id} />
             <button
               onClick={() => setIsExportDialogOpen(true)}
               className="flex items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg font-medium shadow-sm transition-colors text-sm"
@@ -488,7 +525,17 @@ const MeetingDetails = () => {
             />
           </div>
 
-          <MeetingTranscript meeting={meeting} />
+          <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
+            <div className="xl:col-span-2">
+              <MeetingTranscript meeting={meeting} />
+            </div>
+            <div className="xl:col-span-1 h-[600px]">
+              <DebriefQAPanel
+                meetingId={meeting._id}
+                onCitationClick={handleCitationClick}
+              />
+            </div>
+          </div>
           <div className="mt-6 mb-6">
             <TopicSummary
               meetingId={meeting._id}
@@ -649,6 +696,12 @@ const MeetingDetails = () => {
           )}
           {currentUser?.publicMetadata?.dbUserId === meeting.uploadedBy && (
             <GuestAccessManager meetingId={meeting._id} />
+          )}
+          {isOrganizer && (
+            <DelegationPanel
+              meetingId={meeting._id}
+              participants={meeting.participants}
+            />
           )}
           <MeetingActions
             meeting={meeting}

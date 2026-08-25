@@ -27,7 +27,8 @@ export default function MeetingHeader({
   toggleTranscription,
   userRole: propUserRole,
 }) {
-  const { userData } = useContext(AppContent);
+  const appContext = useContext(AppContent) || {};
+  const userData = appContext.userData;
   const userRole = propUserRole || userData?.role || "member";
   const isViewerOrGuest = userRole === "viewer" || userRole === "guest";
   const formatTime = (seconds) => {

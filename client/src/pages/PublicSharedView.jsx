@@ -15,6 +15,7 @@ import {
 } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
+import VenueMapPreview from "../components/meetings/VenueMapPreview";
 
 const PublicSharedView = () => {
   const { hash } = useParams();
@@ -284,6 +285,15 @@ const PublicSharedView = () => {
 
               {activeTab === "overview" && (
                 <>
+                  {(data.venue || data.venueCoordinates) && (
+                    <div className="mb-6">
+                      <VenueMapPreview
+                        venue={data.venue || data.location}
+                        coordinates={data.venueCoordinates}
+                      />
+                    </div>
+                  )}
+
                   {data.summary && (
                     <div className="mt-8">
                       <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-4">

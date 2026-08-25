@@ -1,36 +1,49 @@
-import { describe, it, expect, beforeEach, vi as jest } from "vitest";
+import { describe, it, expect, beforeEach, vi } from "vitest";
 
-jest.mock("../models/transcriptModel.js", () => ({
+const jest = vi;
+
+vi.mock("../models/transcriptModel.js", () => {
+  const MockTranscript = vi.fn().mockImplementation(function (doc) {
+    Object.assign(this, doc);
+    this.save = vi.fn().mockResolvedValue(this);
+  });
+  MockTranscript.findById = vi.fn();
+  MockTranscript.findOne = vi.fn();
+  return { default: MockTranscript };
+});
+
+vi.mock("../models/meetingModel.js", () => ({
   default: {
-    findById: jest.fn(),
-    findOne: jest.fn(),
+    findById: vi.fn(),
+    findOne: vi.fn(),
   },
 }));
 
-jest.mock("../models/auditLogModel.js", () => ({
+vi.mock("../models/auditLogModel.js", () => ({
   default: {
-    create: jest.fn(),
+    create: vi.fn(),
   },
 }));
 
-jest.mock("../utils/embeddingUtils.js", () => ({
-  indexMeeting: jest.fn().mockResolvedValue(),
-  indexTranscript: jest.fn().mockResolvedValue(),
-  searchVectorStore: jest.fn().mockResolvedValue(),
+vi.mock("../utils/embeddingUtils.js", () => ({
+  indexMeeting: vi.fn().mockResolvedValue(),
+  indexTranscript: vi.fn().mockResolvedValue(),
+  searchVectorStore: vi.fn().mockResolvedValue(),
 }));
 
-jest.mock("../utils/transcriptEmbeddingUtils.js", () => ({
-  indexTranscriptChunks: jest.fn().mockResolvedValue(),
+vi.mock("../utils/transcriptEmbeddingUtils.js", () => ({
+  indexTranscriptChunks: vi.fn().mockResolvedValue(),
 }));
 
-jest.mock("../utils/responseHandler.js", () => ({
-  sendSuccess: jest.fn(),
-  sendError: jest.fn(),
+vi.mock("../utils/responseHandler.js", () => ({
+  sendSuccess: vi.fn(),
+  sendError: vi.fn(),
 }));
 
-const { updateSpeakers, updateTranscriptSegment } =
+const { updateSpeakers, updateTranscriptSegment, persistCaptionSegments } =
   await import("../controllers/transcriptController.js");
 const Transcript = (await import("../models/transcriptModel.js")).default;
+const Meeting = (await import("../models/meetingModel.js")).default;
 const AuditLog = (await import("../models/auditLogModel.js")).default;
 const { sendSuccess, sendError } = await import("../utils/responseHandler.js");
 
@@ -396,6 +409,209 @@ describe("transcriptController - updateTranscriptSegment (#2251)", () => {
         segmentIndex: 0,
       }),
       "Transcript segment updated successfully",
+    );
+  });
+});
+
+describe("transcriptController - persistCaptionSegments", () => {
+  let req;
+  let res;
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+
+    req = {
+      params: { meetingId: "meeting_123" },
+      body: {
+        segments: [
+          {
+            text: "Hello everyone, welcome to the sync.",
+            speaker: "Alice",
+            startTime: 0,
+            endTime: 4,
+          },
+        ],
+      },
+      user: { id: "user_1", role: "user", organization: "org_1" },
+    };
+
+    res = {
+      status: jest.fn().mockReturnThis(),
+      json: jest.fn(),
+    };
+  });
+
+  it("should return 400 if meetingId is missing", async () => {
+    req.params.meetingId = "";
+
+    await persistCaptionSegments(req, res);
+
+    expect(sendError).toHaveBeenCalledWith(res, 400, "Meeting ID is required");
+  });
+
+  it("should return 404 if meeting is not found", async () => {
+    Meeting.findById.mockResolvedValue(null);
+
+    await persistCaptionSegments(req, res);
+
+    expect(Meeting.findById).toHaveBeenCalledWith("meeting_123");
+    expect(sendError).toHaveBeenCalledWith(res, 404, "Meeting not found");
+  });
+
+  it("should return 403 if user does not belong to the organization and is not owner", async () => {
+    Meeting.findById.mockResolvedValue({
+      _id: "meeting_123",
+      uploadedBy: "other_user",
+      organization: "other_org",
+    });
+
+    await persistCaptionSegments(req, res);
+
+    expect(sendError).toHaveBeenCalledWith(
+      res,
+      403,
+      "Forbidden: You don't have access to this meeting",
+    );
+  });
+
+  it("should return 400 if meeting is E2EE encrypted", async () => {
+    Meeting.findById.mockResolvedValue({
+      _id: "meeting_123",
+      uploadedBy: "user_1",
+      organization: "org_1",
+      isTranscriptEncrypted: true,
+    });
+
+    await persistCaptionSegments(req, res);
+
+    expect(sendError).toHaveBeenCalledWith(
+      res,
+      400,
+      expect.stringContaining("end-to-end encrypted"),
+    );
+  });
+
+  it("should return 400 if no caption segments are provided", async () => {
+    Meeting.findById.mockResolvedValue({
+      _id: "meeting_123",
+      uploadedBy: "user_1",
+      organization: "org_1",
+    });
+    req.body = { segments: [] };
+
+    await persistCaptionSegments(req, res);
+
+    expect(sendError).toHaveBeenCalledWith(
+      res,
+      400,
+      "No caption segments provided",
+    );
+  });
+
+  it("should create new transcript document and persist caption segments if transcript does not exist", async () => {
+    const mockMeeting = {
+      _id: "meeting_123",
+      uploadedBy: "user_1",
+      organization: "org_1",
+      transcript: "",
+      save: jest.fn().mockResolvedValue(true),
+    };
+    Meeting.findById.mockResolvedValue(mockMeeting);
+    Transcript.findOne.mockResolvedValue(null);
+
+    req.body = {
+      segments: [
+        {
+          text: "First caption chunk.",
+          speaker: "Bob",
+          startTime: 0,
+          endTime: 3,
+        },
+      ],
+    };
+
+    await persistCaptionSegments(req, res);
+
+    expect(mockMeeting.transcript).toBe("First caption chunk.");
+    expect(mockMeeting.save).toHaveBeenCalled();
+    expect(sendSuccess).toHaveBeenCalledWith(
+      res,
+      expect.objectContaining({
+        meetingId: "meeting_123",
+        addedCount: 1,
+        fullText: "First caption chunk.",
+      }),
+      "Caption segments persisted successfully",
+    );
+  });
+
+  it("should append caption segments to existing transcript and deduplicate duplicates", async () => {
+    const mockMeeting = {
+      _id: "meeting_123",
+      uploadedBy: "user_1",
+      organization: "org_1",
+      transcript: "Existing transcript.",
+      save: jest.fn().mockResolvedValue(true),
+    };
+    const mockTranscript = {
+      _id: "transcript_123",
+      meeting: "meeting_123",
+      segments: [
+        {
+          text: "Existing transcript.",
+          speaker: "Alice",
+          startTime: 0,
+          endTime: 5,
+        },
+      ],
+      fullText: "Existing transcript.",
+      duration: 5,
+      save: jest.fn().mockResolvedValue(true),
+    };
+
+    Meeting.findById.mockResolvedValue(mockMeeting);
+    Transcript.findOne.mockResolvedValue(mockTranscript);
+
+    req.body = {
+      segments: [
+        // Duplicate
+        {
+          text: "Existing transcript.",
+          speaker: "Alice",
+          startTime: 0,
+          endTime: 5,
+        },
+        // New segment
+        {
+          text: "New live caption.",
+          speaker: "Bob",
+          startTime: 5,
+          endTime: 10,
+        },
+      ],
+    };
+
+    await persistCaptionSegments(req, res);
+
+    expect(mockTranscript.segments).toHaveLength(2);
+    expect(mockTranscript.segments[1].text).toBe("New live caption.");
+    expect(mockTranscript.fullText).toBe(
+      "Existing transcript. New live caption.",
+    );
+    expect(mockTranscript.duration).toBe(10);
+    expect(mockMeeting.transcript).toBe(
+      "Existing transcript. New live caption.",
+    );
+    expect(mockTranscript.save).toHaveBeenCalled();
+    expect(mockMeeting.save).toHaveBeenCalled();
+    expect(sendSuccess).toHaveBeenCalledWith(
+      res,
+      expect.objectContaining({
+        addedCount: 1,
+        totalSegments: 2,
+        fullText: "Existing transcript. New live caption.",
+      }),
+      "Caption segments persisted successfully",
     );
   });
 });

@@ -123,6 +123,8 @@ export const buildMeetingBasePayload = (meeting) => ({
   date: meeting.date,
   time: meeting.time,
   location: meeting.location,
+  venue: meeting.venue || "",
+  venueCoordinates: meeting.venueCoordinates || null,
   participants: meeting.participants
     ? Array(meeting.participants.length).fill({})
     : [],

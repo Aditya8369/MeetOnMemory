@@ -7,7 +7,7 @@ import {
   getStuckSessions,
   resolveStuckSession,
 } from "../controllers/recordingSessionController.js";
-import { protect } from "../middleware/authMiddleware.js";
+import protect from "../middleware/userAuth.js";
 
 const router = express.Router();
 

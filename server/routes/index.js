@@ -19,6 +19,7 @@ import knowledgeGraphRoutes from "./knowledgeGraphRoutes.js";
 import policyComplianceRoutes from "./policyComplianceRoutes.js";
 import sessionRoutes from "./sessionRoutes.js";
 import transcriptRoutes from "./transcriptRoutes.js";
+import transcriptChapterRoutes from "./transcriptChapterRoutes.js";
 import customFieldRoutes from "./customFieldRoutes.js";
 import sharedLinkRoutes from "./sharedLinkRoutes.js";
 import meetingTemplateRoutes from "./meetingTemplateRoutes.js";
@@ -77,6 +78,7 @@ import favoriteRoutes from "./favoriteRoutes.js";
 import testimonialRoutes, {
   adminTestimonialRouter,
 } from "./testimonialRoutes.js";
+import absenteeCatchUpRoutes from "./absenteeCatchUpRoutes.js";
 
 import calendarRoutes from "./calendarRoutes.js";
 import assistantRoutes from "./assistantRoutes.js";
@@ -143,6 +145,7 @@ router.use("/api/sessions", sessionRoutes);
 router.use("/api/recording-sessions", recordingSessionRoutes);
 router.use("/api/assistant", assistantRoutes);
 router.use("/api/transcripts", transcriptRoutes);
+router.use("/api/meetings/:meetingId/chapters", transcriptChapterRoutes);
 router.use("/api/shared-links", sharedLinkRoutes);
 router.use("/api/templates", meetingTemplateRoutes);
 router.use("/api/bookmarks", bookmarkRoutes);
@@ -206,6 +209,9 @@ router.use("/api/sentiment-timeline", sentimentTimelineRoutes);
 router.use("/api/rsvps", meetingRsvpRoutes);
 router.use("/api/testimonials", testimonialRoutes);
 router.use("/api/admin/testimonials", adminTestimonialRouter);
+router.use("/api/absentee-catchup", absenteeCatchUpRoutes);
+import debriefQARoutes from "./debriefQARoutes.js";
+router.use("/api/debrief", debriefQARoutes);
 import adminJobsRoutes from "./adminJobsRoutes.js";
 router.use("/api/admin/jobs", adminJobsRoutes);
 import adminReindexRoutes from "./adminReindexRoutes.js";

@@ -71,6 +71,7 @@ import {
   startActionItemSlaJob,
   stopActionItemSlaJob,
 } from "./jobs/actionItemSlaJob.js";
+import { startAbsenteeCatchUpJob } from "./jobs/absenteeCatchUpJob.js";
 import { createClient } from "redis"; // eslint-disable-line no-unused-vars
 import {
   initDataExportWorker, // eslint-disable-line no-unused-vars
@@ -205,6 +206,9 @@ if (process.env.NODE_ENV !== "test") {
 
   // Start Action Item SLA background job
   startActionItemSlaJob();
+
+  // Start Absentee Catch-Up background job
+  startAbsenteeCatchUpJob();
 }
 
 // (AI, Data Export, and Webhook workers are initialized inside server.listen callback)

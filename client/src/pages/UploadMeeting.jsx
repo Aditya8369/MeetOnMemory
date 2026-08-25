@@ -16,6 +16,10 @@ import {
   CheckCircle2,
   Clock,
   Mic,
+  Pause,
+  Play,
+  RotateCcw,
+  RefreshCw,
 } from "lucide-react";
 import { io } from "socket.io-client";
 import Navbar from "../components/Navbar.jsx";
@@ -25,6 +29,8 @@ import { meetingApi } from "../services";
 import useMeetingUpload from "../hooks/useMeetingUpload";
 import Dropzone from "../components/meetings/Dropzone.jsx";
 import MeetingRecorder from "../components/meetings/MeetingRecorder.jsx";
+import DeviceSetupModal from "../components/meetings/DeviceSetupModal.jsx";
+import useDevicePermission from "../hooks/useDevicePermission";
 import TagAutocomplete from "../components/meetings/TagAutocomplete.jsx";
 import RecordingSessionAnalyticsPanel from "../components/analytics/RecordingSessionAnalyticsPanel.jsx";
 import { createClerkSocketOptions } from "../services/apiClient.js";
@@ -43,6 +49,11 @@ const UploadMeeting = () => {
     setFile,
     uploadProgress,
     isUploading,
+    isPaused,
+    isError,
+    uploadId,
+    totalChunks,
+    uploadedChunks,
     isDragging,
     transcript,
     meetingId,
@@ -54,8 +65,24 @@ const UploadMeeting = () => {
     handleFileChange,
     resetUpload,
     handleUpload,
+    pauseUpload,
+    checkInactivityOrRehydrate,
+    abortCurrentUpload,
     formatFileSize,
   } = useMeetingUpload();
+
+  const [rehydratedSession, setRehydratedSession] = useState(null);
+
+  useEffect(() => {
+    (async () => {
+      if (checkInactivityOrRehydrate) {
+        const session = await checkInactivityOrRehydrate();
+        if (session) {
+          setRehydratedSession(session);
+        }
+      }
+    })();
+  }, [checkInactivityOrRehydrate]);
 
   const [isSummarizing, setIsSummarizing] = useState(false);
   const [summary, setSummary] = useState("");
@@ -76,6 +103,47 @@ const UploadMeeting = () => {
   const [activeTab, setActiveTab] = useState("upload");
   const [liveTranscript, setLiveTranscript] = useState("");
   const [isRecordingActive, setIsRecordingActive] = useState(false);
+  const [showDeviceSetup, setShowDeviceSetup] = useState(false);
+  const [deviceStream, setDeviceStream] = useState(null);
+  const [autoStartRecording, setAutoStartRecording] = useState(false);
+  const [bypassDeviceSetup, setBypassDeviceSetup] = useState(false);
+  const permission = useDevicePermission();
+
+  const stopDeviceStream = () => {
+    deviceStream?.getTracks?.().forEach((track) => track.stop());
+    setDeviceStream(null);
+  };
+
+  const openRecordTab = () => {
+    setActiveTab("record");
+    setBypassDeviceSetup(false);
+    setShowDeviceSetup(true);
+  };
+
+  const handleDeviceReady = (stream) => {
+    permission.releaseStream();
+    setDeviceStream(stream);
+    setShowDeviceSetup(false);
+    setBypassDeviceSetup(false);
+    setAutoStartRecording(true);
+    setTimeout(() => setAutoStartRecording(false), 0);
+  };
+
+  const handleContinueWithoutDevices = () => {
+    permission.releaseStream();
+    stopDeviceStream();
+    setBypassDeviceSetup(true);
+    setShowDeviceSetup(false);
+    setAutoStartRecording(true);
+    setTimeout(() => setAutoStartRecording(false), 0);
+  };
+
+  useEffect(
+    () => () => {
+      deviceStream?.getTracks?.().forEach((track) => track.stop());
+    },
+    [deviceStream],
+  );
 
   // Warn on browser unload if recording or uploading in progress
   useEffect(() => {
@@ -314,6 +382,50 @@ const UploadMeeting = () => {
             </div>
           )}
 
+          {/* Rehydrated Session Banner */}
+          {rehydratedSession && (
+            <div className="mb-6 p-4 bg-amber-50 dark:bg-amber-900/30 border border-amber-200 dark:border-amber-700 rounded-xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-sm">
+              <div>
+                <h4 className="text-sm font-bold text-amber-800 dark:text-amber-200 flex items-center gap-1.5">
+                  <Clock className="w-4 h-4 text-amber-600" />
+                  Unfinished Resumable Upload Session Found
+                </h4>
+                <p className="text-xs text-amber-700 dark:text-amber-300 mt-1">
+                  File: <strong>{rehydratedSession.fileName}</strong> (
+                  {rehydratedSession.uploadedChunks?.length || 0} of{" "}
+                  {rehydratedSession.totalChunks} chunks stored on server)
+                </p>
+              </div>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => {
+                    setProcessingStep(1);
+                    handleUpload(
+                      rehydratedSession.metadata?.title || title,
+                      setTitle,
+                      rehydratedSession.metadata?.tags || tags,
+                      rehydratedSession.metadata?.date || meetingDate,
+                      { existingUploadId: rehydratedSession.uploadId },
+                    );
+                    setRehydratedSession(null);
+                  }}
+                  className="px-3 py-1.5 text-xs font-bold bg-amber-600 hover:bg-amber-700 text-white rounded-lg transition-colors flex items-center gap-1 cursor-pointer"
+                >
+                  <Play className="w-3.5 h-3.5" /> Resume Upload
+                </button>
+                <button
+                  onClick={() => {
+                    abortCurrentUpload(rehydratedSession.uploadId);
+                    setRehydratedSession(null);
+                  }}
+                  className="px-3 py-1.5 text-xs font-bold text-amber-800 dark:text-amber-300 hover:bg-amber-100 dark:hover:bg-amber-800/40 rounded-lg transition-colors cursor-pointer"
+                >
+                  Discard
+                </button>
+              </div>
+            </div>
+          )}
+
           {/* Toggle Tabs */}
           <div className="flex justify-center mb-8 fade-in-up stagger-1">
             <div className="inline-flex bg-gray-100 dark:bg-gray-800 p-1 rounded-xl">
@@ -328,7 +440,7 @@ const UploadMeeting = () => {
                 Upload File
               </button>
               <button
-                onClick={() => setActiveTab("record")}
+                onClick={openRecordTab}
                 className={`px-6 py-2.5 rounded-lg text-sm font-bold transition-all ${
                   activeTab === "record"
                     ? "bg-white dark:bg-gray-700 text-red-600 dark:text-red-400 shadow-sm"
@@ -349,6 +461,16 @@ const UploadMeeting = () => {
               </button>
             </div>
           </div>
+
+          {showDeviceSetup && activeTab === "record" && (
+            <div className="fixed inset-0 z-[100] overflow-y-auto">
+              <DeviceSetupModal
+                permission={permission}
+                onJoin={handleDeviceReady}
+                onContinueWithout={handleContinueWithoutDevices}
+              />
+            </div>
+          )}
 
           {/* Active Tab Content */}
           {activeTab === "analytics" ? (
@@ -447,6 +569,16 @@ const UploadMeeting = () => {
                         title={title}
                         date={meetingDate}
                         tags={tags}
+                        deviceStream={deviceStream}
+                        autoStart={autoStartRecording}
+                        onDeviceSetupNeeded={
+                          bypassDeviceSetup
+                            ? undefined
+                            : () => {
+                                setBypassDeviceSetup(false);
+                                setShowDeviceSetup(true);
+                              }
+                        }
                       />
                     </>
                   )}
@@ -457,30 +589,57 @@ const UploadMeeting = () => {
               {activeTab === "upload" && (
                 <div className="mt-8 pt-6 border-t border-gray-100 dark:border-gray-700 flex flex-col sm:flex-row items-center justify-between gap-4">
                   <div className="flex items-center gap-3 w-full sm:w-auto justify-start order-2 sm:order-1">
-                    <button
-                      onClick={() => {
-                        setProcessingStep(1);
-                        handleUpload(title, setTitle, tags);
-                      }}
-                      disabled={isUploading || !file}
-                      className={`w-full sm:w-auto px-6 py-3 rounded-xl font-bold shadow-lg flex items-center justify-center gap-2 transition-all duration-200 cursor-pointer ${
-                        isUploading || !file
-                          ? "bg-gray-100 dark:bg-gray-700 text-gray-400 dark:text-gray-500 cursor-not-allowed shadow-none border border-gray-200 dark:border-gray-600"
-                          : "bg-blue-600 text-white hover:bg-blue-700 shadow-blue-500/10 hover:shadow-blue-500/25 hover:-translate-y-0.5 active:translate-y-0"
-                      }`}
-                    >
-                      {isUploading ? (
-                        <>
-                          <Loader2 className="w-4 h-4 animate-spin text-white" />
-                          <span>Uploading ({uploadProgress}%)</span>
-                        </>
-                      ) : (
-                        <>
-                          <UploadCloud className="w-4 h-4" />
-                          <span>Upload & Transcribe</span>
-                        </>
-                      )}
-                    </button>
+                    {isUploading ? (
+                      <button
+                        onClick={() => pauseUpload()}
+                        className="w-full sm:w-auto px-5 py-3 rounded-xl font-bold bg-amber-500 hover:bg-amber-600 text-white shadow-md flex items-center justify-center gap-2 transition-all cursor-pointer"
+                      >
+                        <Pause className="w-4 h-4" />
+                        <span>Pause Upload ({uploadProgress}%)</span>
+                      </button>
+                    ) : isPaused ? (
+                      <button
+                        onClick={() => {
+                          setProcessingStep(1);
+                          handleUpload(title, setTitle, tags, meetingDate, {
+                            existingUploadId: uploadId,
+                          });
+                        }}
+                        className="w-full sm:w-auto px-5 py-3 rounded-xl font-bold bg-blue-600 hover:bg-blue-700 text-white shadow-md flex items-center justify-center gap-2 transition-all cursor-pointer"
+                      >
+                        <Play className="w-4 h-4" />
+                        <span>Resume Upload ({uploadProgress}%)</span>
+                      </button>
+                    ) : isError ? (
+                      <button
+                        onClick={() => {
+                          setProcessingStep(1);
+                          handleUpload(title, setTitle, tags, meetingDate, {
+                            existingUploadId: uploadId,
+                          });
+                        }}
+                        className="w-full sm:w-auto px-5 py-3 rounded-xl font-bold bg-red-600 hover:bg-red-700 text-white shadow-md flex items-center justify-center gap-2 transition-all cursor-pointer"
+                      >
+                        <RotateCcw className="w-4 h-4" />
+                        <span>Retry Failed Chunk</span>
+                      </button>
+                    ) : (
+                      <button
+                        onClick={() => {
+                          setProcessingStep(1);
+                          handleUpload(title, setTitle, tags, meetingDate);
+                        }}
+                        disabled={!file}
+                        className={`w-full sm:w-auto px-6 py-3 rounded-xl font-bold shadow-lg flex items-center justify-center gap-2 transition-all duration-200 cursor-pointer ${
+                          !file
+                            ? "bg-gray-100 dark:bg-gray-700 text-gray-400 dark:text-gray-500 cursor-not-allowed shadow-none border border-gray-200 dark:border-gray-600"
+                            : "bg-blue-600 text-white hover:bg-blue-700 shadow-blue-500/10 hover:shadow-blue-500/25 hover:-translate-y-0.5 active:translate-y-0"
+                        }`}
+                      >
+                        <UploadCloud className="w-4 h-4" />
+                        <span>Upload & Transcribe (Resumable)</span>
+                      </button>
+                    )}
 
                     <button
                       onClick={() => {
@@ -496,10 +655,17 @@ const UploadMeeting = () => {
 
                   <div className="text-sm font-semibold text-gray-500 dark:text-gray-400 flex items-center gap-2 order-1 sm:order-2 w-full sm:w-auto justify-center sm:justify-start">
                     {file ? (
-                      <span className="flex items-center gap-1 text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-900/30 border border-emerald-100 dark:border-emerald-800 px-3 py-1 rounded-full text-xs font-bold animate-pulse">
-                        <CheckCircle2 className="w-3.5 h-3.5" /> Ready to
-                        transcribe
-                      </span>
+                      <div className="flex items-center gap-2">
+                        <span className="flex items-center gap-1 text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-900/30 border border-emerald-100 dark:border-emerald-800 px-3 py-1 rounded-full text-xs font-bold animate-pulse">
+                          <CheckCircle2 className="w-3.5 h-3.5" /> Ready for
+                          resumable chunk upload
+                        </span>
+                        {totalChunks > 0 && (
+                          <span className="text-xs text-gray-500 dark:text-gray-400 font-medium">
+                            ({uploadedChunks?.length || 0}/{totalChunks} chunks)
+                          </span>
+                        )}
+                      </div>
                     ) : (
                       <span className="text-gray-400 text-xs font-medium">
                         No file selected

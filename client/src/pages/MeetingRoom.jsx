@@ -35,6 +35,8 @@ import useLiveTranscription from "../hooks/useLiveTranscription";
 import useReactions from "../hooks/useReactions.js";
 import ReactionBar from "../components/meetings/ReactionBar.jsx";
 import ReactionOverlay from "../components/meetings/ReactionOverlay.jsx";
+import usePulseCheck from "../hooks/usePulseCheck";
+import PulseCheckWidget from "../components/meeting-details/PulseCheckWidget.jsx";
 import {
   getMeetingVideoGridClass,
   MEETING_VIDEO_TILE_CLASS,
@@ -147,6 +149,10 @@ const MeetingRoom = () => {
   const [captions, setCaptions] = useState([]);
   const [transcriptSegments, setTranscriptSegments] = useState([]);
   const [transcriptionEnabled, setTranscriptionEnabled] = useState(false);
+  const [captionSaveStatus, setCaptionSaveStatus] = useState("idle"); // idle | saving | saved | error
+  const [captionErrorMessage, setCaptionErrorMessage] = useState("");
+  const pendingCaptionsRef = useRef([]);
+  const isPersistingCaptionsRef = useRef(false);
 
   // Device permission setup
   const [deviceSetupDone, setDeviceSetupDone] = useState(false);
@@ -169,6 +175,14 @@ const MeetingRoom = () => {
 
   // Reactions
   const { reactions, sendReaction, onCooldown } = useReactions(roomId, socket);
+
+  // Pulse Check
+  const isHost =
+    meeting?.uploadedBy === userId ||
+    userRole === "facilitator" ||
+    userRole === "host";
+  const { sendSignal: sendPulseSignal, onCooldown: pulseCooldown } =
+    usePulseCheck(roomId, socketRef?.current || socket, isHost);
 
   // Local timer tick for smooth UI updates
   useEffect(() => {
@@ -210,6 +224,77 @@ const MeetingRoom = () => {
     };
     fetchMeetingData();
   }, [roomId, userId]);
+
+  const persistCaptionBatch = useCallback(
+    async (forcedSegments = null) => {
+      const segmentsToSave = forcedSegments || [...pendingCaptionsRef.current];
+      if (
+        !roomId ||
+        segmentsToSave.length === 0 ||
+        isPersistingCaptionsRef.current
+      )
+        return;
+
+      isPersistingCaptionsRef.current = true;
+      setCaptionSaveStatus("saving");
+      setCaptionErrorMessage("");
+
+      try {
+        if (meeting?.isTranscriptEncrypted) {
+          setCaptionSaveStatus("saved");
+          if (!forcedSegments) {
+            pendingCaptionsRef.current = [];
+          }
+          isPersistingCaptionsRef.current = false;
+          return;
+        }
+
+        await axios.post(`/api/meetings/${roomId}/transcript/captions`, {
+          segments: segmentsToSave,
+        });
+
+        if (!forcedSegments) {
+          pendingCaptionsRef.current = pendingCaptionsRef.current.filter(
+            (seg) => !segmentsToSave.includes(seg),
+          );
+        }
+        setCaptionSaveStatus("saved");
+      } catch (err) {
+        console.error("Failed to persist live captions:", err);
+        setCaptionSaveStatus("error");
+        const msg =
+          err.response?.data?.message ||
+          err.message ||
+          "Failed to save captions";
+        setCaptionErrorMessage(msg);
+        toast.error(`Caption save failed: ${msg}`);
+      } finally {
+        isPersistingCaptionsRef.current = false;
+      }
+    },
+    [roomId, meeting?.isTranscriptEncrypted],
+  );
+
+  const handleRetrySaveCaptions = useCallback(() => {
+    if (pendingCaptionsRef.current.length > 0) {
+      persistCaptionBatch();
+    } else if (transcriptSegments.length > 0) {
+      persistCaptionBatch(transcriptSegments);
+    }
+  }, [persistCaptionBatch, transcriptSegments]);
+
+  // Periodic persistence of queued caption segments
+  useEffect(() => {
+    if (!joined || meetingEnded) return;
+
+    const interval = setInterval(() => {
+      if (pendingCaptionsRef.current.length > 0) {
+        persistCaptionBatch();
+      }
+    }, 10000);
+
+    return () => clearInterval(interval);
+  }, [joined, meetingEnded, persistCaptionBatch]);
 
   const setupSocketListeners = (activeSocket) => {
     const userInfo = localUserInfoRef.current;
@@ -326,6 +411,18 @@ const MeetingRoom = () => {
         if (exists) return prev;
         return [...prev, segment];
       });
+
+      if (segment?.text) {
+        pendingCaptionsRef.current.push({
+          text: segment.text,
+          speaker: segment.speaker || "Participant",
+          startTime: segment.startTime ?? 0,
+          endTime: segment.endTime ?? (segment.startTime ?? 0) + 5,
+          confidence: segment.confidence ?? 1.0,
+          isFinal: true,
+          timestamp: data.timestamp,
+        });
+      }
     });
 
     activeSocket.on("transcription-started", () => {
@@ -468,8 +565,16 @@ const MeetingRoom = () => {
     return peer;
   };
 
-  const leaveMeeting = useCallback(() => {
+  const leaveMeeting = useCallback(async () => {
     setMeetingEnded(true);
+
+    if (pendingCaptionsRef.current.length > 0) {
+      try {
+        await persistCaptionBatch();
+      } catch (err) {
+        console.warn("Error persisting captions on meeting exit:", err);
+      }
+    }
 
     streamRef.current?.getTracks().forEach((track) => track.stop());
     screenTrackRef.current?.getTracks().forEach((track) => track.stop());
@@ -483,7 +588,7 @@ const MeetingRoom = () => {
       setMeetingEnded(false);
       navigate("/dashboard");
     }, 4000);
-  }, [navigate, socketRef, streamRef]);
+  }, [navigate, socketRef, streamRef, persistCaptionBatch]);
 
   // Cleanly handle logout during an active meeting
   useEffect(() => {
@@ -868,7 +973,18 @@ const MeetingRoom = () => {
             />
           </div>
 
-          <LiveCaptions showCaptions={showCaptions} captions={captions} />
+          <LiveCaptions
+            showCaptions={showCaptions}
+            captions={captions}
+            saveStatus={captionSaveStatus}
+            onRetry={handleRetrySaveCaptions}
+            errorMessage={captionErrorMessage}
+          />
+
+          <PulseCheckWidget
+            onSendSignal={sendPulseSignal}
+            onCooldown={pulseCooldown}
+          />
 
           <ReactionBar
             sendReaction={sendReaction}
