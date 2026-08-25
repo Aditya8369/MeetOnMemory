@@ -52,6 +52,7 @@ const vitestOwnedSources = new Set([
   "server/controllers/transcriptController.js",
   "server/models/transcriptModel.js",
   "server/routes/transcriptRoutes.js",
+  "server/routes/meetingRoutes.js",
   "server/controllers/meetingController.js",
   "server/controllers/sharedLinkController.js",
   "server/models/sharedLinkModel.js",
@@ -68,6 +69,7 @@ const VITEST_SOURCE_TEST_MAP = {
     "server/tests/transcriptController.test.js",
   "server/routes/transcriptRoutes.js":
     "server/tests/transcriptController.test.js",
+  "server/routes/meetingRoutes.js": "server/tests/transcriptController.test.js",
   "server/controllers/meetingController.js":
     "server/tests/MeetingService.test.js",
   "server/services/MeetingService.js": "server/tests/MeetingService.test.js",
