@@ -1,25 +1,44 @@
 import { jest } from "@jest/globals";
+import express from "express";
 import mongoose from "mongoose";
 import request from "supertest";
-import { app } from "../server.js";
-import Meeting from "../models/meetingModel.js";
-import SentimentTimeline from "../models/sentimentTimelineModel.js";
-import Organization from "../models/organizationModel.js";
-import User from "../models/userModel.js";
 
 const testUserId = new mongoose.Types.ObjectId();
 let testOrgId = new mongoose.Types.ObjectId();
 
-jest.mock("../middleware/userAuth.js", () => ({
+let currentUser = {
+  _id: testUserId,
+  role: "owner",
+  organization: testOrgId,
+};
+
+jest.unstable_mockModule("../middleware/userAuth.js", () => ({
   default: (req, res, next) => {
-    req.user = {
-      _id: testUserId,
-      role: "owner",
-      organization: testOrgId,
-    };
+    req.user = currentUser;
     next();
   },
 }));
+
+const { default: sentimentTimelineRoutes } =
+  await import("../routes/sentimentTimelineRoutes.js");
+const { default: Meeting } = await import("../models/meetingModel.js");
+const { default: SentimentTimeline } =
+  await import("../models/sentimentTimelineModel.js");
+const { default: Organization } =
+  await import("../models/organizationModel.js");
+const { default: User } = await import("../models/userModel.js");
+
+let app;
+
+beforeAll(async () => {
+  if (mongoose.connection.readyState !== 1) {
+    await mongoose.connect(process.env.TEST_MONGODB_URI);
+  }
+
+  app = express();
+  app.use(express.json());
+  app.use("/api/sentiment-timeline", sentimentTimelineRoutes);
+});
 
 describe("Organization Sentiment Trends (#2039)", () => {
   let org;

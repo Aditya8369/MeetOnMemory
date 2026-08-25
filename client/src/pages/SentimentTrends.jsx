@@ -26,8 +26,12 @@ import { format } from "date-fns";
 
 const SentimentTrends = () => {
   const { userData } = useContext(AppContent) || {};
+  const initialOrgId =
+    (typeof userData?.organization === "object"
+      ? userData?.organization?._id
+      : userData?.organization) || "";
   const [organizations, setOrganizations] = useState([]);
-  const [selectedOrgId, setSelectedOrgId] = useState("");
+  const [selectedOrgId, setSelectedOrgId] = useState(initialOrgId);
   const [days, setDays] = useState(30);
   const [loading, setLoading] = useState(true);
   const [data, setData] = useState(null);
@@ -41,12 +45,8 @@ const SentimentTrends = () => {
         if (orgData.success) {
           const list = orgData.organizations || [];
           setOrganizations(list);
-          const activeId =
-            (typeof userData?.organization === "object"
-              ? userData?.organization?._id
-              : userData?.organization) || list[0]?._id;
-          if (activeId) {
-            setSelectedOrgId(activeId);
+          if (!selectedOrgId && list[0]?._id) {
+            setSelectedOrgId(list[0]._id);
           }
         }
       } catch (err) {
@@ -54,7 +54,7 @@ const SentimentTrends = () => {
       }
     };
     fetchOrgs();
-  }, [userData]);
+  }, [selectedOrgId]);
 
   // Fetch sentiment trends
   const fetchTrends = useCallback(async () => {

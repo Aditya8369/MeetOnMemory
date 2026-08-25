@@ -1,6 +1,6 @@
 import express from "express";
-import { requireAuth } from "../middleware/authMiddleware.js";
-import { authorizeMeetingAccess } from "../middleware/meetingAccessMiddleware.js";
+import userAuth from "../middleware/userAuth.js";
+import { verifyMeetingAccess } from "../middleware/meetingAuth.js";
 import {
   getChapters,
   generateChapters,
@@ -15,8 +15,8 @@ const router = express.Router({ mergeParams: true });
 // We expect the main router to apply the auth and meeting access middleware,
 // but we can also add them here if needed.
 
-router.use(requireAuth);
-router.use(authorizeMeetingAccess);
+router.use(userAuth);
+router.use(verifyMeetingAccess);
 
 router.get("/", getChapters);
 router.post("/generate", generateChapters);

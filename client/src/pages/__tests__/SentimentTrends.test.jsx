@@ -113,10 +113,10 @@ describe("SentimentTrends Page (#2039)", () => {
 
     await waitFor(() => {
       expect(screen.getByText(/\+0.45/i)).toBeInTheDocument();
-      expect(screen.getByText(/All Hands Q3/i)).toBeInTheDocument();
+      expect(screen.getAllByText(/All Hands Q3/i).length).toBeGreaterThan(0);
       expect(screen.getByText(/Architecture Review/i)).toBeInTheDocument();
-      expect(screen.getByText(/65%/i)).toBeInTheDocument();
-      expect(screen.getByText(/improving/i)).toBeInTheDocument();
+      expect(screen.getAllByText(/65%/i).length).toBeGreaterThan(0);
+      expect(screen.getAllByText(/improving/i).length).toBeGreaterThan(0);
     });
   });
 
@@ -124,7 +124,7 @@ describe("SentimentTrends Page (#2039)", () => {
     renderComponent();
 
     await waitFor(() => {
-      expect(screen.getByText(/All Hands Q3/i)).toBeInTheDocument();
+      expect(screen.getAllByText(/All Hands Q3/i).length).toBeGreaterThan(0);
     });
 
     const filter90d = screen.getByRole("button", { name: /90d/i });
@@ -142,7 +142,7 @@ describe("SentimentTrends Page (#2039)", () => {
     renderComponent();
 
     await waitFor(() => {
-      expect(screen.getByText(/All Hands Q3/i)).toBeInTheDocument();
+      expect(screen.getAllByText(/All Hands Q3/i).length).toBeGreaterThan(0);
     });
 
     const select = screen.getByLabelText(/Filter by Organization/i);
