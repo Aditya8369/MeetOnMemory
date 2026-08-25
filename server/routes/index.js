@@ -77,6 +77,7 @@ import favoriteRoutes from "./favoriteRoutes.js";
 import testimonialRoutes, {
   adminTestimonialRouter,
 } from "./testimonialRoutes.js";
+import absenteeCatchUpRoutes from "./absenteeCatchUpRoutes.js";
 
 import calendarRoutes from "./calendarRoutes.js";
 import assistantRoutes from "./assistantRoutes.js";
@@ -206,6 +207,7 @@ router.use("/api/sentiment-timeline", sentimentTimelineRoutes);
 router.use("/api/rsvps", meetingRsvpRoutes);
 router.use("/api/testimonials", testimonialRoutes);
 router.use("/api/admin/testimonials", adminTestimonialRouter);
+router.use("/api/absentee-catchup", absenteeCatchUpRoutes);
 import adminJobsRoutes from "./adminJobsRoutes.js";
 router.use("/api/admin/jobs", adminJobsRoutes);
 import adminReindexRoutes from "./adminReindexRoutes.js";
