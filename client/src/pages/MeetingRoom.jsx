@@ -35,6 +35,8 @@ import useLiveTranscription from "../hooks/useLiveTranscription";
 import useReactions from "../hooks/useReactions.js";
 import ReactionBar from "../components/meetings/ReactionBar.jsx";
 import ReactionOverlay from "../components/meetings/ReactionOverlay.jsx";
+import usePulseCheck from "../hooks/usePulseCheck";
+import PulseCheckWidget from "../components/meeting-details/PulseCheckWidget.jsx";
 import {
   getMeetingVideoGridClass,
   MEETING_VIDEO_TILE_CLASS,
@@ -169,6 +171,14 @@ const MeetingRoom = () => {
 
   // Reactions
   const { reactions, sendReaction, onCooldown } = useReactions(roomId, socket);
+
+  // Pulse Check
+  const isHost =
+    meeting?.uploadedBy === userId ||
+    userRole === "facilitator" ||
+    userRole === "host";
+  const { sendSignal: sendPulseSignal, onCooldown: pulseCooldown } =
+    usePulseCheck(roomId, socketRef?.current || socket, isHost);
 
   // Local timer tick for smooth UI updates
   useEffect(() => {
@@ -869,6 +879,11 @@ const MeetingRoom = () => {
           </div>
 
           <LiveCaptions showCaptions={showCaptions} captions={captions} />
+
+          <PulseCheckWidget
+            onSendSignal={sendPulseSignal}
+            onCooldown={pulseCooldown}
+          />
 
           <ReactionBar
             sendReaction={sendReaction}
