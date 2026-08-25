@@ -53,14 +53,12 @@ export const select = async (req, res, next) => {
 export const getActiveIcebreaker = async (req, res, next) => {
   try {
     const { meetingId } = req.params;
-    // Assume the most recently created or updated icebreaker for this meeting is active
-    const icebreaker = await import("../models/icebreakerModel.js")
-      .then((m) => m.default)
-      .then((Icebreaker) =>
-        Icebreaker.findOne({ usedInMeetings: meetingId }).sort({
-          updatedAt: -1,
-        }),
-      );
+    const Icebreaker = (await import("../models/icebreakerModel.js")).default;
+    const icebreaker = await Icebreaker.findOne({
+      usedInMeetings: meetingId,
+    }).sort({
+      updatedAt: -1,
+    });
 
     if (icebreaker) {
       res.status(200).json({ icebreaker });

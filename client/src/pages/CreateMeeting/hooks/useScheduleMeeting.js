@@ -10,6 +10,7 @@ import { customFieldApi } from "../../../api/customFieldApi";
 import { focusTimeApi } from "../../../api/focusTimeApi";
 import { calendarAvailabilityApi } from "../../../api/calendarAvailabilityApi";
 import resourceBookingApi from "../../../services/resourceBookingApi";
+import { attachmentApi } from "../../../services/attachmentApi";
 import AppContent from "../../../context/AppContent";
 import {
   buildMeetingDraftKey,
@@ -570,6 +571,24 @@ export const useScheduleMeeting = ({
                   `Failed to book a selected physical resource: ${err.response?.data?.message || err.message}`,
                 );
               }
+            }
+          }
+        }
+
+        if (attachments.length > 0 && response.data.meeting?._id) {
+          for (const file of attachments) {
+            const formData = new FormData();
+            formData.append("file", file);
+            try {
+              await attachmentApi.uploadAttachment(
+                response.data.meeting._id,
+                formData,
+              );
+            } catch (err) {
+              console.error("Failed to upload attachment", err);
+              toast.error(
+                `Meeting saved, but failed to upload ${file.name || "attachment"}`,
+              );
             }
           }
         }

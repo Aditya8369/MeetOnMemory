@@ -24,6 +24,7 @@ import TranscriptPanel from "../components/meetings/TranscriptPanel.jsx";
 import MultiLanguageTranscript from "../components/meeting-room/MultiLanguageTranscript.jsx";
 import LiveCaptions from "../components/meetings/LiveCaptions.jsx";
 import LiveIcebreakerBanner from "../components/meeting-room/LiveIcebreakerBanner.jsx";
+import CollaborativeCanvas from "../components/meeting-room/CollaborativeCanvas.jsx";
 
 import DeviceSetupModal from "../components/meetings/DeviceSetupModal.jsx";
 import axios from "../services/apiClient.js";
@@ -34,6 +35,8 @@ import useLiveTranscription from "../hooks/useLiveTranscription";
 import useReactions from "../hooks/useReactions.js";
 import ReactionBar from "../components/meetings/ReactionBar.jsx";
 import ReactionOverlay from "../components/meetings/ReactionOverlay.jsx";
+import usePulseCheck from "../hooks/usePulseCheck";
+import PulseCheckWidget from "../components/meeting-details/PulseCheckWidget.jsx";
 import {
   getMeetingVideoGridClass,
   MEETING_VIDEO_TILE_CLASS,
@@ -56,7 +59,7 @@ const buildLocalUserInfo = (userData) => ({
   profilePic: userData?.profilePic || "",
 });
 
-/** Side panel ids for exclusive panel visibility (Issue #1648). */
+/** Side panel ids for exclusive panel visibility (Issue #1648, #2234). */
 const MEETING_ROOM_PANELS = {
   NOTES: "notes",
   PARKING_LOT: "parkingLot",
@@ -64,6 +67,7 @@ const MEETING_ROOM_PANELS = {
   BREAKOUT_ROOMS: "breakoutRooms",
   POLLS: "polls",
   AGENDA: "agenda",
+  CANVAS: "canvas",
 };
 
 const MeetingRoom = () => {
@@ -119,6 +123,26 @@ const MeetingRoom = () => {
   const showBreakoutRooms = activePanel === MEETING_ROOM_PANELS.BREAKOUT_ROOMS;
   const showPolls = activePanel === MEETING_ROOM_PANELS.POLLS;
   const showAgenda = activePanel === MEETING_ROOM_PANELS.AGENDA;
+  const showCanvas = activePanel === MEETING_ROOM_PANELS.CANVAS;
+
+  // Canvas color assignment based on user identity for remote cursor distinction
+  const canvasColor = useMemo(() => {
+    const COLORS = [
+      "#6366f1",
+      "#ef4444",
+      "#10b981",
+      "#f59e0b",
+      "#8b5cf6",
+      "#ec4899",
+    ];
+    const id = userData?._id || userId || "";
+    let hash = 0;
+    for (let i = 0; i < id.length; i++) {
+      hash = (hash << 5) - hash + id.charCodeAt(i);
+      hash |= 0;
+    }
+    return COLORS[Math.abs(hash) % COLORS.length];
+  }, [userData, userId]);
 
   // Transcription state
   const [showCaptions] = useState(true);
@@ -147,6 +171,14 @@ const MeetingRoom = () => {
 
   // Reactions
   const { reactions, sendReaction, onCooldown } = useReactions(roomId, socket);
+
+  // Pulse Check
+  const isHost =
+    meeting?.uploadedBy === userId ||
+    userRole === "facilitator" ||
+    userRole === "host";
+  const { sendSignal: sendPulseSignal, onCooldown: pulseCooldown } =
+    usePulseCheck(roomId, socketRef?.current || socket, isHost);
 
   // Local timer tick for smooth UI updates
   useEffect(() => {
@@ -823,6 +855,20 @@ const MeetingRoom = () => {
               </div>
             )}
 
+            {/* Collaborative Canvas Panel (Issue #2234) */}
+            {showCanvas && (
+              <div
+                data-testid="meeting-room-canvas-panel"
+                className="w-full md:w-[480px] lg:w-[560px] shrink-0 bg-gray-950 border-l border-gray-800 overflow-hidden flex flex-col transition-all duration-300"
+              >
+                <CollaborativeCanvas
+                  socket={socketRef?.current || socket}
+                  userId={userData?._id || userId}
+                  userColor={canvasColor}
+                />
+              </div>
+            )}
+
             {/* Transcript Panel */}
             <TranscriptPanel
               showTranscript={showTranscript}
@@ -833,6 +879,11 @@ const MeetingRoom = () => {
           </div>
 
           <LiveCaptions showCaptions={showCaptions} captions={captions} />
+
+          <PulseCheckWidget
+            onSendSignal={sendPulseSignal}
+            onCooldown={pulseCooldown}
+          />
 
           <ReactionBar
             sendReaction={sendReaction}

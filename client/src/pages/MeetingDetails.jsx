@@ -31,6 +31,7 @@ import RoleRotationConfig from "../components/meetings/RoleRotationConfig";
 import DuplicateDetectionPanel from "../components/meeting-details/DuplicateDetectionPanel";
 import MeetingTimeline from "../components/meeting-details/MeetingTimeline";
 import RecapStoryViewer from "../components/summaries/RecapStoryViewer";
+import ReactionSummaryCard from "../components/meeting-details/ReactionSummaryCard";
 import { useUser } from "@clerk/clerk-react";
 import Navbar from "../components/Navbar.jsx";
 import BriefingBanner from "../components/meeting-details/BriefingBanner";
@@ -46,14 +47,19 @@ import FeedbackForm from "../components/meeting-details/FeedbackForm";
 import AgendaTimer from "../components/meeting-details/AgendaTimer";
 import AgendaPacingReport from "../components/meeting-details/AgendaPacingReport";
 import ClipManager from "../components/meeting-details/ClipManager";
+import TopicSummary from "../components/meeting-details/TopicSummary";
+import AttachmentPanel from "../components/meeting-details/AttachmentPanel";
+import DigestActions from "../components/meeting-details/DigestActions";
 import HealthScoreCard from "../components/meeting-details/HealthScoreCard";
 import { isMeetingEnded } from "../utils/meetingLifecycle";
+import { canManageMeetingDigest } from "../utils/digestAccess";
 import MeetingRisksPanel from "../components/meetings/MeetingRisksPanel";
 import { Award, ShieldAlert, FileText, Star } from "lucide-react";
 import ExportDialog from "../components/export/ExportDialog";
 import RetentionQuizSection from "../components/meetings/RetentionQuizSection";
 import ResourceConflictsPanel from "../components/meeting-details/ResourceConflictsPanel";
 import SkillEndorsementModal from "../components/meetings/SkillEndorsementModal";
+import DebriefQAPanel from "../components/meetings/DebriefQAPanel";
 
 const MeetingDetails = () => {
   const { id } = useParams();
@@ -80,6 +86,28 @@ const MeetingDetails = () => {
       p.user?.toString() === dbUserId || p.user?._id?.toString() === dbUserId,
   );
   const userRole = participant?.role || null;
+
+  const handleCitationClick = (citation) => {
+    if (citation.type === "transcript" && citation.timestamp !== null) {
+      const event = new CustomEvent("seekToTimestamp", {
+        detail: citation.timestamp,
+      });
+      window.dispatchEvent(event);
+      const transcriptEl = document.querySelector(
+        `[data-start-time="${citation.timestamp}"]`,
+      );
+      if (transcriptEl) {
+        transcriptEl.scrollIntoView({ behavior: "smooth", block: "center" });
+      }
+    } else if (citation.type === "decision") {
+      const decisionEl = document.querySelector(
+        `[data-decision-id="${citation.refId}"]`,
+      );
+      if (decisionEl) {
+        decisionEl.scrollIntoView({ behavior: "smooth", block: "center" });
+      }
+    }
+  };
 
   const handleGenerateBriefing = async () => {
     setBriefingStatus("generating");
@@ -483,7 +511,23 @@ const MeetingDetails = () => {
             />
           </div>
 
-          <MeetingTranscript meeting={meeting} />
+          <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
+            <div className="xl:col-span-2">
+              <MeetingTranscript meeting={meeting} />
+            </div>
+            <div className="xl:col-span-1 h-[600px]">
+              <DebriefQAPanel
+                meetingId={meeting._id}
+                onCitationClick={handleCitationClick}
+              />
+            </div>
+          </div>
+          <div className="mt-6 mb-6">
+            <TopicSummary
+              meetingId={meeting._id}
+              canExtract={!isViewerOrGuest}
+            />
+          </div>
           <div className="mt-6 mb-6">
             <ClipManager
               meetingId={meeting._id}
@@ -517,6 +561,9 @@ const MeetingDetails = () => {
           <div className="mt-6 mb-6">
             <SentimentTimeline meetingId={meeting._id} />
           </div>
+
+          {/* Reaction Summary Card (Issue #1993) */}
+          <ReactionSummaryCard meetingId={meeting._id} />
 
           {/* Speaking Time Analytics Section */}
           <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 mt-6 mb-6 p-6">
@@ -617,6 +664,22 @@ const MeetingDetails = () => {
             </div>
           )}
           <MeetingMetadata meeting={meeting} />
+          <div className="mt-6 mb-6">
+            <AttachmentPanel
+              meetingId={meeting._id}
+              userRole={userData?.role}
+              currentUserId={userData?._id}
+            />
+          </div>
+          {canManageMeetingDigest({
+            meeting,
+            userData,
+            dbUserId,
+          }) && (
+            <div className="mt-6 mb-6">
+              <DigestActions meetingId={meeting._id} canManage />
+            </div>
+          )}
           {currentUser?.publicMetadata?.dbUserId === meeting.uploadedBy && (
             <GuestAccessManager meetingId={meeting._id} />
           )}

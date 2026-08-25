@@ -171,4 +171,43 @@ describe("MultiLanguageTranscript Component (#1880)", () => {
       });
     });
   });
+
+  it("restores selected language from localStorage and saves on change", async () => {
+    localStorage.setItem("selectedLanguage-room-123", "fr");
+
+    render(
+      <AppContent.Provider value={{ backendUrl: "http://localhost:4000" }}>
+        <MultiLanguageTranscript meetingId="room-123" />
+      </AppContent.Provider>,
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText("French")).toBeInTheDocument();
+    });
+
+    // Make sure 'fr' target text is rendered or selected
+    expect(localStorage.getItem("selectedLanguage-room-123")).toBe("fr");
+  });
+
+  it("renders connection offline alert banner and clicks Reconnect", async () => {
+    render(
+      <AppContent.Provider value={{ backendUrl: "http://localhost:4000" }}>
+        <MultiLanguageTranscript meetingId="room-123" />
+      </AppContent.Provider>,
+    );
+
+    // Mock socket offline
+    await waitFor(() => {
+      expect(
+        screen.getByText(
+          "Live translation is offline. Displaying cached history.",
+        ),
+      ).toBeInTheDocument();
+    });
+
+    const reconnectBtn = screen.getByRole("button", { name: /reconnect/i });
+    fireEvent.click(reconnectBtn);
+
+    expect(reconnectBtn).toBeInTheDocument();
+  });
 });

@@ -1,15 +1,16 @@
 import apiClient from "./apiClient";
 
 const aiSummaryTemplateApi = {
-  createTemplate: (data) => apiClient.post("/ai-summary-templates", data),
-  getTemplates: () => apiClient.get("/ai-summary-templates"),
-  getTemplateById: (id) => apiClient.get(`/ai-summary-templates/${id}`),
+  createTemplate: (data) => apiClient.post("/api/ai-summary-templates", data),
+  getTemplates: () => apiClient.get("/api/ai-summary-templates"),
+  getTemplateById: (id) => apiClient.get(`/api/ai-summary-templates/${id}`),
   updateTemplate: (id, data) =>
-    apiClient.put(`/ai-summary-templates/${id}`, data),
-  deleteTemplate: (id) => apiClient.delete(`/ai-summary-templates/${id}`),
+    apiClient.put(`/api/ai-summary-templates/${id}`, data),
+  deleteTemplate: (id) => apiClient.delete(`/api/ai-summary-templates/${id}`),
   setDefaultTemplate: (id) =>
-    apiClient.put(`/ai-summary-templates/${id}/default`),
-  testTemplate: (data) => apiClient.post(`/ai-summary-templates/test`, data),
+    apiClient.put(`/api/ai-summary-templates/${id}/default`),
+  testTemplate: (data) =>
+    apiClient.post(`/api/ai-summary-templates/test`, data),
 };
 
 export default aiSummaryTemplateApi;

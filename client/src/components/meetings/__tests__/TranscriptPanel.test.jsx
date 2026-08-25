@@ -78,4 +78,14 @@ describe("TranscriptPanel Component (#1880)", () => {
     );
     expect(onClose).toHaveBeenCalledTimes(1);
   });
+
+  it("restores active tab from localStorage on mount", () => {
+    localStorage.setItem("transcriptPanelActiveTab-room-abc", "raw");
+    render(<TranscriptPanel {...defaultProps} />);
+
+    expect(screen.getByText("Alice")).toBeInTheDocument();
+    expect(
+      screen.queryByTestId("multilang-transcript-component"),
+    ).not.toBeInTheDocument();
+  });
 });
