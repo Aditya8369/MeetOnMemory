@@ -35,6 +35,7 @@ import ReactionSummaryCard from "../components/meeting-details/ReactionSummaryCa
 import { useUser } from "@clerk/clerk-react";
 import Navbar from "../components/Navbar.jsx";
 import BriefingBanner from "../components/meeting-details/BriefingBanner";
+import CompareButton from "../components/meeting-details/CompareButton";
 import AgendaBuilder from "../components/meetings/AgendaBuilder";
 import IcebreakerSection from "../components/meetings/IcebreakerSection";
 import { getBriefing } from "../services/briefingApi";
@@ -334,6 +335,7 @@ const MeetingDetails = () => {
           )}
 
           <div className="mb-4 flex justify-end gap-3">
+            <CompareButton meetingId={meeting._id} />
             <button
               onClick={() => setIsExportDialogOpen(true)}
               className="flex items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg font-medium shadow-sm transition-colors text-sm"
