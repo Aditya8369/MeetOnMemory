@@ -228,7 +228,16 @@ router.get(
 
 // ========== EXISTING ROUTES (Working) ==========
 
+import {
+  initResumableUpload,
+  uploadChunk,
+  getUploadStatus,
+  completeResumableUpload,
+  abortResumableUpload,
+} from "../controllers/resumableUploadController.js";
+
 // ✅ Upload & Transcribe Meeting (from UploadMeetings page) - admin only
+
 router.post(
   "/upload",
   userAuth,
@@ -238,6 +247,52 @@ router.post(
   requirePermission("meetings", "create"),
   upload.single("file"),
   uploadMeeting,
+);
+
+// Resumable Chunk Upload Routes (#2268)
+router.post(
+  "/upload/init",
+  userAuth,
+  uploadLimiter,
+  requireOrgMembership,
+  requirePermission("meetings", "create"),
+  initResumableUpload,
+);
+
+router.post(
+  "/upload/chunk",
+  userAuth,
+  uploadLimiter,
+  requireOrgMembership,
+  requirePermission("meetings", "create"),
+  upload.single("chunk"),
+  uploadChunk,
+);
+
+router.get(
+  "/upload/status/:uploadId",
+  userAuth,
+  requireOrgMembership,
+  requirePermission("meetings", "create"),
+  getUploadStatus,
+);
+
+router.post(
+  "/upload/complete",
+  userAuth,
+  uploadLimiter,
+  requireOrgMembership,
+  requirePermission("meetings", "create"),
+  completeResumableUpload,
+);
+
+router.post(
+  "/upload/abort",
+  userAuth,
+  uploadLimiter,
+  requireOrgMembership,
+  requirePermission("meetings", "create"),
+  abortResumableUpload,
 );
 
 // ✅ Summarize Transcript (send meetingId or transcript)

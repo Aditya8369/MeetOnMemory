@@ -9,6 +9,18 @@ export const meetingApi = {
   uploadMeeting: (formData, config) =>
     apiClient.post("/api/meetings/upload", formData, config),
 
+  // Resumable Chunk Upload Endpoints (#2268)
+  initResumableUpload: (data) =>
+    apiClient.post("/api/meetings/upload/init", data),
+  uploadChunk: (formData, config) =>
+    apiClient.post("/api/meetings/upload/chunk", formData, config),
+  getUploadStatus: (uploadId) =>
+    apiClient.get(`/api/meetings/upload/status/${uploadId}`),
+  completeResumableUpload: (data) =>
+    apiClient.post("/api/meetings/upload/complete", data),
+  abortResumableUpload: (data) =>
+    apiClient.post("/api/meetings/upload/abort", data),
+
   summarizeMeeting: (data) => apiClient.post("/api/meetings/summarize", data),
 
   getAllMeetings: (params = {}, config = {}) =>
