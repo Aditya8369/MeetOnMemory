@@ -90,6 +90,7 @@ import SlaCompliance from "../pages/SlaCompliance.jsx";
 import TeamAvailability from "../pages/TeamAvailability.jsx";
 import ActionItemTemplates from "../pages/ActionItemTemplates.jsx";
 import IntegrationMarketplaceHub from "../pages/IntegrationMarketplaceHub.jsx";
+import AbsenteeCatchUpInbox from "../pages/AbsenteeCatchUpInbox.jsx";
 
 const ProtectedRoutes = (
   <React.Fragment>
@@ -814,6 +815,14 @@ const ProtectedRoutes = (
       element={
         <ProtectedRoute>
           <RsvpInbox />
+        </ProtectedRoute>
+      }
+    />
+    <Route
+      path="/catch-up"
+      element={
+        <ProtectedRoute>
+          <AbsenteeCatchUpInbox />
         </ProtectedRoute>
       }
     />
