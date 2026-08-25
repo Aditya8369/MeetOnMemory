@@ -212,6 +212,7 @@ export const createMeeting = async (uploaderId, orgId, data) => {
     agendaItems: normalizeAgendaItems(data.agendaItems),
     policyDetails: data.policyDetails || null,
     recordingType: data.recordingType || "upload",
+    tags: data.tags || (data.metadata && data.metadata.tags) || [],
     transcript: "",
     summary: "",
     structuredMoM: null,
