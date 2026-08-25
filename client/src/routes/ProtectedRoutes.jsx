@@ -2,6 +2,7 @@ import React from "react";
 import { Route } from "react-router-dom";
 
 import ProtectedRoute from "../components/ProtectedRoute.jsx";
+import RouteErrorBoundary from "../components/RouteErrorBoundary.jsx";
 import AccessDenied from "../pages/AccessDenied.jsx";
 
 // --- Protected Pages ---
@@ -242,7 +243,9 @@ const ProtectedRoutes = (
       path="/admin/members"
       element={
         <ProtectedRoute resource="team_members" action="view">
-          <MembersManagement />
+          <RouteErrorBoundary section="Admin">
+            <MembersManagement />
+          </RouteErrorBoundary>
         </ProtectedRoute>
       }
     />
@@ -250,7 +253,9 @@ const ProtectedRoutes = (
       path="/admin/audit-logs"
       element={
         <ProtectedRoute resource="audit_logs" action="view">
-          <AuditLogViewer />
+          <RouteErrorBoundary section="Admin">
+            <AuditLogViewer />
+          </RouteErrorBoundary>
         </ProtectedRoute>
       }
     />
@@ -262,7 +267,9 @@ const ProtectedRoutes = (
           action="view"
           forbiddenFallback={<AccessDenied />}
         >
-          <AdminHealth />
+          <RouteErrorBoundary section="Admin">
+            <AdminHealth />
+          </RouteErrorBoundary>
         </ProtectedRoute>
       }
     />
@@ -274,7 +281,9 @@ const ProtectedRoutes = (
           action="view"
           forbiddenFallback={<AccessDenied />}
         >
-          <ResourceManagement />
+          <RouteErrorBoundary section="Admin">
+            <ResourceManagement />
+          </RouteErrorBoundary>
         </ProtectedRoute>
       }
     />
@@ -322,7 +331,9 @@ const ProtectedRoutes = (
       path="/organization/settings"
       element={
         <ProtectedRoute resource="organizations" action="view">
-          <OrganizationSettings />
+          <RouteErrorBoundary section="Org Settings">
+            <OrganizationSettings />
+          </RouteErrorBoundary>
         </ProtectedRoute>
       }
     />
@@ -330,7 +341,9 @@ const ProtectedRoutes = (
       path="/organizations/settings"
       element={
         <ProtectedRoute resource="organizations" action="view">
-          <OrganizationSettings />
+          <RouteErrorBoundary section="Org Settings">
+            <OrganizationSettings />
+          </RouteErrorBoundary>
         </ProtectedRoute>
       }
     />
@@ -338,7 +351,9 @@ const ProtectedRoutes = (
       path="/organization-settings"
       element={
         <ProtectedRoute resource="organizations" action="view">
-          <OrganizationSettings />
+          <RouteErrorBoundary section="Org Settings">
+            <OrganizationSettings />
+          </RouteErrorBoundary>
         </ProtectedRoute>
       }
     />
@@ -354,7 +369,9 @@ const ProtectedRoutes = (
       path="/dashboard"
       element={
         <ProtectedRoute>
-          <Dashboard />
+          <RouteErrorBoundary section="Dashboard">
+            <Dashboard />
+          </RouteErrorBoundary>
         </ProtectedRoute>
       }
     />
@@ -500,7 +517,9 @@ const ProtectedRoutes = (
       path="/meeting/:id"
       element={
         <ProtectedRoute resource="meetings" action="view">
-          <MeetingDetails />
+          <RouteErrorBoundary section="Meeting Details">
+            <MeetingDetails />
+          </RouteErrorBoundary>
         </ProtectedRoute>
       }
     />
@@ -532,7 +551,9 @@ const ProtectedRoutes = (
       path="/meeting-room/:roomId"
       element={
         <ProtectedRoute resource="meetings" action="view">
-          <MeetingRoom />
+          <RouteErrorBoundary section="Meeting Room">
+            <MeetingRoom />
+          </RouteErrorBoundary>
         </ProtectedRoute>
       }
     />
@@ -815,6 +836,14 @@ const ProtectedRoutes = (
       }
     />
     <Route
+      path="/catch-up"
+      element={
+        <ProtectedRoute>
+          <AbsenteeCatchUpInbox />
+        </ProtectedRoute>
+      }
+    />
+    <Route
       path="/admin-panel"
       element={
         <ProtectedRoute
@@ -822,7 +851,9 @@ const ProtectedRoutes = (
           action="view"
           forbiddenFallback={<AccessDenied />}
         >
-          <AdminPanel />
+          <RouteErrorBoundary section="Admin">
+            <AdminPanel />
+          </RouteErrorBoundary>
         </ProtectedRoute>
       }
     />

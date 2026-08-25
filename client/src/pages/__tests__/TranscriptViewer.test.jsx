@@ -12,6 +12,25 @@ vi.mock("../../components/MeetingSentimentChart", () => ({
   default: () => <div data-testid="mock-sentiment-chart">Sentiment Chart</div>,
 }));
 
+vi.mock("../../components/meeting-details/SpeakerAttribution", () => ({
+  default: () => null,
+}));
+
+vi.mock("../../components/meeting-details/TranscriptTimelineScrubber", () => ({
+  default: ({ meeting, transcript }) => (
+    <div
+      data-testid="mock-transcript-scrubber"
+      data-has-media={
+        meeting?.fileUrl || meeting?.audioFilePath || transcript?.audioFilePath
+          ? "yes"
+          : "no"
+      }
+    >
+      Scrubber
+    </div>
+  ),
+}));
+
 vi.mock("../../services/apiClient.js", () => ({
   default: {
     get: vi.fn(),
@@ -100,6 +119,22 @@ describe("TranscriptViewer Page (#1805)", () => {
     expect(
       screen.getAllByText("Welcome everyone to the meeting.")[0],
     ).toBeInTheDocument();
+  });
+
+  it("mounts transcript timeline scrubber (#2252)", async () => {
+    api.get.mockResolvedValueOnce({
+      data: {
+        ...sampleTranscriptData,
+        meeting: {
+          ...sampleTranscriptData.meeting,
+          fileUrl: "recordings/design.mp3",
+        },
+      },
+    });
+    render(<TranscriptViewer />);
+
+    const scrubber = await screen.findByTestId("mock-transcript-scrubber");
+    expect(scrubber).toHaveAttribute("data-has-media", "yes");
   });
 
   it("searches transcript using /api/transcripts/meeting/:meetingId/search route prefix", async () => {

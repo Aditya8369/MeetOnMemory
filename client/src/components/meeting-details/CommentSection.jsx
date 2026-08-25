@@ -12,7 +12,7 @@ import { createClerkSocketOptions } from "../../services/apiClient.js";
 import { toast } from "react-toastify";
 
 const CommentSection = ({ meetingId }) => {
-  const { userData, backendUrl } = useContext(AppContent);
+  const { userData, backendUrl } = useContext(AppContent) || {};
   const [comments, setComments] = useState([]);
   const [newComment, setNewComment] = useState("");
   const [replyingTo, setReplyingTo] = useState(null);
