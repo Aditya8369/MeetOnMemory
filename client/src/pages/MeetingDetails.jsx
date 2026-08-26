@@ -65,6 +65,7 @@ import DelegationPanel from "../components/meetings/DelegationPanel";
 import ConvertToAsyncModal from "../components/meetings/ConvertToAsyncModal";
 import ParticipantContributions from "../components/MeetingDetails/ParticipantContributions";
 import ContributionSummaryPanel from "../components/MeetingDetails/ContributionSummaryPanel";
+import MeetingCostCard from "../components/meeting-details/MeetingCostCard";
 import AbsenteeBriefingCard from "../components/meeting-details/AbsenteeBriefingCard";
 
 const MeetingDetails = () => {
@@ -508,6 +509,7 @@ const MeetingDetails = () => {
           />
 
           <div className="mt-6 mb-6">
+            <MeetingCostCard meetingId={meeting._id} />
             <HealthScoreCard
               meetingId={meeting._id}
               organizationId={
