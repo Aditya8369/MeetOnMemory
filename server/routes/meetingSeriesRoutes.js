@@ -6,6 +6,7 @@ import {
   getSeriesById,
   getSeriesMeetings,
   cancelSeries,
+  getSeriesDrift,
 } from "../controllers/meetingSeriesController.js";
 
 const router = express.Router();
@@ -23,6 +24,12 @@ router.get(
   "/:id/meetings",
   requirePermission("meetings", "view"),
   getSeriesMeetings,
+);
+
+router.get(
+  "/:id/drift",
+  requirePermission("meetings", "view"),
+  getSeriesDrift,
 );
 
 router.patch(
