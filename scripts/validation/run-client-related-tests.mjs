@@ -22,6 +22,8 @@ const ROOT_CLIENT_MAP = {
     "client/src/components/__tests__/OfflineBanner.test.jsx",
   "client/src/components/OfflineQueueInspector.jsx":
     "client/src/components/__tests__/OfflineQueueInspector.test.jsx",
+  "client/src/pages/AcceptInvite.jsx":
+    "client/src/pages/__tests__/AcceptInvite.test.jsx",
 };
 
 const directTests = [
