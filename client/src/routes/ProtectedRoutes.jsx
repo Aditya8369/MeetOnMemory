@@ -93,9 +93,30 @@ import ActionItemTemplates from "../pages/ActionItemTemplates.jsx";
 import IntegrationMarketplaceHub from "../pages/IntegrationMarketplaceHub.jsx";
 import SentimentTrends from "../pages/SentimentTrends.jsx";
 import MeetingPlaybooks from "../pages/MeetingPlaybooks.jsx";
+import TopicAnalyticsDashboard from "../pages/TopicAnalyticsDashboard.jsx";
 
 const ProtectedRoutes = (
   <React.Fragment>
+    <Route
+      path="/topics/analytics"
+      element={
+        <ProtectedRoute>
+          <RouteErrorBoundary>
+            <TopicAnalyticsDashboard />
+          </RouteErrorBoundary>
+        </ProtectedRoute>
+      }
+    />
+    <Route
+      path="/analytics/topics"
+      element={
+        <ProtectedRoute>
+          <RouteErrorBoundary>
+            <TopicAnalyticsDashboard />
+          </RouteErrorBoundary>
+        </ProtectedRoute>
+      }
+    />
     <Route
       path="/topic-intelligence"
       element={
