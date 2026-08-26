@@ -102,7 +102,6 @@ import {
   getSessions,
   getSessionById,
   createSession,
-  updateSession,
   deleteSession,
 } from "../controllers/sessionController.js";
 
