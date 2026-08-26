@@ -1,5 +1,5 @@
 /**
- * Feature flag for client-side transcript E2EE (Issue #1335).
+ * Feature flag for client-side transcript E2EE (Issue #1335 & #2030).
  * Set VITE_E2EE_ENABLED=true to enable encrypt/decrypt UI paths.
  */
 export const isE2eeEnabled = () => {
@@ -21,13 +21,21 @@ export {
   encryptTranscript,
   decryptTranscript,
   isEncryptedTranscriptPayload,
+  derivePassphraseKey,
+  exportEncryptedKeyBundle,
+  importEncryptedKeyBundle,
   TRANSCRIPT_ENCRYPTION_VERSION,
   TRANSCRIPT_ENCRYPTION_ALG,
+  KEY_BUNDLE_MAGIC,
 } from "./transcriptCrypto.js";
 
 export {
   saveMeetingKey,
   loadMeetingKey,
   clearMeetingKey,
+  hasMeetingKey,
+  listStoredMeetingKeyIds,
+  createShareableKeyPayload,
+  parseImportedKeyInput,
   meetingKeyStorageKey,
 } from "./meetingKeyStore.js";
