@@ -50,7 +50,12 @@ export const getDecisionNeighbors = async (id) => {
 
 // --- Mutations (Issue #2027) ---
 
-export const createDecision = async ({ text, owner, status, sourceMeetingId }) => {
+export const createDecision = async ({
+  text,
+  owner,
+  status,
+  sourceMeetingId,
+}) => {
   const response = await apiClient.post("/api/decision-graph", {
     text,
     owner,

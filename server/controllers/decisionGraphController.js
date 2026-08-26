@@ -174,7 +174,12 @@ export const getDecisionNeighbors = async (req, res) => {
 export const createDecision = async (req, res) => {
   try {
     const orgId = req.user.organization;
-    const { text, owner = "", status = "open", sourceMeetingId } = req.body || {};
+    const {
+      text,
+      owner = "",
+      status = "open",
+      sourceMeetingId,
+    } = req.body || {};
 
     if (!text || typeof text !== "string" || !text.trim()) {
       return res.status(400).json({ message: "Decision text is required" });
@@ -227,18 +232,28 @@ export const createDecision = async (req, res) => {
  * Guards ownership + existence + self-reference for both link and supersede.
  */
 const loadEdgePair = async (orgId, sourceId, targetId) => {
-  if (!mongoose.isValidObjectId(sourceId) || !mongoose.isValidObjectId(targetId)) {
+  if (
+    !mongoose.isValidObjectId(sourceId) ||
+    !mongoose.isValidObjectId(targetId)
+  ) {
     return { error: { status: 400, message: "Invalid decision ID" } };
   }
   if (String(sourceId) === String(targetId)) {
-    return { error: { status: 400, message: "A decision cannot link to itself" } };
+    return {
+      error: { status: 400, message: "A decision cannot link to itself" },
+    };
   }
   const [source, target] = await Promise.all([
     Decision.findOne({ _id: sourceId, organization: orgId }),
     Decision.findOne({ _id: targetId, organization: orgId }).select("_id"),
   ]);
   if (!source || !target) {
-    return { error: { status: 404, message: "Decision not found in your organization" } };
+    return {
+      error: {
+        status: 404,
+        message: "Decision not found in your organization",
+      },
+    };
   }
   return { source, target };
 };
@@ -261,7 +276,9 @@ export const linkDecisions = async (req, res) => {
       (rel) => rel.target?.toString() === String(targetId),
     );
     if (alreadyLinked) {
-      return res.status(409).json({ message: "These decisions are already linked" });
+      return res
+        .status(409)
+        .json({ message: "These decisions are already linked" });
     }
 
     const conf =
@@ -272,7 +289,12 @@ export const linkDecisions = async (req, res) => {
     await source.save();
 
     return res.status(200).json({
-      edge: { source: String(id), target: String(targetId), type: "relatesTo", confidence: conf },
+      edge: {
+        source: String(id),
+        target: String(targetId),
+        type: "relatesTo",
+        confidence: conf,
+      },
     });
   } catch (error) {
     console.error("Error linking decisions:", error);
@@ -299,11 +321,17 @@ export const supersedeDecision = async (req, res) => {
     await source.save();
 
     return res.status(200).json({
-      edge: { source: String(id), target: String(targetId), type: "supersededBy" },
+      edge: {
+        source: String(id),
+        target: String(targetId),
+        type: "supersededBy",
+      },
       status: "superseded",
     });
   } catch (error) {
     console.error("Error superseding decision:", error);
-    return res.status(500).json({ message: "Server error superseding decision" });
+    return res
+      .status(500)
+      .json({ message: "Server error superseding decision" });
   }
 };

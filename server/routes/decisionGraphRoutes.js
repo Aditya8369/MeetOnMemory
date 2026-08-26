@@ -30,9 +30,17 @@ router.get("/:id/neighbors", getDecisionNeighbors);
 router.post("/", requirePermission("knowledge", "create"), createDecision);
 
 // Link this decision to another (relatesTo edge)
-router.post("/:id/relations", requirePermission("knowledge", "edit"), linkDecisions);
+router.post(
+  "/:id/relations",
+  requirePermission("knowledge", "edit"),
+  linkDecisions,
+);
 
 // Mark this decision as superseded by another
-router.post("/:id/supersede", requirePermission("knowledge", "edit"), supersedeDecision);
+router.post(
+  "/:id/supersede",
+  requirePermission("knowledge", "edit"),
+  supersedeDecision,
+);
 
 export default router;

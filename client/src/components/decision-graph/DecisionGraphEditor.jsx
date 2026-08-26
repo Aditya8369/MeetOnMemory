@@ -1,5 +1,12 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { Plus, GitBranch, Archive, ChevronDown, ChevronUp, Lock } from "lucide-react";
+import {
+  Plus,
+  GitBranch,
+  Archive,
+  ChevronDown,
+  ChevronUp,
+  Lock,
+} from "lucide-react";
 import { toast } from "react-toastify";
 import { useRBAC } from "../../hooks/useRBAC";
 import { meetingApi } from "../../services/meetingApi";
@@ -62,7 +69,8 @@ const DecisionGraphEditor = ({ nodes = [], onChanged }) => {
   if (!canCreate && !canEdit) {
     return (
       <div className="mb-3 inline-flex items-center gap-1 rounded-md border border-gray-200 bg-gray-50 px-3 py-1 text-xs text-gray-500 dark:border-gray-700 dark:bg-gray-900/50 dark:text-gray-400">
-        <Lock size={12} /> View-only — you don’t have permission to edit the decision graph.
+        <Lock size={12} /> View-only — you don’t have permission to edit the
+        decision graph.
       </div>
     );
   }
@@ -73,7 +81,12 @@ const DecisionGraphEditor = ({ nodes = [], onChanged }) => {
     if (!sourceMeetingId) return toast.error("Choose a source meeting.");
     try {
       setBusy(true);
-      await createDecision({ text: text.trim(), owner, status, sourceMeetingId });
+      await createDecision({
+        text: text.trim(),
+        owner,
+        status,
+        sourceMeetingId,
+      });
       toast.success("Decision created.");
       setText("");
       setOwner("");
@@ -88,11 +101,15 @@ const DecisionGraphEditor = ({ nodes = [], onChanged }) => {
 
   const runEdge = async (kind) => {
     if (!edgeSource || !edgeTarget) return toast.error("Pick both decisions.");
-    if (edgeSource === edgeTarget) return toast.error("A decision can’t link to itself.");
+    if (edgeSource === edgeTarget)
+      return toast.error("A decision can’t link to itself.");
     try {
       setBusy(true);
       if (kind === "link") {
-        await linkDecisions(edgeSource, { targetId: edgeTarget, confidence: Number(confidence) });
+        await linkDecisions(edgeSource, {
+          targetId: edgeTarget,
+          confidence: Number(confidence),
+        });
         toast.success("Decisions linked.");
       } else {
         await supersedeDecision(edgeSource, { targetId: edgeTarget });
@@ -142,9 +159,15 @@ const DecisionGraphEditor = ({ nodes = [], onChanged }) => {
                   value={owner}
                   onChange={(e) => setOwner(e.target.value)}
                 />
-                <select className={inputCls} value={status} onChange={(e) => setStatus(e.target.value)}>
+                <select
+                  className={inputCls}
+                  value={status}
+                  onChange={(e) => setStatus(e.target.value)}
+                >
                   {STATUSES.map((s) => (
-                    <option key={s} value={s}>{s}</option>
+                    <option key={s} value={s}>
+                      {s}
+                    </option>
                   ))}
                 </select>
               </div>
@@ -182,7 +205,9 @@ const DecisionGraphEditor = ({ nodes = [], onChanged }) => {
               >
                 <option value="">From decision…</option>
                 {nodeOptions.map((n) => (
-                  <option key={n.id} value={n.id}>{n.label?.slice(0, 60)}</option>
+                  <option key={n.id} value={n.id}>
+                    {n.label?.slice(0, 60)}
+                  </option>
                 ))}
               </select>
               <select
@@ -192,11 +217,15 @@ const DecisionGraphEditor = ({ nodes = [], onChanged }) => {
               >
                 <option value="">To decision…</option>
                 {nodeOptions.map((n) => (
-                  <option key={n.id} value={n.id}>{n.label?.slice(0, 60)}</option>
+                  <option key={n.id} value={n.id}>
+                    {n.label?.slice(0, 60)}
+                  </option>
                 ))}
               </select>
               <div className="flex items-center gap-2">
-                <label className="text-xs text-gray-500 dark:text-gray-400">Confidence</label>
+                <label className="text-xs text-gray-500 dark:text-gray-400">
+                  Confidence
+                </label>
                 <input
                   type="number"
                   min={0}

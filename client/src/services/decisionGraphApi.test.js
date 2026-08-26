@@ -122,20 +122,28 @@ describe("decision graph mutations (Issue #2027)", () => {
   });
 
   it("linkDecisions posts a relatesTo edge to the right id", async () => {
-    apiClient.post.mockResolvedValueOnce({ data: { edge: { type: "relatesTo" } } });
-    await linkDecisions("d1", { targetId: "d2", confidence: 80 });
-    expect(apiClient.post).toHaveBeenCalledWith("/api/decision-graph/d1/relations", {
-      targetId: "d2",
-      confidence: 80,
+    apiClient.post.mockResolvedValueOnce({
+      data: { edge: { type: "relatesTo" } },
     });
+    await linkDecisions("d1", { targetId: "d2", confidence: 80 });
+    expect(apiClient.post).toHaveBeenCalledWith(
+      "/api/decision-graph/d1/relations",
+      {
+        targetId: "d2",
+        confidence: 80,
+      },
+    );
   });
 
   it("supersedeDecision posts to the supersede endpoint", async () => {
     apiClient.post.mockResolvedValueOnce({ data: { status: "superseded" } });
     const out = await supersedeDecision("d1", { targetId: "d2" });
-    expect(apiClient.post).toHaveBeenCalledWith("/api/decision-graph/d1/supersede", {
-      targetId: "d2",
-    });
+    expect(apiClient.post).toHaveBeenCalledWith(
+      "/api/decision-graph/d1/supersede",
+      {
+        targetId: "d2",
+      },
+    );
     expect(out.status).toBe("superseded");
   });
 });

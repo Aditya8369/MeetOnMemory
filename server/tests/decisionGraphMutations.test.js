@@ -48,13 +48,20 @@ describe("decisionGraph mutations (#2027)", () => {
       await createDecision(req, res);
       expect(res.status).toHaveBeenCalledWith(201);
       expect(Decision.create).toHaveBeenCalledWith(
-        expect.objectContaining({ text: "Adopt Rust", organization: "org1", sourceMeetingId: OID_A }),
+        expect.objectContaining({
+          text: "Adopt Rust",
+          organization: "org1",
+          sourceMeetingId: OID_A,
+        }),
       );
     });
 
     it("rejects missing text (400)", async () => {
       const res = mockRes();
-      await createDecision({ user: { organization: "org1" }, body: { sourceMeetingId: OID_A } }, res);
+      await createDecision(
+        { user: { organization: "org1" }, body: { sourceMeetingId: OID_A } },
+        res,
+      );
       expect(res.status).toHaveBeenCalledWith(400);
       expect(Decision.create).not.toHaveBeenCalled();
     });
@@ -62,7 +69,10 @@ describe("decisionGraph mutations (#2027)", () => {
     it("rejects an invalid sourceMeetingId (400)", async () => {
       const res = mockRes();
       await createDecision(
-        { user: { organization: "org1" }, body: { text: "x", sourceMeetingId: "not-an-id" } },
+        {
+          user: { organization: "org1" },
+          body: { text: "x", sourceMeetingId: "not-an-id" },
+        },
         res,
       );
       expect(res.status).toHaveBeenCalledWith(400);
@@ -72,7 +82,10 @@ describe("decisionGraph mutations (#2027)", () => {
       Meeting.findOne.mockReturnValue(query(null));
       const res = mockRes();
       await createDecision(
-        { user: { organization: "org1" }, body: { text: "x", sourceMeetingId: OID_A } },
+        {
+          user: { organization: "org1" },
+          body: { text: "x", sourceMeetingId: OID_A },
+        },
         res,
       );
       expect(res.status).toHaveBeenCalledWith(404);
@@ -88,7 +101,11 @@ describe("decisionGraph mutations (#2027)", () => {
       );
       const res = mockRes();
       await linkDecisions(
-        { user: { organization: "org1" }, params: { id: OID_A }, body: { targetId: OID_B, confidence: 80 } },
+        {
+          user: { organization: "org1" },
+          params: { id: OID_A },
+          body: { targetId: OID_B, confidence: 80 },
+        },
         res,
       );
       expect(res.status).toHaveBeenCalledWith(200);
@@ -99,7 +116,11 @@ describe("decisionGraph mutations (#2027)", () => {
     it("rejects a self-link (400) without touching the DB", async () => {
       const res = mockRes();
       await linkDecisions(
-        { user: { organization: "org1" }, params: { id: OID_A }, body: { targetId: OID_A } },
+        {
+          user: { organization: "org1" },
+          params: { id: OID_A },
+          body: { targetId: OID_A },
+        },
         res,
       );
       expect(res.status).toHaveBeenCalledWith(400);
@@ -107,13 +128,20 @@ describe("decisionGraph mutations (#2027)", () => {
     });
 
     it("409s when the edge already exists", async () => {
-      const source = { relatesTo: [{ target: { toString: () => OID_B } }], save: vi.fn() };
+      const source = {
+        relatesTo: [{ target: { toString: () => OID_B } }],
+        save: vi.fn(),
+      };
       Decision.findOne.mockImplementation((q) =>
         query(q._id === OID_A ? source : { _id: OID_B }),
       );
       const res = mockRes();
       await linkDecisions(
-        { user: { organization: "org1" }, params: { id: OID_A }, body: { targetId: OID_B } },
+        {
+          user: { organization: "org1" },
+          params: { id: OID_A },
+          body: { targetId: OID_B },
+        },
         res,
       );
       expect(res.status).toHaveBeenCalledWith(409);
@@ -121,10 +149,16 @@ describe("decisionGraph mutations (#2027)", () => {
     });
 
     it("404s when a decision is not in the org", async () => {
-      Decision.findOne.mockImplementation((q) => query(q._id === OID_A ? null : { _id: OID_B }));
+      Decision.findOne.mockImplementation((q) =>
+        query(q._id === OID_A ? null : { _id: OID_B }),
+      );
       const res = mockRes();
       await linkDecisions(
-        { user: { organization: "org1" }, params: { id: OID_A }, body: { targetId: OID_B } },
+        {
+          user: { organization: "org1" },
+          params: { id: OID_A },
+          body: { targetId: OID_B },
+        },
         res,
       );
       expect(res.status).toHaveBeenCalledWith(404);
@@ -139,7 +173,11 @@ describe("decisionGraph mutations (#2027)", () => {
       );
       const res = mockRes();
       await supersedeDecision(
-        { user: { organization: "org1" }, params: { id: OID_A }, body: { targetId: OID_B } },
+        {
+          user: { organization: "org1" },
+          params: { id: OID_A },
+          body: { targetId: OID_B },
+        },
         res,
       );
       expect(res.status).toHaveBeenCalledWith(200);
