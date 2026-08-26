@@ -475,6 +475,12 @@ const Navbar = () => {
             permission: { resource: "meetings", action: "view" },
           },
           {
+            label: t("navbar.orgTimeline", "Org Timeline"),
+            href: "/timeline",
+            icon: History,
+            permission: { resource: "meetings", action: "view" },
+          },
+          {
             label: t("navbar.meetingTemplates"),
             href: "/meeting-templates",
             icon: GitMerge,
