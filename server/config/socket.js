@@ -13,6 +13,7 @@ import { initWorkspaceSocket } from "../socket/workspaceSocket.js";
 import authenticateSocket from "../middleware/socketAuth.js";
 import pulseCheckSocket from "../socket/pulseCheckSocket.js";
 import activitySocket from "../socket/activitySocket.js";
+import playbookSocket from "../socket/playbookSocket.js";
 
 export function configureSocket(server, app) {
   // SOCKET.IO
@@ -94,6 +95,7 @@ export function configureSocket(server, app) {
   initWorkspaceSocket(io);
   pulseCheckSocket(io);
   activitySocket(io);
+  playbookSocket(io);
 
   return io;
 }

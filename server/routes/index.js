@@ -56,6 +56,7 @@ import transcriptAnnotationRoutes from "./transcriptAnnotationRoutes.js";
 import glossaryRoutes from "./glossaryRoutes.js";
 import aiSummaryTemplateRoutes from "./aiSummaryTemplateRoutes.js";
 import topicRoutes from "./topicRoutes.js";
+import topicIntelligenceRoutes from "./topicIntelligenceRoutes.js";
 import automationRuleRoutes from "./automationRuleRoutes.js";
 import meetingHealthRoutes from "./meetingHealthRoutes.js";
 import workspaceRoutes from "./workspaceRoutes.js";
@@ -103,6 +104,7 @@ import icebreakerRoutes from "./icebreakerRoutes.js";
 import meetingQuizRoutes from "./meetingQuizRoutes.js";
 import resourceBookingRoutes from "./resourceBookingRoutes.js";
 import recordingSessionRoutes from "./recordingSessionRoutes.js";
+import meetingPlaybookRoutes from "./meetingPlaybookRoutes.js";
 
 const router = express.Router();
 
@@ -122,6 +124,7 @@ router.use("/api/meetings/:meetingId/checklist", meetingChecklistRoutes);
 router.use("/api/meetings/:id/duplicates", meetingDuplicateRoutes);
 router.use("/api/delegations", meetingDelegationRoutes);
 router.use("/api/meetings/:meetingId/quiz", meetingQuizRoutes);
+router.use("/api/playbooks", meetingPlaybookRoutes);
 router.use("/api/meetings", meetingRoutes);
 router.use("/api/meetings", meetingTimelineRoutes);
 router.use("/api/meetings", highlightReelRoutes);
@@ -191,6 +194,7 @@ router.use("/api/transcript-annotations", transcriptAnnotationRoutes);
 router.use("/api/glossary", glossaryRoutes);
 router.use("/api/ai-summary-templates", aiSummaryTemplateRoutes);
 router.use("/api/topics", topicRoutes);
+router.use("/api/topic-intelligence", topicIntelligenceRoutes);
 router.use("/api/automation-rules", automationRuleRoutes);
 router.use("/api/meeting-health", meetingHealthRoutes);
 router.use("/api/workspace", workspaceRoutes);
@@ -251,7 +255,11 @@ import escalationRoutes from "./escalationRoutes.js";
 router.use("/api/escalations", escalationRoutes);
 import participantEngagementRoutes from "./participantEngagementRoutes.js";
 router.use("/api/engagement", participantEngagementRoutes);
-
+import participantContributionRoutes from "./participantContributionRoutes.js";
+router.use(
+  "/api/meetings/:meetingId/contributions",
+  participantContributionRoutes,
+);
 import meetingPatternRoutes from "./meetingPatternRoutes.js";
 router.use("/api/patterns", meetingPatternRoutes);
 

@@ -93,9 +93,21 @@ import ActionItemTemplates from "../pages/ActionItemTemplates.jsx";
 import IntegrationMarketplaceHub from "../pages/IntegrationMarketplaceHub.jsx";
 import SentimentTrends from "../pages/SentimentTrends.jsx";
 import AsyncMeetingsDashboard from "../pages/AsyncMeetingsDashboard.jsx";
+import MeetingPlaybooks from "../pages/MeetingPlaybooks.jsx";
+import TopicIntelligence from "../pages/TopicIntelligence.jsx";
 
 const ProtectedRoutes = (
   <React.Fragment>
+    <Route
+      path="/topic-intelligence"
+      element={
+        <ProtectedRoute>
+          <RouteErrorBoundary>
+            <TopicIntelligence />
+          </RouteErrorBoundary>
+        </ProtectedRoute>
+      }
+    />
     <Route
       path="/sentiment-trends"
       element={
@@ -126,6 +138,14 @@ const ProtectedRoutes = (
       element={
         <ProtectedRoute resource="meetings" action="view">
           <MeetingListPage />
+        </ProtectedRoute>
+      }
+    />
+    <Route
+      path="/playbooks"
+      element={
+        <ProtectedRoute resource="meetings" action="view">
+          <MeetingPlaybooks />
         </ProtectedRoute>
       }
     />

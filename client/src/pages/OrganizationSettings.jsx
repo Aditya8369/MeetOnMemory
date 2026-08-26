@@ -179,6 +179,7 @@ import IssueTrackerConfig from "../components/integrations/IssueTrackerConfig.js
 import OrgCustomFieldsSection from "../components/organization/OrgCustomFieldsSection.jsx";
 import CostConfigSettings from "../components/organization/CostConfigSettings.jsx";
 import SlaConfigPanel from "../components/organization/SlaConfigPanel.jsx";
+import E2eeRolloutPanel from "../components/organization/E2eeRolloutPanel.jsx";
 
 // Image editor component
 const ImageEditor = ({ imageUrl, onSave, onCancel, onClose }) => {
@@ -822,6 +823,12 @@ const OrganizationSettings = () => {
     memberCount: 0,
   });
 
+  // E2EE Rollout State (#2263)
+  const [e2eeSettings, setE2eeSettings] = useState({
+    enabled: false,
+    enforceOrgWide: false,
+  });
+
   // Validation Errors
   const [errors, setErrors] = useState({});
 
@@ -1124,6 +1131,10 @@ const OrganizationSettings = () => {
           memberCount: org.memberCount || 0,
         });
 
+        setE2eeSettings(
+          org.e2eeSettings || { enabled: false, enforceOrgWide: false },
+        );
+
         setUserRole(data.userRole || "member");
         setCanEdit(data.canEdit !== undefined ? data.canEdit : false);
       } else {
@@ -1140,6 +1151,22 @@ const OrganizationSettings = () => {
       setLoading(false);
     }
   }, []);
+
+  const handleSaveE2eeSettings = useCallback(
+    async (updatedE2ee) => {
+      if (!metadata._id) return;
+      const { data } = await organizationApi.updateOrganizationSettings(
+        metadata._id,
+        {
+          e2eeSettings: updatedE2ee,
+        },
+      );
+      if (data?.success) {
+        setE2eeSettings(data.organization?.e2eeSettings || updatedE2ee);
+      }
+    },
+    [metadata._id],
+  );
 
   useEffect(() => {
     fetchOrgSettings();
@@ -2256,12 +2283,25 @@ const OrganizationSettings = () => {
 
         {canEdit && metadata._id ? (
           <div className="mt-8 space-y-8">
+            <E2eeRolloutPanel
+              organizationId={metadata._id}
+              e2eeSettings={e2eeSettings}
+              canEdit={canEdit}
+              onSave={handleSaveE2eeSettings}
+            />
             <OrgCustomFieldsSection orgId={metadata._id} />
             <SlaConfigPanel organizationId={metadata._id} />
             <CostConfigSettings canEdit={canEdit} />
           </div>
         ) : (
-          <div className="mt-8">
+          <div className="mt-8 space-y-8">
+            {metadata._id && (
+              <E2eeRolloutPanel
+                organizationId={metadata._id}
+                e2eeSettings={e2eeSettings}
+                canEdit={false}
+              />
+            )}
             <CostConfigSettings canEdit={canEdit} />
           </div>
         )}
