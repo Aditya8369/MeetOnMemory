@@ -189,7 +189,7 @@ describe("Analytics Routes Integration Tests", () => {
     });
 
     it("should return a paginated chronological list of meetings with counts", async () => {
-      const m1 = await Meeting.create({
+      await Meeting.create({
         title: "Timeline Meeting 1",
         date: new Date(Date.now() - 3600000), // 1 hour ago
         organization: organizationId,
