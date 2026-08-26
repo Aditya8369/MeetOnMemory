@@ -15,7 +15,7 @@ import ScrollNavigator from "./components/ScrollNavigator";
 import FloatingAssistant from "./components/FloatingAssistant.jsx";
 import BadgeNotification from "./components/gamification/BadgeNotification.jsx";
 
-// --- Components ---
+import OfflineBanner from "./components/OfflineBanner.jsx";
 import Footer from "./components/Footer.jsx";
 import ErrorBoundary from "./components/ErrorBoundary.jsx";
 import AppContent from "./context/AppContent.js";
@@ -46,6 +46,9 @@ const App = () => {
       </a>
 
       <ErrorBoundary>
+        {/* Global Offline/Reconnect Banner */}
+        <OfflineBanner />
+
         {/* Toast Notifications */}
         <ToastContainer position="top-right" autoClose={3000} theme="colored" />
 

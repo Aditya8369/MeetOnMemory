@@ -130,13 +130,17 @@ const TemplateLibrary = () => {
           </div>
         </div>
 
-        {error && <div className="text-red-500 mb-4">{error}</div>}
+        {error && (
+          <div className="mb-6 p-4 bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-900/60 rounded-xl text-red-700 dark:text-red-400">
+            {error}
+          </div>
+        )}
 
         {loading ? (
           <div className="flex justify-center items-center h-64">
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500"></div>
           </div>
-        ) : (
+        ) : error ? null : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {templates.map((template) => (
               <div
@@ -187,10 +191,10 @@ const TemplateLibrary = () => {
           </div>
         )}
 
-        {templates.length === 0 && !loading && (
-          <div className="text-center py-12">
-            <p className="text-gray-500 dark:text-gray-400">
-              No templates found.
+        {templates.length === 0 && !loading && !error && (
+          <div className="text-center py-12 bg-white dark:bg-gray-800 border border-gray-250 dark:border-gray-700 rounded-xl p-8 shadow-xs">
+            <p className="text-gray-500 dark:text-gray-400 font-medium">
+              No templates found in the library.
             </p>
           </div>
         )}
