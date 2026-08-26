@@ -79,6 +79,7 @@ import testimonialRoutes, {
   adminTestimonialRouter,
 } from "./testimonialRoutes.js";
 import absenteeCatchUpRoutes from "./absenteeCatchUpRoutes.js";
+import asyncMeetingRoutes from "./asyncMeetingRoutes.js";
 
 import calendarRoutes from "./calendarRoutes.js";
 import assistantRoutes from "./assistantRoutes.js";
@@ -210,6 +211,7 @@ router.use("/api/rsvps", meetingRsvpRoutes);
 router.use("/api/testimonials", testimonialRoutes);
 router.use("/api/admin/testimonials", adminTestimonialRouter);
 router.use("/api/absentee-catchup", absenteeCatchUpRoutes);
+router.use("/api/async-meetings", asyncMeetingRoutes);
 import debriefQARoutes from "./debriefQARoutes.js";
 router.use("/api/debrief", debriefQARoutes);
 import adminJobsRoutes from "./adminJobsRoutes.js";

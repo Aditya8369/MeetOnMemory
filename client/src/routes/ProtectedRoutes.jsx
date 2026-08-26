@@ -92,6 +92,7 @@ import TeamAvailability from "../pages/TeamAvailability.jsx";
 import ActionItemTemplates from "../pages/ActionItemTemplates.jsx";
 import IntegrationMarketplaceHub from "../pages/IntegrationMarketplaceHub.jsx";
 import SentimentTrends from "../pages/SentimentTrends.jsx";
+import AsyncMeetingsDashboard from "../pages/AsyncMeetingsDashboard.jsx";
 
 const ProtectedRoutes = (
   <React.Fragment>
@@ -855,6 +856,14 @@ const ProtectedRoutes = (
           <RouteErrorBoundary section="Admin">
             <AdminPanel />
           </RouteErrorBoundary>
+        </ProtectedRoute>
+      }
+    />
+    <Route
+      path="/async-meetings"
+      element={
+        <ProtectedRoute>
+          <AsyncMeetingsDashboard />
         </ProtectedRoute>
       }
     />
