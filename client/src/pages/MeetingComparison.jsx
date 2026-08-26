@@ -1,14 +1,10 @@
 import React, { useState, useEffect } from "react";
 import { useSearchParams, useNavigate } from "react-router-dom";
- feature/i18n-rtl-parity-2242
 import { useTranslation } from "react-i18next";
-import { compareMeetings } from "../services/comparisonApi";
-
 import {
   compareMeetings,
   getComparableMeetings,
 } from "../services/comparisonApi";
- main
 
 const ItemDiffList = ({ title, diff, isActionItem }) => {
   const { t } = useTranslation();
@@ -252,35 +248,10 @@ const MeetingComparison = () => {
           <button
             onClick={() => navigate(-1)}
             className="mr-4 p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-full transition-colors"
+            aria-label={t("meetingComparison.goBack")}
           >
- feature/i18n-rtl-parity-2242
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth="2"
-              d="M10 19l-7-7m0 0l7-7m-7 7h18"
-            ></path>
-          </svg>
-        </button>
-        <h1 className="text-2xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
-          <svg
-            className="w-8 h-8 text-blue-600"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth="2"
-              d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"
-            ></path>
-          </svg>
-          {t("meetingComparison.title")}
-        </h1>
-
             <svg
-              className="w-5 h-5 text-gray-600 dark:text-gray-400"
+              className="w-5 h-5 text-gray-600 dark:text-gray-400 RTL-mirror"
               fill="none"
               stroke="currentColor"
               viewBox="0 0 24 24"
@@ -307,14 +278,14 @@ const MeetingComparison = () => {
                 d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"
               ></path>
             </svg>
-            Meeting Comparison
+            {t("meetingComparison.title")}
           </h1>
         </div>
 
         {selectOptions.length > 0 && (
           <div className="flex items-center gap-3 bg-white dark:bg-gray-800 p-2 border border-gray-200 dark:border-gray-700 rounded-xl shadow-sm">
             <span className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider pl-2">
-              Compare With:
+              {t("meetingComparison.compareWith")}
             </span>
             <select
               value={meetingIdB || ""}
@@ -340,7 +311,6 @@ const MeetingComparison = () => {
             </select>
           </div>
         )}
- main
       </div>
 
       {/* AI Summary Card */}

@@ -55,21 +55,14 @@ import HealthScoreCard from "../components/meeting-details/HealthScoreCard";
 import { isMeetingEnded } from "../utils/meetingLifecycle";
 import { canManageMeetingDigest } from "../utils/digestAccess";
 import MeetingRisksPanel from "../components/meetings/MeetingRisksPanel";
- feature/i18n-rtl-parity-2242
-import { Award } from "lucide-react";
 import { useTranslation } from "react-i18next";
-
 import { Award, ShieldAlert, FileText, Star } from "lucide-react";
 import ExportDialog from "../components/export/ExportDialog";
 import RetentionQuizSection from "../components/meetings/RetentionQuizSection";
 import ResourceConflictsPanel from "../components/meeting-details/ResourceConflictsPanel";
 import SkillEndorsementModal from "../components/meetings/SkillEndorsementModal";
 import DebriefQAPanel from "../components/meetings/DebriefQAPanel";
- feature/i18n-rtl-parity-2242
- main
-
 import DelegationPanel from "../components/meetings/DelegationPanel";
- main
 
 const MeetingDetails = () => {
   const { id } = useParams();
