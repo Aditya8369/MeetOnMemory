@@ -4,11 +4,11 @@ import {
   getMeetingEndorsements,
   getUserEndorsements,
 } from "../controllers/skillEndorsementController.js";
- feature/org-timeline-dashboard-2261
+feature / org - timeline - dashboard - 2261;
 import requireAuth from "../middleware/userAuth.js";
 
 import userAuth from "../middleware/userAuth.js";
- main
+main;
 
 const router = express.Router();
 

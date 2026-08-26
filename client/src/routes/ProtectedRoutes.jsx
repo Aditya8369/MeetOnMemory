@@ -89,12 +89,12 @@ import StandupReports from "../pages/StandupReports.jsx";
 import SlaCompliance from "../pages/SlaCompliance.jsx";
 import TeamAvailability from "../pages/TeamAvailability.jsx";
 import ActionItemTemplates from "../pages/ActionItemTemplates.jsx";
- feature/org-timeline-dashboard-2261
+feature / org - timeline - dashboard - 2261;
 import OrgTimelineDashboard from "../pages/OrgTimelineDashboard.jsx";
 
 import IntegrationMarketplaceHub from "../pages/IntegrationMarketplaceHub.jsx";
 import SentimentTrends from "../pages/SentimentTrends.jsx";
- main
+main;
 
 const ProtectedRoutes = (
   <React.Fragment>

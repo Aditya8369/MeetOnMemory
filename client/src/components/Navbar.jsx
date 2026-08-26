@@ -419,34 +419,39 @@ const Navbar = () => {
     }
   };
 
- feature/org-timeline-dashboard-2261
-  const isTabActive = (tabPath) => {
-    const currentPath = location.pathname;
-    if (tabPath === "/dashboard") {
-      return currentPath === "/dashboard";
-    }
-    if (tabPath === "/meetings") {
-      return (
-        currentPath.startsWith("/meetings") ||
-        currentPath === "/create-meeting" ||
-        currentPath === "/upload-meeting" ||
-        currentPath === "/summaries" ||
-        currentPath === "/reports" ||
-        currentPath === "/policies"
-      );
-    }
-    if (tabPath === "/meeting-series") {
-      return currentPath.startsWith("/meeting-series");
-    }
-    if (tabPath === "/organizations") {
-      return (
-        currentPath === "/organizations" ||
-        currentPath === "/create-organization" ||
-        currentPath === "/join-organization"
-      );
-    }
-    return currentPath === tabPath;
-  };
+  const isTabActive = useCallback(
+    (tabPath) => {
+      const currentPath = location.pathname;
+      if (tabPath === "/dashboard") {
+        return currentPath === "/dashboard";
+      }
+      if (tabPath === "/meetings") {
+        return (
+          currentPath === "/meetings" ||
+          currentPath.startsWith("/meetings/") ||
+          currentPath === "/create-meeting" ||
+          currentPath === "/upload-meeting" ||
+          currentPath === "/summaries" ||
+          currentPath === "/reports" ||
+          currentPath === "/policies" ||
+          currentPath === "/parking-lot"
+        );
+      }
+      if (tabPath === "/meeting-series") {
+        return currentPath.startsWith("/meeting-series");
+      }
+      if (tabPath === "/organizations") {
+        return (
+          currentPath === "/organizations" ||
+          currentPath === "/create-organization" ||
+          currentPath === "/join-organization" ||
+          currentPath.startsWith("/organizations/")
+        );
+      }
+      return currentPath === tabPath;
+    },
+    [location.pathname],
+  );
 
   const primaryLinks = [
     {
@@ -490,40 +495,11 @@ const Navbar = () => {
       href: "/focus-time",
       icon: Clock,
       permission: null,
-
-  const isTabActive = useCallback(
-    (tabPath) => {
-      const currentPath = location.pathname;
-      if (tabPath === "/dashboard") {
-        return currentPath === "/dashboard";
-      }
-      if (tabPath === "/meetings") {
-        return (
-          currentPath === "/meetings" ||
-          currentPath.startsWith("/meetings/") ||
-          currentPath === "/create-meeting" ||
-          currentPath === "/upload-meeting" ||
-          currentPath === "/summaries" ||
-          currentPath === "/reports" ||
-          currentPath === "/policies" ||
-          currentPath === "/parking-lot"
-        );
-      }
-      if (tabPath === "/meeting-series") {
-        return currentPath.startsWith("/meeting-series");
-      }
-      if (tabPath === "/organizations") {
-        return (
-          currentPath === "/organizations" ||
-          currentPath === "/create-organization" ||
-          currentPath === "/join-organization" ||
-          currentPath.startsWith("/organizations/")
-        );
-      }
-      return currentPath === tabPath;
- main
     },
-    [location.pathname],
+  ].filter(
+    (link) =>
+      !link.permission ||
+      hasPermission(link.permission.resource, link.permission.action),
   );
 
   // Grouped Navigation definition with RBAC filtering
