@@ -1,12 +1,21 @@
 import SharedLink from "../models/sharedLinkModel.js";
 import Meeting from "../models/meetingModel.js";
 import Policy from "../models/policyModel.js";
+import Transcript from "../models/transcriptModel.js";
+import Attachment from "../models/attachmentModel.js";
+import MeetingClip from "../models/meetingClipModel.js";
 import crypto from "crypto";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import mongoose from "mongoose";
 import { hasPermission } from "../utils/rbacPermissions.js";
 import logger from "../utils/logger.js";
+import piiRedactionService from "../services/piiRedactionService.js";
+import {
+  DEFAULT_SHARE_SETTINGS,
+  normalizeShareSettings,
+  buildPublicMeetingResource,
+} from "../utils/sharedLinkPublicPayload.js";
 import {
   SHARED_LINK_PASSCODE_AUTH_FAILURE_MESSAGE,
   SHARED_LINK_PASSCODE_LOCKOUT_MS,
@@ -15,24 +24,19 @@ import {
   isPasscodeLocked,
 } from "../utils/sharedLinkSecurity.js";
 
-const getSharedLinkJwtSecret = () =>
-  process.env.SHARED_LINK_JWT_SECRET ||
-  process.env.SHARED_LINK_SECRET ||
-  process.env.JWT_SECRET ||
-  "default_shared_link_secret";
+export const getSharedLinkJwtSecret = () => {
+  const secret =
+    process.env.SHARED_LINK_JWT_SECRET ||
+    process.env.SHARED_LINK_SECRET ||
+    process.env.JWT_SECRET;
+  if (!secret) {
+    throw new Error("SHARED_LINK_JWT_SECRET is not configured");
+  }
+  return secret;
+};
 
 /**
- * The shareable resource types and the model each one resolves against.
- *
- * A single map, rather than an `includes()` check in one place and an
- * `if/else` on the same string in another. The version this replaces had those
- * two drift apart: inside the type guard, the `resourceType === "Meeting"` arm
- * was unreachable — the enclosing condition had already excluded `"Meeting"` —
- * so an unknown type was looked up as a Policy and reported as
- * `"<type> not found"` instead of "invalid resource type", which also told the
- * caller whether an arbitrary ObjectId existed as a Policy. Keeping the
- * type→model relationship in one place removes that class of mismatch.
- *
+ * Maps shareable resource types to their Mongoose models.
  * Keys must stay in sync with the `resourceModel` enum on sharedLinkModel.
  */
 export const SHARE_MODELS_BY_TYPE = Object.freeze({
@@ -89,6 +93,9 @@ const toPublicLink = (link, includeAnalytics) => {
     hasPasscode: !!link.passcode,
     active: link.active,
     createdAt: link.createdAt,
+    shareSettings: normalizeShareSettings(
+      link.shareSettings || DEFAULT_SHARE_SETTINGS,
+    ),
   };
 
   if (!includeAnalytics) return base;
@@ -181,7 +188,13 @@ const sendPasscodeAuthFailure = (res) =>
 
 export const createLink = async (req, res) => {
   try {
-    const { resourceId, resourceType, expirationDate, passcode } = req.body;
+    const {
+      resourceId,
+      resourceType,
+      expirationDate,
+      passcode,
+      shareSettings,
+    } = req.body;
 
     if (!resourceId || !resourceType) {
       return res
@@ -189,13 +202,7 @@ export const createLink = async (req, res) => {
         .json({ success: false, message: "Missing required fields" });
     }
 
-    // Issue #1070: the ownership check used to live inside
-    // `if (!["Meeting", "Policy"].includes(resourceType))` — the branch that is
-    // only entered when the type is *invalid*, and which then returned 400 a
-    // few lines later regardless. Every real request (`"Meeting"` / `"Policy"`)
-    // skipped it entirely, so any authenticated user could mint a public link
-    // for any resource in any organization given only its ObjectId. The guards
-    // below run on the path requests actually take.
+    // Ownership + org checks run on the live create path (Issue #1070).
     if (!SHARE_MODELS_BY_TYPE[resourceType]) {
       return res
         .status(400)
@@ -216,8 +223,6 @@ export const createLink = async (req, res) => {
     }
 
     if (!mongoose.isValidObjectId(resourceId)) {
-      // Previously a malformed id reached `findById` and surfaced as a CastError
-      // 500 rather than a validation error.
       return res
         .status(400)
         .json({ success: false, message: "Invalid resource ID" });
@@ -225,8 +230,6 @@ export const createLink = async (req, res) => {
 
     const callerOrg = req.user?.organization;
     if (!callerOrg) {
-      // A session with no organization used to blow up on `.toString()` of
-      // undefined; it cannot own a shareable resource either way.
       return res.status(403).json({
         success: false,
         message: "Forbidden: Resource does not belong to your organization",
@@ -268,6 +271,10 @@ export const createLink = async (req, res) => {
     }
 
     const hash = generateHash();
+    const normalizedShareSettings =
+      resourceType === "Meeting"
+        ? normalizeShareSettings(shareSettings || DEFAULT_SHARE_SETTINGS)
+        : undefined;
 
     const newLink = new SharedLink({
       resourceId,
@@ -277,6 +284,9 @@ export const createLink = async (req, res) => {
       passcode: hashedPasscode,
       createdBy: req.user._id,
       organizationId: req.user.organization,
+      ...(normalizedShareSettings
+        ? { shareSettings: normalizedShareSettings }
+        : {}),
     });
 
     await newLink.save();
@@ -475,17 +485,10 @@ export const getPublicResource = async (req, res) => {
       }
 
       let decoded = null;
-      const secret = getSharedLinkJwtSecret();
       try {
-        decoded = jwt.verify(token, secret);
+        decoded = jwt.verify(token, getSharedLinkJwtSecret());
       } catch (_err) {
-        if (process.env.JWT_SECRET && process.env.JWT_SECRET !== secret) {
-          try {
-            decoded = jwt.verify(token, process.env.JWT_SECRET);
-          } catch (_fallbackErr) {
-            // ignore
-          }
-        }
+        decoded = null;
       }
 
       if (!decoded || decoded.hash !== hash) {
@@ -502,10 +505,14 @@ export const getPublicResource = async (req, res) => {
     let resourceData = null;
 
     if (link.resourceModel === "Meeting") {
+      const settings = normalizeShareSettings(
+        link.shareSettings || DEFAULT_SHARE_SETTINGS,
+      );
+
       const meeting = await Meeting.findById(link.resourceId)
         .select(
-          "title description date time location " +
-            "participants summary structuredMoM",
+          "title description date time location venue venueCoordinates " +
+            "participants summary structuredMoM transcript organization",
         )
         .lean();
 
@@ -515,18 +522,37 @@ export const getPublicResource = async (req, res) => {
           .json({ success: false, message: "Meeting not found" });
       }
 
-      resourceData = {
-        title: meeting.title,
-        description: meeting.description,
-        date: meeting.date,
-        time: meeting.time,
-        location: meeting.location,
-        summary: meeting.summary,
-        structuredMoM: meeting.structuredMoM,
-        participants: meeting.participants
-          ? Array(meeting.participants.length).fill({})
+      const [transcriptDoc, attachments, clips] = await Promise.all([
+        settings.includeTranscript
+          ? Transcript.findOne({ meeting: link.resourceId })
+              .select("segments fullText")
+              .lean()
+          : null,
+        settings.includeAttachments
+          ? Attachment.find({ meeting: link.resourceId })
+              .select("fileName fileType fileSize mimeType createdAt")
+              .lean()
           : [],
-      };
+        settings.includeClips
+          ? MeetingClip.find({ meeting: link.resourceId })
+              .select(
+                "title description startTime endTime transcriptSegments labels",
+              )
+              .lean()
+          : [],
+      ]);
+
+      resourceData = await buildPublicMeetingResource({
+        meeting,
+        settings,
+        organizationId: link.organizationId,
+        meetingId: link.resourceId,
+        transcriptDoc,
+        attachments,
+        clips,
+        scanAndRedact:
+          piiRedactionService.scanAndRedact.bind(piiRedactionService),
+      });
     } else if (link.resourceModel === "Policy") {
       const policy = await Policy.findById(link.resourceId)
         .select("name version summary key_changes")
@@ -544,6 +570,12 @@ export const getPublicResource = async (req, res) => {
         summary: policy.summary,
         key_changes: policy.key_changes,
       };
+    } else {
+      // Enum should prevent this; treat unexpected models as not found.
+      return res.status(404).json({
+        success: false,
+        message: "Link not found or inactive",
+      });
     }
 
     // Record view only after successful access; never include analytics in public payload

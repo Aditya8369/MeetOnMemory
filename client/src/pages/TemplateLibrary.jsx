@@ -5,7 +5,8 @@ import {
   cloneTemplate,
   rateTemplate,
 } from "../services/templateLibraryApi";
-import { CopyPlus, Star, ChevronDown, Filter } from "lucide-react";
+import { CopyPlus, Star, ChevronDown, Filter, X } from "lucide-react";
+import { toast } from "react-toastify";
 
 const TemplateLibrary = () => {
   const [templates, setTemplates] = useState([]);
@@ -16,6 +17,8 @@ const TemplateLibrary = () => {
   const [selectedTemplate, setSelectedTemplate] = useState(null);
   const [ratingInput, setRatingInput] = useState(5);
   const [reviewInput, setReviewInput] = useState("");
+  const [cloningTemplateId, setCloningTemplateId] = useState(null);
+  const [ratingTemplateId, setRatingTemplateId] = useState(null);
 
   const fetchTemplates = async () => {
     setLoading(true);
@@ -38,29 +41,49 @@ const TemplateLibrary = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [categoryFilter, sortOption]);
 
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (e.key === "Escape" && selectedTemplate) {
+        setSelectedTemplate(null);
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [selectedTemplate]);
+
   const handleClone = async (templateId) => {
+    if (cloningTemplateId) return;
+
+    setCloningTemplateId(templateId);
     try {
       await cloneTemplate(templateId);
-      alert("Template cloned successfully!");
-      fetchTemplates(); // Refresh to update clone count
+      toast.success("Template cloned successfully!");
+      await fetchTemplates();
     } catch {
-      alert("Failed to clone template");
+      toast.error("Failed to clone template");
+    } finally {
+      setCloningTemplateId(null);
     }
   };
 
   const handleRate = async (templateId) => {
+    if (ratingTemplateId) return;
+
+    setRatingTemplateId(templateId);
     try {
       await rateTemplate(templateId, {
         rating: ratingInput,
         review: reviewInput,
       });
-      alert("Rating submitted successfully!");
+      toast.success("Rating submitted successfully!");
       setRatingInput(5);
       setReviewInput("");
-      fetchTemplates(); // Refresh to update rating
-      setSelectedTemplate(null); // Close modal
+      await fetchTemplates();
+      setSelectedTemplate(null);
     } catch {
-      alert("Failed to submit rating");
+      toast.error("Failed to submit rating");
+    } finally {
+      setRatingTemplateId(null);
     }
   };
 
@@ -107,19 +130,32 @@ const TemplateLibrary = () => {
           </div>
         </div>
 
-        {error && <div className="text-red-500 mb-4">{error}</div>}
+        {error && (
+          <div className="mb-6 p-4 bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-900/60 rounded-xl text-red-700 dark:text-red-400">
+            {error}
+          </div>
+        )}
 
         {loading ? (
           <div className="flex justify-center items-center h-64">
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500"></div>
           </div>
-        ) : (
+        ) : error ? null : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {templates.map((template) => (
               <div
                 key={template._id}
-                className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden hover:shadow-md transition cursor-pointer"
+                role="button"
+                tabIndex={0}
+                aria-label={`View details for ${template.name}`}
+                className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden hover:shadow-md transition cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
                 onClick={() => setSelectedTemplate(template)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" || e.key === " ") {
+                    e.preventDefault();
+                    setSelectedTemplate(template);
+                  }
+                }}
               >
                 <div className="p-6">
                   <div className="flex justify-between items-start mb-4">
@@ -136,11 +172,17 @@ const TemplateLibrary = () => {
                   <div className="flex items-center justify-between text-sm text-gray-500 dark:text-gray-400">
                     <div className="flex items-center">
                       <CopyPlus className="w-4 h-4 mr-1" />
-                      <span>{template.cloneCount} clones</span>
+                      <span>{template.cloneCount ?? 0} clones</span>
                     </div>
                     <div className="flex items-center">
                       <Star className="w-4 h-4 mr-1 text-yellow-400" />
-                      <span>{template.averageRating.toFixed(1)}</span>
+                      <span>
+                        {typeof template.averageRating === "number"
+                          ? template.averageRating.toFixed(1)
+                          : template.averageRating != null
+                            ? Number(template.averageRating).toFixed(1)
+                            : "N/A"}
+                      </span>
                     </div>
                   </div>
                 </div>
@@ -149,25 +191,41 @@ const TemplateLibrary = () => {
           </div>
         )}
 
-        {templates.length === 0 && !loading && (
-          <div className="text-center py-12">
-            <p className="text-gray-500 dark:text-gray-400">
-              No templates found.
+        {templates.length === 0 && !loading && !error && (
+          <div className="text-center py-12 bg-white dark:bg-gray-800 border border-gray-250 dark:border-gray-700 rounded-xl p-8 shadow-xs">
+            <p className="text-gray-500 dark:text-gray-400 font-medium">
+              No templates found in the library.
             </p>
           </div>
         )}
       </div>
 
-      {/* Modal */}
       {selectedTemplate && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white dark:bg-gray-800 rounded-xl max-w-lg w-full p-6">
-            <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="template-detail-title"
+          className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4"
+        >
+          <div className="bg-white dark:bg-gray-800 rounded-xl max-w-lg w-full p-6 relative">
+            <button
+              type="button"
+              onClick={() => setSelectedTemplate(null)}
+              aria-label="Close dialog"
+              className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 cursor-pointer"
+            >
+              <X className="w-5 h-5" />
+            </button>
+            <h2
+              id="template-detail-title"
+              className="text-2xl font-bold text-gray-900 dark:text-white mb-2 pr-8"
+            >
               {selectedTemplate.name}
             </h2>
             <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
               {selectedTemplate.description}
             </p>
+
             <div className="mb-6">
               <h4 className="font-semibold text-gray-700 dark:text-gray-300 mb-2">
                 Agenda Blocks
@@ -184,10 +242,14 @@ const TemplateLibrary = () => {
             <div className="flex gap-4 mb-6">
               <button
                 onClick={() => handleClone(selectedTemplate._id)}
-                className="flex-1 bg-blue-600 hover:bg-blue-700 text-white py-2 px-4 rounded-lg font-medium transition flex items-center justify-center"
+                disabled={cloningTemplateId === selectedTemplate._id}
+                aria-busy={cloningTemplateId === selectedTemplate._id}
+                className="flex-1 bg-blue-600 hover:bg-blue-700 disabled:opacity-60 disabled:cursor-not-allowed text-white py-2 px-4 rounded-lg font-medium transition flex items-center justify-center cursor-pointer"
               >
                 <CopyPlus className="w-5 h-5 mr-2" />
-                Clone Template
+                {cloningTemplateId === selectedTemplate._id
+                  ? "Cloning..."
+                  : "Clone Template"}
               </button>
             </div>
 
@@ -199,36 +261,51 @@ const TemplateLibrary = () => {
               </h4>
               <div className="flex items-center mb-2">
                 {[1, 2, 3, 4, 5].map((star) => (
-                  <Star
+                  <button
                     key={star}
-                    className={`w-6 h-6 cursor-pointer ${
-                      ratingInput >= star
-                        ? "text-yellow-400 fill-current"
-                        : "text-gray-300"
-                    }`}
-                    onClick={() => setRatingInput(star)}
-                  />
+                    type="button"
+                    aria-label={`Rate ${star} star${star > 1 ? "s" : ""}`}
+                    disabled={Boolean(ratingTemplateId)}
+                    className="p-1 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 rounded cursor-pointer"
+                    onClick={() => {
+                      if (!ratingTemplateId) setRatingInput(star);
+                    }}
+                  >
+                    <Star
+                      className={`w-6 h-6 ${
+                        ratingInput >= star
+                          ? "text-yellow-400 fill-current"
+                          : "text-gray-300 dark:text-gray-600"
+                      }`}
+                    />
+                  </button>
                 ))}
               </div>
               <textarea
                 value={reviewInput}
                 onChange={(e) => setReviewInput(e.target.value)}
                 placeholder="Leave a review..."
-                className="w-full border border-gray-300 dark:border-gray-600 rounded-lg p-2 text-sm mb-2 dark:bg-gray-700 dark:text-white"
+                disabled={ratingTemplateId === selectedTemplate._id}
+                className="w-full border border-gray-300 dark:border-gray-600 rounded-lg p-2 text-sm mb-2 dark:bg-gray-700 dark:text-white disabled:opacity-60"
                 rows="3"
               />
               <div className="flex justify-end gap-2">
                 <button
                   onClick={() => setSelectedTemplate(null)}
-                  className="px-4 py-2 text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition"
+                  disabled={Boolean(ratingTemplateId)}
+                  className="px-4 py-2 text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition disabled:opacity-60 disabled:cursor-not-allowed cursor-pointer"
                 >
                   Cancel
                 </button>
                 <button
                   onClick={() => handleRate(selectedTemplate._id)}
-                  className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg transition"
+                  disabled={ratingTemplateId === selectedTemplate._id}
+                  aria-busy={ratingTemplateId === selectedTemplate._id}
+                  className="px-4 py-2 bg-green-600 hover:bg-green-700 disabled:opacity-60 disabled:cursor-not-allowed text-white rounded-lg transition cursor-pointer"
                 >
-                  Submit Rating
+                  {ratingTemplateId === selectedTemplate._id
+                    ? "Submitting..."
+                    : "Submit Rating"}
                 </button>
               </div>
             </div>

@@ -5,9 +5,11 @@ import React, {
   useRef,
   useCallback,
 } from "react";
-import AppContent from "../../context/AppContent";
+import AppContent from "../../context/AppContent.js";
 import { io } from "socket.io-client";
-import { createClerkSocketOptions } from "../../services/apiClient.js";
+import apiClient, {
+  createClerkSocketOptions,
+} from "../../services/apiClient.js";
 import {
   Languages,
   Settings,
@@ -21,64 +23,65 @@ import {
 import { toast } from "react-toastify";
 
 const MultiLanguageTranscript = ({ meetingId }) => {
-  const { backendUrl } = useContext(AppContent);
+  const { backendUrl } = useContext(AppContent) || {};
   const [transcript, setTranscript] = useState([]);
-  const [selectedLanguage, setSelectedLanguage] = useState("en");
+  const [selectedLanguage, setSelectedLanguage] = useState(() => {
+    return (
+      localStorage.getItem(`selectedLanguage-${meetingId}`) ||
+      localStorage.getItem("lastSelectedLanguage") ||
+      "en"
+    );
+  });
   const [showSettings, setShowSettings] = useState(false);
   const [editingSegment, setEditingSegment] = useState(null);
   const [editText, setEditText] = useState("");
   const [languages, setLanguages] = useState([]);
+  const [socketConnected, setSocketConnected] = useState(false);
   const socketRef = useRef(null);
   const transcriptRef = useRef(null);
 
   const fetchLanguages = useCallback(async () => {
     try {
-      const response = await fetch(`${backendUrl}/api/translation/languages`, {
-        credentials: "include",
-      });
-      const data = await response.json();
-      setLanguages(data.languages || []);
+      const { data } = await apiClient.get("/api/translation/languages");
+      setLanguages(data?.languages || []);
     } catch (error) {
       console.error("Error fetching languages:", error);
     }
-  }, [backendUrl]);
+  }, []);
 
   const fetchPreferences = useCallback(async () => {
     try {
-      const response = await fetch(
-        `${backendUrl}/api/translation/preferences`,
-        {
-          credentials: "include",
-        },
-      );
-      const data = await response.json();
+      const { data } = await apiClient.get("/api/translation/preferences");
       if (
-        data.defaultTargetLanguages &&
+        data?.defaultTargetLanguages &&
         data.defaultTargetLanguages.length > 0
       ) {
-        setSelectedLanguage(data.defaultTargetLanguages[0]);
+        const savedLanguage = localStorage.getItem(
+          `selectedLanguage-${meetingId}`,
+        );
+        if (!savedLanguage) {
+          setSelectedLanguage(data.defaultTargetLanguages[0]);
+        }
       }
     } catch (error) {
       console.error("Error fetching preferences:", error);
     }
-  }, [backendUrl]);
+  }, [meetingId]);
 
   const fetchTranscript = useCallback(async () => {
+    if (!meetingId) return;
     try {
-      const response = await fetch(
-        `${backendUrl}/api/translation/cache/${meetingId}`,
-        {
-          credentials: "include",
-        },
+      const { data } = await apiClient.get(
+        `/api/translation/cache/${meetingId}`,
       );
-      const data = await response.json();
-      setTranscript(data.translations || []);
+      setTranscript(data?.translations || []);
     } catch (error) {
       console.error("Error fetching transcript:", error);
     }
-  }, [backendUrl, meetingId]);
+  }, [meetingId]);
 
   const connectSocket = useCallback(async () => {
+    if (!backendUrl || !meetingId) return;
     try {
       const opts = await createClerkSocketOptions({
         transports: ["websocket"],
@@ -88,6 +91,13 @@ const MultiLanguageTranscript = ({ meetingId }) => {
 
       socket.on("connect", () => {
         console.log("✓ Translation socket connected");
+        setSocketConnected(true);
+        socket.emit("translation:join", { meetingId });
+      });
+
+      socket.on("disconnect", () => {
+        console.log("✗ Translation socket disconnected");
+        setSocketConnected(false);
       });
 
       socket.on("translation:result", (data) => {
@@ -131,7 +141,7 @@ const MultiLanguageTranscript = ({ meetingId }) => {
             if (t.segmentId === data.segmentId) {
               return {
                 ...t,
-                translations: t.translations.map((tr) =>
+                translations: (t.translations || []).map((tr) =>
                   tr.language === data.language
                     ? { ...tr, text: data.correctedText, provider: "manual" }
                     : tr,
@@ -144,9 +154,9 @@ const MultiLanguageTranscript = ({ meetingId }) => {
         toast.success("Translation corrected");
       });
     } catch (error) {
-      console.error("Socket connection error:", error);
+      console.warn("Socket connection error:", error);
     }
-  }, [backendUrl]);
+  }, [backendUrl, meetingId]);
 
   useEffect(() => {
     fetchLanguages();
@@ -181,6 +191,8 @@ const MultiLanguageTranscript = ({ meetingId }) => {
 
   const handleLanguageChange = (language) => {
     setSelectedLanguage(language);
+    localStorage.setItem(`selectedLanguage-${meetingId}`, language);
+    localStorage.setItem("lastSelectedLanguage", language);
 
     // Request translations for segments that don't have this language yet
     transcript.forEach((segment) => {
@@ -218,21 +230,29 @@ const MultiLanguageTranscript = ({ meetingId }) => {
     if (!editingSegment || !editText.trim()) return;
 
     try {
-      const response = await fetch(`${backendUrl}/api/translation/correct`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify({
-          meetingId,
-          segmentId: editingSegment.segmentId,
-          language: editingSegment.language,
-          correctedText: editText,
-        }),
+      await apiClient.post("/api/translation/correct", {
+        meetingId,
+        segmentId: editingSegment.segmentId,
+        language: editingSegment.language,
+        correctedText: editText,
       });
 
-      if (!response.ok) {
-        throw new Error("Failed to submit correction");
-      }
+      // Update local state immediately so user sees their correction without waiting/lagging
+      setTranscript((prev) =>
+        prev.map((t) => {
+          if (t.segmentId === editingSegment.segmentId) {
+            return {
+              ...t,
+              translations: (t.translations || []).map((tr) =>
+                tr.language === editingSegment.language
+                  ? { ...tr, text: editText, provider: "manual" }
+                  : tr,
+              ),
+            };
+          }
+          return t;
+        }),
+      );
 
       setEditingSegment(null);
       setEditText("");
@@ -245,25 +265,19 @@ const MultiLanguageTranscript = ({ meetingId }) => {
 
   const exportTranscript = async (format) => {
     try {
-      const response = await fetch(
-        `${backendUrl}/api/translation/export/${meetingId}`,
+      const response = await apiClient.post(
+        `/api/translation/export/${meetingId}`,
         {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          credentials: "include",
-          body: JSON.stringify({
-            format,
-            languages: [selectedLanguage],
-          }),
+          format,
+          languages: [selectedLanguage],
+        },
+        {
+          responseType: format === "json" ? "json" : "text",
         },
       );
 
-      if (!response.ok) {
-        throw new Error("Export failed");
-      }
-
       if (format === "json") {
-        const data = await response.json();
+        const data = response.data;
         const blob = new Blob([JSON.stringify(data, null, 2)], {
           type: "application/json",
         });
@@ -274,7 +288,7 @@ const MultiLanguageTranscript = ({ meetingId }) => {
         a.click();
         URL.revokeObjectURL(url);
       } else if (format === "srt") {
-        const text = await response.text();
+        const text = response.data;
         const blob = new Blob([text], { type: "text/plain" });
         const url = URL.createObjectURL(blob);
         const a = document.createElement("a");
@@ -318,8 +332,16 @@ const MultiLanguageTranscript = ({ meetingId }) => {
       <div className="flex items-center justify-between mb-6">
         <div className="flex items-center gap-3">
           <Languages className="w-6 h-6 text-blue-600" />
-          <h2 className="text-xl font-bold text-slate-900 dark:text-white">
+          <h2 className="text-xl font-bold text-slate-900 dark:text-white flex items-center gap-2">
             Multi-Language Transcript
+            <span
+              className={`inline-block w-2.5 h-2.5 rounded-full ${
+                socketConnected ? "bg-green-500" : "bg-red-500 animate-pulse"
+              }`}
+              title={
+                socketConnected ? "Connected" : "Disconnected - Reconnecting..."
+              }
+            />
           </h2>
         </div>
         <div className="flex items-center gap-2">
@@ -339,6 +361,26 @@ const MultiLanguageTranscript = ({ meetingId }) => {
           </button>
         </div>
       </div>
+
+      {/* Offline Status & Reconnect Alert */}
+      {!socketConnected && (
+        <div className="mb-6 p-3 bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-900/60 rounded-xl text-amber-800 dark:text-amber-400 text-sm flex items-center justify-between gap-2">
+          <div className="flex items-center gap-2">
+            <AlertCircle size={16} />
+            <span>Live translation is offline. Displaying cached history.</span>
+          </div>
+          <button
+            onClick={() => {
+              socketRef.current?.disconnect();
+              connectSocket();
+            }}
+            className="flex items-center gap-1.5 px-3 py-1 bg-amber-600 hover:bg-amber-750 text-white rounded-lg font-semibold text-xs transition-colors cursor-pointer shrink-0"
+          >
+            <RefreshCw size={12} className="animate-spin" />
+            Reconnect
+          </button>
+        </div>
+      )}
 
       {/* Language Selector */}
       <div className="mb-6">

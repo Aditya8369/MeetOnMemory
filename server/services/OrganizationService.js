@@ -22,17 +22,11 @@ import {
   ValidationError,
 } from "../utils/errors.js";
 import { normalizeImageUrl } from "../utils/imageUrl.js";
+import { escapeRegex } from "../utils/regex.js";
 
 // ═══════════════════════════════════════════════════════════════
 // Private helpers
 // ═══════════════════════════════════════════════════════════════
-
-/**
- * Escape special regex characters to prevent ReDoS attacks
- */
-const escapeRegex = (string) => {
-  return string.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-};
 
 /**
  * Validate MongoDB ObjectId
@@ -417,7 +411,7 @@ export const getPublicOrganizationBySlug = async (slug) => {
   // Find organization by slug - only select public fields
   const organization = await Organization.findOne(
     { slug, visibility: "public" },
-    "name slug description logo bannerUrl visibility createdAt metadata",
+    "name slug description logo bannerUrl visibility joinPolicy createdAt metadata",
   );
 
   if (!organization) {
@@ -442,6 +436,7 @@ export const getPublicOrganizationBySlug = async (slug) => {
     logoUrl,
     bannerUrl: organization.bannerUrl || "",
     visibility: organization.visibility,
+    joinPolicy: organization.joinPolicy || "open",
     createdAt: organization.createdAt,
     memberCount,
     website: metadata.website || organization.website || null,
@@ -1054,6 +1049,12 @@ export const getOrganizationSettings = async (userId, orgIdOrSlug = null) => {
       createdAt: organization.createdAt,
       updatedAt: organization.updatedAt,
       metadata: organization.metadata || {},
+      e2eeSettings: organization.e2eeSettings || {
+        enabled: false,
+        enforceOrgWide: false,
+        updatedAt: null,
+        updatedBy: null,
+      },
     },
     userRole,
     canEdit,
@@ -1078,7 +1079,7 @@ export const getOrganizationById = async (idOrSlug, userId) => {
 
   const organization = await Organization.findOne(query)
     .select(
-      "name slug description about website contactEmail industry location logo bannerUrl visibility joinPolicy owner createdAt updatedAt metadata",
+      "name slug description about website contactEmail industry location logo bannerUrl visibility joinPolicy owner createdAt updatedAt metadata e2eeSettings",
     )
     .populate("owner", "name email")
     .lean();
@@ -1139,6 +1140,7 @@ export const updateOrganization = async (
     visibility,
     joinPolicy,
     metadata,
+    e2eeSettings,
   },
 ) => {
   if (!isValidObjectId(id)) {
@@ -1291,6 +1293,14 @@ export const updateOrganization = async (
   if (cleanJoinPolicy) organization.joinPolicy = cleanJoinPolicy;
   if (metadata)
     organization.metadata = typeof metadata === "object" ? metadata : {};
+  if (e2eeSettings !== undefined && e2eeSettings !== null) {
+    organization.e2eeSettings = {
+      enabled: Boolean(e2eeSettings.enabled),
+      enforceOrgWide: Boolean(e2eeSettings.enforceOrgWide),
+      updatedAt: new Date(),
+      updatedBy: userId,
+    };
+  }
 
   await organization.save();
 

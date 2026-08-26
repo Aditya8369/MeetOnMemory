@@ -44,3 +44,7 @@ server/uploads/
 
 # Merge-conflict scratch dumps (e.g. cm_check.txt, cm_upstream*.txt)
 cm_*.txt
+
+# test logs
+test-logs/
+test-results/

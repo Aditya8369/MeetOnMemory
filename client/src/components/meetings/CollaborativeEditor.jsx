@@ -1,159 +1,222 @@
-import React, { useContext, useRef } from "react";
-import {
-  Users,
-  Wifi,
-  WifiOff,
-  Loader2,
-  CheckCircle2,
-  FileText,
-} from "lucide-react";
-import useCollaborativeDoc from "../../hooks/useCollaborativeDoc.js";
-import AppContent from "../../context/AppContent.js";
+import React, { useMemo, useState, useCallback } from "react";
+import { useEditor, EditorContent } from "@tiptap/react";
+import StarterKit from "@tiptap/starter-kit";
+import Collaboration from "@tiptap/extension-collaboration";
+import CollaborationCursor from "@tiptap/extension-collaboration-cursor";
+import Placeholder from "@tiptap/extension-placeholder";
+import { History } from "lucide-react";
+import { useCollaborativeNote } from "../../hooks/useCollaborativeNote";
+import PresenceAvatars from "./PresenceAvatars";
+import VersionHistory from "./VersionHistory";
+import NoteVersionHistory from "../NoteVersionHistory";
+import CollabSyncStatusChip from "./CollabSyncStatusChip";
 
-// Color palette for user presence dots
-const PRESENCE_COLORS = [
-  "bg-indigo-500",
-  "bg-emerald-500",
-  "bg-amber-500",
-  "bg-rose-500",
-  "bg-violet-500",
-  "bg-cyan-500",
-];
-
-const CollaborativeEditor = ({ meetingId }) => {
-  const { backendUrl } = useContext(AppContent);
-  const textareaRef = useRef(null);
-
+/**
+ * @desc Main collaborative editor pane (Tiptap + Yjs). Remount via `key` after
+ * a note-version restore so the CRDT reconnects to the restored document.
+ */
+const CollaborativeEditorPane = ({
+  meetingId,
+  isReadOnly = false,
+  onOpenHistory,
+}) => {
   const {
-    content,
-    setContent,
-    collaborators,
-    connectedUsers,
-    isSynced,
+    ydoc,
     isConnected,
-  } = useCollaborativeDoc(meetingId, backendUrl);
+    isLoading,
+    syncStatus,
+    activeUsers,
+    userColor,
+    broadcastCursor,
+    saveSnapshot,
+  } = useCollaborativeNote(meetingId, isReadOnly);
 
-  const handleChange = (e) => {
-    setContent(e.target.value);
-  };
+  const extensions = useMemo(() => {
+    const baseExtensions = [
+      StarterKit.configure({
+        // Disable history because Yjs handles undo/redo via CRDT
+        history: false,
+      }),
+      Collaboration.configure({
+        document: ydoc,
+        field: "collaborative-note",
+      }),
+      Placeholder.configure({
+        placeholder: isReadOnly
+          ? ""
+          : "Start typing your meeting notes here...",
+      }),
+    ];
 
-  // Real-time presence avatars from the collaboration service (Issue #1236)
-  const presenceDots = collaborators.map((collaborator, i) => {
-    const initial = (collaborator.name || collaborator.email || "U")
-      .trim()
-      .charAt(0)
-      .toUpperCase();
-    return (
-      <div
-        key={collaborator.socketId || collaborator.userId || i}
-        title={collaborator.name || collaborator.email || "Collaborator"}
-        className={`w-7 h-7 rounded-full ${PRESENCE_COLORS[i % PRESENCE_COLORS.length]} border-2 border-gray-900 flex items-center justify-center text-white text-xs font-bold -ml-1 first:ml-0 shadow-md`}
-      >
-        {initial}
-      </div>
-    );
+    // Only enable cursor tracking if user can edit
+    if (!isReadOnly) {
+      baseExtensions.push(
+        CollaborationCursor.configure({
+          user: {
+            name: "You", // Will be overridden by provider if needed
+            color: userColor,
+          },
+          render: (user) => {
+            const cursor = document.createElement("span");
+            cursor.classList.add("collaboration-cursor__caret");
+            cursor.setAttribute("style", `border-color: ${user.color}`);
+
+            const label = document.createElement("div");
+            label.classList.add("collaboration-cursor__label");
+            label.setAttribute("style", `background-color: ${user.color}`);
+            label.insertBefore(document.createTextNode(user.name), null);
+            cursor.insertBefore(label, null);
+
+            return cursor;
+          },
+        }),
+      );
+    }
+
+    return baseExtensions;
+  }, [ydoc, isReadOnly, userColor]);
+
+  const editor = useEditor({
+    extensions,
+    editable: !isReadOnly,
+    editorProps: {
+      attributes: {
+        class:
+          "prose prose-sm sm:prose lg:prose-lg xl:prose-xl max-w-none focus:outline-none dark:prose-invert min-h-[400px] px-8 py-4",
+      },
+    },
+    onUpdate: ({ editor: ed }) => {
+      const { from, to } = ed.state.selection;
+      broadcastCursor(from, to);
+    },
+    onSelectionUpdate: ({ editor: ed }) => {
+      const { from, to } = ed.state.selection;
+      broadcastCursor(from, to);
+    },
   });
 
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center h-96 bg-gray-50 dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-700">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600"></div>
+      </div>
+    );
+  }
+
   return (
-    <div className="flex flex-col h-full bg-gray-950 rounded-2xl overflow-hidden border border-gray-800 shadow-2xl">
-      {/* ── Toolbar ── */}
-      <div className="flex items-center justify-between px-4 py-3 bg-gray-900 border-b border-gray-800 shrink-0">
-        {/* Left: title + icon */}
-        <div className="flex items-center gap-2">
-          <FileText size={16} className="text-indigo-400" />
-          <span className="text-sm font-semibold text-gray-200">
-            Collaborative Notes
-          </span>
-          {/* Sync status */}
-          {!isSynced ? (
-            <span className="flex items-center gap-1 text-xs text-amber-400 ml-2">
-              <Loader2 size={12} className="animate-spin" />
-              Syncing…
-            </span>
-          ) : (
-            <span className="flex items-center gap-1 text-xs text-emerald-400 ml-2">
-              <CheckCircle2 size={12} />
-              Live
-            </span>
-          )}
-        </div>
-
-        {/* Right: connection status + presence avatars */}
-        <div className="flex items-center gap-3">
-          {/* Connected users avatars */}
-          {connectedUsers > 0 && (
-            <div className="flex items-center">
-              {presenceDots}
-              {connectedUsers > 5 && (
-                <span className="text-xs text-gray-400 ml-2">
-                  +{connectedUsers - 5}
-                </span>
-              )}
-            </div>
-          )}
-
-          {/* Connection indicator */}
-          <div
-            className={`flex items-center gap-1 text-xs px-2 py-1 rounded-full ${
-              isConnected
-                ? "bg-emerald-900/40 text-emerald-400"
-                : "bg-red-900/40 text-red-400"
-            }`}
-          >
-            {isConnected ? (
-              <>
-                <Wifi size={11} />
-                <span>Connected</span>
-              </>
-            ) : (
-              <>
-                <WifiOff size={11} />
-                <span>Reconnecting…</span>
-              </>
-            )}
-          </div>
-
-          {/* User count badge */}
-          <div className="flex items-center gap-1 bg-gray-800 px-2 py-1 rounded-full text-xs text-gray-300">
-            <Users size={11} />
-            <span>{connectedUsers}</span>
-          </div>
-        </div>
-      </div>
-
-      {/* ── Editor Area ── */}
-      <div className="relative flex-1 min-h-0">
-        {/* Loading overlay before initial sync */}
-        {!isSynced && (
-          <div className="absolute inset-0 flex flex-col items-center justify-center bg-gray-950/80 z-10 gap-3">
-            <Loader2 size={28} className="animate-spin text-indigo-500" />
-            <p className="text-sm text-gray-400">Loading document…</p>
-          </div>
-        )}
-
-        <textarea
-          ref={textareaRef}
-          id={`collab-editor-${meetingId}`}
-          className="w-full h-full resize-none bg-gray-950 text-gray-100 text-sm leading-relaxed p-5 outline-none placeholder-gray-700 font-mono scrollbar-thin scrollbar-thumb-gray-800"
-          placeholder={
-            isSynced
-              ? "Start typing collaborative notes here… Changes are synced live to all participants."
-              : ""
-          }
-          value={content}
-          onChange={handleChange}
-          disabled={!isSynced || !isConnected}
-          spellCheck={true}
-          autoCapitalize="sentences"
+    <div className="flex h-[calc(100vh-200px)] bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700 overflow-hidden">
+      {/* Left Sidebar: Version History */}
+      <div className="w-64 border-r border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/50 flex-shrink-0 hidden md:block">
+        <VersionHistory
+          meetingId={meetingId}
+          onSaveSnapshot={saveSnapshot}
+          onOpenFullHistory={onOpenHistory}
         />
+      </div>
 
-        {/* Character / word count footer */}
-        <div className="absolute bottom-3 right-4 text-xs text-gray-600 pointer-events-none select-none">
-          {content.length} chars ·{" "}
-          {content.trim() ? content.trim().split(/\s+/).length : 0} words
+      {/* Main Editor Area */}
+      <div className="flex-1 flex flex-col overflow-hidden">
+        {/* Top Bar: Connection Status & Active Users */}
+        <div className="flex items-center justify-between px-6 py-3 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/30">
+          <div className="flex items-center gap-3 flex-wrap">
+            <div className="flex items-center gap-2">
+              <div
+                className={`w-2 h-2 rounded-full ${isConnected ? "bg-green-500 animate-pulse" : "bg-red-500"}`}
+                aria-hidden="true"
+              ></div>
+              <span className="text-xs font-medium text-gray-600 dark:text-gray-400">
+                {isConnected
+                  ? isReadOnly
+                    ? "Viewing Live"
+                    : "Connected"
+                  : "Disconnected"}
+              </span>
+            </div>
+            <CollabSyncStatusChip
+              syncStatus={syncStatus}
+              isReadOnly={isReadOnly}
+            />
+          </div>
+
+          <div className="flex items-center gap-3">
+            <button
+              type="button"
+              onClick={onOpenHistory}
+              className="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-800 px-2.5 py-1.5 text-xs font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700"
+              data-testid="open-note-version-history"
+            >
+              <History className="w-3.5 h-3.5" />
+              Diff & Restore
+            </button>
+            <PresenceAvatars users={activeUsers} />
+          </div>
+        </div>
+
+        {/* Tiptap Editor Content */}
+        <div className="flex-1 overflow-y-auto custom-scrollbar">
+          <EditorContent editor={editor} />
         </div>
       </div>
+
+      {/* CSS for Collaboration Cursors */}
+      <style jsx global>{`
+        .collaboration-cursor__caret {
+          border-left: 1px solid #0d0d0d;
+          border-right: 1px solid #0d0d0d;
+          margin-left: -1px;
+          margin-right: -1px;
+          pointer-events: none;
+          position: relative;
+          word-break: normal;
+        }
+        .collaboration-cursor__label {
+          border-radius: 3px 3px 3px 0;
+          color: #0d0d0d;
+          font-size: 12px;
+          font-weight: 600;
+          left: -1px;
+          line-height: normal;
+          padding: 0.1rem 0.3rem;
+          position: absolute;
+          top: -1.4em;
+          user-select: none;
+          white-space: nowrap;
+        }
+      `}</style>
     </div>
+  );
+};
+
+/**
+ * @desc Collaborative notes editor with NoteVersionHistory restore/diff dialog.
+ */
+const CollaborativeEditor = ({ meetingId, isReadOnly = false }) => {
+  const [showHistory, setShowHistory] = useState(false);
+  const [reloadKey, setReloadKey] = useState(0);
+
+  const handleRestored = useCallback(() => {
+    setShowHistory(false);
+    // Remount so the CRDT reconnects against the restored meeting state
+    setReloadKey((key) => key + 1);
+  }, []);
+
+  return (
+    <>
+      <CollaborativeEditorPane
+        key={reloadKey}
+        meetingId={meetingId}
+        isReadOnly={isReadOnly}
+        onOpenHistory={() => setShowHistory(true)}
+      />
+      {showHistory && (
+        <NoteVersionHistory
+          meetingId={meetingId}
+          field="collaborativeNotes"
+          onClose={() => setShowHistory(false)}
+          onRestored={handleRestored}
+        />
+      )}
+    </>
   );
 };
 

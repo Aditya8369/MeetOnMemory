@@ -1,5 +1,6 @@
+process.env.JWT_SECRET = process.env.JWT_SECRET || "test_jwt_secret";
+
 import request from "supertest";
-import { app } from "../server.js";
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import {
   createOrJoinOrganization,
@@ -9,13 +10,16 @@ import {
 } from "../controllers/organizationController.js";
 import * as OrganizationService from "../services/OrganizationService.js";
 
-// Mock the service layer
+// Mock the service layer before loading the app (which pulls routes + DB).
 vi.mock("../services/OrganizationService.js", () => ({
   createOrJoinOrganization: vi.fn(),
   joinOrganizationById: vi.fn(),
   getOrganizationSettings: vi.fn(),
   updateOrganization: vi.fn(),
 }));
+
+// Dynamic import so JWT_SECRET is set before server.js's fatal check runs.
+const { app } = await import("../server.js");
 
 describe("Organization Endpoints", () => {
   describe("Route verification for Issue #787", () => {

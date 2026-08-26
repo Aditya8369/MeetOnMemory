@@ -6,4 +6,12 @@ export const userApi = {
     apiClient.get("/api/user/preferences/dashboard"),
   updateDashboardPreferences: (data) =>
     apiClient.put("/api/user/preferences/dashboard", data),
+  requestDataExport: () => apiClient.post("/api/user/request-data-export"),
+  getDataExportStatus: () => apiClient.get("/api/user/data-export-status"),
+  downloadExport: (token) =>
+    apiClient.get(`/api/user/download-export/${token}`, {
+      responseType: "blob",
+    }),
 };
+
+export default userApi;

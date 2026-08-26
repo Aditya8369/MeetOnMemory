@@ -1,5 +1,6 @@
 import React from "react";
 import { render, screen, fireEvent, waitFor } from "@testing-library/react";
+import { MemoryRouter } from "react-router-dom";
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import AiSearch from "../AiSearch";
 
@@ -19,18 +20,40 @@ vi.mock("../../services", () => ({
   apiClient: {
     post: (...args) => apiPost(...args),
   },
+
+  savedFilterApi: {
+    getSavedFilters: vi.fn().mockResolvedValue({ data: [] }),
+    createSavedFilter: vi.fn(),
+    deleteSavedFilter: vi.fn(),
+  },
 }));
+
+const renderAiSearch = (initialEntry = "/ai-search") =>
+  render(
+    <MemoryRouter initialEntries={[initialEntry]}>
+      <AiSearch />
+    </MemoryRouter>,
+  );
+
+const getQueryInput = () => screen.getByPlaceholderText(/ask e\.g\./i);
 
 describe("AiSearch meeting navigation (#615)", () => {
   let openSpy;
 
   beforeEach(() => {
     vi.clearAllMocks();
+    const store = new Map();
+    vi.stubGlobal("localStorage", {
+      getItem: (k) => (store.has(k) ? store.get(k) : null),
+      setItem: (k, v) => store.set(k, String(v)),
+      removeItem: (k) => store.delete(k),
+      clear: () => store.clear(),
+    });
     openSpy = vi.spyOn(window, "open").mockImplementation(() => null);
   });
 
   afterEach(() => {
-    openSpy.mockRestore();
+    openSpy?.mockRestore();
   });
 
   it("opens the singular /meeting/:id route from a standard search result", async () => {
@@ -48,9 +71,9 @@ describe("AiSearch meeting navigation (#615)", () => {
       },
     });
 
-    render(<AiSearch />);
+    renderAiSearch();
 
-    fireEvent.change(screen.getByRole("textbox"), {
+    fireEvent.change(getQueryInput(), {
       target: { value: "sprint planning" },
     });
     fireEvent.click(screen.getByRole("button", { name: /^search$/i }));
@@ -90,10 +113,10 @@ describe("AiSearch meeting navigation (#615)", () => {
       },
     });
 
-    render(<AiSearch />);
+    renderAiSearch();
 
     fireEvent.click(screen.getByRole("button", { name: /hybrid/i }));
-    fireEvent.change(screen.getByRole("textbox"), {
+    fireEvent.change(getQueryInput(), {
       target: { value: "ship v2" },
     });
     fireEvent.click(screen.getByRole("button", { name: /^search$/i }));
@@ -105,5 +128,34 @@ describe("AiSearch meeting navigation (#615)", () => {
     fireEvent.click(screen.getByRole("button", { name: /open meeting/i }));
 
     expect(openSpy).toHaveBeenCalledWith("/meeting/mtg-456", "_blank");
+  });
+
+  it("passes advanced filters to hybrid search and stores history (#2085)", async () => {
+    apiPost.mockResolvedValue({ data: { results: [] } });
+
+    renderAiSearch();
+
+    fireEvent.click(screen.getByRole("button", { name: /hybrid/i }));
+    fireEvent.change(getQueryInput(), {
+      target: { value: "budget review" },
+    });
+    fireEvent.change(screen.getByPlaceholderText(/e\.g\. finance/i), {
+      target: { value: "finance" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: /^search$/i }));
+
+    await waitFor(() => {
+      expect(apiPost).toHaveBeenCalledWith(
+        "/api/search/hybrid",
+        expect.objectContaining({
+          query: "budget review",
+          tag: "finance",
+        }),
+      );
+    });
+
+    expect(
+      screen.getByRole("button", { name: /budget review/i }),
+    ).toBeInTheDocument();
   });
 });

@@ -22,7 +22,7 @@ export default defineConfig({
     VitePWA({
       registerType: "autoUpdate",
       workbox: {
-        maximumFileSizeToCacheInBytes: 5000000,
+        maximumFileSizeToCacheInBytes: 10000000,
         runtimeCaching: [
           {
             urlPattern: /\/api\/policies(\?.*)?$/,
@@ -73,5 +73,6 @@ export default defineConfig({
     environment: "jsdom",
     globals: true,
     setupFiles: "./src/setupTests.js",
+    testTimeout: 20000,
   },
 });

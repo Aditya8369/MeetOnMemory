@@ -35,6 +35,21 @@ const meetingSchema = new mongoose.Schema(
       type: String, // Meeting time (e.g., "14:30")
       default: "",
     },
+
+    // Meeting reminder notification settings (Issue #1766)
+    reminderEnabled: {
+      type: Boolean,
+      default: false,
+    },
+    reminderMinutesBefore: {
+      type: Number,
+      enum: [10, 30, 60],
+      default: 30,
+    },
+    reminderSentAt: {
+      type: Date,
+      default: null,
+    },
     duration: {
       type: Number, // Duration in minutes
       default: null,
@@ -43,12 +58,28 @@ const meetingSchema = new mongoose.Schema(
       type: String, // Location/platform (e.g., "Zoom", "Conference Room A")
       default: "",
     },
+    allowObservers: {
+      type: Boolean,
+      default: false,
+    },
+    requireQuiz: {
+      type: Boolean,
+      default: false,
+    },
     venue: {
       type: String, // Venue details (physical address or meeting link)
       default: "",
     },
+    venueCoordinates: {
+      lat: { type: Number, default: null },
+      lng: { type: Number, default: null },
+    },
     participants: [
       {
+        user: {
+          type: mongoose.Schema.Types.ObjectId,
+          ref: "User",
+        },
         name: { type: String, required: true },
         email: { type: String, default: "" },
         role: { type: String, default: "" },
@@ -107,12 +138,32 @@ const meetingSchema = new mongoose.Schema(
       default: "",
     },
     transcript: {
-      type: String, // Raw transcript text from AssemblyAI
+      type: String, // Raw transcript text from AssemblyAI (legacy plaintext)
       default: "",
+    },
+    /**
+     * Issue #1335 — Client-side E2EE ciphertext envelope.
+     * When set, `transcript` is cleared and the server never holds plaintext.
+     */
+    encryptedTranscript: {
+      type: mongoose.Schema.Types.Mixed,
+      default: null,
+    },
+    isTranscriptEncrypted: {
+      type: Boolean,
+      default: false,
+    },
+    transcriptEncryptionVersion: {
+      type: Number,
+      default: null,
     },
     summary: {
       type: String, // Human-readable MoM text
       default: "",
+    },
+    recapStory: {
+      type: mongoose.Schema.Types.Mixed, // Cached JSON for the recap story slides
+      default: null,
     },
     structuredMoM: {
       type: mongoose.Schema.Types.Mixed, // Structured JSON (title, decisions[], action_items[], attendees[])
@@ -225,6 +276,22 @@ const meetingSchema = new mongoose.Schema(
       type: String,
       enum: ["not_started", "in_progress", "completed"],
       default: "not_started",
+    },
+
+    // Pinecone embedding index status (Issue #2084)
+    embeddingIndex: {
+      status: {
+        type: String,
+        enum: ["idle", "queued", "running", "succeeded", "failed"],
+        default: "idle",
+      },
+      lastIndexedAt: { type: Date, default: null },
+      lastError: { type: String, default: null, maxlength: 500 },
+      lastJobId: { type: String, default: null },
+    },
+    auditNote: {
+      type: String,
+      default: "",
     },
   },
   { timestamps: true },

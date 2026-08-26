@@ -1082,6 +1082,75 @@ const DeveloperDocs = () => {
                       </span>
                     </div>
                   </div>
+
+                  <h3 className="font-bold text-slate-900 dark:text-white pt-4">
+                    Verifying Webhook Signatures
+                  </h3>
+                  <p>
+                    MeetOnMemory signs all outgoing webhook payloads with a
+                    timestamped HMAC signature. This ensures the request
+                    originated from MeetOnMemory and protects against replay
+                    attacks.
+                  </p>
+                  <p>Each webhook request contains the following headers:</p>
+                  <ul className="list-disc pl-5 text-xs space-y-1.5">
+                    <li>
+                      <code className="bg-slate-100 dark:bg-slate-800 px-1 py-0.5 rounded font-mono text-[11px] font-bold text-slate-800 dark:text-slate-200">
+                        x-meetonmemory-signature
+                      </code>
+                      : The hex HMAC-SHA256 signature.
+                    </li>
+                    <li>
+                      <code className="bg-slate-100 dark:bg-slate-800 px-1 py-0.5 rounded font-mono text-[11px] font-bold text-slate-800 dark:text-slate-200">
+                        x-meetonmemory-request-timestamp
+                      </code>
+                      : The ISO timestamp of the request.
+                    </li>
+                  </ul>
+
+                  <p className="pt-2">
+                    Here is a code snippet demonstrating signature verification
+                    in Node.js (Express):
+                  </p>
+                  <div className="relative bg-slate-900 text-slate-100 p-4 rounded-xl font-mono text-xs overflow-x-auto">
+                    <pre>
+                      {`const crypto = require('crypto');
+
+app.post('/webhook-receiver', (req, res) => {
+  const signature = req.headers['x-meetonmemory-signature'];
+  const timestamp = req.headers['x-meetonmemory-request-timestamp'];
+  const secret = 'YOUR_WEBHOOK_SECRET'; // Secret key generated during registration
+
+  // 1. Check replay attack window (e.g. 5 minutes)
+  const requestTime = new Date(timestamp).getTime();
+  if (Date.now() - requestTime > 5 * 60 * 1000) {
+    return res.status(400).send('Request timestamp too old');
+  }
+
+  // 2. Generate expected signature
+  const rawBody = JSON.stringify(req.body);
+  const content = \`\${timestamp}.\${rawBody}\`;
+  const expectedSignature = crypto
+    .createHmac('sha256', secret)
+    .update(content)
+    .digest('hex');
+
+  // 3. Compare signatures securely
+  const isValid = crypto.timingSafeEqual(
+    Buffer.from(signature, 'hex'),
+    Buffer.from(expectedSignature, 'hex')
+  );
+
+  if (!isValid) {
+    return res.status(401).send('Invalid signature');
+  }
+
+  // Signature verified! Process event...
+  console.log('Received event:', req.body.event);
+  res.status(200).send('OK');
+});`}
+                    </pre>
+                  </div>
                 </div>
               </div>
             </div>

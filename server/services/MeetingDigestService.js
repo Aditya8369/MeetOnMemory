@@ -1,6 +1,8 @@
 import Meeting from "../models/meetingModel.js";
 import User from "../models/userModel.js";
+import NotificationPreference from "../models/notificationPreferenceModel.js";
 import EmailService from "./EmailService.js";
+import { checkQuietHours } from "../utils/quietHours.js";
 
 class MeetingDigestService {
   /**
@@ -103,17 +105,33 @@ class MeetingDigestService {
         };
       }
 
-      // Get user opt-out status for these emails
+      // Get user opt-out status for these emails (#2021)
       const emails = participantsWithEmail.map((p) => p.email);
       const users = await User.find(
         { email: { $in: emails } },
-        "email emailDigestEnabled",
+        "_id email emailDigestEnabled",
       );
 
-      // Map email to emailDigestEnabled status
+      const userIds = users.map((u) => u._id);
+      const notifPrefs = await NotificationPreference.find({
+        user: { $in: userIds },
+      }).lean();
+
+      const prefMap = {};
+      notifPrefs.forEach((p) => {
+        prefMap[String(p.user)] = p;
+      });
+
+      // Map email to opted-in status
       const userPrefs = {};
       users.forEach((u) => {
-        userPrefs[u.email] = u.emailDigestEnabled !== false; // defaults to true
+        const prefDoc = prefMap[String(u._id)];
+        const emailAllowed =
+          u.emailDigestEnabled !== false &&
+          (!prefDoc ||
+            (prefDoc.emailMeetingReminders !== false &&
+              prefDoc.emailWeeklyDigest !== false));
+        userPrefs[u.email] = emailAllowed;
       });
 
       // Filter recipients based on preferences (if user exists, respect preference; if user doesn't exist, send by default)
@@ -131,6 +149,16 @@ class MeetingDigestService {
 
       // Send emails
       for (const email of recipients) {
+        const userObj = await User.findOne({ email });
+        if (userObj) {
+          const inQuietHours = await checkQuietHours(userObj._id);
+          if (inQuietHours) {
+            console.log(
+              `[MeetingDigestService] Deferring digest email for ${email} due to quiet hours.`,
+            );
+            continue;
+          }
+        }
         await EmailService.sendMail({
           from: process.env.SENDER_EMAIL || "no-reply@meetonmemory.com",
           to: email,

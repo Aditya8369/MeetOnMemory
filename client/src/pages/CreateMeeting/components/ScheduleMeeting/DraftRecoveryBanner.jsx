@@ -35,18 +35,22 @@ const DraftRecoveryBanner = ({
   if (savedAt) {
     return (
       <section
-        className="mb-6 rounded-xl border border-amber-200 bg-amber-50 p-4 text-amber-950"
+        className="mb-6 rounded-xl border border-amber-200 dark:border-amber-900/60 bg-amber-50 dark:bg-amber-950/40 p-4 text-amber-950 dark:text-amber-100"
         aria-labelledby="meeting-draft-recovery-title"
         aria-live="polite"
       >
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex items-start gap-3">
-            <Clock3 className="mt-0.5 shrink-0" size={20} aria-hidden="true" />
+            <Clock3
+              className="mt-0.5 shrink-0 text-amber-600 dark:text-amber-400"
+              size={20}
+              aria-hidden="true"
+            />
             <div>
               <h3 id="meeting-draft-recovery-title" className="font-semibold">
                 Unfinished meeting draft found
               </h3>
-              <p className="mt-1 text-sm text-amber-800">
+              <p className="mt-1 text-sm text-amber-800 dark:text-amber-300">
                 This draft was saved {formatSavedTime(savedAt)}. Restore it or
                 discard it before continuing.
               </p>
@@ -57,7 +61,7 @@ const DraftRecoveryBanner = ({
             <button
               type="button"
               onClick={onRestore}
-              className="inline-flex items-center gap-2 rounded-lg bg-amber-600 px-3 py-2 text-sm font-semibold text-white transition hover:bg-amber-700"
+              className="inline-flex items-center gap-2 rounded-lg bg-amber-600 px-3 py-2 text-sm font-semibold text-white transition hover:bg-amber-700 cursor-pointer"
             >
               <RotateCcw size={16} aria-hidden="true" />
               Restore Draft
@@ -65,7 +69,7 @@ const DraftRecoveryBanner = ({
             <button
               type="button"
               onClick={onDiscard}
-              className="inline-flex items-center gap-2 rounded-lg border border-amber-300 bg-white px-3 py-2 text-sm font-semibold text-amber-900 transition hover:bg-amber-100"
+              className="inline-flex items-center gap-2 rounded-lg border border-amber-300 dark:border-amber-700 bg-white dark:bg-gray-800 px-3 py-2 text-sm font-semibold text-amber-900 dark:text-amber-200 transition hover:bg-amber-100 dark:hover:bg-gray-700 cursor-pointer"
             >
               <Trash2 size={16} aria-hidden="true" />
               Discard
@@ -77,7 +81,10 @@ const DraftRecoveryBanner = ({
   }
 
   return (
-    <p className="mb-4 text-right text-xs text-gray-500" aria-live="polite">
+    <p
+      className="mb-4 text-right text-xs text-gray-500 dark:text-gray-400"
+      aria-live="polite"
+    >
       {status === "saving"
         ? "Saving draft…"
         : `Draft saved ${formatSavedTime(lastSavedAt)}`}

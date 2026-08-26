@@ -7,12 +7,17 @@ import {
   getPolicyRelatedDecisions,
   getComplianceFlags,
   updateFlagStatus,
+  reEvaluateCompliance,
 } from "../controllers/policyComplianceController.js";
+import {
+  exportComplianceEvidence,
+  getPolicyVersionDeepLink,
+} from "../controllers/policyComplianceEvidenceController.js";
 
 const router = express.Router();
 router.use(apiLimiter);
 router.use(userAuth);
-router.use(requireOrgMembership); // compliance data only exists within an organization
+router.use(requireOrgMembership);
 
 router.get(
   "/decisions/:decisionId",
@@ -24,12 +29,28 @@ router.get(
   requirePermission("policies", "view"),
   getPolicyRelatedDecisions,
 );
+router.get(
+  "/policies/:policyId/versions/:version",
+  requirePermission("policies", "view"),
+  getPolicyVersionDeepLink,
+);
+router.get(
+  "/flags/:id/export",
+  requirePermission("policies", "view"),
+  exportComplianceEvidence,
+);
 router.get("/flags", requirePermission("policies", "view"), getComplianceFlags);
 router.patch(
   "/flags/:id",
   writeLimiter,
   requirePermission("policies", "edit"),
   updateFlagStatus,
+);
+router.post(
+  "/re-evaluate",
+  writeLimiter,
+  requirePermission("policies", "edit"),
+  reEvaluateCompliance,
 );
 
 export default router;

@@ -17,10 +17,20 @@
 // ==============================================
 
 import Meeting from "../models/meetingModel.js";
+import mongoose from "mongoose";
 import { embedText, searchVectorStore } from "../utils/embeddingUtils.js";
 import { cosineSimilarity } from "../utils/similarity.js";
 import { buildExplanation } from "../utils/explanationBuilder.js";
 import { recordMemoryAccessBatch } from "./importanceScoringService.js";
+import {
+  assertHybridSearchOrganization,
+  filterHybridResultsByTenant,
+  stripClientTenantFields,
+} from "../utils/resolveSearchTenant.js";
+import {
+  applyHybridAdvancedFilters,
+  parseHybridFilterOptions,
+} from "../utils/hybridAdvancedFilters.js";
 import {
   buildGraph,
   expandFromSeeds,
@@ -51,18 +61,19 @@ function clamp01(n, fallback) {
  * for request parsing.
  */
 export function resolveOptions(rawOptions = {}) {
+  const sanitized = stripClientTenantFields(rawOptions);
   const topK = Math.max(
     1,
-    Math.min(50, parseInt(rawOptions.topK, 10) || DEFAULT_OPTIONS.topK),
+    Math.min(50, parseInt(sanitized.topK, 10) || DEFAULT_OPTIONS.topK),
   );
   const semanticTopK = Math.max(
     topK,
     Math.min(
       100,
-      parseInt(rawOptions.semanticTopK, 10) || DEFAULT_OPTIONS.semanticTopK,
+      parseInt(sanitized.semanticTopK, 10) || DEFAULT_OPTIONS.semanticTopK,
     ),
   );
-  const parsedMaxHops = parseInt(rawOptions.maxHops, 10);
+  const parsedMaxHops = parseInt(sanitized.maxHops, 10);
   const maxHops = Math.max(
     0,
     Math.min(
@@ -71,23 +82,23 @@ export function resolveOptions(rawOptions = {}) {
     ),
   );
   const decay =
-    clamp01(rawOptions.decay, DEFAULT_OPTIONS.decay) || DEFAULT_OPTIONS.decay;
+    clamp01(sanitized.decay, DEFAULT_OPTIONS.decay) || DEFAULT_OPTIONS.decay;
   const minEdgeWeight = Math.max(
     0,
     Math.min(
       100,
-      Number(rawOptions.minEdgeWeight) || DEFAULT_OPTIONS.minEdgeWeight,
+      Number(sanitized.minEdgeWeight) || DEFAULT_OPTIONS.minEdgeWeight,
     ),
   );
 
   let semanticWeight =
-    typeof rawOptions.semanticWeight === "number" &&
-    rawOptions.semanticWeight >= 0
-      ? rawOptions.semanticWeight
+    typeof sanitized.semanticWeight === "number" &&
+    sanitized.semanticWeight >= 0
+      ? sanitized.semanticWeight
       : DEFAULT_OPTIONS.semanticWeight;
   let graphWeight =
-    typeof rawOptions.graphWeight === "number" && rawOptions.graphWeight >= 0
-      ? rawOptions.graphWeight
+    typeof sanitized.graphWeight === "number" && sanitized.graphWeight >= 0
+      ? sanitized.graphWeight
       : DEFAULT_OPTIONS.graphWeight;
 
   // Normalize so the two weights always sum to 1 - keeps the fused score
@@ -104,8 +115,8 @@ export function resolveOptions(rawOptions = {}) {
   }
 
   const includeTypes =
-    Array.isArray(rawOptions.includeTypes) && rawOptions.includeTypes.length
-      ? rawOptions.includeTypes.filter((t) =>
+    Array.isArray(sanitized.includeTypes) && sanitized.includeTypes.length
+      ? sanitized.includeTypes.filter((t) =>
           DEFAULT_OPTIONS.includeTypes.includes(t),
         )
       : DEFAULT_OPTIONS.includeTypes;
@@ -121,6 +132,7 @@ export function resolveOptions(rawOptions = {}) {
     includeTypes: includeTypes.length
       ? includeTypes
       : DEFAULT_OPTIONS.includeTypes,
+    ...parseHybridFilterOptions(sanitized),
   };
 }
 
@@ -142,6 +154,13 @@ async function runSemanticSearch(query, organization, graph, options) {
         organization: organization.toString(),
       });
       for (const hit of meetingHits) {
+        if (
+          hit.organization &&
+          hit.organization.toString() !== organization.toString()
+        ) {
+          continue;
+        }
+
         results.push({
           key: nodeKey(NODE_TYPES.MEETING, hit.meetingId),
           type: NODE_TYPES.MEETING,
@@ -149,6 +168,7 @@ async function runSemanticSearch(query, organization, graph, options) {
           title: hit.title,
           summary: hit.summary,
           semanticScore: hit.similarityScore || 0,
+          organization: hit.organization || organization.toString(),
         });
       }
     } catch (err) {
@@ -177,6 +197,12 @@ async function runSemanticSearch(query, organization, graph, options) {
       )
         continue;
       if (!node.embedding?.length) continue;
+      if (
+        node.organization &&
+        node.organization.toString() !== organization.toString()
+      ) {
+        continue;
+      }
 
       const score = cosineSimilarity(queryEmbedding, node.embedding);
       if (score <= 0) continue;
@@ -188,6 +214,7 @@ async function runSemanticSearch(query, organization, graph, options) {
         title: node.text,
         summary: node.text,
         semanticScore: score,
+        organization: node.organization || organization.toString(),
       });
     }
   }
@@ -246,6 +273,7 @@ export function fuseResults(semanticResults, graphExpansions, options) {
         graphScore: hit.graphScore,
         hops: hit.hops,
         connectedVia: hit.path,
+        organization: node.organization || null,
       });
     }
   }
@@ -266,8 +294,9 @@ export function fuseResults(semanticResults, graphExpansions, options) {
  * action-item results so the client doesn't need a second round trip for
  * the common case of "what meeting did this come from".
  */
-async function enrichWithMeetingContext(rankedResults, graph) {
+async function enrichWithMeetingContext(rankedResults, graph, organization) {
   const meetingIds = new Set();
+  const expectedOrg = organization.toString();
 
   for (const result of rankedResults) {
     if (result.type === NODE_TYPES.MEETING) {
@@ -280,38 +309,64 @@ async function enrichWithMeetingContext(rankedResults, graph) {
 
   if (!meetingIds.size) return rankedResults;
 
-  const meetings = await Meeting.find({ _id: { $in: Array.from(meetingIds) } })
-    .select("title createdAt")
+  const validMeetingIds = Array.from(meetingIds).filter((id) =>
+    mongoose.isValidObjectId(id),
+  );
+  if (!validMeetingIds.length) return rankedResults;
+
+  const meetings = await Meeting.find({
+    _id: { $in: validMeetingIds },
+    organization: mongoose.isValidObjectId(expectedOrg)
+      ? new mongoose.Types.ObjectId(expectedOrg)
+      : expectedOrg,
+  })
+    .select("title createdAt date meetingType tags participants organization")
     .lean();
   const meetingById = new Map(meetings.map((m) => [m._id.toString(), m]));
 
-  return rankedResults.map((result) => {
-    if (result.type === NODE_TYPES.MEETING) {
-      const meeting = meetingById.get(result.id);
-      return meeting
-        ? {
+  return rankedResults
+    .map((result) => {
+      if (result.type === NODE_TYPES.MEETING) {
+        const meeting = meetingById.get(result.id);
+        if (meeting) {
+          return {
             ...result,
             title: result.title || meeting.title,
             createdAt: meeting.createdAt,
+            date: meeting.date || meeting.createdAt,
+            meetingType: meeting.meetingType || null,
+            tags: meeting.tags || [],
+            participants: meeting.participants || [],
+            organization: meeting.organization?.toString() || expectedOrg,
+          };
+        }
+        if (result.organization?.toString() === expectedOrg) {
+          return result;
+        }
+        return null;
+      }
+
+      const node = graph.nodes.get(result.key);
+      const meeting = node?.sourceMeetingId
+        ? meetingById.get(node.sourceMeetingId)
+        : null;
+      return meeting
+        ? {
+            ...result,
+            sourceMeeting: {
+              id: meeting._id.toString(),
+              title: meeting.title,
+              createdAt: meeting.createdAt,
+              date: meeting.date || meeting.createdAt,
+              meetingType: meeting.meetingType || null,
+              tags: meeting.tags || [],
+              participants: meeting.participants || [],
+              organization: meeting.organization?.toString() || expectedOrg,
+            },
           }
         : result;
-    }
-
-    const node = graph.nodes.get(result.key);
-    const meeting = node?.sourceMeetingId
-      ? meetingById.get(node.sourceMeetingId)
-      : null;
-    return meeting
-      ? {
-          ...result,
-          sourceMeeting: {
-            id: meeting._id.toString(),
-            title: meeting.title,
-            createdAt: meeting.createdAt,
-          },
-        }
-      : result;
-  });
+    })
+    .filter(Boolean);
 }
 
 /**
@@ -371,15 +426,16 @@ export async function hybridRetrieve(query, organization, rawOptions = {}) {
     throw new Error("A non-empty query string is required");
   }
 
-  const options = resolveOptions(rawOptions);
+  assertHybridSearchOrganization(organization);
 
-  // Build the graph once - also carries decision/action-item embeddings so
-  // semantic search doesn't need a second DB round trip.
-  const graph = await buildGraph(organization);
+  const options = resolveOptions(rawOptions);
+  const tenantOrg = organization.toString();
+
+  const graph = await buildGraph(tenantOrg);
 
   const semanticResults = await runSemanticSearch(
     query,
-    organization,
+    tenantOrg,
     graph,
     options,
   );
@@ -398,18 +454,29 @@ export async function hybridRetrieve(query, organization, rawOptions = {}) {
       : [];
 
   const fused = fuseResults(semanticResults, graphExpansions, options);
-  const topResults = fused.slice(0, options.topK);
-  const enriched = await enrichWithMeetingContext(topResults, graph);
-  const explained = attachExplanations(enriched, graph, organization);
+  const topResults = fused.slice(0, Math.max(options.topK * 3, options.topK));
+  const enriched = await enrichWithMeetingContext(topResults, graph, tenantOrg);
+  const filtered = applyHybridAdvancedFilters(enriched, options).slice(
+    0,
+    options.topK,
+  );
+  const explained = attachExplanations(filtered, graph, tenantOrg);
+  const results = filterHybridResultsByTenant(
+    explained,
+    graph.nodes,
+    tenantOrg,
+  );
 
   return {
-    results: explained,
+    results,
     meta: {
       query,
+      organizationId: tenantOrg,
       options,
       semanticHitCount: semanticResults.length,
       graphExpansionCount: graphExpansions.length,
       fusedCount: fused.length,
+      filteredCount: results.length,
     },
   };
 }

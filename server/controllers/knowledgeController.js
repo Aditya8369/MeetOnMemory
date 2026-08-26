@@ -24,10 +24,15 @@ import {
   ALLOWED_ARCHIVE_TYPES,
   getArchivedMemoriesPage,
 } from "../services/archivedKnowledgeService.js";
+import {
+  ALLOWED_LIFECYCLE_TYPES,
+  ALLOWED_LIFECYCLE_STATES,
+  getLifecycleMemoriesPage,
+} from "../services/lifecycleKnowledgeService.js";
 import AuditLog from "../models/auditLogModel.js";
 import eventBus from "../services/eventBus.js";
 import { buildPaginationMeta, parsePagination } from "../utils/pagination.js";
-import { escapeRegExp } from "../utils/regexUtils.js";
+import { literalContainsFilter } from "../utils/regexUtils.js";
 
 const ALLOWED_SORT_FIELDS = {
   importance: { importanceScore: -1 },
@@ -249,12 +254,13 @@ export const getOpenActionItems = async (req, res) => {
       filter.lifecycleState = { $nin: ["archived", "expired"] };
     }
 
-    const searchTerm =
-      typeof search === "string" && search.trim() ? search.trim() : "";
-    if (searchTerm) {
-      const escaped = escapeRegExp(searchTerm);
+    // Escaped *and* length-capped — see `literalContainsFilter` (Issue #1451).
+    // The same fragment is reused for all four fields so the meeting-title
+    // lookup and the decision text/owner match can never drift apart.
+    const searchFilter = literalContainsFilter(search);
+    if (searchFilter) {
       const meetingTitleFilter = {
-        title: { $regex: escaped, $options: "i" },
+        title: searchFilter,
       };
       if (filter.organization !== undefined) {
         meetingTitleFilter.organization = filter.organization;
@@ -265,8 +271,8 @@ export const getOpenActionItems = async (req, res) => {
         .lean();
 
       filter.$or = [
-        { text: { $regex: escaped, $options: "i" } },
-        { owner: { $regex: escaped, $options: "i" } },
+        { text: searchFilter },
+        { owner: searchFilter },
         {
           sourceMeetingId: {
             $in: matchingMeetings.map((meeting) => meeting._id),
@@ -410,8 +416,12 @@ export const getDecisions = async (req, res) => {
       filter.status = "superseded";
     }
 
-    if (search && typeof search === "string") {
-      filter.text = { $regex: search, $options: "i" };
+    // `search` used to be interpolated raw, so `.*` matched every decision in
+    // the organization and `(a+)+$` was evaluated per document — twice, since
+    // `countDocuments` below runs the same filter (Issue #1451).
+    const searchFilter = literalContainsFilter(search);
+    if (searchFilter) {
+      filter.text = searchFilter;
     }
 
     if (
@@ -509,6 +519,62 @@ export const getArchivedMemories = async (req, res) => {
     }
     console.error("getArchivedMemories error:", error);
     sendError(res, 500, "Failed to fetch archived memories");
+  }
+};
+
+/**
+ * Unified Memory Lifecycle list with server-side pagination (Issue #1552).
+ * Unions decisions + action items before skip/limit so pages stay correct
+ * when filtering by type "all".
+ */
+export const getLifecycleMemories = async (req, res) => {
+  try {
+    const { type = "all", search, lifecycleState = "all" } = req.query || {};
+    const organization = sanitizeOrg(req.user?.organization);
+
+    if (!organization) {
+      return sendError(res, 400, "Organization required");
+    }
+
+    if (typeof type !== "string" || !ALLOWED_LIFECYCLE_TYPES.includes(type)) {
+      return sendError(
+        res,
+        400,
+        `Invalid type. Allowed values: ${ALLOWED_LIFECYCLE_TYPES.join(", ")}`,
+      );
+    }
+
+    if (
+      typeof lifecycleState !== "string" ||
+      !ALLOWED_LIFECYCLE_STATES.includes(lifecycleState)
+    ) {
+      return sendError(
+        res,
+        400,
+        `Invalid lifecycleState. Allowed values: ${ALLOWED_LIFECYCLE_STATES.join(", ")}`,
+      );
+    }
+
+    if (search !== undefined && search !== null && typeof search !== "string") {
+      return sendError(res, 400, "Invalid search");
+    }
+
+    const result = await getLifecycleMemoriesPage({
+      organization,
+      type,
+      lifecycleState,
+      search,
+      page: req.query.page,
+      limit: req.query.limit,
+    });
+
+    sendSuccess(res, result);
+  } catch (error) {
+    if (error.statusCode) {
+      return sendError(res, error.statusCode, error.message);
+    }
+    console.error("getLifecycleMemories error:", error);
+    sendError(res, 500, "Failed to fetch lifecycle memories");
   }
 };
 

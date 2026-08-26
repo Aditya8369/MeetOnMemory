@@ -9,6 +9,7 @@ import {
   Calendar,
   RefreshCw,
 } from "lucide-react";
+import SharedQuietHours from "./SharedQuietHours.jsx";
 
 /**
  * Client-side HTML sanitization helper for live email previews (#1339)
@@ -22,11 +23,20 @@ const sanitizeHtml = (html) => {
     .replace(/javascript:/gi, "");
 };
 
+const getLocalTimezone = () => {
+  try {
+    return Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC";
+  } catch {
+    return "UTC";
+  }
+};
+
 const DigestPreferences = () => {
   const [preferences, setPreferences] = useState({
     frequency: "weekly",
     deliveryDay: "Monday",
     deliveryHour: 9,
+    timezone: getLocalTimezone(),
     includeSections: ["action_items", "decisions", "summaries"],
   });
   const [loading, setLoading] = useState(true);
@@ -69,11 +79,14 @@ const DigestPreferences = () => {
   const fetchPreferences = async () => {
     try {
       const { data } = await apiClient.get("/api/digest-preferences");
+      const prefData = data.data || data;
       setPreferences({
-        frequency: data.frequency || "weekly",
-        deliveryDay: data.deliveryDay || "Monday",
-        deliveryHour: data.deliveryHour !== undefined ? data.deliveryHour : 9,
-        includeSections: data.includeSections || [
+        frequency: prefData.frequency || "weekly",
+        deliveryDay: prefData.deliveryDay || "Monday",
+        deliveryHour:
+          prefData.deliveryHour !== undefined ? prefData.deliveryHour : 9,
+        timezone: prefData.timezone || getLocalTimezone(),
+        includeSections: prefData.includeSections || [
           "action_items",
           "decisions",
           "summaries",
@@ -236,6 +249,15 @@ const DigestPreferences = () => {
                 ))}
               </select>
             </div>
+
+            <SharedQuietHours
+              onQuietHoursChange={(qh) => {
+                setPreferences((prev) => ({
+                  ...prev,
+                  timezone: qh.timezone,
+                }));
+              }}
+            />
           </div>
         </div>
 

@@ -13,6 +13,10 @@ vi.mock("@clerk/clerk-react", () => ({
   useClerk: () => ({ signOut: vi.fn() }),
 }));
 
+vi.mock("../../../components/Navbar.jsx", () => ({
+  default: () => <nav>Navbar</nav>,
+}));
+
 vi.mock("react-toastify", () => ({
   toast: {
     success: vi.fn(),
@@ -31,6 +35,12 @@ vi.mock("../../../services", () => ({
     getNotifications: vi
       .fn()
       .mockResolvedValue({ data: { success: true, notifications: [] } }),
+  },
+
+  savedFilterApi: {
+    getSavedFilters: vi.fn().mockResolvedValue({ data: [] }),
+    createSavedFilter: vi.fn(),
+    deleteSavedFilter: vi.fn(),
   },
 }));
 

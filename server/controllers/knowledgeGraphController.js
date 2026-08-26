@@ -1,6 +1,7 @@
 import {
   buildOrganizationGraph,
   buildMeetingGraph,
+  getEntityNeighborhood,
   findPath,
   getGraphAnalytics,
   searchEntities,
@@ -11,6 +12,39 @@ import mongoose from "mongoose";
  * Knowledge Graph Controller
  * Handles HTTP requests for knowledge graph endpoints
  */
+
+/**
+ * Compares two organization references without assuming either is a string.
+ *
+ * `req.user.organization` is a Mongoose `ObjectId`; values arriving from
+ * `req.params` or `req.body` are strings. Comparing them with `!==` directly is
+ * always true, which is how `exportGraph` came to reject every caller — see
+ * Issue #1560. Returns false when either side is missing so an absent
+ * organization can never be read as a match.
+ *
+ * @param {unknown} a
+ * @param {unknown} b
+ * @returns {boolean}
+ */
+const sameOrganization = (a, b) => {
+  if (!a || !b) return false;
+  return a.toString() === b.toString();
+};
+
+/**
+ * The caller's organization, or null when they belong to none.
+ *
+ * Every handler here is organization-scoped, so a user without an organization
+ * has nothing to read rather than everything — returning null lets each handler
+ * answer 403 instead of throwing on `.toString()` of undefined.
+ *
+ * @param {import("express").Request} req
+ * @returns {string|null}
+ */
+const callerOrganization = (req) =>
+  req.user?.organization ? req.user.organization.toString() : null;
+
+const FORBIDDEN = { message: "Forbidden: Not part of organization" };
 
 /**
  * @desc Get full organization graph
@@ -27,10 +61,8 @@ export const getOrganizationGraph = async (req, res) => {
     }
 
     // Check organization access
-    if (orgId !== req.user.organization.toString()) {
-      return res
-        .status(403)
-        .json({ message: "Forbidden: Not part of organization" });
+    if (!sameOrganization(orgId, callerOrganization(req))) {
+      return res.status(403).json(FORBIDDEN);
     }
 
     const filters = {};
@@ -60,20 +92,21 @@ export const getMeetingGraph = async (req, res) => {
       return res.status(400).json({ message: "Invalid meeting ID" });
     }
 
-    const graph = await buildMeetingGraph(meetingId);
-
-    // Check organization access
+    // Authorize before building the graph. The check used to run afterwards,
+    // which meant an unauthorized caller still paid for a full graph
+    // traversal — and any error raised while building it was reported before
+    // the caller was ever told they had no access to the meeting.
     const Meeting = (await import("../models/meetingModel.js")).default;
-    const meeting = await Meeting.findById(meetingId);
+    const meeting = await Meeting.findById(meetingId).select("organization");
     if (!meeting) {
       return res.status(404).json({ message: "Meeting not found" });
     }
 
-    if (meeting.organization.toString() !== req.user.organization.toString()) {
-      return res
-        .status(403)
-        .json({ message: "Forbidden: Not part of organization" });
+    if (!sameOrganization(meeting.organization, callerOrganization(req))) {
+      return res.status(403).json(FORBIDDEN);
     }
+
+    const graph = await buildMeetingGraph(meetingId);
 
     res.status(200).json(graph);
   } catch (error) {
@@ -90,34 +123,37 @@ export const getMeetingGraph = async (req, res) => {
 export const getEntity = async (req, res) => {
   try {
     const { type, id } = req.params;
-    const orgId = req.user.organization;
+    const orgId = callerOrganization(req);
 
-    const graph = await buildOrganizationGraph(orgId);
-    const { nodes, edges } = graph;
+    if (!orgId) {
+      return res.status(403).json(FORBIDDEN);
+    }
 
-    const entityId = `${type}-${id}`;
-    const entity = nodes.find((n) => n.id === entityId);
+    if (!type || !id || typeof id !== "string" || !id.trim()) {
+      return res.status(400).json({ message: "Invalid entity identifier" });
+    }
 
-    if (!entity) {
+    // Meeting / decision / person / action nodes use Mongo ObjectIds; topic
+    // nodes use slug ids. Reject clearly bad ids before building the graph.
+    const objectIdTypes = new Set([
+      "meeting",
+      "decision",
+      "person",
+      "action",
+      "action-item",
+    ]);
+    if (objectIdTypes.has(type) && !mongoose.isValidObjectId(id)) {
+      return res.status(400).json({ message: "Invalid entity identifier" });
+    }
+
+    // Targeted entity lookup without rebuilding the full organization graph (#1678)
+    const result = await getEntityNeighborhood(orgId, type, id);
+
+    if (!result || !result.entity) {
       return res.status(404).json({ message: "Entity not found" });
     }
 
-    // Find all relationships
-    const relationships = edges.filter(
-      (e) => e.source === entityId || e.target === entityId,
-    );
-
-    // Get related entities
-    const relatedIds = relationships.map((e) =>
-      e.source === entityId ? e.target : e.source,
-    );
-    const relatedEntities = nodes.filter((n) => relatedIds.includes(n.id));
-
-    res.status(200).json({
-      entity,
-      relationships,
-      relatedEntities,
-    });
+    res.status(200).json(result);
   } catch (error) {
     console.error("Error fetching entity:", error);
     res.status(500).json({ message: "Server Error", error: error.message });
@@ -132,7 +168,11 @@ export const getEntity = async (req, res) => {
 export const findPathEndpoint = async (req, res) => {
   try {
     const { startId, endId } = req.query;
-    const orgId = req.user.organization;
+    const orgId = callerOrganization(req);
+
+    if (!orgId) {
+      return res.status(403).json(FORBIDDEN);
+    }
 
     if (!startId || !endId) {
       return res.status(400).json({ message: "Start and end IDs required" });
@@ -160,10 +200,8 @@ export const getAnalytics = async (req, res) => {
       return res.status(400).json({ message: "Invalid organization ID" });
     }
 
-    if (orgId !== req.user.organization.toString()) {
-      return res
-        .status(403)
-        .json({ message: "Forbidden: Not part of organization" });
+    if (!sameOrganization(orgId, callerOrganization(req))) {
+      return res.status(403).json(FORBIDDEN);
     }
 
     const analytics = await getGraphAnalytics(orgId);
@@ -182,13 +220,23 @@ export const getAnalytics = async (req, res) => {
  */
 export const exportGraph = async (req, res) => {
   try {
-    const { format = "json", orgId } = req.body;
-    const organizationId = orgId || req.user.organization;
+    const { format = "json", orgId } = req.body || {};
+    const callerOrgId = callerOrganization(req);
 
-    if (organizationId !== req.user.organization.toString()) {
-      return res
-        .status(403)
-        .json({ message: "Forbidden: Not part of organization" });
+    if (!callerOrgId) {
+      return res.status(403).json(FORBIDDEN);
+    }
+
+    // `orgId` is optional: the Knowledge Graph page posts only `{ format }`.
+    // Defaulting to the caller's own organization has to happen before the
+    // comparison, and the comparison has to be string-to-string — the previous
+    // `organizationId !== req.user.organization.toString()` compared an
+    // ObjectId against a String and so rejected every request that omitted
+    // `orgId`, which is every request the client makes.
+    const organizationId = orgId ? orgId.toString() : callerOrgId;
+
+    if (!sameOrganization(organizationId, callerOrgId)) {
+      return res.status(403).json(FORBIDDEN);
     }
 
     const graph = await buildOrganizationGraph(organizationId);
@@ -250,7 +298,11 @@ const convertToCSV = (data, _type) => {
 export const search = async (req, res) => {
   try {
     const { query, type } = req.query;
-    const orgId = req.user.organization;
+    const orgId = callerOrganization(req);
+
+    if (!orgId) {
+      return res.status(403).json(FORBIDDEN);
+    }
 
     if (!query) {
       return res.status(400).json({ message: "Search query required" });

@@ -5,7 +5,7 @@ export default function useLiveChat() {
   const [chatMessages, setChatMessages] = useState([
     {
       sender: "bot",
-      text: "Hello! I am your MeetOnMemory virtual assistant. How can I help you today?",
+      text: "Hello! I am the MeetOnMemory automated support bot. I can answer common questions, but I am not a live agent. How can I help you today?",
       time: "Just now",
     },
   ]);
@@ -39,7 +39,7 @@ export default function useLiveChat() {
     // Bot Auto-reply logic
     setTimeout(() => {
       let replyText =
-        "Thank you for your message. Our team will read this and get back to you shortly. Feel free to submit a formal support ticket using the contact form.";
+        "I'm an automated assistant and can only answer common questions. This chat is not monitored by a person. Please submit a support ticket using the contact form, or email support@meetonmemory.com.";
       const query = userText.toLowerCase();
 
       if (

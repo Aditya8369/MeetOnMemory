@@ -8,11 +8,14 @@ import PublicRoutes from "./routes/PublicRoutes.jsx";
 import ProtectedRoutes from "./routes/ProtectedRoutes.jsx";
 
 import NotFound from "./pages/NotFound.jsx";
+import RiskRegister from "./pages/RiskRegister.jsx";
+import ProtectedRoute from "./components/ProtectedRoute.jsx";
 
 import ScrollNavigator from "./components/ScrollNavigator";
 import FloatingAssistant from "./components/FloatingAssistant.jsx";
+import BadgeNotification from "./components/gamification/BadgeNotification.jsx";
 
-// --- Components ---
+import OfflineBanner from "./components/OfflineBanner.jsx";
 import Footer from "./components/Footer.jsx";
 import ErrorBoundary from "./components/ErrorBoundary.jsx";
 import AppContent from "./context/AppContent.js";
@@ -21,7 +24,7 @@ const App = () => {
   const location = useLocation();
   const { isLoggedin } = useContext(AppContent);
 
-  const hideFooterRoutes = ["/login", "/signup"];
+  const hideFooterRoutes = ["/login", "/signup", "/meeting-room"];
   const shouldShowFooter = !hideFooterRoutes.some(
     (route) =>
       location.pathname === route || location.pathname.startsWith(`${route}/`),
@@ -43,6 +46,9 @@ const App = () => {
       </a>
 
       <ErrorBoundary>
+        {/* Global Offline/Reconnect Banner */}
+        <OfflineBanner />
+
         {/* Toast Notifications */}
         <ToastContainer position="top-right" autoClose={3000} theme="colored" />
 
@@ -52,6 +58,14 @@ const App = () => {
           <Routes>
             {PublicRoutes}
             {ProtectedRoutes}
+            <Route
+              path="/risks"
+              element={
+                <ProtectedRoute>
+                  <RiskRegister />
+                </ProtectedRoute>
+              }
+            />
             {/* ✅ Fallback route — send unknown routes to NotFound */}
             <Route path="*" element={<NotFound />} />
           </Routes>
@@ -62,6 +76,9 @@ const App = () => {
 
         {/* Global AI Assistant floating workspace */}
         {isLoggedin && <FloatingAssistant />}
+
+        {/* Gamification Badge Notifications */}
+        {isLoggedin && <BadgeNotification />}
 
         {/* Global Footer */}
         {shouldShowFooter && <Footer />}

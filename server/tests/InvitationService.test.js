@@ -374,6 +374,7 @@ describe("InvitationService", () => {
       const mockInvitation = {
         status: "pending",
         email: "invitee@example.com",
+        expiresAt: new Date(Date.now() + 100000000),
         save: vi.fn(),
       };
       Invitation.findOne.mockResolvedValue(mockInvitation);
@@ -464,6 +465,7 @@ describe("InvitationService", () => {
         status: "pending",
         expiresAt: new Date(Date.now() + 86400000),
         organization: { name: "Org" },
+        save: vi.fn(),
       };
       Invitation.findOne.mockReturnValue({
         populate: vi.fn().mockReturnValue({
@@ -475,6 +477,43 @@ describe("InvitationService", () => {
 
       expect(result.success).toBe(true);
       expect(result.invitation).toEqual(mockInvitation);
+    });
+
+    it("should throw ValidationError for an expired invitation token", async () => {
+      const mockInvitation = {
+        token: "expired-tok",
+        status: "pending",
+        expiresAt: new Date(Date.now() - 1000),
+        save: vi.fn().mockResolvedValue(undefined),
+      };
+      Invitation.findOne.mockReturnValue({
+        populate: vi.fn().mockReturnValue({
+          populate: vi.fn().mockResolvedValue(mockInvitation),
+        }),
+      });
+
+      await expect(
+        InvitationService.getInvitationByToken("expired-tok"),
+      ).rejects.toThrow("Invitation has expired.");
+
+      expect(mockInvitation.status).toBe("expired");
+      expect(mockInvitation.save).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  describe("isInvitationExpired", () => {
+    it("returns false for a future expiry", async () => {
+      const { isInvitationExpired } =
+        await import("../services/InvitationService.js");
+      expect(isInvitationExpired(new Date(Date.now() + 60_000))).toBe(false);
+    });
+
+    it("returns true for a past expiry and at the exact boundary", async () => {
+      const { isInvitationExpired } =
+        await import("../services/InvitationService.js");
+      expect(isInvitationExpired(new Date(Date.now() - 1000))).toBe(true);
+      expect(isInvitationExpired(new Date())).toBe(true);
+      expect(isInvitationExpired(null)).toBe(true);
     });
   });
 });

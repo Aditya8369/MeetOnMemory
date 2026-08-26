@@ -15,6 +15,12 @@ vi.mock("../../services", () => ({
     getUserData: (...args) => mockGetUserData(...args),
     logout: (...args) => mockLogout(...args),
   },
+
+  savedFilterApi: {
+    getSavedFilters: vi.fn().mockResolvedValue({ data: [] }),
+    createSavedFilter: vi.fn(),
+    deleteSavedFilter: vi.fn(),
+  },
 }));
 
 vi.mock("react-toastify", () => ({

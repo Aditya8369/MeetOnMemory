@@ -1,4 +1,10 @@
-import React, { useState, useEffect, useContext, useRef } from "react";
+import React, {
+  useState,
+  useEffect,
+  useContext,
+  useRef,
+  useCallback,
+} from "react";
 import AppContent from "../../context/AppContent";
 import { io } from "socket.io-client";
 import {
@@ -10,10 +16,25 @@ import {
 } from "../../api/pollApi";
 import { createClerkSocketOptions } from "../../services/apiClient.js";
 import { toast } from "react-toastify";
+import { hasPermission } from "../../utils/rbacPermissions.js";
 
-const PollSection = ({ meetingId }) => {
+const pollBelongsToMeeting = (poll, meetingId) => {
+  if (!poll || !meetingId) return false;
+  const pollMeeting = poll.meeting?._id || poll.meeting;
+  if (!pollMeeting) return true;
+  return String(pollMeeting) === String(meetingId);
+};
+
+const PollSection = ({
+  meetingId,
+  socket: externalSocket = null,
+  title = "Polls",
+  userRole,
+}) => {
   const { userData, backendUrl } = useContext(AppContent);
   const [polls, setPolls] = useState([]);
+  const [error, setError] = useState(null);
+  const [loading, setLoading] = useState(Boolean(meetingId));
 
   // Create Poll State
   const [isCreating, setIsCreating] = useState(false);
@@ -24,64 +45,119 @@ const PollSection = ({ meetingId }) => {
   const [expiresInMinutes, setExpiresInMinutes] = useState("");
 
   const socketRef = useRef(null);
+  const detachListenersRef = useRef(() => {});
 
   const isAdminOrOwner =
     userData?.role === "admin" || userData?.role === "owner";
+  const canCreatePoll = hasPermission(userData?.role, "meetings", "edit");
+  const isObserver = userRole === "observer";
+
+  const fetchPolls = useCallback(async () => {
+    if (!meetingId) {
+      setLoading(false);
+      return;
+    }
+    try {
+      setLoading(true);
+      setError(null);
+      const data = await getPollsByMeeting(meetingId);
+      setPolls(Array.isArray(data) ? data : []);
+    } catch (err) {
+      console.error("Failed to fetch polls", err);
+      setError("Failed to load polls. Please try again later.");
+      setPolls([]);
+    } finally {
+      setLoading(false);
+    }
+  }, [meetingId]);
 
   useEffect(() => {
-    const fetchPolls = async () => {
-      try {
-        const data = await getPollsByMeeting(meetingId);
-        setPolls(data || []);
-      } catch (error) {
-        console.error("Failed to fetch polls", error);
-      }
-    };
     fetchPolls();
+  }, [fetchPolls]);
+
+  useEffect(() => {
+    if (!meetingId) return undefined;
 
     let cancelled = false;
+    let ownedSocket = null;
 
-    (async () => {
-      const opts = await createClerkSocketOptions({
-        transports: ["websocket"],
-      });
-      if (cancelled) return;
+    const attachListeners = (sock) => {
+      if (!sock?.on) return () => {};
 
-      socketRef.current = io(backendUrl, opts);
-
-      socketRef.current.on("connect", () => {
-        socketRef.current.emit("join-meeting", {
-          roomId: meetingId,
-          userInfo: { name: userData?.name },
+      const onCreated = (newPoll) => {
+        if (!pollBelongsToMeeting(newPoll, meetingId)) return;
+        setPolls((prev) => {
+          if (prev.some((p) => p._id === newPoll._id)) return prev;
+          return [newPoll, ...prev];
         });
-      });
-
-      socketRef.current.on("poll:created", (newPoll) => {
-        setPolls((prev) => [newPoll, ...prev]);
-      });
-
-      socketRef.current.on("poll:vote", (updatedPoll) => {
+      };
+      const onVote = (updatedPoll) => {
+        if (!pollBelongsToMeeting(updatedPoll, meetingId)) return;
         setPolls((prev) =>
           prev.map((p) => (p._id === updatedPoll._id ? updatedPoll : p)),
         );
-      });
-
-      socketRef.current.on("poll:closed", (updatedPoll) => {
+      };
+      const onClosed = (updatedPoll) => {
+        if (!pollBelongsToMeeting(updatedPoll, meetingId)) return;
         setPolls((prev) =>
           prev.map((p) => (p._id === updatedPoll._id ? updatedPoll : p)),
         );
-      });
-
-      socketRef.current.on("poll:deleted", ({ id }) => {
+      };
+      const onDeleted = ({ id } = {}) => {
+        if (!id) return;
         setPolls((prev) => prev.filter((p) => p._id !== id));
-      });
-    })();
+      };
+
+      sock.on("poll:created", onCreated);
+      sock.on("poll:vote", onVote);
+      sock.on("poll:closed", onClosed);
+      sock.on("poll:deleted", onDeleted);
+
+      return () => {
+        sock.off?.("poll:created", onCreated);
+        sock.off?.("poll:vote", onVote);
+        sock.off?.("poll:closed", onClosed);
+        sock.off?.("poll:deleted", onDeleted);
+      };
+    };
+
+    if (externalSocket) {
+      detachListenersRef.current = attachListeners(externalSocket);
+    } else {
+      (async () => {
+        const opts = await createClerkSocketOptions({
+          transports: ["websocket"],
+        });
+        if (cancelled) return;
+
+        ownedSocket = io(backendUrl, opts);
+        if (cancelled) {
+          ownedSocket.disconnect();
+          return;
+        }
+        socketRef.current = ownedSocket;
+
+        ownedSocket.on("connect", () => {
+          ownedSocket.emit("join-meeting", {
+            roomId: meetingId,
+            userInfo: { name: userData?.name },
+          });
+        });
+
+        detachListenersRef.current = attachListeners(ownedSocket);
+      })();
+    }
 
     return () => {
       cancelled = true;
-      socketRef.current?.disconnect();
+      detachListenersRef.current();
+      detachListenersRef.current = () => {};
+      ownedSocket?.disconnect();
+      if (socketRef.current && socketRef.current === ownedSocket) {
+        socketRef.current = null;
+      }
     };
-  }, [meetingId, backendUrl, userData]);
+  }, [meetingId, backendUrl, userData?.name, externalSocket]);
 
   const handleAddOption = () => {
     setOptions([...options, ""]);
@@ -135,6 +211,7 @@ const PollSection = ({ meetingId }) => {
   };
 
   const handleVote = async (pollId, pollType, optionId) => {
+    if (isObserver) return;
     try {
       const selectedOptionIds = [optionId];
       await castVote(pollId, selectedOptionIds);
@@ -172,6 +249,7 @@ const PollSection = ({ meetingId }) => {
     const [selected, setSelected] = useState([]);
 
     const toggleSelection = (optionId) => {
+      if (isObserver) return;
       if (selected.includes(optionId)) {
         setSelected(selected.filter((id) => id !== optionId));
       } else {
@@ -180,7 +258,7 @@ const PollSection = ({ meetingId }) => {
     };
 
     const submitMultipleVotes = async () => {
-      if (selected.length === 0) return;
+      if (selected.length === 0 || isObserver) return;
       try {
         await castVote(poll._id, selected);
         toast.success("Votes submitted successfully!");
@@ -197,32 +275,35 @@ const PollSection = ({ meetingId }) => {
             <input
               type="checkbox"
               id={opt._id}
+              disabled={poll.isClosed || isObserver}
               checked={selected.includes(opt._id)}
               onChange={() => toggleSelection(opt._id)}
-              className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+              className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500 disabled:opacity-50"
             />
             <label
               htmlFor={opt._id}
-              className="text-gray-700 dark:text-gray-300"
+              className={`text-gray-700 dark:text-gray-300 ${isObserver ? "opacity-50" : ""}`}
             >
               {opt.text}
             </label>
           </div>
         ))}
-        <button
-          onClick={submitMultipleVotes}
-          disabled={selected.length === 0}
-          className="mt-2 px-3 py-1 bg-blue-600 text-white rounded text-sm disabled:opacity-50"
-        >
-          Submit Votes
-        </button>
+        {!isObserver && (
+          <button
+            onClick={submitMultipleVotes}
+            disabled={selected.length === 0 || poll.isClosed}
+            className="mt-2 px-3 py-1 bg-blue-600 text-white rounded text-sm disabled:opacity-50"
+          >
+            Submit Votes
+          </button>
+        )}
       </div>
     );
   };
 
   const renderPoll = (poll) => {
     const totalVotes = poll.options.reduce((sum, opt) => {
-      return sum + (poll.isAnonymous ? opt.voteCount : opt.votes.length);
+      return sum + (opt.votes?.length ?? opt.voteCount ?? 0);
     }, 0);
 
     const isCreator = poll.createdBy?._id === userData?._id;
@@ -232,7 +313,9 @@ const PollSection = ({ meetingId }) => {
     const hasVoted = poll.isAnonymous
       ? poll.options.some((opt) => opt.hasVoted)
       : poll.options.some((opt) =>
-          opt.votes.some((v) => v._id === userData?._id || v === userData?._id),
+          (opt.votes || []).some(
+            (v) => v._id === userData?._id || v === userData?._id,
+          ),
         );
 
     return (
@@ -280,7 +363,7 @@ const PollSection = ({ meetingId }) => {
               </div>
             )}
             {poll.options.map((opt) => {
-              const votes = poll.isAnonymous ? opt.voteCount : opt.votes.length;
+              const votes = opt.votes?.length ?? opt.voteCount ?? 0;
               const percentage =
                 totalVotes > 0 ? Math.round((votes / totalVotes) * 100) : 0;
               return (
@@ -308,23 +391,24 @@ const PollSection = ({ meetingId }) => {
             ) : (
               <div className="space-y-3">
                 {poll.options.map((opt) => {
-                  const votes = poll.isAnonymous
-                    ? opt.voteCount
-                    : opt.votes.length;
+                  const votes = opt.votes?.length ?? opt.voteCount ?? 0;
                   const percentage =
                     totalVotes > 0 ? Math.round((votes / totalVotes) * 100) : 0;
                   return (
                     <div
                       key={opt._id}
-                      className={`relative overflow-hidden rounded-md border p-3 cursor-pointer transition-colors ${
-                        !poll.isAnonymous &&
-                        opt.votes.some(
+                      role={isObserver ? undefined : "button"}
+                      tabIndex={isObserver ? -1 : 0}
+                      aria-label={`Vote for ${opt.text}`}
+                      className={`relative overflow-hidden rounded-md border p-3 ${isObserver ? "opacity-70 cursor-not-allowed" : "cursor-pointer"} transition-colors ${
+                        (opt.votes || []).some(
                           (v) => v._id === userData?._id || v === userData?._id,
                         )
                           ? "border-blue-500 bg-blue-50 dark:bg-blue-900/20"
                           : "border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700"
                       }`}
                       onClick={() =>
+                        !isObserver &&
                         handleVote(
                           poll._id,
                           poll.pollType,
@@ -332,6 +416,20 @@ const PollSection = ({ meetingId }) => {
                           poll.options,
                         )
                       }
+                      onKeyDown={(e) => {
+                        if (
+                          !isObserver &&
+                          (e.key === "Enter" || e.key === " ")
+                        ) {
+                          e.preventDefault();
+                          handleVote(
+                            poll._id,
+                            poll.pollType,
+                            opt._id,
+                            poll.options,
+                          );
+                        }
+                      }}
                     >
                       <div
                         className="absolute top-0 left-0 h-full bg-blue-100 dark:bg-blue-900/30 opacity-50 z-0 transition-all duration-500"
@@ -360,13 +458,17 @@ const PollSection = ({ meetingId }) => {
   };
 
   return (
-    <div className="mt-8">
+    <section className="mt-8" aria-labelledby="poll-section-heading">
       <div className="flex justify-between items-center mb-4">
-        <h3 className="text-xl font-bold text-gray-900 dark:text-white">
-          Polls
+        <h3
+          id="poll-section-heading"
+          className="text-xl font-bold text-gray-900 dark:text-white"
+        >
+          {title}
         </h3>
-        {!isCreating && (
+        {canCreatePoll && !isCreating && (
           <button
+            type="button"
             onClick={() => setIsCreating(true)}
             className="px-3 py-1.5 bg-blue-600 text-white text-sm font-medium rounded hover:bg-blue-700 transition-colors"
           >
@@ -374,6 +476,32 @@ const PollSection = ({ meetingId }) => {
           </button>
         )}
       </div>
+
+      {loading && (
+        <p
+          role="status"
+          aria-live="polite"
+          className="text-center text-gray-500 dark:text-gray-400 py-4"
+        >
+          Loading polls...
+        </p>
+      )}
+
+      {error && (
+        <div
+          role="alert"
+          className="mb-4 p-4 rounded-lg bg-red-50 border border-red-200 dark:bg-red-950/20 dark:border-red-800 text-red-700 dark:text-red-300 text-center text-sm font-medium"
+        >
+          <p>{error}</p>
+          <button
+            type="button"
+            onClick={fetchPolls}
+            className="mt-2 text-sm font-semibold underline hover:no-underline"
+          >
+            Retry
+          </button>
+        </div>
+      )}
 
       {isCreating && (
         <form
@@ -489,14 +617,14 @@ const PollSection = ({ meetingId }) => {
       )}
 
       <div className="space-y-4">
-        {polls.map((p) => renderPoll(p))}
-        {polls.length === 0 && !isCreating && (
+        {!loading && polls.map((p) => renderPoll(p))}
+        {!loading && !error && polls.length === 0 && !isCreating && (
           <p className="text-center text-gray-500 dark:text-gray-400 py-4">
             No polls created yet.
           </p>
         )}
       </div>
-    </div>
+    </section>
   );
 };
 

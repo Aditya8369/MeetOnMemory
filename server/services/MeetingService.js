@@ -30,6 +30,8 @@ import {
   deletedMeetingsFilter,
   escapeRegExp,
 } from "../utils/meetingSoftDelete.js";
+import { meetingSupportsServerAi } from "../utils/transcriptEncryption.js";
+import DataRetentionService from "./dataRetentionService.js";
 
 // AI / calendar / queue / transcription stacks are loaded on demand. Static
 // imports pull @xenova/transformers, axios diamonds, and related graphs into
@@ -42,6 +44,11 @@ const loadGenerativeAI = () => import("./GenerativeAIService.js");
 const loadCalendarService = () => import("./calendarService.js");
 const loadQueueService = () => import("./queueService.js");
 const loadTranscriptionService = () => import("./TranscriptionService.js");
+const loadKeywordAlertService = () => import("./keywordAlertService.js");
+const loadNotionSync = () => import("./notionSyncService.js");
+const loadNotionIntegration = () =>
+  import("../models/notionIntegrationModel.js");
+
 const scheduleIndexMeeting = (meeting) => {
   loadEmbeddingUtils()
     .then(({ indexMeeting }) => indexMeeting(meeting))
@@ -59,6 +66,37 @@ const scheduleDeleteFromPinecone = (meetingId) => {
       console.error("⚠️ Pinecone deletion error (continuing):", err.message),
     );
 };
+
+const scheduleKeywordScan = (meeting, transcript) => {
+  if (!transcript) return;
+  loadKeywordAlertService()
+    .then(({ scanTranscriptForKeywords }) =>
+      scanTranscriptForKeywords(meeting, transcript),
+    )
+    .catch((err) =>
+      console.error("⚠️ Keyword scan error (continuing):", err.message),
+    );
+};
+
+const scheduleNotionSync = (meeting) => {
+  if (!meeting || !meeting.organization) return;
+  (async () => {
+    try {
+      const NotionIntegration = (await loadNotionIntegration()).default;
+      const integration = await NotionIntegration.findOne({
+        organization: meeting.organization,
+      });
+      if (integration && integration.targetDatabaseId) {
+        const { createMeetingPage } = await loadNotionSync();
+        await createMeetingPage(meeting, integration);
+        console.log(`✅ Synced meeting ${meeting._id} to Notion`);
+      }
+    } catch (err) {
+      console.error("⚠️ Notion sync error (continuing):", err.message);
+    }
+  })();
+};
+
 export const isValidObjectId = (id) =>
   typeof id === "string" && mongoose.Types.ObjectId.isValid(id);
 
@@ -135,6 +173,7 @@ export const buildDuplicateMeetingData = (meeting) => {
     duration: plain.duration ?? null,
     location: plain.location || "",
     venue: plain.venue || "",
+    venueCoordinates: plain.venueCoordinates || { lat: null, lng: null },
     participants: (plain.participants || []).map((participant) => ({
       name: participant.name || "",
       email: participant.email || "",
@@ -170,14 +209,17 @@ export const createMeeting = async (uploaderId, orgId, data) => {
     duration: data.duration || null,
     location: data.location || "",
     venue: data.venue || "",
+    venueCoordinates: data.venueCoordinates || { lat: null, lng: null },
     participants: data.participants || [],
     agendaItems: normalizeAgendaItems(data.agendaItems),
     policyDetails: data.policyDetails || null,
     recordingType: data.recordingType || "upload",
+    tags: data.tags || (data.metadata && data.metadata.tags) || [],
     transcript: "",
     summary: "",
     structuredMoM: null,
     status: "uploaded",
+    auditNote: data.auditNote || "",
   });
 
   scheduleIndexMeeting(meeting);
@@ -269,6 +311,7 @@ export const uploadAndTranscribeMeeting = async (
   });
 
   scheduleIndexMeeting(meeting);
+  scheduleKeywordScan(meeting, transcriptText);
 
   try {
     await fs.promises.unlink(validatePath(filePath));
@@ -310,6 +353,7 @@ export const uploadAudioForExistingMeeting = async (
   await meeting.save();
 
   scheduleIndexMeeting(meeting);
+  scheduleKeywordScan(meeting, transcriptText);
 
   try {
     await fs.promises.unlink(validatePath(filePath));
@@ -326,6 +370,7 @@ export const generateMeetingMoM = async (
   transcript,
   date,
   title,
+  templateId = null,
 ) => {
   const user = await User.findById(userId);
   if (!user) throw new ForbiddenError("User not found");
@@ -356,6 +401,13 @@ export const generateMeetingMoM = async (
       );
     }
 
+    // Issue #1335 — encrypted meetings have no server-readable plaintext for AI
+    if (!meetingSupportsServerAi(meeting)) {
+      throw new ValidationError(
+        "This meeting uses end-to-end encryption. Server-side AI summarization is unavailable. Decrypt the transcript locally instead.",
+      );
+    }
+
     if (!textToSummarize) {
       textToSummarize = (meeting.transcript || "").trim();
     }
@@ -365,36 +417,18 @@ export const generateMeetingMoM = async (
     throw new ValidationError("No transcript provided.");
   }
 
-  const { aiQueue } = await loadQueueService();
-  if (aiQueue && aiQueue.isActive) {
-    console.log(
-      `🚀 Queueing MoM generation job for ${meetingId || "transcript-only"}...`,
-    );
-    await aiQueue.add(
-      "generate-mom",
-      {
-        meetingId,
-        transcript: textToSummarize,
-        date,
-        title,
-        userId,
-      },
-      {
-        attempts: 3,
-        backoff: {
-          type: "exponential",
-          delay: 5000, // Wait 5s, then 10s on retries
-        },
-      },
-    );
-    return { queued: true };
-  }
-
-  console.log(`🧠 Generating MoM for ${meetingId || "transcript-only"}...`);
-
   let customInstructions = null;
   try {
-    if (meeting) {
+    if (templateId && isValidObjectId(templateId)) {
+      const template = await AiSummaryTemplate.findById(templateId);
+      if (template) {
+        customInstructions = template.customInstructions;
+        if (meeting) {
+          meeting.aiSummaryTemplate = template._id;
+          await meeting.save();
+        }
+      }
+    } else if (meeting) {
       if (meeting.aiSummaryTemplate) {
         const template = await AiSummaryTemplate.findById(
           meeting.aiSummaryTemplate,
@@ -422,6 +456,41 @@ export const generateMeetingMoM = async (
       err.message,
     );
   }
+
+  const { aiQueue } = await loadQueueService();
+  if (aiQueue && aiQueue.isActive) {
+    console.log(
+      `🚀 Queueing MoM generation job for ${meetingId || "transcript-only"}...`,
+    );
+
+    if (meeting) {
+      meeting.status = "processing";
+      await meeting.save();
+      eventBus.emit("meeting.updated", meeting);
+    }
+
+    await aiQueue.add(
+      "generate-mom",
+      {
+        meetingId,
+        transcript: textToSummarize,
+        date,
+        title,
+        userId,
+        customInstructions,
+      },
+      {
+        attempts: 3,
+        backoff: {
+          type: "exponential",
+          delay: 5000, // Wait 5s, then 10s on retries
+        },
+      },
+    );
+    return { queued: true };
+  }
+
+  console.log(`🧠 Generating MoM for ${meetingId || "transcript-only"}...`);
 
   const { generateMoMWithAI, normalizeMoM, buildHumanReadableMoM } =
     await loadGenerativeAI();
@@ -477,6 +546,7 @@ export const generateMeetingMoM = async (
   }
 
   _runKnowledgeGraph(meetingToUpdate, mom);
+  scheduleNotionSync(meetingToUpdate);
 
   return {
     queued: false,
@@ -601,6 +671,7 @@ export const updateMeeting = async (userId, meetingId, data, doc = null) => {
     duration,
     location,
     venue,
+    venueCoordinates,
     tags,
     agendaItems,
   } = data;
@@ -613,6 +684,8 @@ export const updateMeeting = async (userId, meetingId, data, doc = null) => {
   if (duration !== undefined) meeting.duration = duration;
   if (location !== undefined) meeting.location = location;
   if (venue !== undefined) meeting.venue = venue;
+  if (venueCoordinates !== undefined)
+    meeting.venueCoordinates = venueCoordinates;
   if (tags) meeting.tags = tags;
   if (agendaItems !== undefined) {
     meeting.agendaItems = normalizeAgendaItems(agendaItems);
@@ -852,4 +925,124 @@ export const notifyLiveMeetingParticipants = async (
   });
 
   return { count: dbUsers.length };
+};
+
+export const getPurgePreview = async (organizationId) => {
+  const policy = await DataRetentionService.getPolicy(organizationId);
+  const now = new Date();
+
+  const retentionPeriodDays = policy?.retentionPeriodDays || 365;
+  const gracePeriodDays = policy?.gracePeriodDays || 30;
+
+  const expirationDate = new Date(
+    now.getTime() -
+      (retentionPeriodDays + gracePeriodDays) * 24 * 60 * 60 * 1000,
+  );
+
+  const baseQuery = {
+    organization: organizationId,
+  };
+
+  if (policy?.exemptTags && policy.exemptTags.length > 0) {
+    baseQuery.tags = { $nin: policy.exemptTags };
+  }
+
+  // 1. All soft-deleted meetings in the trash
+  const trashQuery = {
+    organization: organizationId,
+    deletedAt: { $ne: null },
+  };
+
+  const totalTrashCount = await Meeting.countDocuments(trashQuery);
+
+  const trashTypes = await Meeting.aggregate([
+    { $match: trashQuery },
+    { $group: { _id: "$meetingType", count: { $sum: 1 } } },
+  ]);
+  const trashCountsByType = {};
+  trashTypes.forEach((t) => {
+    trashCountsByType[t._id || "conference"] = t.count;
+  });
+
+  const trashSamplesDocs = await Meeting.find(trashQuery)
+    .select("title meetingType deletedAt")
+    .sort({ deletedAt: -1 })
+    .limit(5);
+  const trashSamples = trashSamplesDocs.map((d) => ({
+    title: d.title,
+    meetingType: d.meetingType || "conference",
+    deletedAt: d.deletedAt,
+  }));
+
+  // 2. Upcoming retention deletions (hard delete)
+  const sweepQuery = {
+    ...baseQuery,
+    createdAt: { $lte: expirationDate },
+  };
+
+  const totalSweepCount = await Meeting.countDocuments(sweepQuery);
+
+  const sweepTypes = await Meeting.aggregate([
+    { $match: sweepQuery },
+    { $group: { _id: "$meetingType", count: { $sum: 1 } } },
+  ]);
+  const sweepCountsByType = {};
+  sweepTypes.forEach((t) => {
+    sweepCountsByType[t._id || "conference"] = t.count;
+  });
+
+  const sweepSamplesDocs = await Meeting.find(sweepQuery)
+    .select("title meetingType createdAt")
+    .sort({ createdAt: 1 })
+    .limit(5);
+  const sweepSamples = sweepSamplesDocs.map((d) => ({
+    title: d.title,
+    meetingType: d.meetingType || "conference",
+    createdAt: d.createdAt,
+  }));
+
+  return {
+    policy: {
+      enabled: policy?.enabled || false,
+      retentionPeriodDays,
+      gracePeriodDays,
+    },
+    trash: {
+      totalCount: totalTrashCount,
+      countsByType: trashCountsByType,
+      samples: trashSamples,
+    },
+    sweep: {
+      totalCount: totalSweepCount,
+      countsByType: sweepCountsByType,
+      samples: sweepSamples,
+    },
+  };
+};
+
+export const purgeTrash = async (organizationId) => {
+  const query = {
+    organization: organizationId,
+    deletedAt: { $ne: null },
+  };
+
+  const meetingsToPurge = await Meeting.find(query).select("_id");
+  const meetingIds = meetingsToPurge.map((m) => m._id);
+
+  const result = await Meeting.deleteMany(query);
+
+  if (meetingIds.length > 0) {
+    meetingIds.forEach((id) => {
+      try {
+        scheduleDeleteFromPinecone(id.toString());
+      } catch (err) {
+        console.error(
+          `Failed to delete pinecone index for meeting ${id}:`,
+          err,
+        );
+      }
+    });
+  }
+
+  return { deletedCount: result.deletedCount };
 };

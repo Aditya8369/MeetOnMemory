@@ -16,6 +16,18 @@ vi.mock("../../hooks/useRBAC.js", () => ({
   }),
 }));
 
+vi.mock("@clerk/clerk-react", () => ({
+  useUser: () => ({
+    user: { primaryEmailAddress: { emailAddress: "test@example.com" } },
+  }),
+  useClerk: () => ({ signOut: vi.fn() }),
+  UserButton: () => <div data-testid="user-button">User Button</div>,
+}));
+
+vi.mock("../../context/usePreferences.jsx", () => ({
+  default: () => ({ dateFormat: "MM/dd/yyyy" }),
+}));
+
 vi.mock("react-i18next", () => ({
   useTranslation: () => ({
     t: (key) => {
@@ -28,6 +40,10 @@ vi.mock("react-i18next", () => ({
       changeLanguage: vi.fn(),
     },
   }),
+  initReactI18next: {
+    type: "3rdParty",
+    init: vi.fn(),
+  },
 }));
 
 describe("Navbar Dashboard Navigation Visibility (#1127)", () => {

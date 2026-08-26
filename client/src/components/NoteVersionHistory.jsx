@@ -111,7 +111,7 @@ const NoteVersionHistory = ({ meetingId, field, onClose, onRestored }) => {
         `/api/note-versions/version/${selectedVersionId}/restore`,
       );
       if (res.data.success) {
-        toast.success("Version restored successfully");
+        toast.success(res.data.message || "Version restored successfully");
         setShowRestoreConfirm(false);
         if (onRestored) {
           onRestored(res.data.meeting);
@@ -119,7 +119,7 @@ const NoteVersionHistory = ({ meetingId, field, onClose, onRestored }) => {
         fetchHistory();
       }
     } catch (err) {
-      toast.error("Failed to restore version");
+      toast.error(err.response?.data?.message || "Failed to restore version");
       console.error(err);
     }
   };

@@ -6,6 +6,7 @@ import {
   getCollections,
   updateBookmark,
   deleteCollection,
+  updateCollection,
 } from "../controllers/bookmarkController.js";
 
 const router = express.Router();
@@ -15,6 +16,7 @@ router.use(userAuth); // All bookmark routes require authentication
 router.post("/toggle", toggleBookmark);
 router.get("/", getBookmarks);
 router.get("/collections", getCollections);
+router.put("/collections/:name", updateCollection);
 router.put("/:id", updateBookmark);
 router.delete("/collections/:name", deleteCollection);
 

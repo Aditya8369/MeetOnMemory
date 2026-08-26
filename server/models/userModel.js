@@ -60,6 +60,19 @@ const userSchema = new mongoose.Schema(
       type: Date,
       default: null,
     },
+    lastExportFile: {
+      type: String,
+      default: null,
+    },
+    lastExportStatus: {
+      type: String,
+      enum: ["idle", "processing", "completed", "failed"],
+      default: "idle",
+    },
+    lastExportError: {
+      type: String,
+      default: null,
+    },
     emailDigestEnabled: {
       type: Boolean,
       default: true,
@@ -67,6 +80,9 @@ const userSchema = new mongoose.Schema(
   },
   { timestamps: true },
 );
+
+userSchema.index({ organization: 1 });
+userSchema.index({ organization: 1, role: 1 });
 
 const userModel = mongoose.models.user || mongoose.model("user", userSchema);
 if (!mongoose.models.User) {

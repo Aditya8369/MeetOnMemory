@@ -6,6 +6,11 @@ import AttachmentSection from "./AttachmentSection";
 import CalendarNotice from "./CalendarNotice";
 import DraftRecoveryBanner from "./DraftRecoveryBanner";
 import SmartAgendaGenerator from "../../../../components/meetings/SmartAgendaGenerator";
+import CustomFieldsEditor from "../../../../components/meetings/CustomFieldsEditor";
+import ConflictWarning from "./ConflictWarning";
+import { useIcebreakers } from "../../../../hooks/useIcebreakers";
+import IcebreakerWidget from "../../../../components/meetings/IcebreakerWidget";
+import PhysicalResourcesSection from "./PhysicalResourcesSection";
 
 const ScheduleMeeting = ({ hookProps, loadingDuplicate = false }) => {
   const {
@@ -39,15 +44,37 @@ const ScheduleMeeting = ({ hookProps, loadingDuplicate = false }) => {
     aiSummaryTemplates,
     selectedAiSummaryTemplateId,
     setSelectedAiSummaryTemplateId,
+    setAgendaItems,
+    customFields,
+    setCustomFields,
+    userData,
+    focusConflicts,
+    busyParticipants,
+    checkingConflicts,
+    conflictCheckError,
+    conflictMode,
+    setConflictMode,
+    selectedResources,
+    setSelectedResources,
   } = hookProps;
 
+  const {
+    icebreakers,
+    loading: icebreakersLoading,
+    selectedIcebreaker,
+    generate,
+    select,
+  } = useIcebreakers(null); // null meetingId for Create mode
+
   return (
-    <div className="bg-white shadow-lg rounded-2xl p-8">
+    <div className="bg-white dark:bg-slate-900 border border-gray-200 dark:border-gray-800 shadow-lg rounded-2xl p-8">
       <div className="flex items-center gap-3 mb-6">
-        <Calendar className="text-blue-600" size={28} />
+        <Calendar className="text-blue-600 dark:text-blue-400" size={28} />
         <div>
-          <h2 className="text-2xl font-bold text-gray-900">Schedule Meeting</h2>
-          <p className="text-sm text-gray-600">
+          <h2 className="text-2xl font-bold text-gray-900 dark:text-white">
+            Schedule Meeting
+          </h2>
+          <p className="text-sm text-gray-600 dark:text-gray-400">
             Create and manage meeting schedules with automatic calendar
             integration
           </p>
@@ -56,7 +83,7 @@ const ScheduleMeeting = ({ hookProps, loadingDuplicate = false }) => {
 
       {loadingDuplicate && (
         <div
-          className="mb-6 rounded-lg border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-800"
+          className="mb-6 rounded-lg border border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-950/40 px-4 py-3 text-sm text-blue-800 dark:text-blue-300"
           role="status"
         >
           Loading reusable meeting details...
@@ -71,6 +98,23 @@ const ScheduleMeeting = ({ hookProps, loadingDuplicate = false }) => {
           onRestore={restoreDraft}
           onDiscard={discardDraft}
         />
+        <ConflictWarning
+          focusConflicts={focusConflicts}
+          busyParticipants={busyParticipants}
+          loading={checkingConflicts}
+          mode={conflictMode}
+          onModeChange={setConflictMode}
+          enabled={Boolean(scheduleData.date && scheduleData.time)}
+        />
+        {conflictCheckError && (
+          <p
+            className="mb-6 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-xs text-amber-800 dark:border-amber-900/60 dark:bg-amber-950/30 dark:text-amber-300"
+            role="status"
+          >
+            {conflictCheckError}
+          </p>
+        )}
+
         <MeetingInformationForm
           scheduleData={scheduleData}
           setScheduleData={setScheduleData}
@@ -85,15 +129,22 @@ const ScheduleMeeting = ({ hookProps, loadingDuplicate = false }) => {
           removeParticipant={removeParticipant}
         />
 
+        <PhysicalResourcesSection
+          scheduleData={scheduleData}
+          userData={userData}
+          selectedResources={selectedResources}
+          setSelectedResources={setSelectedResources}
+        />
+
         {templates && templates.length > 0 && (
-          <div className="mb-6 bg-blue-50/50 p-4 rounded-xl border border-blue-100">
-            <label className="flex items-center gap-2 text-sm font-semibold text-blue-900 mb-2">
+          <div className="mb-6 bg-blue-50/50 dark:bg-blue-950/30 p-4 rounded-xl border border-blue-100 dark:border-blue-900/50">
+            <label className="flex items-center gap-2 text-sm font-semibold text-blue-900 dark:text-blue-300 mb-2">
               <FileText size={16} /> Load Meeting Template
             </label>
             <select
               value={selectedTemplateId}
               onChange={handleTemplateSelect}
-              className="w-full px-4 py-2 bg-white border border-blue-200 rounded-lg focus:ring-2 focus:ring-blue-400 outline-none text-sm text-gray-700"
+              className="w-full px-4 py-2 bg-white dark:bg-slate-800 border border-blue-200 dark:border-blue-800 rounded-lg focus:ring-2 focus:ring-blue-400 outline-none text-sm text-gray-700 dark:text-gray-200"
             >
               <option value="">
                 -- Select a template to populate agenda --
@@ -108,14 +159,14 @@ const ScheduleMeeting = ({ hookProps, loadingDuplicate = false }) => {
         )}
 
         {aiSummaryTemplates && aiSummaryTemplates.length > 0 && (
-          <div className="mb-6 bg-indigo-50/50 p-4 rounded-xl border border-indigo-100">
-            <label className="flex items-center gap-2 text-sm font-semibold text-indigo-900 mb-2">
+          <div className="mb-6 bg-indigo-50/50 dark:bg-indigo-950/30 p-4 rounded-xl border border-indigo-100 dark:border-indigo-900/50">
+            <label className="flex items-center gap-2 text-sm font-semibold text-indigo-900 dark:text-indigo-300 mb-2">
               <FileText size={16} /> AI Summary Instructions
             </label>
             <select
               value={selectedAiSummaryTemplateId || ""}
               onChange={(e) => setSelectedAiSummaryTemplateId(e.target.value)}
-              className="w-full px-4 py-2 bg-white border border-indigo-200 rounded-lg focus:ring-2 focus:ring-indigo-400 outline-none text-sm text-gray-700"
+              className="w-full px-4 py-2 bg-white dark:bg-slate-800 border border-indigo-200 dark:border-indigo-800 rounded-lg focus:ring-2 focus:ring-indigo-400 outline-none text-sm text-gray-700 dark:text-gray-200"
             >
               <option value="">-- Standard Summary Format --</option>
               {aiSummaryTemplates.map((t) => (
@@ -124,15 +175,57 @@ const ScheduleMeeting = ({ hookProps, loadingDuplicate = false }) => {
                 </option>
               ))}
             </select>
-            <p className="text-xs text-indigo-700 mt-2">
+            <p className="text-xs text-indigo-700 dark:text-indigo-400 mt-2">
               Custom instructions allow you to dictate exactly how the AI will
               write the MoM (e.g. Sales BANT, Sprint Retro).
             </p>
           </div>
         )}
 
+        <CustomFieldsEditor
+          orgId={userData?.organization}
+          onChange={(fields, isValid) => setCustomFields({ fields, isValid })}
+        />
+
+        <SmartAgendaGenerator
+          organizationId={userData?.organization?._id || userData?.organization}
+          meetingId={null}
+          currentAgenda={agendaItems}
+          onApplySuccess={setAgendaItems}
+        />
+
+        <div className="mb-6 bg-cyan-50/50 dark:bg-cyan-950/30 p-4 rounded-xl border border-cyan-100 dark:border-cyan-900/50">
+          <div className="flex justify-between items-center mb-2">
+            <label className="flex items-center gap-2 text-sm font-semibold text-cyan-900 dark:text-cyan-300">
+              🧊 Team Icebreaker
+            </label>
+            <button
+              type="button"
+              onClick={() => {
+                const pIds = participants.map((p) => p._id || p.id || p.value);
+                generate(pIds);
+              }}
+              disabled={icebreakersLoading}
+              className="px-3 py-1 bg-cyan-600 hover:bg-cyan-700 text-white text-xs font-medium rounded transition-colors disabled:opacity-50"
+            >
+              {icebreakersLoading ? "Generating..." : "Generate Icebreaker"}
+            </button>
+          </div>
+          <p className="text-xs text-cyan-700 dark:text-cyan-400 mb-3">
+            Start the meeting on a high note by generating context-aware
+            icebreakers based on the participants.
+          </p>
+          <IcebreakerWidget
+            icebreakers={icebreakers}
+            loading={icebreakersLoading}
+            onSelect={select}
+            selectedIcebreaker={selectedIcebreaker}
+          />
+        </div>
+
         <AgendaSection
           agendaItems={agendaItems}
+          setAgendaItems={setAgendaItems}
           newAgenda={newAgenda}
           setNewAgenda={setNewAgenda}
           addAgendaItem={addAgendaItem}
@@ -145,14 +238,77 @@ const ScheduleMeeting = ({ hookProps, loadingDuplicate = false }) => {
           handleAttachmentUpload={handleAttachmentUpload}
           removeAttachment={removeAttachment}
         />
+        {/* Meeting Reminder */}
+        <div className="mb-6 rounded-xl border border-blue-100 dark:border-blue-900/50 bg-blue-50/50 dark:bg-blue-950/30 p-4">
+          <div className="flex items-center gap-2 mb-3">
+            <Calendar className="text-blue-600 dark:text-blue-400" size={18} />
+
+            <h3 className="text-sm font-semibold text-blue-900 dark:text-blue-300">
+              Meeting Reminder
+            </h3>
+          </div>
+
+          <label className="flex items-center gap-3 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={scheduleData.reminderEnabled || false}
+              onChange={(e) =>
+                setScheduleData((prev) => ({
+                  ...prev,
+                  reminderEnabled: e.target.checked,
+                }))
+              }
+              className="h-4 w-4 rounded border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-blue-600 focus:ring-blue-500"
+            />
+
+            <span className="text-sm text-gray-700 dark:text-gray-300">
+              Send me a notification before this meeting starts
+            </span>
+          </label>
+
+          {scheduleData.reminderEnabled && (
+            <div className="mt-4">
+              <label
+                htmlFor="reminderMinutesBefore"
+                className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2"
+              >
+                Remind me
+              </label>
+
+              <select
+                id="reminderMinutesBefore"
+                value={scheduleData.reminderMinutesBefore || 30}
+                onChange={(e) =>
+                  setScheduleData((prev) => ({
+                    ...prev,
+                    reminderMinutesBefore: Number(e.target.value),
+                  }))
+                }
+                className="w-full px-4 py-2 bg-white dark:bg-slate-800 border border-blue-200 dark:border-blue-800 rounded-lg focus:ring-2 focus:ring-blue-400 outline-none text-sm text-gray-700 dark:text-gray-200"
+              >
+                <option value={10}>10 minutes before</option>
+                <option value={30}>30 minutes before</option>
+                <option value={60}>1 hour before</option>
+              </select>
+
+              <p className="text-xs text-blue-700 dark:text-blue-400 mt-2">
+                You will receive an in-app notification and email reminder.
+              </p>
+            </div>
+          )}
+        </div>
 
         <CalendarNotice />
 
         {/* Submit */}
         <button
           type="submit"
-          disabled={loading || loadingDuplicate}
-          className="w-full px-6 py-3 bg-blue-600 text-white rounded-lg font-semibold hover:bg-blue-700 transition flex items-center justify-center gap-2 disabled:opacity-50"
+          disabled={
+            loading ||
+            loadingDuplicate ||
+            (customFields && !customFields.isValid)
+          }
+          className="w-full px-6 py-3 bg-blue-600 text-white rounded-lg font-semibold hover:bg-blue-700 transition flex items-center justify-center gap-2 disabled:opacity-50 cursor-pointer"
         >
           {loading ? (
             <>

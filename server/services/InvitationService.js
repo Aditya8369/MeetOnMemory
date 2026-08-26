@@ -17,6 +17,15 @@ import {
   ConflictError,
   ValidationError,
 } from "../utils/errors.js";
+import { parseInvitationCsv } from "../utils/invitationCsvParse.js";
+import {
+  startBulkInvitationJob,
+  recordBulkInvitationResult,
+  finishBulkInvitationJob,
+} from "./bulkInvitationProgress.js";
+
+/** Maximum invitation rows accepted in a single CSV upload (Issue #1362). */
+export const MAX_BULK_INVITATIONS = 100;
 
 // ═══════════════════════════════════════════════════════════════
 // Private helpers
@@ -71,6 +80,47 @@ const isValidRole = (role) => allowedRoles.includes(role);
  */
 const generateInvitationToken = () => {
   return crypto.randomBytes(32).toString("hex");
+};
+
+/**
+ * Returns true when an invitation is past its expiry timestamp.
+ * Treats missing or invalid expiry values as expired.
+ * @param {Date|string|number|null|undefined} expiresAt
+ * @returns {boolean}
+ */
+export const isInvitationExpired = (expiresAt) => {
+  if (expiresAt == null) return true;
+  const expiryMs = new Date(expiresAt).getTime();
+  return Number.isNaN(expiryMs) || expiryMs <= Date.now();
+};
+
+/**
+ * Ensures an invitation is pending and not expired.
+ * Marks expired invitations when persistExpired is true.
+ *
+ * @param {import("mongoose").Document} invitation
+ * @param {{ persistExpired?: boolean, session?: import("mongoose").ClientSession }} [options]
+ * @throws {NotFoundError|ValidationError}
+ */
+export const assertInvitationPendingAndActive = async (
+  invitation,
+  { persistExpired = true, session = null } = {},
+) => {
+  if (!invitation) {
+    throw new NotFoundError("Invitation not found.");
+  }
+
+  if (invitation.status !== "pending") {
+    throw new ValidationError("Invitation is not in pending status.");
+  }
+
+  if (isInvitationExpired(invitation.expiresAt)) {
+    if (persistExpired) {
+      invitation.status = "expired";
+      await invitation.save(session ? { session } : undefined);
+    }
+    throw new ValidationError("Invitation has expired.");
+  }
 };
 
 /**
@@ -210,6 +260,124 @@ export const createInvitation = async (
 };
 
 /**
+ * ✅ Bulk-import invitations from CSV (Issue #1362)
+ *
+ * Parses CSV content, enforces the 100-row cap, validates/creates each row via
+ * `createInvitation` (reusing auth, duplicate, and role rules), and tracks
+ * per-row progress for the response (and future async workers).
+ *
+ * @param {string} userId
+ * @param {{ organizationId: string, csvContent: string|Buffer }} payload
+ * @param {{ origin?: string, inviterName?: string }} meta
+ */
+export const bulkImportInvitations = async (
+  userId,
+  { organizationId, csvContent },
+  { origin, inviterName } = {},
+) => {
+  if (!organizationId) {
+    throw new ValidationError("Organization ID is required.");
+  }
+  if (!isValidObjectId(organizationId)) {
+    throw new ValidationError("Invalid organization ID.");
+  }
+  if (csvContent == null || csvContent === "") {
+    throw new ValidationError("CSV file is required.");
+  }
+
+  // Fail fast on org access before parsing large files into invitations.
+  const organization = await Organization.findById(organizationId);
+  if (!organization) {
+    throw new NotFoundError("Organization not found.");
+  }
+  if (!(await isAdminOrOwner(userId, organization))) {
+    throw new ForbiddenError("Not authorized to create invitations.");
+  }
+
+  let parsed;
+  try {
+    parsed = parseInvitationCsv(csvContent);
+  } catch (err) {
+    throw new ValidationError(err.message || "Invalid CSV file.");
+  }
+
+  if (parsed.rows.length === 0) {
+    throw new ValidationError("CSV file contains no invitation rows.");
+  }
+
+  if (parsed.rows.length > MAX_BULK_INVITATIONS) {
+    throw new ValidationError(
+      `CSV exceeds the maximum of ${MAX_BULK_INVITATIONS} invitations per upload.`,
+    );
+  }
+
+  const job = startBulkInvitationJob(parsed.rows.length);
+
+  for (const row of parsed.rows) {
+    const email = row.email || "";
+
+    if (!email) {
+      recordBulkInvitationResult(job.jobId, {
+        row: row.row,
+        email,
+        success: false,
+        error: "Email is required.",
+      });
+      continue;
+    }
+
+    if (!row.role) {
+      recordBulkInvitationResult(job.jobId, {
+        row: row.row,
+        email,
+        success: false,
+        error: "Role is required.",
+      });
+      continue;
+    }
+
+    try {
+      const created = await createInvitation(
+        userId,
+        {
+          organizationId,
+          email: row.email,
+          role: row.role,
+          message: row.message,
+        },
+        { origin, inviterName },
+      );
+
+      recordBulkInvitationResult(job.jobId, {
+        row: row.row,
+        email,
+        success: true,
+        invitationId: String(created.invitation._id),
+      });
+    } catch (err) {
+      recordBulkInvitationResult(job.jobId, {
+        row: row.row,
+        email,
+        success: false,
+        error: err.message || "Failed to create invitation.",
+      });
+    }
+  }
+
+  finishBulkInvitationJob(job.jobId, "completed");
+
+  return {
+    success: true,
+    jobId: job.jobId,
+    totalRows: job.totalRows,
+    successful: job.successful,
+    failed: job.failed,
+    progress: job.progress,
+    results: job.results,
+  };
+};
+
+/**
  * ✅ Get Organization Invitations
  */
 export const getOrganizationInvitations = async (
@@ -313,19 +481,8 @@ export const acceptInvitation = async (userId, token) => {
       throw new NotFoundError("Invitation not found.");
     }
 
-    // Step 2: Validate invitation status
-    if (invitation.status !== "pending") {
-      throw new ValidationError(
-        `Invitation is not in pending status. Current status: ${invitation.status}`,
-      );
-    }
-
-    // Step 3: Check expiration
-    if (invitation.expiresAt < new Date()) {
-      invitation.status = "expired";
-      await invitation.save({ session });
-      throw new ValidationError("Invitation has expired.");
-    }
+    // Step 2–3: Validate pending status and expiry (Issue #1358)
+    await assertInvitationPendingAndActive(invitation, { session });
 
     // Step 4: Verify email matches authenticated user
     const user = await userModel.findById(userId).session(session);
@@ -408,9 +565,7 @@ export const rejectInvitation = async (userId, token) => {
     throw new NotFoundError("Invitation not found.");
   }
 
-  if (invitation.status !== "pending") {
-    throw new ValidationError("Invitation is not in pending status.");
-  }
+  await assertInvitationPendingAndActive(invitation);
 
   // Verify email matches
   const user = await userModel.findById(userId);
@@ -477,15 +632,7 @@ export const getInvitationByToken = async (token) => {
     throw new NotFoundError("Invitation not found.");
   }
 
-  if (invitation.status !== "pending") {
-    throw new ValidationError("Invitation is not in pending status.");
-  }
-
-  if (invitation.expiresAt < new Date()) {
-    invitation.status = "expired";
-    await invitation.save();
-    throw new ValidationError("Invitation has expired.");
-  }
+  await assertInvitationPendingAndActive(invitation);
 
   return { success: true, invitation };
 };

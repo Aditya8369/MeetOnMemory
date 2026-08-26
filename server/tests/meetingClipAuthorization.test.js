@@ -11,42 +11,63 @@ jest.unstable_mockModule("../models/meetingModel.js", () => ({
   },
 }));
 
+const mockUserFindOne = jest.fn();
+
 jest.unstable_mockModule("../models/userModel.js", () => ({
   default: {
     findById: mockUserFindById,
+    findOne: mockUserFindOne,
+    create: jest.fn(),
   },
 }));
 
 // Mock csrf protection so it doesn't block supertest
 jest.unstable_mockModule("../middleware/csrfProtection.js", () => ({
-  csrfMiddleware: (req, res, next) => next(),
+  csrfProtectionMiddleware: (req, res, next) => next(),
+  csrfErrorHandler: (err, req, res, next) => next(),
   csrfTokenProvider: (req, res, next) => next(),
 }));
 
 const { app } = await import("../server.js");
 
 describe("Meeting Clip Authorization", () => {
-  const JWT_SECRET = process.env.JWT_SECRET || "testsecret";
+  const JWT_SECRET = process.env.JWT_SECRET;
   const orgId = "org123";
   const otherOrgId = "org456";
-  const meetingId = "6a74b2d9ce08c6d9eb0e32c0";
+  const _meetingId = "6a74b2d9ce08c6d9eb0e32c0";
   const validMongoId = "507f1f77bcf86cd799439011";
 
   // Mock Tokens
   const noOrgToken = jwt.sign(
-    { id: "6a74b2d9ce08c6d9eb0e32c1", role: "member" },
+    {
+      id: "6a74b2d9ce08c6d9eb0e32c1",
+      sub: "6a74b2d9ce08c6d9eb0e32c1",
+      role: "member",
+    },
     JWT_SECRET,
   );
   const differentOrgToken = jwt.sign(
-    { id: "6a74b2d9ce08c6d9eb0e32c2", role: "member" },
+    {
+      id: "6a74b2d9ce08c6d9eb0e32c2",
+      sub: "6a74b2d9ce08c6d9eb0e32c2",
+      role: "member",
+    },
     JWT_SECRET,
   );
   const correctOrgToken = jwt.sign(
-    { id: "6a74b2d9ce08c6d9eb0e32c3", role: "member" },
+    {
+      id: "6a74b2d9ce08c6d9eb0e32c3",
+      sub: "6a74b2d9ce08c6d9eb0e32c3",
+      role: "member",
+    },
     JWT_SECRET,
   );
   const adminToken = jwt.sign(
-    { id: "6a74b2d9ce08c6d9eb0e32c4", role: "admin" },
+    {
+      id: "6a74b2d9ce08c6d9eb0e32c4",
+      sub: "6a74b2d9ce08c6d9eb0e32c4",
+      role: "admin",
+    },
     JWT_SECRET,
   );
 
@@ -55,6 +76,40 @@ describe("Meeting Clip Authorization", () => {
 
     // Mock user DB lookups for userAuth middleware
     mockUserFindById.mockImplementation((id) => {
+      const mockChain = {
+        select: jest.fn().mockImplementation(() => {
+          if (id === "6a74b2d9ce08c6d9eb0e32c1")
+            return Promise.resolve({
+              _id: id,
+              role: "member",
+              organization: null,
+            });
+          if (id === "6a74b2d9ce08c6d9eb0e32c2")
+            return Promise.resolve({
+              _id: id,
+              role: "member",
+              organization: otherOrgId,
+            });
+          if (id === "6a74b2d9ce08c6d9eb0e32c3")
+            return Promise.resolve({
+              _id: id,
+              role: "member",
+              organization: orgId,
+            });
+          if (id === "6a74b2d9ce08c6d9eb0e32c4")
+            return Promise.resolve({
+              _id: id,
+              role: "admin",
+              organization: orgId,
+            });
+          return Promise.resolve(null);
+        }),
+      };
+      return mockChain;
+    });
+
+    mockUserFindOne.mockImplementation((query) => {
+      const id = query.clerkUserId;
       const mockChain = {
         select: jest.fn().mockImplementation(() => {
           if (id === "6a74b2d9ce08c6d9eb0e32c1")
@@ -107,21 +162,21 @@ describe("Meeting Clip Authorization", () => {
     it("should reject access if user has no organization (403)", async () => {
       const res = await request(app)
         .get(`/api/meetings/${validMongoId}/clip/clip123`)
-        .set("Cookie", [`token=${noOrgToken}`]);
+        .set("Authorization", `Bearer ${noOrgToken}`);
       expect(res.status).toBe(403);
     });
 
     it("should reject access if user is from a different organization (403 - IDOR protection)", async () => {
       const res = await request(app)
         .get(`/api/meetings/${validMongoId}/clip/clip123`)
-        .set("Cookie", [`token=${differentOrgToken}`]);
+        .set("Authorization", `Bearer ${differentOrgToken}`);
       expect(res.status).toBe(403);
     });
 
     it("should allow access if user is from the same organization (200)", async () => {
       const res = await request(app)
         .get(`/api/meetings/${validMongoId}/clip/clip123`)
-        .set("Cookie", [`token=${correctOrgToken}`]);
+        .set("Authorization", `Bearer ${correctOrgToken}`);
       expect(res.status).toBe(200);
       expect(res.body.success).toBe(true);
     });
@@ -129,7 +184,7 @@ describe("Meeting Clip Authorization", () => {
     it("should handle deleted/archived clips appropriately (404)", async () => {
       const res = await request(app)
         .get(`/api/meetings/${validMongoId}/clip/deleted-clip-id`)
-        .set("Cookie", [`token=${correctOrgToken}`]);
+        .set("Authorization", `Bearer ${correctOrgToken}`);
       expect(res.status).toBe(404);
       expect(res.body.success).toBe(false);
       expect(res.body.message).toContain("deleted");
@@ -147,7 +202,7 @@ describe("Meeting Clip Authorization", () => {
     it("should reject access if user is from a different organization (403)", async () => {
       const res = await request(app)
         .post(`/api/meetings/${validMongoId}/clip`)
-        .set("Cookie", [`token=${differentOrgToken}`])
+        .set("Authorization", `Bearer ${differentOrgToken}`)
         .send({ data: "test" });
       expect(res.status).toBe(403);
     });
@@ -155,7 +210,7 @@ describe("Meeting Clip Authorization", () => {
     it("should allow access if user is from the same organization and has edit perms (200)", async () => {
       const res = await request(app)
         .post(`/api/meetings/${validMongoId}/clip`)
-        .set("Cookie", [`token=${adminToken}`])
+        .set("Authorization", `Bearer ${adminToken}`)
         .send({ data: "test" });
       expect(res.status).toBe(200);
       expect(res.body.success).toBe(true);

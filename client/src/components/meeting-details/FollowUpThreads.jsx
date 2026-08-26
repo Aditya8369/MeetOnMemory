@@ -13,7 +13,7 @@ import { toast } from "react-toastify";
 import { createClerkSocketOptions } from "../../services/apiClient.js";
 
 const FollowUpThreads = ({ meetingId }) => {
-  const { userData, backendUrl } = useContext(AppContent);
+  const { userData, backendUrl } = useContext(AppContent) || {};
   const [threads, setThreads] = useState([]);
   const [activeTab, setActiveTab] = useState("all"); // 'all', 'decision', 'action_item', 'agenda_item'
   const [newThreadContent, setNewThreadContent] = useState("");
@@ -26,10 +26,12 @@ const FollowUpThreads = ({ meetingId }) => {
   const socketRef = useRef(null);
 
   useEffect(() => {
+    if (!meetingId) return;
+
     const fetchThreads = async () => {
       try {
         const data = await getFollowUpThreads(meetingId);
-        if (data.success) {
+        if (data?.success) {
           setThreads(data.threads || []);
         }
       } catch (error) {
@@ -38,57 +40,63 @@ const FollowUpThreads = ({ meetingId }) => {
     };
     fetchThreads();
 
+    if (!backendUrl) return;
+
     let cancelled = false;
 
     (async () => {
-      const opts = await createClerkSocketOptions({
-        transports: ["websocket"],
-      });
-      if (cancelled) return;
-
-      socketRef.current = io(backendUrl, opts);
-
-      socketRef.current.on("connect", () => {
-        socketRef.current.emit("join-meeting", {
-          roomId: meetingId,
-          userInfo: { name: userData?.name },
+      try {
+        const opts = await createClerkSocketOptions({
+          transports: ["websocket"],
         });
-      });
+        if (cancelled) return;
 
-      socketRef.current.on("thread:created", ({ thread, reply }) => {
-        setThreads((prev) => {
-          const exists = prev.find((t) => t._id === thread._id);
-          if (exists) return prev;
-          return [...prev, { ...thread, replies: [reply] }];
+        socketRef.current = io(backendUrl, opts);
+
+        socketRef.current.on("connect", () => {
+          socketRef.current.emit("join-meeting", {
+            roomId: meetingId,
+            userInfo: { name: userData?.name },
+          });
         });
-      });
 
-      socketRef.current.on("thread:reply", ({ reply }) => {
-        setThreads((prev) =>
-          prev.map((t) => {
-            if (t._id === reply.threadId) {
-              // Check if reply already exists
-              const replyExists = t.replies.find((r) => r._id === reply._id);
-              if (replyExists) {
-                return {
-                  ...t,
-                  replies: t.replies.map((r) =>
-                    r._id === reply._id ? reply : r,
-                  ),
-                };
+        socketRef.current.on("thread:created", ({ thread, reply }) => {
+          setThreads((prev) => {
+            const exists = prev.find((t) => t._id === thread._id);
+            if (exists) return prev;
+            return [...prev, { ...thread, replies: reply ? [reply] : [] }];
+          });
+        });
+
+        socketRef.current.on("thread:reply", ({ reply }) => {
+          setThreads((prev) =>
+            prev.map((t) => {
+              if (t._id === reply.threadId) {
+                // Check if reply already exists
+                const replyExists = t.replies.find((r) => r._id === reply._id);
+                if (replyExists) {
+                  return {
+                    ...t,
+                    replies: t.replies.map((r) =>
+                      r._id === reply._id ? reply : r,
+                    ),
+                  };
+                }
+                return { ...t, replies: [...t.replies, reply] };
               }
-              return { ...t, replies: [...t.replies, reply] };
-            }
-            return t;
-          }),
-        );
-      });
+              return t;
+            }),
+          );
+        });
 
-      socketRef.current.on("thread:resolved", ({ thread }) => {
-        setThreads((prev) =>
-          prev.map((t) => (t._id === thread._id ? { ...t, ...thread } : t)),
-        );
-      });
+        socketRef.current.on("thread:resolved", ({ thread }) => {
+          setThreads((prev) =>
+            prev.map((t) => (t._id === thread._id ? { ...t, ...thread } : t)),
+          );
+        });
+      } catch (err) {
+        console.warn("Could not connect to thread socket", err);
+      }
     })();
 
     return () => {
@@ -188,7 +196,9 @@ const FollowUpThreads = ({ meetingId }) => {
   const filteredThreads =
     activeTab === "all"
       ? threads
-      : threads.filter((t) => t.anchorType === activeTab);
+      : threads.filter(
+          (t) => t.anchorType === activeTab || t.type === activeTab,
+        );
 
   return (
     <div className="mt-8 bg-white dark:bg-gray-800 p-6 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
@@ -259,7 +269,10 @@ const FollowUpThreads = ({ meetingId }) => {
             <div className="flex justify-between items-start mb-3">
               <div className="flex items-center gap-2">
                 <span className="px-2 py-1 text-xs font-semibold uppercase bg-gray-200 text-gray-700 dark:bg-gray-700 dark:text-gray-300 rounded">
-                  {thread.anchorType.replace("_", " ")}
+                  {(thread.anchorType || thread.type || "general").replace(
+                    "_",
+                    " ",
+                  )}
                 </span>
                 {thread.status === "resolved" && (
                   <span className="px-2 py-1 text-xs font-semibold bg-green-100 text-green-700 rounded">
@@ -279,19 +292,24 @@ const FollowUpThreads = ({ meetingId }) => {
 
             {/* Replies */}
             <div className="space-y-4">
-              {thread.replies?.map((reply) => (
-                <div key={reply._id} className="flex gap-3">
-                  <div className="w-8 h-8 rounded-full bg-blue-500 flex-shrink-0 flex items-center justify-center text-white text-sm font-bold mt-1">
-                    {reply.author?.name
-                      ? reply.author.name.charAt(0).toUpperCase()
-                      : "?"}
-                  </div>
-                  <div className="flex-1">
-                    <div className="bg-gray-100 dark:bg-gray-700 p-3 rounded-lg">
-                      <div className="flex justify-between items-center mb-1">
-                        <span className="font-semibold text-sm dark:text-gray-200">
-                          {reply.author?.name || "Unknown"}
-                        </span>
+              {thread.replies?.map((reply) => {
+                const authorName =
+                  reply.author?.name ||
+                  reply.sender?.name ||
+                  reply.author ||
+                  "Unknown";
+                return (
+                  <div key={reply._id} className="flex gap-3">
+                    <div className="w-8 h-8 rounded-full bg-blue-500 flex-shrink-0 flex items-center justify-center text-white text-sm font-bold mt-1">
+                      {authorName.charAt(0).toUpperCase()}
+                    </div>
+                    <div className="flex-1">
+                      <div className="bg-gray-100 dark:bg-gray-700 p-3 rounded-lg">
+                        <div className="flex justify-between items-center mb-1">
+                          <span className="font-semibold text-sm dark:text-gray-200">
+                            {authorName}
+                          </span>
+                        </div>
                         <span className="text-xs text-gray-500 dark:text-gray-400">
                           {new Date(reply.createdAt).toLocaleTimeString([], {
                             hour: "2-digit",
@@ -333,36 +351,36 @@ const FollowUpThreads = ({ meetingId }) => {
                           {reply.content}
                         </p>
                       )}
-                    </div>
 
-                    {userData &&
-                      reply.author &&
-                      (userData._id === reply.author._id ||
-                        userData._id === reply.author) &&
-                      !editingReply && (
-                        <div className="flex gap-3 mt-1 ml-1">
-                          <button
-                            onClick={() => {
-                              setEditingReply(reply._id);
-                              setEditContent(reply.content);
-                            }}
-                            className="text-xs text-gray-500 hover:text-blue-500"
-                          >
-                            Edit
-                          </button>
-                          <button
-                            onClick={() =>
-                              handleDeleteReply(reply._id, thread._id)
-                            }
-                            className="text-xs text-gray-500 hover:text-red-500"
-                          >
-                            Delete
-                          </button>
-                        </div>
-                      )}
+                      {userData &&
+                        reply.author &&
+                        (userData._id === reply.author._id ||
+                          userData._id === reply.author) &&
+                        !editingReply && (
+                          <div className="flex gap-3 mt-1 ml-1">
+                            <button
+                              onClick={() => {
+                                setEditingReply(reply._id);
+                                setEditContent(reply.content);
+                              }}
+                              className="text-xs text-gray-500 hover:text-blue-500"
+                            >
+                              Edit
+                            </button>
+                            <button
+                              onClick={() =>
+                                handleDeleteReply(reply._id, thread._id)
+                              }
+                              className="text-xs text-gray-500 hover:text-red-500"
+                            >
+                              Delete
+                            </button>
+                          </div>
+                        )}
+                    </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
 
             {/* Reply Input */}

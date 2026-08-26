@@ -1,6 +1,7 @@
 import RecapPreference from "../models/recapPreferenceModel.js";
 import Meeting from "../models/meetingModel.js";
 import RecapEmailService from "../services/recapEmailService.js";
+import NotificationPreference from "../models/notificationPreferenceModel.js";
 
 /**
  * Get current user's recap preferences
@@ -8,7 +9,7 @@ import RecapEmailService from "../services/recapEmailService.js";
 export const getPreferences = async (req, res) => {
   try {
     const userId = req.user._id;
-    let preferences = await RecapPreference.findOne({ userId });
+    let preferences = await RecapPreference.findOne({ userId }).lean();
 
     if (!preferences) {
       // Return default preferences without saving
@@ -19,6 +20,23 @@ export const getPreferences = async (req, res) => {
         includeSummary: true,
         timezone: "UTC",
       };
+    }
+
+    // Merge quiet hours and timezone from NotificationPreference
+    const notifPref = await NotificationPreference.findOne({
+      user: userId,
+    }).lean();
+    if (notifPref) {
+      preferences.quietHoursStart =
+        notifPref.quietHoursStart !== undefined
+          ? notifPref.quietHoursStart
+          : null;
+      preferences.quietHoursEnd =
+        notifPref.quietHoursEnd !== undefined ? notifPref.quietHoursEnd : null;
+      preferences.timezone = notifPref.timezone || preferences.timezone;
+    } else {
+      preferences.quietHoursStart = null;
+      preferences.quietHoursEnd = null;
     }
 
     res.status(200).json(preferences);
@@ -58,6 +76,13 @@ export const updatePreferences = async (req, res) => {
       { new: true, upsert: true },
     );
 
+    // Sync quiet hours to NotificationPreference
+    await NotificationPreference.findOneAndUpdate(
+      { user: userId },
+      { quietHoursStart, quietHoursEnd, timezone },
+      { new: true, upsert: true },
+    );
+
     res.status(200).json(preferences);
   } catch (error) {
     console.error("Error updating recap preferences:", error);
@@ -74,7 +99,10 @@ export const previewRecapEmail = async (req, res) => {
 
     // Find a recent completed meeting to use as preview data,
     // or fallback to a dummy object if none exists.
-    let meeting = await Meeting.findOne({ status: "completed" }).sort({
+    let meeting = await Meeting.findOne({
+      status: "completed",
+      organization: req.user.organization,
+    }).sort({
       date: -1,
     });
 

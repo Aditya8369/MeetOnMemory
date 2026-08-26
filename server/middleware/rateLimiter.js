@@ -1,33 +1,30 @@
 import rateLimit from "express-rate-limit";
-import { getRedisClient } from "../services/redisService.js";
 import { getClientIp } from "../utils/ipUtils.js";
+import { createRateLimitStore } from "./rateLimitStore.js";
 
-let RedisStore;
-try {
-  const mod = await import("rate-limit-redis");
-  RedisStore = mod.RedisStore || mod.default;
-} catch (_e) {
-  // rate-limit-redis optional dependency fallback
-}
-
-// Create a shared store that uses Redis if available,
-// otherwise falls back to in-memory
-const createStore = (prefix) => {
-  const redisClient = getRedisClient();
-  if (redisClient && RedisStore) {
-    return new RedisStore({
-      sendCommand: (...args) => redisClient.sendCommand(...args),
-      prefix,
-    });
-  }
-  return undefined; // Falls back to default MemoryStore
-};
+/**
+ * Builds this limiter's store (Issue #1452).
+ *
+ * The previous `createStore` called `getRedisClient()` right here, at module
+ * scope. This module is evaluated during the import phase — `config/express.js`
+ * imports it, and `config/express.js` is in `server.js`'s static import graph —
+ * whereas `initRedis()` only runs later, inside `startWorkers()`. So the client
+ * was always `null`, `createStore` always returned `undefined`, and every
+ * limiter below silently used the in-process `MemoryStore`.
+ *
+ * `createRateLimitStore` returns a store that resolves its own backend on first
+ * use instead, so the limiters attach to Redis as soon as it is ready without
+ * anything about the bootstrap order having to change. See
+ * `middleware/rateLimitStore.js` for the details.
+ */
+const createStore = (prefix) => createRateLimitStore(prefix);
 
 // Common options to ensure secure IP key generation across all limiters
 const baseOptions = {
   standardHeaders: true, // Return rate limit info in `RateLimit-*` headers
   legacyHeaders: false, // Disable legacy `X-RateLimit-*` headers
   keyGenerator: (req) => getClientIp(req),
+  skip: () => process.env.NODE_ENV === "test",
 };
 
 // General rate limiter for API routes
@@ -221,3 +218,116 @@ export const policyDeleteLimiter = rateLimit({
   },
   store: createStore("rl:policy_delete:"),
 });
+
+// ================================
+// INVITATION RATE LIMITERS
+// ================================
+
+/**
+ * Resolve the organization id used to scope invitation creation limits.
+ * Prefer the target organization from the request body (POST /api/invitations).
+ * @param {import("express").Request} req
+ * @returns {string|null}
+ */
+export const resolveInvitationRateLimitOrgId = (req) => {
+  const raw =
+    req?.body?.organizationId ??
+    req?.params?.organizationId ??
+    req?.user?.organization ??
+    null;
+  if (raw == null || raw === "") return null;
+  return String(raw);
+};
+
+/**
+ * Organization-scoped limiter for invitation creation (Issue #1360).
+ * Each organization may create at most 10 invitations per hour.
+ * Uses Redis via the shared rate-limit store when available; otherwise MemoryStore.
+ *
+ * @param {object} [overrides] express-rate-limit options (e.g. `{ store }` in tests)
+ */
+export const createInvitationCreateLimiter = (overrides = {}) =>
+  rateLimit({
+    windowMs: 60 * 60 * 1000, // 1 hour
+    max: 10,
+    standardHeaders: true,
+    legacyHeaders: false,
+    // Org-scoped (not IP). Skipped when no organization id is present so the
+    // controller can still return a normal 400 validation error.
+    keyGenerator: (req) => `org:${resolveInvitationRateLimitOrgId(req)}`,
+    skip: (req) => !resolveInvitationRateLimitOrgId(req),
+    message: {
+      success: false,
+      message:
+        "Invitation rate limit exceeded. Your organization can create up to 10 invitations per hour. Please try again later.",
+    },
+    store: createStore("rl:invitation_create:"),
+    ...overrides,
+  });
+
+export const invitationCreateLimiter = createInvitationCreateLimiter();
+
+/**
+ * Per-user limiter for public product testimonial submissions (Issue #1572).
+ * Caps abuse while allowing legitimate create/update retries.
+ */
+export const createTestimonialSubmitLimiter = (overrides = {}) =>
+  rateLimit({
+    ...baseOptions,
+    windowMs: 60 * 60 * 1000, // 1 hour
+    max: 10,
+    keyGenerator: (req) => {
+      const userId = req.user?._id || req.user?.id;
+      return userId ? `user:${userId}` : `ip:${getClientIp(req)}`;
+    },
+    message: {
+      success: false,
+      message: "Too many testimonial submissions. Please try again later.",
+    },
+    store: createStore("rl:testimonial_submit:"),
+    ...overrides,
+  });
+
+export const testimonialSubmitLimiter = createTestimonialSubmitLimiter();
+
+/**
+ * Public careers application submissions (Issue #1790).
+ * Limits abuse by client IP while allowing legitimate retries.
+ */
+export const createCareersApplicationLimiter = (overrides = {}) =>
+  rateLimit({
+    ...baseOptions,
+    windowMs: 60 * 60 * 1000, // 1 hour
+    max: 5,
+    keyGenerator: (req) => `ip:${getClientIp(req)}`,
+    message: {
+      success: false,
+      message:
+        "Too many career applications from this address. Please try again later.",
+    },
+    store: createStore("rl:careers_application:"),
+    ...overrides,
+  });
+
+export const careersApplicationLimiter = createCareersApplicationLimiter();
+
+/**
+ * Public contact form submissions (Issue #1793).
+ * Limits abuse by client IP.
+ */
+export const createContactSubmitLimiter = (overrides = {}) =>
+  rateLimit({
+    ...baseOptions,
+    windowMs: 60 * 60 * 1000, // 1 hour
+    max: 10,
+    keyGenerator: (req) => `ip:${getClientIp(req)}`,
+    message: {
+      success: false,
+      message:
+        "Too many contact submissions from this address. Please try again later.",
+    },
+    store: createStore("rl:contact_submit:"),
+    ...overrides,
+  });
+
+export const contactSubmitLimiter = createContactSubmitLimiter();

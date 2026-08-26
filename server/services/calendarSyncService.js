@@ -2,20 +2,38 @@ import crypto from "crypto";
 import { google } from "googleapis";
 import axios from "axios";
 import cron from "node-cron";
-import CalendarIntegration from "../models/calendarIntegrationModel.js";
-import Meeting from "../models/meetingModel.js"; // eslint-disable-line no-unused-vars
+import CalendarConnection from "../models/calendarConnectionModel.js";
+import {
+  decryptToken,
+  encryptToken,
+  getGoogleOAuthClient,
+} from "./calendarService.js";
 
-// Encryption setup
 const ALGORITHM = "aes-256-gcm";
-const ENCRYPTION_KEY =
-  process.env.TOKEN_ENCRYPTION_KEY || "12345678901234567890123456789012"; // 32 bytes
+
+/**
+ * Resolve the calendar-sync encryption key (Issue #1768).
+ *
+ * There is no hardcoded fallback. Missing or empty TOKEN_ENCRYPTION_KEY
+ * fails closed so Google/Microsoft OAuth tokens cannot be encrypted with
+ * a well-known default.
+ *
+ * @returns {string}
+ */
+export const getTokenEncryptionKey = () => {
+  const key = process.env.TOKEN_ENCRYPTION_KEY;
+  if (typeof key !== "string" || !key.trim()) {
+    throw new Error("TOKEN_ENCRYPTION_KEY is not configured");
+  }
+  return key;
+};
 
 const encrypt = (text) => {
   if (!text) return text;
   const iv = crypto.randomBytes(16);
   const cipher = crypto.createCipheriv(
     ALGORITHM,
-    Buffer.from(ENCRYPTION_KEY),
+    Buffer.from(getTokenEncryptionKey()),
     iv,
   );
   let encrypted = cipher.update(text, "utf8", "hex");
@@ -27,11 +45,11 @@ const encrypt = (text) => {
 const decrypt = (encryptedData) => {
   if (!encryptedData) return encryptedData;
   const parts = encryptedData.split(":");
-  if (parts.length !== 3) return encryptedData; // not encrypted or wrong format
+  if (parts.length !== 3) return encryptedData;
   const [ivHex, encryptedText, authTagHex] = parts;
   const decipher = crypto.createDecipheriv(
     ALGORITHM,
-    Buffer.from(ENCRYPTION_KEY),
+    Buffer.from(getTokenEncryptionKey()),
     Buffer.from(ivHex, "hex"),
   );
   decipher.setAuthTag(Buffer.from(authTagHex, "hex"));
@@ -40,18 +58,7 @@ const decrypt = (encryptedData) => {
   return decrypted;
 };
 
-// Google OAuth client
-export const getGoogleOAuthClient = () => {
-  return new google.auth.OAuth2(
-    process.env.GOOGLE_CLIENT_ID,
-    process.env.GOOGLE_CLIENT_SECRET,
-    process.env.GOOGLE_REDIRECT_URI ||
-      "http://localhost:4000/api/calendar/google/callback",
-  );
-};
-
-// --- Calendar Sync Operations ---
-
+// Google Calendar Client helper using connection credentials
 const getGoogleCalendarClient = (accessToken, refreshToken) => {
   const oAuth2Client = getGoogleOAuthClient();
   oAuth2Client.setCredentials({
@@ -61,10 +68,17 @@ const getGoogleCalendarClient = (accessToken, refreshToken) => {
   return google.calendar({ version: "v3", auth: oAuth2Client });
 };
 
-export const syncMeetingToGoogle = async (integration, meeting) => {
+// Helper to resolve external calendar ID
+const getExternalCalendarId = (connection) => {
+  return connection.providerData?.calendarId || "primary";
+};
+
+// --- Calendar Sync Operations ---
+
+export const syncMeetingToGoogle = async (connection, meeting) => {
   try {
-    const accessToken = decrypt(integration.accessToken);
-    const refreshToken = decrypt(integration.refreshToken);
+    const accessToken = decryptToken(connection.accessToken);
+    const refreshToken = decryptToken(connection.refreshToken);
     const calendar = getGoogleCalendarClient(accessToken, refreshToken);
 
     const event = {
@@ -72,7 +86,7 @@ export const syncMeetingToGoogle = async (integration, meeting) => {
       description: meeting.description || "",
       start: {
         dateTime: meeting.date.toISOString(),
-        timeZone: "UTC", // Simplify
+        timeZone: "UTC",
       },
       end: {
         dateTime: new Date(
@@ -83,19 +97,21 @@ export const syncMeetingToGoogle = async (integration, meeting) => {
       location: meeting.venue || meeting.location || "",
     };
 
-    const existingRef = meeting.externalCalendarRefs.find(
+    const existingRef = meeting.externalCalendarRefs?.find(
       (r) => r.provider === "google",
     );
+    const calendarId = getExternalCalendarId(connection);
+
     if (existingRef) {
       await calendar.events.update({
-        calendarId: integration.externalCalendarId || "primary",
+        calendarId,
         eventId: existingRef.eventId,
         requestBody: event,
       });
       return { provider: "google", eventId: existingRef.eventId };
     } else {
       const res = await calendar.events.insert({
-        calendarId: integration.externalCalendarId || "primary",
+        calendarId,
         requestBody: event,
       });
       return { provider: "google", eventId: res.data.id };
@@ -106,13 +122,15 @@ export const syncMeetingToGoogle = async (integration, meeting) => {
   }
 };
 
-export const deleteGoogleMeeting = async (integration, eventId) => {
+export const deleteGoogleMeeting = async (connection, eventId) => {
   try {
-    const accessToken = decrypt(integration.accessToken);
-    const refreshToken = decrypt(integration.refreshToken);
+    const accessToken = decryptToken(connection.accessToken);
+    const refreshToken = decryptToken(connection.refreshToken);
     const calendar = getGoogleCalendarClient(accessToken, refreshToken);
+    const calendarId = getExternalCalendarId(connection);
+
     await calendar.events.delete({
-      calendarId: integration.externalCalendarId || "primary",
+      calendarId,
       eventId,
     });
   } catch (err) {
@@ -120,9 +138,9 @@ export const deleteGoogleMeeting = async (integration, eventId) => {
   }
 };
 
-export const syncMeetingToOutlook = async (integration, meeting) => {
+export const syncMeetingToOutlook = async (connection, meeting) => {
   try {
-    const accessToken = decrypt(integration.accessToken);
+    const accessToken = decryptToken(connection.accessToken);
     const event = {
       subject: meeting.title,
       body: { contentType: "Text", content: meeting.description || "" },
@@ -136,8 +154,8 @@ export const syncMeetingToOutlook = async (integration, meeting) => {
       location: { displayName: meeting.venue || meeting.location || "" },
     };
 
-    const existingRef = meeting.externalCalendarRefs.find(
-      (r) => r.provider === "outlook",
+    const existingRef = meeting.externalCalendarRefs?.find((r) =>
+      ["outlook", "microsoft"].includes(r.provider),
     );
     let res;
     if (existingRef) {
@@ -146,7 +164,7 @@ export const syncMeetingToOutlook = async (integration, meeting) => {
         event,
         { headers: { Authorization: `Bearer ${accessToken}` } },
       );
-      return { provider: "outlook", eventId: existingRef.eventId };
+      return { provider: connection.provider, eventId: existingRef.eventId };
     } else {
       res = await axios.post(
         "https://graph.microsoft.com/v1.0/me/events",
@@ -155,7 +173,7 @@ export const syncMeetingToOutlook = async (integration, meeting) => {
           headers: { Authorization: `Bearer ${accessToken}` },
         },
       );
-      return { provider: "outlook", eventId: res.data.id };
+      return { provider: connection.provider, eventId: res.data.id };
     }
   } catch (err) {
     console.error("Outlook sync error:", err.message);
@@ -163,9 +181,9 @@ export const syncMeetingToOutlook = async (integration, meeting) => {
   }
 };
 
-export const deleteOutlookMeeting = async (integration, eventId) => {
+export const deleteOutlookMeeting = async (connection, eventId) => {
   try {
-    const accessToken = decrypt(integration.accessToken);
+    const accessToken = decryptToken(connection.accessToken);
     await axios.delete(
       `https://graph.microsoft.com/v1.0/me/events/${eventId}`,
       {
@@ -178,29 +196,29 @@ export const deleteOutlookMeeting = async (integration, eventId) => {
 };
 
 export const pushMeetingToIntegrations = async (userId, meeting) => {
-  const integrations = await CalendarIntegration.find({
-    userId,
-    syncEnabled: true,
+  const connections = await CalendarConnection.find({
+    user: userId,
+    syncStatus: "connected",
   });
   const newRefs = [];
-  for (const integration of integrations) {
+  for (const connection of connections) {
     try {
-      if (integration.provider === "google") {
-        const ref = await syncMeetingToGoogle(integration, meeting);
+      if (connection.provider === "google") {
+        const ref = await syncMeetingToGoogle(connection, meeting);
         if (ref) newRefs.push(ref);
-      } else if (integration.provider === "outlook") {
-        const ref = await syncMeetingToOutlook(integration, meeting);
+      } else if (["outlook", "microsoft"].includes(connection.provider)) {
+        const ref = await syncMeetingToOutlook(connection, meeting);
         if (ref) newRefs.push(ref);
       }
-      integration.lastSyncedAt = new Date();
-      await integration.save();
+      connection.lastSyncAt = new Date();
+      await connection.save();
     } catch (_err) {
-      console.error(`Failed to push to ${integration.provider}`);
+      console.error(`Failed to push to ${connection.provider}`);
     }
   }
 
   if (newRefs.length > 0) {
-    const combinedRefs = [...meeting.externalCalendarRefs];
+    const combinedRefs = [...(meeting.externalCalendarRefs || [])];
     newRefs.forEach((nr) => {
       if (!combinedRefs.find((r) => r.provider === nr.provider)) {
         combinedRefs.push(nr);
@@ -216,20 +234,23 @@ export const deleteMeetingFromIntegrations = async (
   externalCalendarRefs,
 ) => {
   if (!externalCalendarRefs || externalCalendarRefs.length === 0) return;
-  const integrations = await CalendarIntegration.find({
-    userId,
-    syncEnabled: true,
+  const connections = await CalendarConnection.find({
+    user: userId,
+    syncStatus: "connected",
   });
 
-  for (const integration of integrations) {
+  for (const connection of connections) {
     const ref = externalCalendarRefs.find(
-      (r) => r.provider === integration.provider,
+      (r) =>
+        r.provider === connection.provider ||
+        (["outlook", "microsoft"].includes(r.provider) &&
+          ["outlook", "microsoft"].includes(connection.provider)),
     );
     if (ref) {
-      if (integration.provider === "google") {
-        await deleteGoogleMeeting(integration, ref.eventId);
-      } else if (integration.provider === "outlook") {
-        await deleteOutlookMeeting(integration, ref.eventId);
+      if (connection.provider === "google") {
+        await deleteGoogleMeeting(connection, ref.eventId);
+      } else if (["outlook", "microsoft"].includes(connection.provider)) {
+        await deleteOutlookMeeting(connection, ref.eventId);
       }
     }
   }
@@ -241,9 +262,9 @@ export const suggestFreeSlot = async (
   durationMinutes = 30,
 ) => {
   try {
-    const integrations = await CalendarIntegration.find({
-      userId,
-      syncEnabled: true,
+    const connections = await CalendarConnection.find({
+      user: userId,
+      syncStatus: "connected",
     });
 
     let suggestedDate = new Date(targetDateIso);
@@ -253,11 +274,11 @@ export const suggestFreeSlot = async (
       suggestedDate.setHours(14, 0, 0, 0); // 2 PM
     }
 
-    const googleIntegration = integrations.find((i) => i.provider === "google");
+    const googleConnection = connections.find((c) => c.provider === "google");
 
-    if (googleIntegration) {
-      const accessToken = decrypt(googleIntegration.accessToken);
-      const refreshToken = decrypt(googleIntegration.refreshToken);
+    if (googleConnection) {
+      const accessToken = decryptToken(googleConnection.accessToken);
+      const refreshToken = decryptToken(googleConnection.refreshToken);
       const calendar = getGoogleCalendarClient(accessToken, refreshToken);
 
       const timeMin = new Date(suggestedDate);
@@ -267,7 +288,7 @@ export const suggestFreeSlot = async (
       timeMax.setDate(timeMax.getDate() + 1);
       timeMax.setHours(23, 59, 59, 999);
 
-      const calendarId = googleIntegration.externalCalendarId || "primary";
+      const calendarId = getExternalCalendarId(googleConnection);
 
       const res = await calendar.freebusy.query({
         requestBody: {
@@ -309,45 +330,56 @@ export const suggestFreeSlot = async (
 
 // --- Refresh tokens & Cron ---
 
-const refreshGoogleToken = async (integration) => {
+const refreshGoogleToken = async (connection) => {
   try {
     const oauth2Client = getGoogleOAuthClient();
     oauth2Client.setCredentials({
-      refresh_token: decrypt(integration.refreshToken),
+      refresh_token: decryptToken(connection.refreshToken),
     });
     const { credentials } = await oauth2Client.refreshAccessToken();
-    integration.accessToken = encrypt(credentials.access_token);
-    integration.expiresAt = new Date(credentials.expiry_date);
-    await integration.save();
+    connection.accessToken = encryptToken(credentials.access_token);
+    connection.tokenExpiresAt = credentials.expiry_date
+      ? new Date(credentials.expiry_date)
+      : null;
+    connection.syncStatus = "connected";
+    connection.syncError = null;
+    await connection.save();
   } catch (err) {
     console.error("Failed to refresh Google token", err.message);
-    integration.syncEnabled = false;
-    await integration.save();
+    connection.syncStatus = "needs_reauth";
+    connection.syncError = err.message;
+    await connection.save();
   }
 };
 
-const refreshOutlookToken = async (integration) => {
+const refreshOutlookToken = async (connection) => {
   try {
     const params = new URLSearchParams({
-      client_id: process.env.MS_CLIENT_ID,
-      client_secret: process.env.MS_CLIENT_SECRET,
+      client_id: process.env.MS_CLIENT_ID || process.env.MICROSOFT_CLIENT_ID,
+      client_secret:
+        process.env.MS_CLIENT_SECRET || process.env.MICROSOFT_CLIENT_SECRET,
       grant_type: "refresh_token",
-      refresh_token: decrypt(integration.refreshToken),
+      refresh_token: decryptToken(connection.refreshToken),
     });
     const res = await axios.post(
       `https://login.microsoftonline.com/${process.env.MS_TENANT_ID || "common"}/oauth2/v2.0/token`,
       params,
     );
-    integration.accessToken = encrypt(res.data.access_token);
+    connection.accessToken = encryptToken(res.data.access_token);
     if (res.data.refresh_token) {
-      integration.refreshToken = encrypt(res.data.refresh_token);
+      connection.refreshToken = encryptToken(res.data.refresh_token);
     }
-    integration.expiresAt = new Date(Date.now() + res.data.expires_in * 1000);
-    await integration.save();
+    connection.tokenExpiresAt = new Date(
+      Date.now() + res.data.expires_in * 1000,
+    );
+    connection.syncStatus = "connected";
+    connection.syncError = null;
+    await connection.save();
   } catch (err) {
     console.error("Failed to refresh Outlook token", err.message);
-    integration.syncEnabled = false;
-    await integration.save();
+    connection.syncStatus = "needs_reauth";
+    connection.syncError = err.message;
+    await connection.save();
   }
 };
 
@@ -356,19 +388,19 @@ export const initCalendarSyncCron = () => {
   cron.schedule("*/15 * * * *", async () => {
     console.log("Running Calendar Sync Reconciliation Cron");
     const expiringTime = new Date(Date.now() + 30 * 60 * 1000); // 30 minutes
-    const integrations = await CalendarIntegration.find({
-      syncEnabled: true,
-      expiresAt: { $lte: expiringTime },
+    const connections = await CalendarConnection.find({
+      syncStatus: "connected",
+      tokenExpiresAt: { $lte: expiringTime },
     });
 
-    for (const integration of integrations) {
-      if (integration.provider === "google" && integration.refreshToken) {
-        await refreshGoogleToken(integration);
+    for (const connection of connections) {
+      if (connection.provider === "google" && connection.refreshToken) {
+        await refreshGoogleToken(connection);
       } else if (
-        integration.provider === "outlook" &&
-        integration.refreshToken
+        ["outlook", "microsoft"].includes(connection.provider) &&
+        connection.refreshToken
       ) {
-        await refreshOutlookToken(integration);
+        await refreshOutlookToken(connection);
       }
     }
   });

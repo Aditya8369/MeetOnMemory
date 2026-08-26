@@ -3,8 +3,11 @@ import RecapDelivery from "../models/recapDeliveryModel.js";
 import Meeting from "../models/meetingModel.js";
 import ActionItem from "../models/actionItemModel.js";
 import User from "../models/userModel.js";
+import NotificationPreference from "../models/notificationPreferenceModel.js";
 import EmailService from "./EmailService.js";
 import { formatInTimeZone } from "date-fns-tz";
+
+const DEFAULT_BATCH_SIZE = 100;
 
 class RecapEmailService {
   /**
@@ -32,6 +35,30 @@ class RecapEmailService {
   }
 
   /**
+   * Email-channel unsubscribe / disable checks (NotificationPreference).
+   * Only skip when a preference document explicitly opts the user out —
+   * missing docs keep historical RecapPreference-driven behaviour.
+   */
+  static async isEmailUnsubscribed(userId, timing) {
+    const prefs = await NotificationPreference.findOne({ user: userId })
+      .select("emailWeeklyDigest emailMeetingReminders")
+      .lean();
+
+    if (!prefs) return false;
+
+    if (timing === "weekly" && prefs.emailWeeklyDigest === false) {
+      return true;
+    }
+
+    // Daily batched recaps are meeting-related email; respect explicit opt-out.
+    if (timing === "daily" && prefs.emailMeetingReminders === false) {
+      return true;
+    }
+
+    return false;
+  }
+
+  /**
    * Build HTML for a single meeting recap
    */
   static async buildRecapHtml(meeting, preferences) {
@@ -52,9 +79,11 @@ class RecapEmailService {
     }
 
     if (includeActionItems) {
-      const actionItems = await ActionItem.find({
-        sourceMeetingId: meeting._id,
-      });
+      const actionItemFilter = { sourceMeetingId: meeting._id };
+      if (meeting.organization) {
+        actionItemFilter.organization = meeting.organization;
+      }
+      const actionItems = await ActionItem.find(actionItemFilter);
       if (actionItems.length > 0) {
         html += `<h3 style="color: #1e40af;">Action Items</h3><ul>`;
         actionItems.forEach((ai) => {
@@ -87,7 +116,7 @@ class RecapEmailService {
   static async sendImmediateRecap(meetingId) {
     try {
       const meeting = await Meeting.findById(meetingId);
-      if (!meeting) return;
+      if (!meeting || meeting.deletedAt) return;
 
       // Find all participants (users) in our system
       // Assuming participants are matched by email or uploadedBy is the only one we know for sure
@@ -96,54 +125,108 @@ class RecapEmailService {
         .map((p) => p.email)
         .filter(Boolean);
 
-      const usersToNotify = await User.find({
+      const userQuery = {
         $or: [
           { _id: meeting.uploadedBy },
           { email: { $in: participantEmails } },
         ],
-      });
+      };
+      // Keep recipients inside the meeting's organization when set (#1398).
+      if (meeting.organization) {
+        userQuery.organization = meeting.organization;
+      }
+
+      const usersToNotify = await User.find(userQuery);
 
       for (const user of usersToNotify) {
-        // Check if already delivered
-        const alreadyDelivered = await RecapDelivery.findOne({
-          meetingId,
-          userId: user._id,
-        });
-        if (alreadyDelivered) continue;
+        try {
+          // Check if already delivered
+          const alreadyDelivered = await RecapDelivery.findOne({
+            meetingId,
+            userId: user._id,
+          });
+          if (alreadyDelivered && alreadyDelivered.status !== "failed") {
+            continue;
+          }
 
-        // Get preferences
-        let preferences = await RecapPreference.findOne({ userId: user._id });
-        if (!preferences) {
-          // Default preferences
-          preferences = {
-            deliveryTiming: "immediate",
-            includeSummary: true,
-            includeActionItems: true,
-            includeTranscript: true,
-            timezone: "UTC",
-          };
-        }
+          // Get preferences
+          let preferences = await RecapPreference.findOne({ userId: user._id });
+          if (!preferences) {
+            // Default preferences
+            preferences = {
+              deliveryTiming: "immediate",
+              includeSummary: true,
+              includeActionItems: true,
+              includeTranscript: true,
+              timezone: "UTC",
+            };
+          }
 
-        if (preferences.deliveryTiming !== "immediate") continue;
+          if (preferences.deliveryTiming !== "immediate") continue;
 
-        if (this.isQuietHours(preferences)) {
-          console.log(
-            `[RecapEmailService] Deferring immediate recap for ${user.email} due to quiet hours.`,
+          if (await this.isEmailUnsubscribed(user._id, "daily")) {
+            console.log(
+              `[RecapEmailService] Skipping immediate recap for ${user.email} due to email preference opt-out.`,
+            );
+            continue;
+          }
+
+          if (this.isQuietHours(preferences)) {
+            console.log(
+              `[RecapEmailService] Deferring immediate recap for ${user.email} due to quiet hours.`,
+            );
+            continue; // Will be picked up by a batch job later
+          }
+
+          const html = await this.buildRecapHtml(meeting, preferences);
+
+          await EmailService.sendMail({
+            from: process.env.SENDER_EMAIL || "no-reply@meetonmemory.com",
+            to: user.email,
+            subject: `Meeting Recap: ${meeting.title}`,
+            html,
+          });
+
+          // Mark as delivered (unique index prevents duplicates)
+          await RecapDelivery.findOneAndUpdate(
+            { meetingId, userId: user._id },
+            {
+              $set: {
+                status: "delivered",
+                channel: "email",
+                errorMessage: null,
+                deliveredAt: new Date(),
+              },
+              $setOnInsert: { meetingId, userId: user._id },
+            },
+            { upsert: true },
           );
-          continue; // Will be picked up by a batch job later
+        } catch (userErr) {
+          console.error(
+            `[RecapEmailService] Immediate recap failed for user ${user._id}:`,
+            userErr,
+          );
+          try {
+            await RecapDelivery.findOneAndUpdate(
+              { meetingId, userId: user._id },
+              {
+                $set: {
+                  status: "failed",
+                  channel: "email",
+                  errorMessage: String(userErr?.message || userErr).slice(
+                    0,
+                    500,
+                  ),
+                  deliveredAt: new Date(),
+                },
+                $setOnInsert: { meetingId, userId: user._id },
+              },
+              { upsert: true },
+            );
+          } catch {
+            /* best-effort failure record */
+          }
         }
-
-        const html = await this.buildRecapHtml(meeting, preferences);
-
-        await EmailService.sendMail({
-          from: process.env.SENDER_EMAIL || "no-reply@meetonmemory.com",
-          to: user.email,
-          subject: `Meeting Recap: ${meeting.title}`,
-          html,
-        });
-
-        // Mark as delivered
-        await RecapDelivery.create({ meetingId, userId: user._id });
       }
     } catch (err) {
       console.error("[RecapEmailService] Error in sendImmediateRecap:", err);
@@ -156,19 +239,32 @@ class RecapEmailService {
   static async batchRecapsByUser(userId, timing) {
     try {
       const user = await User.findById(userId);
-      if (!user) return;
+      if (!user) return { skipped: true, reason: "user_not_found" };
 
       const preferences = await RecapPreference.findOne({ userId });
-      if (!preferences || preferences.deliveryTiming !== timing) return;
+      if (!preferences || preferences.deliveryTiming !== timing) {
+        return { skipped: true, reason: "preference_mismatch" };
+      }
 
-      if (this.isQuietHours(preferences)) return;
+      if (this.isQuietHours(preferences)) {
+        return { skipped: true, reason: "quiet_hours" };
+      }
 
-      // Find all meetings the user should get recaps for that haven't been delivered
-      // We look for meetings uploaded by them or where they are a participant
-      const recentMeetings = await Meeting.find({
+      if (await this.isEmailUnsubscribed(userId, timing)) {
+        return { skipped: true, reason: "unsubscribed" };
+      }
+
+      // Meetings the user owns/participates in — scoped to their organization.
+      const meetingFilter = {
         status: "completed",
+        deletedAt: null,
         $or: [{ uploadedBy: user._id }, { "participants.email": user.email }],
-      })
+      };
+      if (user.organization) {
+        meetingFilter.organization = user.organization;
+      }
+
+      const recentMeetings = await Meeting.find(meetingFilter)
         .sort({ date: -1 })
         .limit(20);
 
@@ -183,7 +279,9 @@ class RecapEmailService {
         }
       }
 
-      if (undeliveredMeetings.length === 0) return;
+      if (undeliveredMeetings.length === 0) {
+        return { skipped: true, reason: "nothing_to_deliver" };
+      }
 
       let html = `<div style="font-family: sans-serif; max-width: 600px; margin: auto; padding: 20px; color: #333;">`;
       html += `<h2 style="color: #2563eb;">Your ${timing === "daily" ? "Daily" : "Weekly"} Meeting Digest</h2>`;
@@ -203,19 +301,91 @@ class RecapEmailService {
         html,
       });
 
-      // Mark all as delivered
+      // Mark all as delivered after successful send (unique index is the hard guard).
       for (const meeting of undeliveredMeetings) {
-        await RecapDelivery.create({
-          meetingId: meeting._id,
-          userId: user._id,
-        });
+        try {
+          await RecapDelivery.create({
+            meetingId: meeting._id,
+            userId: user._id,
+          });
+        } catch (dupErr) {
+          // Duplicate key = already recorded for this window; safe to ignore.
+          if (dupErr?.code !== 11000) throw dupErr;
+        }
       }
+
+      return {
+        skipped: false,
+        delivered: undeliveredMeetings.length,
+      };
     } catch (err) {
       console.error(
         `[RecapEmailService] Error in batchRecapsByUser for ${userId}:`,
         err,
       );
+      throw err;
     }
+  }
+
+  /**
+   * Process all users with the given RecapPreference timing in bounded pages.
+   * Preference-driven — never hardcodes recipients (#1398).
+   *
+   * @param {"daily"|"weekly"} timing
+   * @param {{ batchSize?: number }} [options]
+   */
+  static async processScheduledBatch(
+    timing,
+    { batchSize = DEFAULT_BATCH_SIZE } = {},
+  ) {
+    if (timing !== "daily" && timing !== "weekly") {
+      throw new Error(`Unsupported recap batch timing: ${timing}`);
+    }
+
+    const pageSize = Math.max(1, Number(batchSize) || DEFAULT_BATCH_SIZE);
+    let lastId = null;
+    let processed = 0;
+    let delivered = 0;
+    let skipped = 0;
+    let errors = 0;
+
+    while (true) {
+      const query = { deliveryTiming: timing };
+      if (lastId) {
+        query._id = { $gt: lastId };
+      }
+
+      const preferencePage = await RecapPreference.find(query)
+        .sort({ _id: 1 })
+        .limit(pageSize)
+        .select("_id userId")
+        .lean();
+
+      if (preferencePage.length === 0) break;
+
+      for (const pref of preferencePage) {
+        try {
+          const result = await this.batchRecapsByUser(pref.userId, timing);
+          processed++;
+          if (result?.skipped) {
+            skipped++;
+          } else if (result?.delivered) {
+            delivered += result.delivered;
+          }
+        } catch (err) {
+          errors++;
+          console.error(
+            `[RecapEmailService] Batch item failed for user ${pref.userId}:`,
+            err,
+          );
+        }
+      }
+
+      lastId = preferencePage[preferencePage.length - 1]._id;
+      if (preferencePage.length < pageSize) break;
+    }
+
+    return { processed, delivered, skipped, errors, timing };
   }
 }
 

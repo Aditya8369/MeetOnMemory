@@ -1,13 +1,72 @@
-import React, { useState } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { Mail, X, Send } from "lucide-react";
 import { toast } from "react-toastify";
 
-const InviteMemberForm = ({ onClose, onSendInvite }) => {
+const InviteMemberForm = ({ onClose, onSendInvite, onOpenBulkImport }) => {
   const [inviteEmail, setInviteEmail] = useState("");
   const [inviteRole, setInviteRole] = useState("member");
   const [inviteExpiresIn, setInviteExpiresIn] = useState(7);
   const [inviteMessage, setInviteMessage] = useState("");
   const [sendingInvite, setSendingInvite] = useState(false);
+
+  const modalRef = useRef(null);
+  const emailInputRef = useRef(null);
+  const previouslyFocusedElementRef = useRef(null);
+
+  // Focus management & Escape key handling (Issue #1683)
+  useEffect(() => {
+    previouslyFocusedElementRef.current = document.activeElement;
+
+    // Focus first interactive element or input
+    const timer = setTimeout(() => {
+      if (emailInputRef.current) {
+        emailInputRef.current.focus();
+      }
+    }, 50);
+
+    const handleKeyDown = (e) => {
+      if (e.key === "Escape") {
+        e.preventDefault();
+        onClose();
+        return;
+      }
+
+      if (e.key === "Tab") {
+        if (!modalRef.current) return;
+
+        const focusableElements = modalRef.current.querySelectorAll(
+          'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])',
+        );
+        const firstElement = focusableElements[0];
+        const lastElement = focusableElements[focusableElements.length - 1];
+
+        if (e.shiftKey) {
+          if (document.activeElement === firstElement) {
+            e.preventDefault();
+            lastElement?.focus();
+          }
+        } else {
+          if (document.activeElement === lastElement) {
+            e.preventDefault();
+            firstElement?.focus();
+          }
+        }
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+
+    return () => {
+      clearTimeout(timer);
+      window.removeEventListener("keydown", handleKeyDown);
+      if (
+        previouslyFocusedElementRef.current &&
+        typeof previouslyFocusedElementRef.current.focus === "function"
+      ) {
+        previouslyFocusedElementRef.current.focus();
+      }
+    };
+  }, [onClose]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -40,12 +99,19 @@ const InviteMemberForm = ({ onClose, onSendInvite }) => {
       onClick={onClose}
     >
       <div
+        ref={modalRef}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="invite-modal-title"
+        aria-describedby="invite-modal-description"
         className="relative w-full max-w-md rounded-2xl bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 shadow-xl animate-in zoom-in-95 slide-in-from-bottom-4"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Close Button */}
         <button
+          type="button"
           onClick={onClose}
+          aria-label="Close invite modal"
           className="absolute right-4 top-4 p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
         >
           <X className="h-5 w-5 text-slate-500 dark:text-slate-400" />
@@ -53,11 +119,17 @@ const InviteMemberForm = ({ onClose, onSendInvite }) => {
 
         {/* Modal Header */}
         <div className="p-6 pb-4 border-b border-slate-100 dark:border-slate-800">
-          <h2 className="text-xl font-bold text-slate-900 dark:text-white flex items-center gap-2">
-            <Mail className="h-5 w-5 text-blue-600" />
+          <h2
+            id="invite-modal-title"
+            className="text-xl font-bold text-slate-900 dark:text-white flex items-center gap-2"
+          >
+            <Mail className="h-5 w-5 text-blue-600" aria-hidden="true" />
             Invite Team Member
           </h2>
-          <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+          <p
+            id="invite-modal-description"
+            className="text-xs text-slate-500 dark:text-slate-400 mt-1"
+          >
             Send an email invitation to onboard a new member to your
             organization.
           </p>
@@ -66,10 +138,15 @@ const InviteMemberForm = ({ onClose, onSendInvite }) => {
         {/* Modal Form */}
         <form onSubmit={handleSubmit} className="p-6 space-y-4">
           <div>
-            <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-1.5">
+            <label
+              htmlFor="invite-email-input"
+              className="block text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-1.5"
+            >
               Email Address *
             </label>
             <input
+              id="invite-email-input"
+              ref={emailInputRef}
               type="email"
               required
               placeholder="name@company.com"
@@ -81,10 +158,14 @@ const InviteMemberForm = ({ onClose, onSendInvite }) => {
 
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-1.5">
+              <label
+                htmlFor="invite-role-select"
+                className="block text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-1.5"
+              >
                 Role *
               </label>
               <select
+                id="invite-role-select"
                 value={inviteRole}
                 onChange={(e) => setInviteRole(e.target.value)}
                 className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all text-sm cursor-pointer"
@@ -95,10 +176,14 @@ const InviteMemberForm = ({ onClose, onSendInvite }) => {
             </div>
 
             <div>
-              <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-1.5">
+              <label
+                htmlFor="invite-expires-input"
+                className="block text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-1.5"
+              >
                 Expires In (Days)
               </label>
               <input
+                id="invite-expires-input"
                 type="number"
                 min="1"
                 max="30"
@@ -110,10 +195,14 @@ const InviteMemberForm = ({ onClose, onSendInvite }) => {
           </div>
 
           <div>
-            <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-1.5">
+            <label
+              htmlFor="invite-message-input"
+              className="block text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-1.5"
+            >
               Personal Message
             </label>
             <textarea
+              id="invite-message-input"
               placeholder="Hey, join our workspace on MeetOnMemory!"
               value={inviteMessage}
               onChange={(e) => setInviteMessage(e.target.value)}
@@ -145,6 +234,21 @@ const InviteMemberForm = ({ onClose, onSendInvite }) => {
               Send Invitation
             </button>
           </div>
+
+          {onOpenBulkImport && (
+            <div className="text-center pt-2 border-t border-slate-100 dark:border-slate-800/80">
+              <button
+                type="button"
+                onClick={() => {
+                  onClose();
+                  onOpenBulkImport();
+                }}
+                className="text-xs font-semibold text-blue-600 dark:text-blue-400 hover:underline cursor-pointer"
+              >
+                Need to invite multiple members? Import CSV
+              </button>
+            </div>
+          )}
         </form>
       </div>
     </div>

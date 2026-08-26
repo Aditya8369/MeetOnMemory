@@ -6,7 +6,14 @@ import meetingSocket from "../socket/meetingSocket.js";
 import documentSync from "../socket/documentSync.js";
 import transcriptSocket from "../socket/transcriptSocket.js";
 import reactionSocket from "../socket/reactionSocket.js";
+import translationSocket from "../socket/translationSocket.js";
+import keyMomentSocket from "../socket/keyMomentSocket.js";
+import agendaBuilderSocket from "../socket/agendaBuilderSocket.js";
+import { initWorkspaceSocket } from "../socket/workspaceSocket.js";
 import authenticateSocket from "../middleware/socketAuth.js";
+import pulseCheckSocket from "../socket/pulseCheckSocket.js";
+import activitySocket from "../socket/activitySocket.js";
+import playbookSocket from "../socket/playbookSocket.js";
 
 export function configureSocket(server, app) {
   // SOCKET.IO
@@ -22,7 +29,6 @@ export function configureSocket(server, app) {
 
   // Authenticate main namespace connections once centrally
   io.use(authenticateSocket);
-
   // REDIS PUB/SUB ADAPTER (Horizontal Scaling)
   // Enables collaborative editing to work across multiple server instances.
   // Gracefully skips if Redis is not configured.
@@ -30,38 +36,66 @@ export function configureSocket(server, app) {
     const redisUri = process.env.REDIS_URI || process.env.REDIS_URL;
     if (redisUri) {
       try {
-        const pubClient = createClient({ url: redisUri });
+        const redisOptions = {
+          url: redisUri,
+          socket: {
+            reconnectStrategy: (retries) => {
+              if (retries > 10) {
+                console.error(
+                  "❌ Redis Adapter: Max connection retries reached",
+                );
+                return new Error("Max retries reached");
+              }
+              // exponential backoff
+              return Math.min(retries * 100, 3000);
+            },
+          },
+        };
+        const pubClient = createClient(redisOptions);
         const subClient = pubClient.duplicate();
 
         pubClient.on("error", (err) => {
-          console.error("❌ Redis PubClient Error:", err.message);
+          console.error("❌ Redis Adapter PubClient Error:", err.message);
         });
         subClient.on("error", (err) => {
-          console.error("❌ Redis SubClient Error:", err.message);
+          console.error("❌ Redis Adapter SubClient Error:", err.message);
         });
+        pubClient.on("reconnecting", () =>
+          console.log("🔄 Redis Adapter PubClient reconnecting..."),
+        );
+        subClient.on("reconnecting", () =>
+          console.log("🔄 Redis Adapter SubClient reconnecting..."),
+        );
 
         await Promise.all([pubClient.connect(), subClient.connect()]);
         io.adapter(createAdapter(pubClient, subClient));
         console.log(
-          "✅ Socket.io Redis Pub/Sub adapter attached (horizontal scaling enabled)",
+          "✅ Socket.io Redis Pub/Sub adapter attached (horizontal scaling enabled for WebRTC Signaling)",
         );
       } catch (err) {
         console.warn(
-          "⚠️  Redis adapter failed — running in single-instance mode:",
+          "⚠️  Redis adapter failed — running in single-instance mode (WebRTC Signaling may not scale):",
           err.message,
         );
       }
     } else {
       console.log(
-        "ℹ️  No REDIS_URI/REDIS_URL set — Socket.io running in single-instance mode",
+        "ℹ️  No REDIS_URI/REDIS_URL set — Socket.io running in single-instance mode (WebRTC Signaling limited to one node)",
       );
     }
   })();
-
   meetingSocket(io);
   documentSync(io);
   transcriptSocket(io);
   reactionSocket(io);
+  translationSocket(io);
+  keyMomentSocket(io);
+  agendaBuilderSocket(io);
+  // Collaborative War Room namespace (/workspace) — registered exactly once here (#1399)
+  initWorkspaceSocket(io);
+  pulseCheckSocket(io);
+  activitySocket(io);
+  playbookSocket(io);
 
   return io;
 }

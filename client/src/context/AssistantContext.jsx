@@ -265,6 +265,20 @@ export const AssistantProvider = ({ children }) => {
     }
   }, []);
 
+  const handleRenameSession = useCallback(async (id, newTitle) => {
+    try {
+      const { data } = await apiClient.patch(`/api/assistant/sessions/${id}`, {
+        title: newTitle,
+      });
+      setSessions((prev) =>
+        prev.map((s) => (s._id === id ? { ...s, title: data.title } : s)),
+      );
+    } catch (err) {
+      console.error(err);
+      setError("Could not rename the conversation.");
+    }
+  }, []);
+
   const pinContextToSession = useCallback(async (sessionId, pin) => {
     if (!sessionId || !pin?.type || !pin?.refId) return null;
     const { data } = await apiClient.put(
@@ -381,6 +395,7 @@ export const AssistantProvider = ({ children }) => {
       handleSelectSession,
       handleNewSession,
       handleDeleteSession,
+      handleRenameSession,
       handleSendMessage,
       ensureSessionAndPin,
       handleUnpinContext,
@@ -405,6 +420,7 @@ export const AssistantProvider = ({ children }) => {
       handleSelectSession,
       handleNewSession,
       handleDeleteSession,
+      handleRenameSession,
       handleSendMessage,
       ensureSessionAndPin,
       handleUnpinContext,

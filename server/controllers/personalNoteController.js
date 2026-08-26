@@ -1,7 +1,12 @@
-import mongoose from "mongoose";
 import { z } from "zod";
 import PersonalNote from "../models/personalNoteModel.js";
 import Meeting from "../models/meetingModel.js";
+import { hasPermission } from "../utils/rbacPermissions.js";
+import { resolveAccessibleMeeting } from "../utils/resolveAccessibleMeeting.js";
+import { escapeRegex } from "../utils/regex.js";
+
+// Re-export for existing personal-note tests and callers (Issue #1389).
+export { resolveAccessibleMeeting };
 
 /**
  * Maximum character limits for note fields
@@ -58,74 +63,71 @@ const annotationSchema = z.object({
 });
 
 /**
- * Resolve and validate meeting access for a user
+ * Helper to fetch all meeting IDs that a user is authorized to access.
+ * A user has access to a meeting if they uploaded it OR if it belongs to their organization.
  *
- * @param {string} meetingId - Meeting ID to check
  * @param {Object} user - User object from request
- * @returns {Promise<Object>} Access result with meeting or error
+ * @returns {Promise<Array<mongoose.Types.ObjectId>>} Array of accessible meeting IDs
  */
-const resolveAccessibleMeeting = async (meetingId, user) => {
-  // Validate meeting ID format
-  if (!mongoose.isValidObjectId(meetingId)) {
-    return {
-      error: {
-        status: 400,
-        message: "Invalid meeting ID format",
-      },
-    };
+const getAccessibleMeetingIds = async (user) => {
+  const query = {
+    $or: [{ uploadedBy: user._id }],
+  };
+  if (user.organization) {
+    query.$or.push({ organization: user.organization });
   }
-
-  // Fetch meeting from database
-  const meeting = await Meeting.findById(meetingId);
-  if (!meeting) {
-    return {
-      error: {
-        status: 404,
-        message: "Meeting not found",
-      },
-    };
-  }
-
-  // Check if user is the meeting owner
-  const isOwner = meeting.uploadedBy?.toString() === user._id.toString();
-
-  // Check if user belongs to the same organization
-  const isInSameOrg =
-    meeting.organization &&
-    user.organization &&
-    meeting.organization.toString() === user.organization.toString();
-
-  // User must be owner OR in same organization
-  if (!isOwner && !isInSameOrg) {
-    return {
-      error: {
-        status: 403,
-        message: "Forbidden: You don't have access to this meeting",
-      },
-    };
-  }
-
-  return { meeting };
+  const meetings = await Meeting.find(query).select("_id");
+  return meetings.map((m) => m._id);
 };
 
 // @desc Get personal note for a specific meeting
 // @route GET /api/personal-notes/:meetingId
 // @access Private
+// Issue #1389: meeting access MUST be resolved before any note query.
 export const getNoteByMeetingId = async (req, res) => {
   try {
-    const { meetingId } = req.params;
-    const userId = req.user._id;
-
-    // Validate meeting ID format
-    if (!mongoose.isValidObjectId(meetingId)) {
-      return res.status(400).json({
+    if (!req.user?._id) {
+      return res.status(401).json({
         success: false,
-        message: "Invalid meeting ID format",
+        message: "Unauthorized",
       });
     }
 
-    // Fetch note for this user and meeting
-    let note = await PersonalNote.findOne({ userId, meetingId });
+    const { meetingId } = req.params;
+    const userId = req.user._id;
+
+    // Enforce RBAC permission
+    if (
+      !req.user?.role ||
+      !hasPermission(req.user.role, "personal_notes", "view")
+    ) {
+      return res.status(403).json({
+        success: false,
+        message: "Forbidden: You do not have permission to view personal notes",
+      });
+    }
+
+    // Same meeting authorization path as note write operations
+    const access = await resolveAccessibleMeeting(meetingId, req.user);
+    if (access.error) {
+      return res
+        .status(access.error.status)
+        .json({ success: false, message: access.error.message });
+    }
+
+    // Query with the server-resolved meeting id — never the raw path param alone
+    const authorizedMeetingId = access.meeting._id;
+    let note = await PersonalNote.findOne({
+      userId,
+      meetingId: authorizedMeetingId,
+    });
+
+    if (note && note.userId.toString() !== userId.toString()) {
+      return res.status(403).json({
+        success: false,
+        message: "Forbidden: You do not own this note",
+      });
+    }
 
     // Return empty structure if note doesn't exist (prevents 404)
     if (!note) {
@@ -169,6 +171,18 @@ export const upsertNote = async (req, res) => {
     const { meetingId } = req.params;
     const userId = req.user._id;
 
+    // Enforce RBAC permission
+    if (
+      !req.user?.role ||
+      !hasPermission(req.user.role, "personal_notes", "edit")
+    ) {
+      return res.status(403).json({
+        success: false,
+        message:
+          "Forbidden: You do not have permission to modify personal notes",
+      });
+    }
+
     // Verify user has access to this meeting
     const access = await resolveAccessibleMeeting(meetingId, req.user);
     if (access.error) {
@@ -192,6 +206,13 @@ export const upsertNote = async (req, res) => {
 
     // Find existing note or prepare to create new one
     let note = await PersonalNote.findOne({ userId, meetingId });
+
+    if (note && note.userId.toString() !== userId.toString()) {
+      return res.status(403).json({
+        success: false,
+        message: "Forbidden: You do not own this note",
+      });
+    }
 
     if (note) {
       // Update existing note
@@ -236,6 +257,17 @@ export const updateNoteTitle = async (req, res) => {
     const userId = req.user._id;
     const { title } = req.body;
 
+    // Enforce RBAC permission
+    if (
+      !req.user?.role ||
+      !hasPermission(req.user.role, "personal_notes", "edit")
+    ) {
+      return res.status(403).json({
+        success: false,
+        message: "Forbidden: You do not have permission to edit personal notes",
+      });
+    }
+
     // Verify user has access to this meeting
     const access = await resolveAccessibleMeeting(meetingId, req.user);
     if (access.error) {
@@ -263,6 +295,13 @@ export const updateNoteTitle = async (req, res) => {
 
     // Find and update note
     let note = await PersonalNote.findOne({ userId, meetingId });
+
+    if (note && note.userId.toString() !== userId.toString()) {
+      return res.status(403).json({
+        success: false,
+        message: "Forbidden: You do not own this note",
+      });
+    }
 
     if (note) {
       note.title = title;
@@ -296,6 +335,17 @@ export const addAnnotation = async (req, res) => {
     const { meetingId } = req.params;
     const userId = req.user._id;
 
+    // Enforce RBAC permission
+    if (
+      !req.user?.role ||
+      !hasPermission(req.user.role, "personal_notes", "edit")
+    ) {
+      return res.status(403).json({
+        success: false,
+        message: "Forbidden: You do not have permission to edit personal notes",
+      });
+    }
+
     // Verify user has access to this meeting
     const access = await resolveAccessibleMeeting(meetingId, req.user);
     if (access.error) {
@@ -328,6 +378,13 @@ export const addAnnotation = async (req, res) => {
 
     // Find existing note or create new one
     let note = await PersonalNote.findOne({ userId, meetingId });
+
+    if (note && note.userId.toString() !== userId.toString()) {
+      return res.status(403).json({
+        success: false,
+        message: "Forbidden: You do not own this note",
+      });
+    }
 
     if (!note) {
       note = await PersonalNote.create({
@@ -367,6 +424,17 @@ export const removeAnnotation = async (req, res) => {
     const { meetingId, annotationId } = req.params;
     const userId = req.user._id;
 
+    // Enforce RBAC permission
+    if (
+      !req.user?.role ||
+      !hasPermission(req.user.role, "personal_notes", "edit")
+    ) {
+      return res.status(403).json({
+        success: false,
+        message: "Forbidden: You do not have permission to edit personal notes",
+      });
+    }
+
     // Verify user has access to this meeting
     const access = await resolveAccessibleMeeting(meetingId, req.user);
     if (access.error) {
@@ -381,6 +449,13 @@ export const removeAnnotation = async (req, res) => {
       return res.status(404).json({
         success: false,
         message: "Note not found",
+      });
+    }
+
+    if (note.userId.toString() !== userId.toString()) {
+      return res.status(403).json({
+        success: false,
+        message: "Forbidden: You do not own this note",
       });
     }
 
@@ -418,6 +493,17 @@ export const togglePin = async (req, res) => {
     const { meetingId } = req.params;
     const userId = req.user._id;
 
+    // Enforce RBAC permission
+    if (
+      !req.user?.role ||
+      !hasPermission(req.user.role, "personal_notes", "pin")
+    ) {
+      return res.status(403).json({
+        success: false,
+        message: "Forbidden: You do not have permission to pin personal notes",
+      });
+    }
+
     // Verify user has access to this meeting
     const access = await resolveAccessibleMeeting(meetingId, req.user);
     if (access.error) {
@@ -426,22 +512,45 @@ export const togglePin = async (req, res) => {
         .json({ success: false, message: access.error.message });
     }
 
-    // Find the note
+    // Find the note first to check ownership
     let note = await PersonalNote.findOne({ userId, meetingId });
 
-    if (!note) {
-      // Create note if it doesn't exist (pinned by default)
-      note = await PersonalNote.create({
-        userId,
-        meetingId,
-        content: "",
-        title: "",
-        isPinned: true,
+    if (note && note.userId.toString() !== userId.toString()) {
+      return res.status(403).json({
+        success: false,
+        message: "Forbidden: You do not own this note",
       });
-    } else {
-      // Toggle pin status
-      note.isPinned = !note.isPinned;
-      await note.save();
+    }
+
+    // Determine target pin state: use request body if provided, fallback to flipping current or defaulting to true
+    const targetIsPinned =
+      req.body.isPinned !== undefined
+        ? req.body.isPinned
+        : note
+          ? !note.isPinned
+          : true;
+
+    // Atomic update/upsert to avoid race conditions
+    try {
+      note = await PersonalNote.findOneAndUpdate(
+        { userId, meetingId },
+        {
+          $set: { isPinned: targetIsPinned },
+          $setOnInsert: { content: "", title: "", annotations: [] },
+        },
+        { new: true, upsert: true, runValidators: true },
+      );
+    } catch (err) {
+      if (err.code === 11000) {
+        // Retry findOneAndUpdate in case of concurrent insert duplicate key error
+        note = await PersonalNote.findOneAndUpdate(
+          { userId, meetingId },
+          { $set: { isPinned: targetIsPinned } },
+          { new: true, runValidators: true },
+        );
+      } else {
+        throw err;
+      }
     }
 
     res.status(200).json({
@@ -462,10 +571,25 @@ export const getPinnedNotes = async (req, res) => {
   try {
     const userId = req.user._id;
 
+    // Enforce RBAC permission
+    if (
+      !req.user?.role ||
+      !hasPermission(req.user.role, "personal_notes", "view")
+    ) {
+      return res.status(403).json({
+        success: false,
+        message: "Forbidden: You do not have permission to view personal notes",
+      });
+    }
+
+    // Filter notes by accessible meetings
+    const meetingIds = await getAccessibleMeetingIds(req.user);
+
     // Fetch all pinned notes for this user
     const pinnedNotes = await PersonalNote.find({
       userId,
       isPinned: true,
+      meetingId: { $in: meetingIds },
     })
       .populate("meetingId", "title date organization")
       .sort({ updatedAt: -1 });
@@ -489,11 +613,42 @@ export const searchNotes = async (req, res) => {
     const userId = req.user._id;
     const { query } = req.query;
 
-    const filter = { userId };
+    // Enforce RBAC permission
+    if (
+      !req.user?.role ||
+      !hasPermission(req.user.role, "personal_notes", "view")
+    ) {
+      return res.status(403).json({
+        success: false,
+        message: "Forbidden: You do not have permission to view personal notes",
+      });
+    }
+
+    // Filter notes by accessible meetings
+    const meetingIds = await getAccessibleMeetingIds(req.user);
+
+    const filter = {
+      userId,
+      meetingId: { $in: meetingIds },
+    };
     if (query) {
+      if (typeof query !== "string") {
+        return res.status(400).json({
+          success: false,
+          message: "Query must be a string",
+        });
+      }
+      if (query.length > 500) {
+        return res.status(400).json({
+          success: false,
+          message: "Query length cannot exceed 500 characters",
+        });
+      }
+      // Escape regex special characters to prevent ReDoS and regex injection
+      const escapedQuery = escapeRegex(query);
       filter.$or = [
-        { title: { $regex: query, $options: "i" } },
-        { content: { $regex: query, $options: "i" } },
+        { title: { $regex: escapedQuery, $options: "i" } },
+        { content: { $regex: escapedQuery, $options: "i" } },
       ];
     }
 
@@ -508,6 +663,125 @@ export const searchNotes = async (req, res) => {
     });
   } catch (error) {
     console.error("Error searching notes:", error);
+    res.status(500).json({ success: false, message: "Server error" });
+  }
+};
+
+// @desc Clear personal note content (title and content)
+// @route PUT /api/personal-notes/:meetingId/clear
+// @access Private
+export const clearNoteContent = async (req, res) => {
+  try {
+    const { meetingId } = req.params;
+    const userId = req.user._id;
+
+    // Enforce RBAC permission
+    if (
+      !req.user?.role ||
+      !hasPermission(req.user.role, "personal_notes", "edit")
+    ) {
+      return res.status(403).json({
+        success: false,
+        message: "Forbidden: You do not have permission to edit personal notes",
+      });
+    }
+
+    // Verify user has access to this meeting
+    const access = await resolveAccessibleMeeting(meetingId, req.user);
+    if (access.error) {
+      return res
+        .status(access.error.status)
+        .json({ success: false, message: access.error.message });
+    }
+
+    // Find note
+    let note = await PersonalNote.findOne({ userId, meetingId });
+
+    if (!note) {
+      return res.status(404).json({
+        success: false,
+        message: "Note not found",
+      });
+    }
+
+    // Verify ownership
+    if (note.userId.toString() !== userId.toString()) {
+      return res.status(403).json({
+        success: false,
+        message: "Forbidden: You do not own this note",
+      });
+    }
+
+    // Clear content and title atomically
+    note.content = "";
+    note.title = "";
+    await note.save();
+
+    res.status(200).json({
+      success: true,
+      message: "Note content cleared successfully",
+      note,
+    });
+  } catch (error) {
+    console.error("Error clearing personal note content:", error);
+    res.status(500).json({ success: false, message: "Server error" });
+  }
+};
+
+// @desc Delete personal note document entirely
+// @route DELETE /api/personal-notes/:meetingId
+// @access Private
+export const deleteNote = async (req, res) => {
+  try {
+    const { meetingId } = req.params;
+    const userId = req.user._id;
+
+    // Enforce RBAC permission
+    if (
+      !req.user?.role ||
+      !hasPermission(req.user.role, "personal_notes", "delete")
+    ) {
+      return res.status(403).json({
+        success: false,
+        message:
+          "Forbidden: You do not have permission to delete personal notes",
+      });
+    }
+
+    // Verify user has access to this meeting
+    const access = await resolveAccessibleMeeting(meetingId, req.user);
+    if (access.error) {
+      return res
+        .status(access.error.status)
+        .json({ success: false, message: access.error.message });
+    }
+
+    // Find note
+    const note = await PersonalNote.findOne({ userId, meetingId });
+    if (!note) {
+      return res.status(404).json({
+        success: false,
+        message: "Note not found",
+      });
+    }
+
+    // Verify ownership
+    if (note.userId.toString() !== userId.toString()) {
+      return res.status(403).json({
+        success: false,
+        message: "Forbidden: You do not own this note",
+      });
+    }
+
+    // Delete note document atomically
+    await PersonalNote.deleteOne({ _id: note._id });
+
+    res.status(200).json({
+      success: true,
+      message: "Note deleted successfully",
+    });
+  } catch (error) {
+    console.error("Error deleting personal note:", error);
     res.status(500).json({ success: false, message: "Server error" });
   }
 };

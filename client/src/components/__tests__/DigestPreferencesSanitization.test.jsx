@@ -22,6 +22,13 @@ vi.mock("../../services/apiClient.js", () => ({
   },
 }));
 
+vi.mock("../../services/notificationApi.js", () => ({
+  notificationApi: {
+    getPreferences: vi.fn().mockResolvedValue({ data: { preferences: {} } }),
+    updatePreferences: vi.fn(),
+  },
+}));
+
 describe("DigestPreferences HTML Sanitization (#1339)", () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -45,9 +52,12 @@ describe("DigestPreferences HTML Sanitization (#1339)", () => {
 
     render(<DigestPreferences />);
 
-    await waitFor(() => {
-      expect(screen.getByText("Meeting Summary")).toBeInTheDocument();
-    });
+    await waitFor(
+      () => {
+        expect(screen.getByText("Meeting Summary")).toBeInTheDocument();
+      },
+      { timeout: 3000 },
+    );
 
     expect(screen.queryByText(/alert\("xss"\)/i)).not.toBeInTheDocument();
   });

@@ -27,6 +27,7 @@ const {
   createNotification,
   createNotifications,
   isSuppressed,
+  isMeetingMuted,
 } = await import("../services/notificationService.js");
 const { initListeners, _resetListenerRegistration } =
   await import("../events/listeners.js");
@@ -120,6 +121,24 @@ describe("category → preference mapping", () => {
     expect(isSuppressed({}, "meetings")).toBe(false);
     expect(isSuppressed(undefined, "meetings")).toBe(false);
   });
+
+  it("detects muted meetings from preference list (#2064)", () => {
+    const meetingId = objectId();
+    expect(
+      isMeetingMuted(
+        { mutedMeetingIds: [meetingId] },
+        { meetingId: String(meetingId) },
+      ),
+    ).toBe(true);
+    expect(
+      isMeetingMuted(
+        { mutedMeetingIds: [meetingId] },
+        { meetingId: objectId() },
+      ),
+    ).toBe(false);
+    expect(isMeetingMuted({ mutedMeetingIds: [] }, { meetingId })).toBe(false);
+    expect(isMeetingMuted(undefined, { meetingId })).toBe(false);
+  });
 });
 
 describe("createNotifications — bulk fan-out", () => {
@@ -189,6 +208,27 @@ describe("createNotifications — bulk fan-out", () => {
 
     expect(created).toHaveLength(1);
     expect(String(created[0].user)).toBe(String(optedIn));
+  });
+
+  it("skips recipients who muted the meeting (#2064)", async () => {
+    const unmuted = objectId();
+    const muted = objectId();
+    const meetingId = objectId();
+
+    await NotificationPreference.create({
+      user: muted,
+      mutedMeetingIds: [meetingId],
+    });
+
+    const created = await createNotifications([unmuted, muted], {
+      title: "Meeting update",
+      description: "Something changed",
+      category: "meetings",
+      metadata: { meetingId },
+    });
+
+    expect(created).toHaveLength(1);
+    expect(String(created[0].user)).toBe(String(unmuted));
   });
 
   it("honours the tasks toggle independently of the meetings toggle", async () => {

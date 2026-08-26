@@ -58,8 +58,19 @@ const sharedLinkSchema = new mongoose.Schema(
       type: Date,
       default: null,
     },
+    shareSettings: {
+      includeTranscript: { type: Boolean, default: false },
+      includeAttachments: { type: Boolean, default: false },
+      includeClips: { type: Boolean, default: false },
+      redactPii: { type: Boolean, default: true },
+      redactParticipantNames: { type: Boolean, default: false },
+    },
   },
   { timestamps: true },
 );
+
+sharedLinkSchema.index({ organizationId: 1 });
+sharedLinkSchema.index({ resourceId: 1 });
+sharedLinkSchema.index({ createdBy: 1 });
 
 export default mongoose.model("SharedLink", sharedLinkSchema);

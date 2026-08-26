@@ -14,9 +14,55 @@ const CalendarGrid = ({
   currentDate,
   filteredMeetings,
   setSelectedMeeting,
+  focusBlocks = [],
 }) => {
+  const getFocusBlocksForDay = (date) => {
+    const dayOfWeek = date.getDay();
+    const intervals = [];
+
+    focusBlocks.forEach((block) => {
+      const blockStart = new Date(block.startTime);
+      const blockEnd = new Date(block.endTime);
+
+      if (block.isRecurring) {
+        if (block.daysOfWeek.includes(dayOfWeek) && blockStart <= date) {
+          // Construct slot for this day
+          const slotStart = new Date(date);
+          slotStart.setHours(
+            blockStart.getHours(),
+            blockStart.getMinutes(),
+            0,
+            0,
+          );
+          const duration = blockEnd - blockStart;
+          const slotEnd = new Date(slotStart.getTime() + duration);
+          intervals.push({
+            _id: block._id,
+            title: block.title || "Focus Time",
+            start: slotStart,
+            end: slotEnd,
+            isRecurring: true,
+          });
+        }
+      } else {
+        if (isSameDay(blockStart, date)) {
+          intervals.push({
+            _id: block._id,
+            title: block.title || "Focus Time",
+            start: blockStart,
+            end: blockEnd,
+            isRecurring: false,
+          });
+        }
+      }
+    });
+    return intervals;
+  };
   return (
-    <div className="flex-1 bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-2xl shadow-xs overflow-hidden">
+    <div
+      data-testid="calendar-grid-container"
+      className="flex-1 bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-2xl shadow-xs overflow-x-auto max-w-full"
+    >
       {/* MONTH VIEW */}
       {view === "month" && (
         <div className="flex flex-col h-full min-w-[700px]">
@@ -65,6 +111,15 @@ const CalendarGrid = ({
 
                   {/* Events list */}
                   <div className="flex-1 space-y-1.5 overflow-y-auto max-h-[85px] py-1">
+                    {getFocusBlocksForDay(cell.date).map((block) => (
+                      <div
+                        key={block._id}
+                        className="w-full text-left p-1 rounded bg-indigo-50 dark:bg-indigo-950/40 border border-indigo-200 dark:border-indigo-800 text-indigo-700 dark:text-indigo-300 text-[9px] font-semibold truncate flex items-center gap-1"
+                      >
+                        <span className="w-1.5 h-1.5 rounded-full bg-indigo-500 shrink-0" />
+                        <span className="truncate">{block.title}</span>
+                      </div>
+                    ))}
                     {dayEvents.slice(0, 3).map((event) => {
                       const style = getStatusStyle(event.status);
                       return (
@@ -166,6 +221,39 @@ const CalendarGrid = ({
                       />
                     ))}
 
+                    {/* Placed Focus Blocks */}
+                    {getFocusBlocksForDay(day).map((block) => {
+                      const startHour = block.start.getHours();
+                      const startMin = block.start.getMinutes();
+                      const minutesFromMidnight = startHour * 60 + startMin;
+                      const startMins = 8 * 60; // 08:00 AM
+                      const top = Math.max(
+                        0,
+                        (minutesFromMidnight - startMins) * (50 / 60),
+                      );
+                      const duration = (block.end - block.start) / 60000;
+                      const height = Math.max(35, duration * (50 / 60));
+
+                      return (
+                        <div
+                          key={block._id}
+                          className="absolute left-1 right-1 p-1 rounded bg-indigo-50/70 dark:bg-indigo-950/40 border border-indigo-200 dark:border-indigo-800/80 text-indigo-700 dark:text-indigo-300 text-[9px] font-medium overflow-hidden flex flex-col justify-between select-none pointer-events-none opacity-80"
+                          style={{
+                            top: `${top}px`,
+                            height: `${height}px`,
+                            zIndex: 2,
+                          }}
+                        >
+                          <div className="font-bold truncate">
+                            {block.title}
+                          </div>
+                          <div className="text-[7px] opacity-75">
+                            Focus Block
+                          </div>
+                        </div>
+                      );
+                    })}
+
                     {/* Placed Events */}
                     {dayEvents.map((event) => {
                       const style = getStatusStyle(event.status);
@@ -249,6 +337,35 @@ const CalendarGrid = ({
                     style={{ top: `${h * 50}px`, height: "50px" }}
                   />
                 ))}
+
+                {/* Placed Focus Blocks */}
+                {getFocusBlocksForDay(currentDate).map((block) => {
+                  const startHour = block.start.getHours();
+                  const startMin = block.start.getMinutes();
+                  const minutesFromMidnight = startHour * 60 + startMin;
+                  const startMins = 8 * 60; // 08:00 AM
+                  const top = Math.max(
+                    0,
+                    (minutesFromMidnight - startMins) * (50 / 60),
+                  );
+                  const duration = (block.end - block.start) / 60000;
+                  const height = Math.max(35, duration * (50 / 60));
+
+                  return (
+                    <div
+                      key={block._id}
+                      className="absolute left-2 right-4 p-2 rounded bg-indigo-50/70 dark:bg-indigo-950/40 border border-indigo-200 dark:border-indigo-800/80 text-indigo-700 dark:text-indigo-300 text-[10px] font-medium overflow-hidden flex flex-col justify-between select-none pointer-events-none opacity-80"
+                      style={{
+                        top: `${top}px`,
+                        height: `${height}px`,
+                        zIndex: 2,
+                      }}
+                    >
+                      <div className="font-bold truncate">{block.title}</div>
+                      <div className="text-[8px] opacity-75">Focus Block</div>
+                    </div>
+                  );
+                })}
 
                 {/* Day events mapped */}
                 {filteredMeetings

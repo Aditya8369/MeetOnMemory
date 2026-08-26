@@ -37,18 +37,32 @@ export async function resolveActorRole(github, context, core, actor) {
 
 /**
  * Effective author-priority expiry for contributor-created issues.
- * Legacy bodies without authorPriorityExpiresAt use created_at + 48h.
+ * Legacy bodies without authorPriorityExpiresAt use created_at + authorPriorityHours.
+ * Stored expiries later than the current policy window are capped to that window.
  */
 export function getAuthorPriorityExpiresAt(issue, metadata = {}) {
-  if (metadata?.authorPriorityExpiresAt) {
-    return metadata.authorPriorityExpiresAt;
+  let fromCreated = null;
+  if (issue?.created_at) {
+    const created = new Date(issue.created_at);
+    if (!Number.isNaN(created.getTime())) {
+      fromCreated = new Date(
+        created.getTime() + TIMERS.authorPriorityHours * 60 * 60 * 1000,
+      );
+    }
   }
-  if (!issue?.created_at) return null;
-  const created = new Date(issue.created_at);
-  if (Number.isNaN(created.getTime())) return null;
-  return new Date(
-    created.getTime() + TIMERS.authorPriorityHours * 60 * 60 * 1000,
-  ).toISOString();
+
+  if (metadata?.authorPriorityExpiresAt) {
+    const stored = new Date(metadata.authorPriorityExpiresAt);
+    if (!Number.isNaN(stored.getTime())) {
+      if (fromCreated && stored.getTime() > fromCreated.getTime()) {
+        return fromCreated.toISOString();
+      }
+      return metadata.authorPriorityExpiresAt;
+    }
+  }
+
+  if (fromCreated) return fromCreated.toISOString();
+  return null;
 }
 
 export function isAuthorPriorityActive(issue, metadata = {}, now = new Date()) {

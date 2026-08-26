@@ -48,6 +48,27 @@ const calendarConnectionSchema = new mongoose.Schema(
       type: String,
       default: null,
     },
+    // Recent sync attempts for ops UI (Issue #2053)
+    syncHistory: {
+      type: [
+        {
+          at: { type: Date, default: Date.now },
+          status: {
+            type: String,
+            enum: ["success", "error"],
+            required: true,
+          },
+          message: { type: String, default: "" },
+          syncedCount: { type: Number, default: 0 },
+          trigger: {
+            type: String,
+            enum: ["manual", "cron"],
+            default: "cron",
+          },
+        },
+      ],
+      default: [],
+    },
     // Webhook subscription ID (for push notifications)
     webhookSubscriptionId: {
       type: String,

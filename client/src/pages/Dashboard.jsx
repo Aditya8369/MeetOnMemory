@@ -9,24 +9,33 @@ import {
   BarChart3,
   Brain,
   Search,
-  ArrowRight,
   Sparkles,
   Shield,
   Users,
+  Trophy,
+  ArrowRight,
+  CalendarRange,
 } from "lucide-react";
 import Navbar from "../components/Navbar.jsx";
 import TopContributorsWidget from "../components/organization/TopContributorsWidget";
 import DashboardMetricsWidget from "../components/dashboard/DashboardMetricsWidget.jsx";
+import FeedbackTrendChart from "../components/dashboard/FeedbackTrendChart.jsx";
 import OrganizationLogo from "../components/organization/OrganizationLogo.jsx";
 import OrganizationBanner from "../components/organization/OrganizationBanner.jsx";
 import PersonalNotesSidebar from "../components/PersonalNotesSidebar.jsx";
+import PendingRsvpBanner from "../components/dashboard/PendingRsvpBanner.jsx";
+import StoryThumbnails from "../components/dashboard/StoryThumbnails.jsx";
 
 /* ─── Role Badge ──────────────────────────────────────────────────────────── */
 const ROLE_STYLES = {
-  admin: "bg-violet-50 text-violet-700 border-violet-200",
-  manager: "bg-blue-50 text-blue-700 border-blue-200",
-  member: "bg-sky-50 text-sky-700 border-sky-200",
-  guest: "bg-slate-100 text-slate-600 border-slate-200",
+  admin:
+    "bg-violet-50 dark:bg-violet-900/30 text-violet-700 dark:text-violet-300 border-violet-200 dark:border-violet-700",
+  manager:
+    "bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 border-blue-200 dark:border-blue-700",
+  member:
+    "bg-sky-50 dark:bg-sky-900/30 text-sky-700 dark:text-sky-300 border-sky-200 dark:border-sky-700",
+  guest:
+    "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700",
 };
 
 const ROUTE_MAP = {
@@ -37,6 +46,8 @@ const ROUTE_MAP = {
   reports: "/reports",
   "attendance-analytics": "/attendance-analytics",
   "meeting-cost-analytics": "/meeting-cost-analytics",
+  leaderboard: "/leaderboard",
+  "meeting-series": "/meeting-series",
 };
 
 /* ─── Dashboard ───────────────────────────────────────────────────────────── */
@@ -48,6 +59,8 @@ const Dashboard = () => {
 
   const organizationName =
     userData?.organization?.name?.toUpperCase() || "ORGANIZATION";
+  const organizationId =
+    userData?.organization?._id || userData?.organization || "";
   const organizationLogoUrl =
     userData?.organization?.logoUrl || userData?.organization?.logo || "";
   const organizationBannerUrl = userData?.organization?.bannerUrl || "";
@@ -67,11 +80,12 @@ const Dashboard = () => {
       icon: Upload,
       title: t("dashboard.uploadMeetings"),
       description: t("dashboard.uploadMeetingsDesc"),
-      iconBg: "bg-blue-50",
-      iconColor: "text-blue-600",
+      iconBg: "bg-blue-50 dark:bg-blue-900/30",
+      iconColor: "text-blue-600 dark:text-blue-400",
       tag: t("dashboard.transcription"),
-      tagColor: "bg-blue-50 text-blue-700 border-blue-100",
-      accentRing: "group-hover:ring-blue-100",
+      tagColor:
+        "bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 border-blue-100 dark:border-blue-800",
+      accentRing: "group-hover:ring-blue-100 dark:group-hover:ring-blue-900/40",
       requiresCreateMeeting: true,
     },
     {
@@ -79,45 +93,66 @@ const Dashboard = () => {
       icon: FileText,
       title: t("dashboard.meetingEventHub"),
       description: t("dashboard.meetingEventHubDesc"),
-      iconBg: "bg-emerald-50",
-      iconColor: "text-emerald-600",
+      iconBg: "bg-emerald-50 dark:bg-emerald-900/30",
+      iconColor: "text-emerald-600 dark:text-emerald-400",
       tag: t("dashboard.scheduling"),
-      tagColor: "bg-emerald-50 text-emerald-700 border-emerald-100",
-      accentRing: "group-hover:ring-emerald-100",
+      tagColor:
+        "bg-emerald-50 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300 border-emerald-100 dark:border-emerald-800",
+      accentRing:
+        "group-hover:ring-emerald-100 dark:group-hover:ring-emerald-900/40",
       requiresCreateMeeting: true,
+    },
+    {
+      id: "meeting-series",
+      icon: CalendarRange,
+      title: "Meeting Series",
+      description:
+        "Browse recurring programs, open retrospectives, and pause or cancel series.",
+      iconBg: "bg-teal-50 dark:bg-teal-900/30",
+      iconColor: "text-teal-600 dark:text-teal-400",
+      tag: "Recurring",
+      tagColor:
+        "bg-teal-50 dark:bg-teal-900/30 text-teal-700 dark:text-teal-300 border-teal-100 dark:border-teal-800",
+      accentRing: "group-hover:ring-teal-100 dark:group-hover:ring-teal-900/40",
     },
     {
       id: "summaries",
       icon: Brain,
       title: t("dashboard.aiSummarization"),
       description: t("dashboard.aiSummarizationDesc"),
-      iconBg: "bg-violet-50",
-      iconColor: "text-violet-600",
+      iconBg: "bg-violet-50 dark:bg-violet-900/30",
+      iconColor: "text-violet-600 dark:text-violet-400",
       tag: t("dashboard.aiPowered"),
-      tagColor: "bg-violet-50 text-violet-700 border-violet-100",
-      accentRing: "group-hover:ring-violet-100",
+      tagColor:
+        "bg-violet-50 dark:bg-violet-900/30 text-violet-700 dark:text-violet-300 border-violet-100 dark:border-violet-800",
+      accentRing:
+        "group-hover:ring-violet-100 dark:group-hover:ring-violet-900/40",
     },
     {
       id: "policies",
       icon: Shield,
       title: t("dashboard.policiesRepository"),
       description: t("dashboard.policiesRepositoryDesc"),
-      iconBg: "bg-amber-50",
-      iconColor: "text-amber-600",
+      iconBg: "bg-amber-50 dark:bg-amber-900/30",
+      iconColor: "text-amber-600 dark:text-amber-400",
       tag: t("dashboard.complianceTag"),
-      tagColor: "bg-amber-50 text-amber-700 border-amber-100",
-      accentRing: "group-hover:ring-amber-100",
+      tagColor:
+        "bg-amber-50 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300 border-amber-100 dark:border-amber-800",
+      accentRing:
+        "group-hover:ring-amber-100 dark:group-hover:ring-amber-900/40",
     },
     {
       id: "reports",
       icon: BarChart3,
       title: t("dashboard.reportsAnalytics"),
       description: t("dashboard.reportsAnalyticsDesc"),
-      iconBg: "bg-indigo-50",
-      iconColor: "text-indigo-600",
+      iconBg: "bg-indigo-50 dark:bg-indigo-900/30",
+      iconColor: "text-indigo-600 dark:text-indigo-400",
       tag: t("dashboard.analytics"),
-      tagColor: "bg-indigo-50 text-indigo-700 border-indigo-100",
-      accentRing: "group-hover:ring-indigo-100",
+      tagColor:
+        "bg-indigo-50 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300 border-indigo-100 dark:border-indigo-800",
+      accentRing:
+        "group-hover:ring-indigo-100 dark:group-hover:ring-indigo-900/40",
     },
     {
       id: "attendance-analytics",
@@ -125,11 +160,12 @@ const Dashboard = () => {
       title: "Attendance Analytics",
       description:
         "Visualize per-member attendance rates, heatmap activity, and trends.",
-      iconBg: "bg-pink-50",
-      iconColor: "text-pink-600",
+      iconBg: "bg-pink-50 dark:bg-pink-900/30",
+      iconColor: "text-pink-600 dark:text-pink-400",
       tag: "Analytics",
-      tagColor: "bg-pink-50 text-pink-700 border-pink-100",
-      accentRing: "group-hover:ring-pink-100",
+      tagColor:
+        "bg-pink-50 dark:bg-pink-900/30 text-pink-700 dark:text-pink-300 border-pink-100 dark:border-pink-800",
+      accentRing: "group-hover:ring-pink-100 dark:group-hover:ring-pink-900/40",
     },
     {
       id: "meeting-cost-analytics",
@@ -137,12 +173,27 @@ const Dashboard = () => {
       title: "Meeting Cost Analytics",
       description:
         "Analyze organizational cost and time investment across all meetings.",
-      iconBg: "bg-blue-50",
-      iconColor: "text-blue-600",
+      iconBg: "bg-blue-50 dark:bg-blue-900/30",
+      iconColor: "text-blue-600 dark:text-blue-400",
       tag: "Cost",
-      tagColor: "bg-blue-50 text-blue-700 border-blue-100",
-      accentRing: "group-hover:ring-blue-100",
+      tagColor:
+        "bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 border-blue-100 dark:border-blue-800",
+      accentRing: "group-hover:ring-blue-100 dark:group-hover:ring-blue-900/40",
       adminOnly: true,
+    },
+    {
+      id: "leaderboard",
+      icon: Trophy,
+      title: "Meeting Hygiene Leaderboard",
+      description:
+        "View top contributors with the best meeting hygiene scores and badges.",
+      iconBg: "bg-yellow-50 dark:bg-yellow-900/30",
+      iconColor: "text-yellow-600 dark:text-yellow-400",
+      tag: "Gamification",
+      tagColor:
+        "bg-yellow-50 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-300 border-yellow-100 dark:border-yellow-800",
+      accentRing:
+        "group-hover:ring-yellow-100 dark:group-hover:ring-yellow-900/40",
     },
   ];
 
@@ -160,6 +211,8 @@ const Dashboard = () => {
       <Navbar />
 
       <div className="flex-1 w-full max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 pt-28 pb-12 sm:pb-16">
+        <PendingRsvpBanner />
+        <StoryThumbnails />
         {/* ── Hero + AI Search — unified panel ── */}
         <section
           aria-label="Dashboard hero"
@@ -281,6 +334,12 @@ const Dashboard = () => {
 
         {/* ── Operational Metrics ── */}
         <DashboardMetricsWidget />
+
+        {organizationId ? (
+          <div className="mb-8">
+            <FeedbackTrendChart orgId={organizationId} />
+          </div>
+        ) : null}
 
         {/* ── Feature Cards ── */}
         <section aria-label="Dashboard features">

@@ -4,22 +4,34 @@ import { indexMeeting } from "../utils/embeddingUtils.js";
 import { indexTranscriptChunks } from "../utils/transcriptEmbeddingUtils.js";
 
 // Capture upsert parameters
-const mockUpsert = vi.fn();
+const { mockUpsert } = vi.hoisted(() => ({ mockUpsert: vi.fn() }));
 
-vi.mock("../utils/embeddingUtils.js", async (importOriginal) => {
-  const original = await importOriginal();
+vi.mock("@pinecone-database/pinecone", () => {
   return {
-    ...original,
-    initVectorStore: vi.fn().mockResolvedValue({
-      upsert: mockUpsert,
-    }),
-    embedText: vi.fn().mockResolvedValue(new Array(384).fill(0.1)),
+    Pinecone: class {
+      Index() {
+        return { upsert: mockUpsert };
+      }
+    },
+  };
+});
+
+// Mock Transformers
+vi.mock("@xenova/transformers", () => {
+  return {
+    pipeline: vi
+      .fn()
+      .mockResolvedValue(
+        vi.fn().mockResolvedValue({ data: new Float32Array(384).fill(0.1) }),
+      ),
   };
 });
 
 describe("Vector Metadata Minimization & Sensitive Fields Removal", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    process.env.PINECONE_API_KEY = "test-key";
+    process.env.INDEX_NAME = "test-index";
   });
 
   it("ensures indexMeeting minimizes stored metadata and removes sensitive fields", async () => {

@@ -531,6 +531,27 @@ describe("OrganizationService", () => {
         }),
       );
     });
+
+    it("escapes regex metacharacters so '.*' is literal (Issue #1770)", async () => {
+      const mockQueryChain = {
+        sort: vi.fn().mockReturnThis(),
+        skip: vi.fn().mockReturnThis(),
+        limit: vi.fn().mockReturnThis(),
+        select: vi.fn().mockReturnThis(),
+        lean: vi.fn().mockResolvedValue([]),
+      };
+      Organization.find.mockReturnValue(mockQueryChain);
+      Organization.countDocuments.mockResolvedValue(0);
+
+      await OrganizationService.searchOrganizations(".*", 1, 12);
+
+      const filterArg = Organization.find.mock.calls[0][0];
+      expect(filterArg.visibility).toBe("public");
+      expect(filterArg.$or[0].name).toBeInstanceOf(RegExp);
+      expect(filterArg.$or[0].name.source).toBe("\\.\\*");
+      expect(filterArg.$or[0].name.test("Acme Corp")).toBe(false);
+      expect(filterArg.$or[0].name.test(".*")).toBe(true);
+    });
   });
 
   // ── getOrganizationSettings ──────────────────────────────

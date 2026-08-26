@@ -190,9 +190,9 @@ describe("Integration: Calendar", () => {
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 describe("Integration: Knowledge Base", () => {
-  it("returns 401 for unauthenticated knowledge access", async () => {
+  it("returns 401 for unauthenticated knowledge graph access", async () => {
     const res = await request(app).get(
-      "/api/knowledge/000000000000000000000001/graph",
+      `/api/graph/organization/000000000000000000000001`,
     );
     expect(res.status).toBe(401);
   });

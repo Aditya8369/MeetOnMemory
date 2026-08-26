@@ -8,6 +8,12 @@ import Pagination from "./Pagination.jsx";
 import EmptyState from "./EmptyState.jsx";
 import { useNavigate } from "react-router-dom";
 import useApiRequest from "../../hooks/useApiRequest.js";
+import { savedFilterApi } from "../../services";
+import SavedFilterBar from "./SavedFilterBar.jsx";
+import SaveFilterModal from "./SaveFilterModal.jsx";
+import { BookmarkPlus, ListChecks } from "lucide-react";
+import useBulkMeetingActions from "../../hooks/useBulkMeetingActions.js";
+import BulkActionBar from "./BulkActionBar.jsx";
 
 const MeetingRepository = () => {
   const navigate = useNavigate();
@@ -23,6 +29,51 @@ const MeetingRepository = () => {
   // Pagination
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 9;
+
+  // Saved Filters
+  const [savedFilters, setSavedFilters] = useState([]);
+  const [savedFiltersError, setSavedFiltersError] = useState(null);
+  const [isSaveModalOpen, setIsSaveModalOpen] = useState(false);
+
+  const fetchSavedFilters = useCallback(async () => {
+    try {
+      setSavedFiltersError(null);
+      const response = await savedFilterApi.getFilters();
+      if (response.data?.success) {
+        setSavedFilters(response.data.filters || []);
+      }
+    } catch (err) {
+      console.error("Failed to fetch saved filters", err);
+      setSavedFiltersError(
+        err.response?.data?.message || "Failed to load saved views",
+      );
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchSavedFilters();
+  }, [fetchSavedFilters]);
+
+  const handleApplySavedFilter = (savedFilter) => {
+    if (savedFilter.filters) {
+      setFilters(savedFilter.filters);
+      if (savedFilter.filters.searchQuery !== undefined) {
+        setSearchQuery(savedFilter.filters.searchQuery);
+      }
+    }
+  };
+
+  const handleSaveFilter = async (filterData) => {
+    try {
+      const response = await savedFilterApi.createFilter(filterData);
+      if (response.data?.success) {
+        toast.success("Filter saved successfully");
+        fetchSavedFilters();
+      }
+    } catch (err) {
+      toast.error(err.response?.data?.message || "Failed to save filter");
+    }
+  };
 
   // Abort in-flight loads when a newer refresh starts (#1131 / #978).
   const loadMeetings = useCallback(async (signal) => {
@@ -54,6 +105,20 @@ const MeetingRepository = () => {
   useEffect(() => {
     fetchMeetings();
   }, [fetchMeetings]);
+
+  const {
+    isBulkMode,
+    toggleBulkMode,
+    selectedMeetings,
+    toggleSelection,
+    isProcessing,
+    errorMessage,
+    clearError,
+    handleBulkArchive,
+    handleBulkTag,
+    handleBulkSoftDelete,
+    handleBulkExport,
+  } = useBulkMeetingActions(fetchMeetings);
 
   // Apply filters and search
   useEffect(() => {
@@ -152,7 +217,11 @@ const MeetingRepository = () => {
 
   // Meeting actions
   const handleDelete = async (meetingId) => {
-    if (!window.confirm("Move this meeting to the recycle bin?")) {
+    if (
+      !window.confirm(
+        "Move this meeting to the Recycle Bin? You can restore it from there later.",
+      )
+    ) {
       return;
     }
 
@@ -160,7 +229,27 @@ const MeetingRepository = () => {
       const response = await meetingApi.deleteMeeting(meetingId);
 
       if (response.data?.success) {
-        toast.success("Meeting deleted successfully");
+        toast.success(
+          <span>
+            Meeting moved to Recycle Bin.{" "}
+            <button
+              onClick={() => navigate("/meetings/recycle-bin")}
+              className="underline font-medium"
+            >
+              View Recycle Bin
+            </button>
+          </span>,
+          <div className="flex items-center justify-between gap-3">
+            <span>Meeting moved to recycle bin</span>
+            <button
+              type="button"
+              onClick={() => navigate("/meetings/recycle-bin")}
+              className="text-xs font-semibold text-blue-600 hover:text-blue-700 underline shrink-0"
+            >
+              View Recycle Bin
+            </button>
+          </div>,
+        );
         fetchMeetings();
       } else {
         toast.error(response.data?.message || "Failed to delete meeting");
@@ -245,17 +334,47 @@ const MeetingRepository = () => {
 
   return (
     <div className="space-y-6">
+      <SavedFilterBar
+        savedFilters={savedFilters}
+        error={savedFiltersError}
+        onApplyFilter={handleApplySavedFilter}
+        fetchFilters={fetchSavedFilters}
+        onRetry={fetchSavedFilters}
+      />
+
       {/* Search and Filters */}
       <div className="flex flex-col lg:flex-row gap-4 items-start lg:items-center justify-between">
         <MeetingSearch
           searchQuery={searchQuery}
           onSearchChange={setSearchQuery}
         />
-        <MeetingFilters
-          filters={filters}
-          onFilterChange={handleFilterChange}
-          onClearFilters={handleClearFilters}
-        />
+        <div className="flex gap-3 items-center w-full lg:w-auto">
+          <MeetingFilters
+            filters={filters}
+            onFilterChange={handleFilterChange}
+            onClearFilters={handleClearFilters}
+          />
+          <button
+            onClick={() => setIsSaveModalOpen(true)}
+            className="flex items-center gap-1.5 px-3 py-2 text-sm font-medium text-blue-600 bg-blue-50 hover:bg-blue-100 dark:text-blue-400 dark:bg-blue-900/30 dark:hover:bg-blue-900/50 rounded-lg transition-colors whitespace-nowrap cursor-pointer"
+            title="Save current filters as a smart view"
+          >
+            <BookmarkPlus className="w-4 h-4" />
+            Save View
+          </button>
+          <button
+            onClick={toggleBulkMode}
+            className={`flex items-center gap-1.5 px-3 py-2 text-sm font-medium rounded-lg transition-colors whitespace-nowrap cursor-pointer ${
+              isBulkMode
+                ? "bg-blue-600 text-white hover:bg-blue-700"
+                : "text-gray-700 bg-gray-100 hover:bg-gray-200 dark:text-gray-300 dark:bg-gray-800 dark:hover:bg-gray-700"
+            }`}
+            title="Toggle bulk selection mode"
+          >
+            <ListChecks className="w-4 h-4" />
+            Bulk Mode
+          </button>
+        </div>
       </div>
 
       {/* Active Filters Display */}
@@ -314,6 +433,9 @@ const MeetingRepository = () => {
                 onDelete={handleDelete}
                 onRename={handleRename}
                 onView={handleView}
+                isBulkMode={isBulkMode}
+                isSelected={selectedMeetings.has(meeting._id)}
+                onToggleSelect={toggleSelection}
               />
             ))}
           </div>
@@ -327,6 +449,27 @@ const MeetingRepository = () => {
             />
           )}
         </>
+      )}
+
+      <SaveFilterModal
+        isOpen={isSaveModalOpen}
+        onClose={() => setIsSaveModalOpen(false)}
+        onSave={handleSaveFilter}
+        initialFilters={{ ...filters, searchQuery }}
+      />
+
+      {isBulkMode && (
+        <BulkActionBar
+          selectedCount={selectedMeetings.size}
+          isProcessing={isProcessing}
+          errorMessage={errorMessage}
+          onArchive={handleBulkArchive}
+          onDelete={handleBulkSoftDelete}
+          onExport={handleBulkExport}
+          onTag={handleBulkTag}
+          onCancel={toggleBulkMode}
+          onClearError={clearError}
+        />
       )}
     </div>
   );

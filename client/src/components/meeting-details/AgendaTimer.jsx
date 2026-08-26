@@ -10,21 +10,30 @@ import {
   readAgendaElapsedMs,
   summarizeAgendaTiming,
 } from "../../utils/agendaTiming";
+import { canManageAgendaTimer } from "../../utils/agendaTimerAccess";
 import { createClerkSocketOptions } from "../../services/apiClient.js";
 
-const AgendaTimer = ({ meeting }) => {
+const AgendaTimer = ({
+  meeting,
+  socket: externalSocket = null,
+  readOnly = false,
+  compact = false,
+}) => {
   const { backendUrl, userData } = useContext(AppContent);
-  const [agendaItems, setAgendaItems] = useState(meeting.agendaItems || []);
+  const [agendaItems, setAgendaItems] = useState(meeting?.agendaItems || []);
   const [activeItem, setActiveItem] = useState(null);
   const [elapsedMs, setElapsedMs] = useState(0);
-  const socketRef = useRef(null);
+  const ownedSocketRef = useRef(null);
   const timerRef = useRef(null);
   const overrunNotifiedRef = useRef(new Set());
 
-  const isOrganizerOrAdmin = meeting.uploadedBy === userData?._id;
+  const canManage = !readOnly && canManageAgendaTimer(meeting, userData);
 
   useEffect(() => {
-    // Find active item
+    setAgendaItems(meeting?.agendaItems || []);
+  }, [meeting?.agendaItems]);
+
+  useEffect(() => {
     const currentActive = agendaItems.find((item) => item.status === "active");
     setActiveItem(currentActive || null);
     setElapsedMs(readAgendaElapsedMs(currentActive));
@@ -36,13 +45,6 @@ const AgendaTimer = ({ meeting }) => {
       return undefined;
     }
 
-    // Issue #1159 — this used to be `setElapsedMs((prev) => prev + 1000)`, so
-    // the displayed time was a count of ticks rather than a measurement.
-    // Browsers clamp `setInterval` to roughly once a minute in a backgrounded
-    // tab, which is exactly where a live meeting timer spends its time: the
-    // clock fell minutes behind and never caught up, and the overrun warning
-    // fired late or not at all. Recomputing from `startedAt` makes a dropped
-    // tick cost nothing but a late repaint.
     const tick = () => setElapsedMs(readAgendaElapsedMs(activeItem));
 
     tick();
@@ -51,9 +53,8 @@ const AgendaTimer = ({ meeting }) => {
     return () => clearInterval(timerRef.current);
   }, [activeItem]);
 
-  // Warn once per item as soon as it runs past its planned duration.
   useEffect(() => {
-    if (!activeItem) return;
+    if (!activeItem || compact) return;
     const { isOverrun } = getItemTiming(activeItem, elapsedMs);
     if (!isOverrun || overrunNotifiedRef.current.has(activeItem._id)) return;
 
@@ -61,51 +62,78 @@ const AgendaTimer = ({ meeting }) => {
     toast.warning(
       `"${activeItem.text}" has passed its planned ${activeItem.duration} min`,
     );
-  }, [activeItem, elapsedMs]);
+  }, [activeItem, elapsedMs, compact]);
 
   useEffect(() => {
+    const meetingId = meeting?._id;
+    if (!meetingId) return undefined;
+
     let cancelled = false;
+    let ownedSocket = null;
 
-    (async () => {
-      const opts = await createClerkSocketOptions({
-        transports: ["websocket"],
-      });
-      if (cancelled) return;
+    const onTimerUpdated = ({ item, action }) => {
+      if (!item?._id) return;
+      setAgendaItems((prev) =>
+        prev.map((ai) => {
+          if (ai._id === item._id) return item;
+          if (action === "start" && ai.status === "active") {
+            return { ...ai, status: "pending" };
+          }
+          return ai;
+        }),
+      );
+    };
 
-      socketRef.current = io(backendUrl, opts);
+    const attach = (sock) => {
+      if (!sock?.on) return () => {};
+      sock.on("agenda_timer_updated", onTimerUpdated);
+      return () => sock.off?.("agenda_timer_updated", onTimerUpdated);
+    };
 
-      socketRef.current.on("connect", () => {
-        socketRef.current.emit("join-meeting", {
-          roomId: meeting._id,
-          userInfo: { name: userData?.name },
+    let detach = () => {};
+
+    if (externalSocket) {
+      detach = attach(externalSocket);
+    } else {
+      (async () => {
+        const opts = await createClerkSocketOptions({
+          transports: ["websocket"],
         });
-      });
+        if (cancelled) return;
 
-      socketRef.current.on("agenda_timer_updated", ({ item, action }) => {
-        setAgendaItems((prev) =>
-          prev.map((ai) => {
-            if (ai._id === item._id) return item;
-            // If action is start, other items should be pending if they were active
-            if (action === "start" && ai.status === "active") {
-              return { ...ai, status: "pending" };
-            }
-            return ai;
-          }),
-        );
-      });
-    })();
+        ownedSocket = io(backendUrl, opts);
+        if (cancelled) {
+          ownedSocket.disconnect();
+          return;
+        }
+        ownedSocketRef.current = ownedSocket;
+
+        ownedSocket.on("connect", () => {
+          ownedSocket.emit("join-meeting", {
+            roomId: meetingId,
+            userInfo: { name: userData?.name },
+          });
+        });
+
+        detach = attach(ownedSocket);
+      })();
+    }
 
     return () => {
       cancelled = true;
-      if (socketRef.current) socketRef.current.disconnect();
+      detach();
+      ownedSocket?.disconnect();
+      if (ownedSocketRef.current && ownedSocketRef.current === ownedSocket) {
+        ownedSocketRef.current = null;
+      }
     };
-  }, [backendUrl, meeting._id, userData?.name]);
+  }, [backendUrl, meeting?._id, userData?.name, externalSocket]);
 
   const handleStart = async (itemId) => {
+    if (!canManage) return;
     try {
       const res = await meetingApi.startAgendaItem(meeting._id, itemId);
       if (res.data.success) {
-        // Optimistic update
         setAgendaItems((prev) =>
           prev.map((ai) => {
             if (ai._id === itemId) return res.data.item;
@@ -116,10 +144,12 @@ const AgendaTimer = ({ meeting }) => {
       }
     } catch (err) {
       console.error("Failed to start item:", err);
+      toast.error(err.response?.data?.message || "Failed to start agenda item");
     }
   };
 
   const handleStop = async (itemId) => {
+    if (!canManage) return;
     try {
       const res = await meetingApi.stopAgendaItem(meeting._id, itemId);
       if (res.data.success) {
@@ -129,10 +159,12 @@ const AgendaTimer = ({ meeting }) => {
       }
     } catch (err) {
       console.error("Failed to stop item:", err);
+      toast.error(err.response?.data?.message || "Failed to stop agenda item");
     }
   };
 
   const handleSkip = async (itemId) => {
+    if (!canManage) return;
     try {
       const res = await meetingApi.skipAgendaItem(meeting._id, itemId);
       if (res.data.success) {
@@ -142,15 +174,59 @@ const AgendaTimer = ({ meeting }) => {
       }
     } catch (err) {
       console.error("Failed to skip item:", err);
+      toast.error(err.response?.data?.message || "Failed to skip agenda item");
     }
   };
 
-  if (!agendaItems || agendaItems.length === 0) return null;
+  if (!meeting?._id || !agendaItems || agendaItems.length === 0) return null;
 
   const summary = summarizeAgendaTiming(agendaItems, elapsedMs);
+  const activeTiming = activeItem ? getItemTiming(activeItem, elapsedMs) : null;
+
+  if (compact) {
+    return (
+      <div
+        data-testid="agenda-timer-banner"
+        data-meeting-id={meeting._id}
+        className="flex flex-wrap items-center justify-between gap-2 px-4 py-2 bg-gray-950 border-b border-gray-800 text-sm"
+      >
+        <div className="min-w-0 text-gray-200">
+          {activeItem ? (
+            <span className="flex flex-wrap items-center gap-2">
+              <span className="text-gray-400">Now</span>
+              <span className="font-medium truncate">{activeItem.text}</span>
+              {activeTiming?.isOverrun ? (
+                <span className="inline-flex items-center gap-1 rounded-full bg-red-900/40 px-2 py-0.5 text-xs font-medium text-red-300">
+                  <AlertTriangle className="h-3 w-3" aria-hidden="true" />
+                  Over by {formatClock(activeTiming.overrunMs)}
+                </span>
+              ) : activeTiming?.hasPlan ? (
+                <span className="rounded-full bg-blue-900/40 px-2 py-0.5 text-xs font-medium text-blue-300">
+                  {formatClock(activeTiming.remainingMs)} left
+                </span>
+              ) : null}
+            </span>
+          ) : (
+            <span className="text-gray-400">No agenda item running</span>
+          )}
+        </div>
+        {summary.isOverrun && (
+          <span className="inline-flex items-center gap-1 rounded-full bg-red-900/40 px-2 py-0.5 text-xs font-medium text-red-300">
+            <AlertTriangle className="h-3 w-3" aria-hidden="true" />
+            Meeting {formatClock(summary.overrunMs)} over
+          </span>
+        )}
+      </div>
+    );
+  }
 
   return (
-    <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6 mb-6">
+    <div
+      data-testid="agenda-timer"
+      data-meeting-id={meeting._id}
+      data-readonly={readOnly ? "yes" : "no"}
+      className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6 mb-6"
+    >
       <div className="flex flex-wrap items-center justify-between gap-2 mb-4">
         <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
           Live Agenda
@@ -263,41 +339,47 @@ const AgendaTimer = ({ meeting }) => {
                     )}
                   </div>
 
-                  {isOrganizerOrAdmin && !isCompleted && !isSkipped && (
+                  {canManage && !isCompleted && !isSkipped && (
                     <div className="flex gap-2">
                       {!isActive ? (
                         <button
+                          type="button"
                           onClick={() => handleStart(item._id)}
-                          className="p-2 bg-blue-100 text-blue-600 rounded-full hover:bg-blue-200 transition"
+                          className="p-2 bg-blue-100 text-blue-600 rounded-full hover:bg-blue-200 transition dark:bg-blue-900/40 dark:text-blue-300"
                           title="Start Item"
+                          aria-label={`Start ${item.text}`}
                         >
                           <Play size={18} />
                         </button>
                       ) : (
                         <button
+                          type="button"
                           onClick={() => handleStop(item._id)}
-                          className="p-2 bg-red-100 text-red-600 rounded-full hover:bg-red-200 transition"
+                          className="p-2 bg-red-100 text-red-600 rounded-full hover:bg-red-200 transition dark:bg-red-900/40 dark:text-red-300"
                           title="Stop Item"
+                          aria-label={`Stop ${item.text}`}
                         >
                           <Square size={18} />
                         </button>
                       )}
                       <button
+                        type="button"
                         onClick={() => handleSkip(item._id)}
-                        className="p-2 bg-gray-100 text-gray-600 rounded-full hover:bg-gray-200 transition"
+                        className="p-2 bg-gray-100 text-gray-600 rounded-full hover:bg-gray-200 transition dark:bg-gray-700 dark:text-gray-300"
                         title="Skip Item"
+                        aria-label={`Skip ${item.text}`}
                       >
                         <SkipForward size={18} />
                       </button>
                     </div>
                   )}
                   {isCompleted && (
-                    <span className="text-sm font-medium text-green-600 bg-green-100 px-2 py-1 rounded">
+                    <span className="text-sm font-medium text-green-600 bg-green-100 px-2 py-1 rounded dark:bg-green-900/40 dark:text-green-300">
                       Done
                     </span>
                   )}
                   {isSkipped && (
-                    <span className="text-sm font-medium text-gray-600 bg-gray-200 px-2 py-1 rounded">
+                    <span className="text-sm font-medium text-gray-600 bg-gray-200 px-2 py-1 rounded dark:bg-gray-700 dark:text-gray-300">
                       Skipped
                     </span>
                   )}

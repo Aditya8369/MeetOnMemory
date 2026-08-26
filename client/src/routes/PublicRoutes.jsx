@@ -18,10 +18,14 @@ import PublicSharedView from "../pages/PublicSharedView.jsx";
 import DeveloperDocs from "../pages/DeveloperDocs.jsx";
 import AcceptInvite from "../pages/AcceptInvite.jsx";
 import MeetingInviteJoin from "../pages/MeetingInviteJoin.jsx";
+import Testimonials from "../pages/Testimonials.jsx";
+import GuestMeetingView from "../pages/GuestMeetingView.jsx";
+import GuestJoin from "../pages/GuestJoin.jsx";
 
 const PublicRoutes = (
   <React.Fragment>
     <Route path="/" element={<Home />} />
+    <Route path="/testimonials" element={<Testimonials />} />
     {/* Clerk path-based auth (supports /login/factor-password, SSO callbacks, etc.) */}
     <Route path="/login/*" element={<Login />} />
     <Route path="/signup/*" element={<SignUp />} />
@@ -45,6 +49,8 @@ const PublicRoutes = (
       element={<PublicOrganizationProfile />}
     />
     <Route path="/shared/:hash" element={<PublicSharedView />} />
+    <Route path="/guest/:token" element={<GuestMeetingView />} />
+    <Route path="/guest-join/:token" element={<GuestJoin />} />
   </React.Fragment>
 );
 
