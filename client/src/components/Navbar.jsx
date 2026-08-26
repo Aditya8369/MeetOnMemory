@@ -75,6 +75,7 @@ import {
   CheckCheck,
   Smile,
   Lightbulb,
+  Presentation,
 } from "lucide-react";
 
 const clerkPubKey = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY;
@@ -477,6 +478,12 @@ const Navbar = () => {
             label: t("navbar.meetingTemplates"),
             href: "/meeting-templates",
             icon: GitMerge,
+            permission: { resource: "meetings", action: "view" },
+          },
+          {
+            label: t("navbar.sessionCards", "Session Cards"),
+            href: "/session-cards",
+            icon: Presentation,
             permission: { resource: "meetings", action: "view" },
           },
           {
