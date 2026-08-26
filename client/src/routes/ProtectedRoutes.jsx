@@ -99,6 +99,26 @@ import TopicIntelligence from "../pages/TopicIntelligence.jsx";
 const ProtectedRoutes = (
   <React.Fragment>
     <Route
+      path="/topics/analytics"
+      element={
+        <ProtectedRoute>
+          <RouteErrorBoundary>
+            <TopicAnalyticsDashboard />
+          </RouteErrorBoundary>
+        </ProtectedRoute>
+      }
+    />
+    <Route
+      path="/analytics/topics"
+      element={
+        <ProtectedRoute>
+          <RouteErrorBoundary>
+            <TopicAnalyticsDashboard />
+          </RouteErrorBoundary>
+        </ProtectedRoute>
+      }
+    />
+    <Route
       path="/topic-intelligence"
       element={
         <ProtectedRoute>
