@@ -93,9 +93,26 @@ import OrgTimelineDashboard from "../pages/OrgTimelineDashboard.jsx";
 import AbsenteeCatchUpInbox from "../pages/AbsenteeCatchUpInbox.jsx";
 import IntegrationMarketplaceHub from "../pages/IntegrationMarketplaceHub.jsx";
 import SentimentTrends from "../pages/SentimentTrends.jsx";
+import SessionGallery from "../pages/SessionGallery.jsx";
 
 const ProtectedRoutes = (
   <React.Fragment>
+    <Route
+      path="/session-cards"
+      element={
+        <ProtectedRoute resource="meetings" action="view">
+          <SessionGallery />
+        </ProtectedRoute>
+      }
+    />
+    <Route
+      path="/sessions/gallery"
+      element={
+        <ProtectedRoute resource="meetings" action="view">
+          <SessionGallery />
+        </ProtectedRoute>
+      }
+    />
     <Route
       path="/sentiment-trends"
       element={
