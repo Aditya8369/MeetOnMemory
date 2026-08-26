@@ -1,5 +1,7 @@
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import Navbar from "../components/Navbar.jsx";
+import OpenApiExplorer from "../components/developer/OpenApiExplorer.jsx";
+import { getBackendUrl } from "../config/backendConfig.js";
 import {
   BookOpen,
   Code2,
@@ -568,6 +570,33 @@ const DeveloperDocs = () => {
   const [activeLanguage, setActiveLanguage] = useState("curl");
   const [searchQuery, setSearchQuery] = useState("");
   const [copiedId, setCopiedId] = useState(null);
+  const [openApiSpec, setOpenApiSpec] = useState(null);
+  const [openApiError, setOpenApiError] = useState(null);
+  const [openApiLoading, setOpenApiLoading] = useState(true);
+
+  useEffect(() => {
+    let cancelled = false;
+    const loadSpec = async () => {
+      try {
+        setOpenApiLoading(true);
+        setOpenApiError(null);
+        const res = await fetch(`${getBackendUrl()}/api/openapi.json`);
+        if (!res.ok) throw new Error(`OpenAPI fetch failed (${res.status})`);
+        const data = await res.json();
+        if (!cancelled) setOpenApiSpec(data);
+      } catch (err) {
+        if (!cancelled) {
+          setOpenApiError(err.message || "Failed to load OpenAPI spec");
+        }
+      } finally {
+        if (!cancelled) setOpenApiLoading(false);
+      }
+    };
+    loadSpec();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   // Copy code helper
   const handleCopy = (code, id) => {
