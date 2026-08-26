@@ -27,6 +27,7 @@ const VITEST_TEST_FILES = new Set([
   "server/tests/sharedLinkAnalytics.test.js",
   "server/tests/meetingValidation.test.js",
   "server/tests/e2eeFeatureFlag.test.js",
+  "server/tests/sessionController.test.js",
 ]);
 const JEST_RELATED_IGNORE = [
   "tests/integration.test.js",
@@ -59,6 +60,9 @@ const vitestOwnedSources = new Set([
   "server/middleware/meetingValidation.js",
   "server/controllers/meetingSeriesController.js",
   "server/controllers/meetingController.js",
+  "server/controllers/sessionController.js",
+  "server/models/sessionCardModel.js",
+  "server/routes/sessionRoutes.js",
   "server/controllers/sharedLinkController.js",
   "server/models/sharedLinkModel.js",
   "server/config/express.js",
@@ -86,6 +90,10 @@ const VITEST_SOURCE_TEST_MAP = {
     "server/tests/meetingValidation.test.js",
   "server/controllers/meetingSeriesController.js":
     "server/tests/meetingValidation.test.js",
+  "server/controllers/sessionController.js":
+    "server/tests/sessionController.test.js",
+  "server/models/sessionCardModel.js": "server/tests/sessionController.test.js",
+  "server/routes/sessionRoutes.js": "server/tests/sessionController.test.js",
   "server/controllers/meetingController.js":
     "server/tests/MeetingService.test.js",
   "server/services/MeetingService.js": "server/tests/MeetingService.test.js",
