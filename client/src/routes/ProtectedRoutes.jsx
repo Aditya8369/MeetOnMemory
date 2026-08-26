@@ -92,23 +92,17 @@ import TeamAvailability from "../pages/TeamAvailability.jsx";
 import ActionItemTemplates from "../pages/ActionItemTemplates.jsx";
 import IntegrationMarketplaceHub from "../pages/IntegrationMarketplaceHub.jsx";
 import SentimentTrends from "../pages/SentimentTrends.jsx";
-import SessionGallery from "../pages/SessionGallery.jsx";
+import TopicIntelligence from "../pages/TopicIntelligence.jsx";
 
 const ProtectedRoutes = (
   <React.Fragment>
     <Route
-      path="/session-cards"
+      path="/topic-intelligence"
       element={
-        <ProtectedRoute resource="meetings" action="view">
-          <SessionGallery />
-        </ProtectedRoute>
-      }
-    />
-    <Route
-      path="/sessions/gallery"
-      element={
-        <ProtectedRoute resource="meetings" action="view">
-          <SessionGallery />
+        <ProtectedRoute>
+          <RouteErrorBoundary>
+            <TopicIntelligence />
+          </RouteErrorBoundary>
         </ProtectedRoute>
       }
     />

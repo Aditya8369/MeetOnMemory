@@ -201,9 +201,6 @@ export function buildSearchExplainability({
   const decisions = normalizeStructuredList(
     structured?.decisions || structured?.keyDecisions,
   );
-  const actionItems = normalizeStructuredList(
-    structured?.action_items || structured?.actionItems,
-  );
 
   const matchingTopics = topics.filter((item) =>
     firstMatchingToken(item, tokens),

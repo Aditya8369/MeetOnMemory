@@ -78,7 +78,7 @@ const DuplicateDetectionPanel = ({ meetingId, meeting, onMergeSuccess }) => {
             secondaryValue: getFieldValue(selectedSecondary, field.key),
           }))
         : [],
-    [selectedSecondary],
+    [selectedSecondary, meeting],
   );
 
   if (isLoading || isError || !duplicates || duplicates.length === 0) {
