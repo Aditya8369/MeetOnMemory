@@ -43,6 +43,9 @@ import ImportanceRecalculationAdmin from "../components/admin/ImportanceRecalcul
 import AiUsageMetrics from "../components/admin/AiUsageMetrics.jsx";
 import MembershipRequests from "../components/organization/MembershipRequests.jsx";
 import ResourceManagement from "./Admin/ResourceManagement.jsx";
+import MemberWorkspace from "../components/admin/MemberWorkspace.jsx";
+import MeetingWorkspace from "../components/admin/MeetingWorkspace.jsx";
+import PolicyWorkspace from "../components/admin/PolicyWorkspace.jsx";
 
 import AppContent from "../context/AppContent.js";
 import { fetchPlatformStatus } from "../services/statusApi.js";
@@ -691,60 +694,26 @@ const AdminPanel = () => {
               <MembershipRequests organizationId={orgId} />
             </div>
           ) : activeModule === "members" ? (
-            <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-2xl p-6 shadow-sm space-y-4">
-              <div className="flex items-center justify-between">
-                <h3 className="text-lg font-bold text-slate-900 dark:text-white">
-                  Organization Members
-                </h3>
-                <button
-                  type="button"
-                  onClick={() => navigate("/admin/members")}
-                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 hover:bg-blue-100 dark:hover:bg-blue-900/50 cursor-pointer"
-                >
-                  <span>Full Management View</span>
-                  <ExternalLink className="w-3.5 h-3.5" />
-                </button>
-              </div>
-
-              {loadingModule ? (
-                <div className="flex justify-center py-10">
-                  <Loader2 className="w-6 h-6 animate-spin text-blue-600" />
-                </div>
-              ) : moduleData.members.length > 0 ? (
-                <div className="overflow-x-auto">
-                  <table className="w-full text-left text-sm">
-                    <thead>
-                      <tr className="border-b border-slate-100 dark:border-slate-800 text-xs uppercase text-slate-400 dark:text-slate-500">
-                        <th className="pb-3">User</th>
-                        <th className="pb-3">Email</th>
-                        <th className="pb-3">Role</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-                      {moduleData.members.map((m) => (
-                        <tr key={m._id || m.user?._id}>
-                          <td className="py-3 font-semibold text-slate-900 dark:text-white">
-                            {m.user?.name || m.name || "Member"}
-                          </td>
-                          <td className="py-3 text-slate-500 dark:text-slate-400">
-                            {m.user?.email || m.email || "—"}
-                          </td>
-                          <td className="py-3">
-                            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold uppercase bg-violet-50 dark:bg-violet-900/30 text-violet-700 dark:text-violet-300">
-                              {m.role || "member"}
-                            </span>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              ) : (
-                <div className="text-center py-8 text-sm text-slate-400 dark:text-slate-500">
-                  No members found.
-                </div>
-              )}
-            </div>
+            <MemberWorkspace
+              members={moduleData.members}
+              orgId={orgId}
+              loading={loadingModule}
+              onRefresh={() => {
+                organizationApi.getMembers().then((res) => {
+                  if (res.data?.members) {
+                    setModuleData((prev) => ({
+                      ...prev,
+                      members: res.data.members,
+                    }));
+                  }
+                });
+              }}
+              isAdmin={
+                userData?.role === "admin" ||
+                userData?.role === "owner" ||
+                userData?.role === "superadmin"
+              }
+            />
           ) : activeModule === "organizations" ? (
             <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-2xl p-6 shadow-sm space-y-4">
               <div className="flex items-center justify-between">
@@ -793,123 +762,46 @@ const AdminPanel = () => {
               )}
             </div>
           ) : activeModule === "meetings" ? (
-            <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-2xl p-6 shadow-sm space-y-4">
-              <div className="flex items-center justify-between gap-3 flex-wrap">
-                <h3 className="text-lg font-bold text-slate-900 dark:text-white">
-                  Meeting Records
-                </h3>
-                <div className="flex items-center gap-2">
-                  <button
-                    type="button"
-                    onClick={() => selectModule("embeddings")}
-                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-teal-50 dark:bg-teal-900/30 text-teal-700 dark:text-teal-300 hover:bg-teal-100 dark:hover:bg-teal-900/50 cursor-pointer"
-                  >
-                    <Database className="w-3.5 h-3.5" />
-                    Embedding reindex
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => navigate("/meetings")}
-                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-rose-50 dark:bg-rose-900/30 text-rose-700 dark:text-rose-300 hover:bg-rose-100 dark:hover:bg-rose-900/50 cursor-pointer"
-                  >
-                    <span>View All Meetings</span>
-                    <ExternalLink className="w-3.5 h-3.5" />
-                  </button>
-                </div>
-              </div>
-
-              {loadingModule ? (
-                <div className="flex justify-center py-10">
-                  <Loader2 className="w-6 h-6 animate-spin text-rose-600" />
-                </div>
-              ) : moduleData.meetings.length > 0 ? (
-                <div className="divide-y divide-slate-100 dark:divide-slate-800">
-                  {moduleData.meetings.slice(0, 10).map((m) => (
-                    <div
-                      key={m._id || m.id}
-                      className="py-3 flex items-center justify-between gap-4"
-                    >
-                      <div>
-                        <h4 className="font-semibold text-slate-900 dark:text-white">
-                          {m.title || "Untitled Meeting"}
-                        </h4>
-                        <p className="text-xs text-slate-400 dark:text-slate-500 flex items-center gap-1 mt-0.5">
-                          <Clock className="w-3 h-3" />
-                          {m.date
-                            ? new Date(m.date).toLocaleDateString()
-                            : "No date"}
-                          {m.embeddingIndex?.lastIndexedAt
-                            ? ` · indexed ${new Date(m.embeddingIndex.lastIndexedAt).toLocaleDateString()}`
-                            : ""}
-                          {m.embeddingIndex?.status
-                            ? ` · ${m.embeddingIndex.status}`
-                            : ""}
-                        </p>
-                        {m.embeddingIndex?.lastError ? (
-                          <p className="text-xs text-rose-500 mt-1">
-                            {m.embeddingIndex.lastError}
-                          </p>
-                        ) : null}
-                      </div>
-                      <span className="text-xs font-semibold px-2.5 py-0.5 rounded-full bg-rose-50 dark:bg-rose-900/30 text-rose-700 dark:text-rose-300">
-                        {m.status || "Recorded"}
-                      </span>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <div className="text-center py-8 text-sm text-slate-400 dark:text-slate-500">
-                  No meeting records found.
-                </div>
-              )}
-            </div>
+            <MeetingWorkspace
+              meetings={moduleData.meetings}
+              loading={loadingModule}
+              onRefresh={() => {
+                meetingApi.getAllMeetings().then((res) => {
+                  if (res.data?.meetings) {
+                    setModuleData((prev) => ({
+                      ...prev,
+                      meetings: res.data.meetings,
+                    }));
+                  }
+                });
+              }}
+              onOpenEmbeddings={() => selectModule("embeddings")}
+              isAdmin={
+                userData?.role === "admin" ||
+                userData?.role === "owner" ||
+                userData?.role === "superadmin"
+              }
+            />
           ) : activeModule === "policies" ? (
-            <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-2xl p-6 shadow-sm space-y-4">
-              <div className="flex items-center justify-between">
-                <h3 className="text-lg font-bold text-slate-900 dark:text-white">
-                  Compliance & Policies
-                </h3>
-                <button
-                  type="button"
-                  onClick={() => navigate("/policies")}
-                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-cyan-50 dark:bg-cyan-900/30 text-cyan-700 dark:text-cyan-300 hover:bg-cyan-100 dark:hover:bg-cyan-900/50 cursor-pointer"
-                >
-                  <span>Policy Repository</span>
-                  <ExternalLink className="w-3.5 h-3.5" />
-                </button>
-              </div>
-
-              {loadingModule ? (
-                <div className="flex justify-center py-10">
-                  <Loader2 className="w-6 h-6 animate-spin text-cyan-600" />
-                </div>
-              ) : moduleData.policies.length > 0 ? (
-                <div className="divide-y divide-slate-100 dark:divide-slate-800">
-                  {moduleData.policies.slice(0, 10).map((p) => (
-                    <div
-                      key={p._id || p.id}
-                      className="py-3 flex items-center justify-between gap-4"
-                    >
-                      <div>
-                        <h4 className="font-semibold text-slate-900 dark:text-white">
-                          {p.title || "Policy Document"}
-                        </h4>
-                        <p className="text-xs text-slate-400 dark:text-slate-500">
-                          {p.category || "General"} • v{p.version || "1.0"}
-                        </p>
-                      </div>
-                      <span className="text-xs font-semibold px-2.5 py-0.5 rounded-full bg-cyan-50 dark:bg-cyan-900/30 text-cyan-700 dark:text-cyan-300">
-                        {p.status || "Active"}
-                      </span>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <div className="text-center py-8 text-sm text-slate-400 dark:text-slate-500">
-                  No policies found.
-                </div>
-              )}
-            </div>
+            <PolicyWorkspace
+              policies={moduleData.policies}
+              loading={loadingModule}
+              onRefresh={() => {
+                policyApi.getPolicies().then((res) => {
+                  if (res.data?.policies) {
+                    setModuleData((prev) => ({
+                      ...prev,
+                      policies: res.data.policies,
+                    }));
+                  }
+                });
+              }}
+              isAdmin={
+                userData?.role === "admin" ||
+                userData?.role === "owner" ||
+                userData?.role === "superadmin"
+              }
+            />
           ) : activeModule === "reports" ? (
             <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-2xl p-6 shadow-sm space-y-4">
               <div className="flex items-center justify-between">
