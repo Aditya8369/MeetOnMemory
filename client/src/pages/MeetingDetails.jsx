@@ -64,6 +64,7 @@ import DebriefQAPanel from "../components/meetings/DebriefQAPanel";
 import DelegationPanel from "../components/meetings/DelegationPanel";
 import ParticipantContributions from "../components/MeetingDetails/ParticipantContributions";
 import ContributionSummaryPanel from "../components/MeetingDetails/ContributionSummaryPanel";
+import MeetingCostCard from "../components/meeting-details/MeetingCostCard";
 
 const MeetingDetails = () => {
   const { id } = useParams();
@@ -496,6 +497,7 @@ const MeetingDetails = () => {
           />
 
           <div className="mt-6 mb-6">
+            <MeetingCostCard meetingId={meeting._id} />
             <HealthScoreCard
               meetingId={meeting._id}
               organizationId={
