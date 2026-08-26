@@ -343,9 +343,7 @@
   "paths": {
     "/api/auth/logout": {
       "post": {
-        "tags": [
-          "Auth"
-        ],
+        "tags": ["Auth"],
         "summary": "POST /api/auth/logout",
         "security": [
           {
@@ -373,9 +371,7 @@
     },
     "/api/auth/sync-clerk-user": {
       "post": {
-        "tags": [
-          "Auth"
-        ],
+        "tags": ["Auth"],
         "summary": "POST /api/auth/sync-clerk-user",
         "security": [
           {
@@ -403,9 +399,7 @@
     },
     "/api/auth/user-data": {
       "get": {
-        "tags": [
-          "Auth"
-        ],
+        "tags": ["Auth"],
         "summary": "GET /api/auth/user-data",
         "security": [
           {
@@ -424,9 +418,7 @@
     },
     "/api/auth/is-auth": {
       "get": {
-        "tags": [
-          "Auth"
-        ],
+        "tags": ["Auth"],
         "summary": "GET /api/auth/is-auth",
         "security": [
           {
@@ -445,9 +437,7 @@
     },
     "/api/organization/{id}/invite": {
       "post": {
-        "tags": [
-          "Organization"
-        ],
+        "tags": ["Organization"],
         "summary": "POST /api/organization/{id}/invite",
         "security": [
           {
@@ -475,9 +465,7 @@
     },
     "/api/organization/invite/{token}/accept": {
       "post": {
-        "tags": [
-          "Organization"
-        ],
+        "tags": ["Organization"],
         "summary": "POST /api/organization/invite/{token}/accept",
         "security": [
           {
@@ -505,9 +493,7 @@
     },
     "/api/organization/{id}/members/{userId}/role": {
       "patch": {
-        "tags": [
-          "Organization"
-        ],
+        "tags": ["Organization"],
         "summary": "PATCH /api/organization/{id}/members/{userId}/role",
         "security": [
           {
@@ -535,9 +521,7 @@
     },
     "/api/organization/{id}/members/{userId}": {
       "delete": {
-        "tags": [
-          "Organization"
-        ],
+        "tags": ["Organization"],
         "summary": "DELETE /api/organization/{id}/members/{userId}",
         "security": [
           {
@@ -556,9 +540,7 @@
     },
     "/api/organization/{id}/audit-log": {
       "get": {
-        "tags": [
-          "Organization"
-        ],
+        "tags": ["Organization"],
         "summary": "GET /api/organization/{id}/audit-log",
         "security": [
           {
@@ -577,9 +559,7 @@
     },
     "/api/organization/{id}/audit-logs": {
       "get": {
-        "tags": [
-          "Organization"
-        ],
+        "tags": ["Organization"],
         "summary": "GET /api/organization/{id}/audit-logs",
         "security": [
           {
@@ -598,9 +578,7 @@
     },
     "/api/organization/{id}/audit-log-exports/{exportId}": {
       "get": {
-        "tags": [
-          "Organization"
-        ],
+        "tags": ["Organization"],
         "summary": "GET /api/organization/{id}/audit-log-exports/{exportId}",
         "security": [
           {
@@ -619,9 +597,7 @@
     },
     "/api/organization/{id}/audit-log-exports/{exportId}/download": {
       "get": {
-        "tags": [
-          "Organization"
-        ],
+        "tags": ["Organization"],
         "summary": "GET /api/organization/{id}/audit-log-exports/{exportId}/download",
         "security": [
           {
@@ -640,9 +616,7 @@
     },
     "/api/organization/user": {
       "get": {
-        "tags": [
-          "Organization"
-        ],
+        "tags": ["Organization"],
         "summary": "GET /api/organization/user",
         "security": [
           {
@@ -661,9 +635,7 @@
     },
     "/api/organization/create-or-join": {
       "post": {
-        "tags": [
-          "Organization"
-        ],
+        "tags": ["Organization"],
         "summary": "POST /api/organization/create-or-join",
         "security": [
           {
@@ -691,9 +663,7 @@
     },
     "/api/organization/join": {
       "post": {
-        "tags": [
-          "Organization"
-        ],
+        "tags": ["Organization"],
         "summary": "POST /api/organization/join",
         "security": [
           {
@@ -721,9 +691,7 @@
     },
     "/api/organization/select": {
       "post": {
-        "tags": [
-          "Organization"
-        ],
+        "tags": ["Organization"],
         "summary": "POST /api/organization/select",
         "security": [
           {
@@ -751,9 +719,7 @@
     },
     "/api/organization": {
       "get": {
-        "tags": [
-          "Organization"
-        ],
+        "tags": ["Organization"],
         "summary": "GET /api/organization",
         "security": [
           {
@@ -770,9 +736,7 @@
         }
       },
       "post": {
-        "tags": [
-          "Organization"
-        ],
+        "tags": ["Organization"],
         "summary": "POST /api/organization",
         "security": [
           {
@@ -800,9 +764,7 @@
     },
     "/api/organization/public/{slug}": {
       "get": {
-        "tags": [
-          "Organization"
-        ],
+        "tags": ["Organization"],
         "summary": "GET /api/organization/public/{slug}",
         "security": [
           {
@@ -821,9 +783,7 @@
     },
     "/api/organization/browse": {
       "get": {
-        "tags": [
-          "Organization"
-        ],
+        "tags": ["Organization"],
         "summary": "GET /api/organization/browse",
         "security": [
           {
@@ -842,9 +802,7 @@
     },
     "/api/organization/search": {
       "get": {
-        "tags": [
-          "Organization"
-        ],
+        "tags": ["Organization"],
         "summary": "GET /api/organization/search",
         "security": [
           {
@@ -863,9 +821,7 @@
     },
     "/api/organization/current/settings": {
       "get": {
-        "tags": [
-          "Organization"
-        ],
+        "tags": ["Organization"],
         "summary": "GET /api/organization/current/settings",
         "security": [
           {
@@ -884,9 +840,7 @@
     },
     "/api/organization/settings": {
       "get": {
-        "tags": [
-          "Organization"
-        ],
+        "tags": ["Organization"],
         "summary": "GET /api/organization/settings",
         "security": [
           {
@@ -905,9 +859,7 @@
     },
     "/api/organization/paginated": {
       "get": {
-        "tags": [
-          "Organization"
-        ],
+        "tags": ["Organization"],
         "summary": "GET /api/organization/paginated",
         "security": [
           {
@@ -926,9 +878,7 @@
     },
     "/api/organization/{idOrSlug}": {
       "get": {
-        "tags": [
-          "Organization"
-        ],
+        "tags": ["Organization"],
         "summary": "GET /api/organization/{idOrSlug}",
         "security": [
           {
@@ -947,9 +897,7 @@
     },
     "/api/organization/{id}": {
       "put": {
-        "tags": [
-          "Organization"
-        ],
+        "tags": ["Organization"],
         "summary": "PUT /api/organization/{id}",
         "security": [
           {
@@ -975,9 +923,7 @@
         }
       },
       "delete": {
-        "tags": [
-          "Organization"
-        ],
+        "tags": ["Organization"],
         "summary": "DELETE /api/organization/{id}",
         "security": [
           {
@@ -996,9 +942,7 @@
     },
     "/api/organization/{id}/members": {
       "get": {
-        "tags": [
-          "Organization"
-        ],
+        "tags": ["Organization"],
         "summary": "GET /api/organization/{id}/members",
         "security": [
           {
@@ -1017,9 +961,7 @@
     },
     "/api/organization/current/leaderboard": {
       "get": {
-        "tags": [
-          "Organization"
-        ],
+        "tags": ["Organization"],
         "summary": "GET /api/organization/current/leaderboard",
         "security": [
           {
@@ -1038,9 +980,7 @@
     },
     "/api/organization/{id}/leaderboard": {
       "get": {
-        "tags": [
-          "Organization"
-        ],
+        "tags": ["Organization"],
         "summary": "GET /api/organization/{id}/leaderboard",
         "security": [
           {
@@ -1059,9 +999,7 @@
     },
     "/api/organizations/{id}/invite": {
       "post": {
-        "tags": [
-          "Organizations"
-        ],
+        "tags": ["Organizations"],
         "summary": "POST /api/organizations/{id}/invite",
         "security": [
           {
@@ -1089,9 +1027,7 @@
     },
     "/api/organizations/invite/{token}/accept": {
       "post": {
-        "tags": [
-          "Organizations"
-        ],
+        "tags": ["Organizations"],
         "summary": "POST /api/organizations/invite/{token}/accept",
         "security": [
           {
@@ -1119,9 +1055,7 @@
     },
     "/api/organizations/{id}/members/{userId}/role": {
       "patch": {
-        "tags": [
-          "Organizations"
-        ],
+        "tags": ["Organizations"],
         "summary": "PATCH /api/organizations/{id}/members/{userId}/role",
         "security": [
           {
@@ -1149,9 +1083,7 @@
     },
     "/api/organizations/{id}/members/{userId}": {
       "delete": {
-        "tags": [
-          "Organizations"
-        ],
+        "tags": ["Organizations"],
         "summary": "DELETE /api/organizations/{id}/members/{userId}",
         "security": [
           {
@@ -1170,9 +1102,7 @@
     },
     "/api/organizations/{id}/audit-log": {
       "get": {
-        "tags": [
-          "Organizations"
-        ],
+        "tags": ["Organizations"],
         "summary": "GET /api/organizations/{id}/audit-log",
         "security": [
           {
@@ -1191,9 +1121,7 @@
     },
     "/api/organizations/{id}/audit-logs": {
       "get": {
-        "tags": [
-          "Organizations"
-        ],
+        "tags": ["Organizations"],
         "summary": "GET /api/organizations/{id}/audit-logs",
         "security": [
           {
@@ -1212,9 +1140,7 @@
     },
     "/api/organizations/{id}/audit-log-exports/{exportId}": {
       "get": {
-        "tags": [
-          "Organizations"
-        ],
+        "tags": ["Organizations"],
         "summary": "GET /api/organizations/{id}/audit-log-exports/{exportId}",
         "security": [
           {
@@ -1233,9 +1159,7 @@
     },
     "/api/organizations/{id}/audit-log-exports/{exportId}/download": {
       "get": {
-        "tags": [
-          "Organizations"
-        ],
+        "tags": ["Organizations"],
         "summary": "GET /api/organizations/{id}/audit-log-exports/{exportId}/download",
         "security": [
           {
@@ -1254,9 +1178,7 @@
     },
     "/api/organizations/user": {
       "get": {
-        "tags": [
-          "Organizations"
-        ],
+        "tags": ["Organizations"],
         "summary": "GET /api/organizations/user",
         "security": [
           {
@@ -1275,9 +1197,7 @@
     },
     "/api/organizations/create-or-join": {
       "post": {
-        "tags": [
-          "Organizations"
-        ],
+        "tags": ["Organizations"],
         "summary": "POST /api/organizations/create-or-join",
         "security": [
           {
@@ -1305,9 +1225,7 @@
     },
     "/api/organizations/join": {
       "post": {
-        "tags": [
-          "Organizations"
-        ],
+        "tags": ["Organizations"],
         "summary": "POST /api/organizations/join",
         "security": [
           {
@@ -1335,9 +1253,7 @@
     },
     "/api/organizations/select": {
       "post": {
-        "tags": [
-          "Organizations"
-        ],
+        "tags": ["Organizations"],
         "summary": "POST /api/organizations/select",
         "security": [
           {
@@ -1365,9 +1281,7 @@
     },
     "/api/organizations": {
       "get": {
-        "tags": [
-          "Organizations"
-        ],
+        "tags": ["Organizations"],
         "summary": "GET /api/organizations",
         "security": [
           {
@@ -1384,9 +1298,7 @@
         }
       },
       "post": {
-        "tags": [
-          "Organizations"
-        ],
+        "tags": ["Organizations"],
         "summary": "POST /api/organizations",
         "security": [
           {
@@ -1414,9 +1326,7 @@
     },
     "/api/organizations/public/{slug}": {
       "get": {
-        "tags": [
-          "Organizations"
-        ],
+        "tags": ["Organizations"],
         "summary": "GET /api/organizations/public/{slug}",
         "security": [
           {
@@ -1435,9 +1345,7 @@
     },
     "/api/organizations/browse": {
       "get": {
-        "tags": [
-          "Organizations"
-        ],
+        "tags": ["Organizations"],
         "summary": "GET /api/organizations/browse",
         "security": [
           {
@@ -1456,9 +1364,7 @@
     },
     "/api/organizations/search": {
       "get": {
-        "tags": [
-          "Organizations"
-        ],
+        "tags": ["Organizations"],
         "summary": "GET /api/organizations/search",
         "security": [
           {
@@ -1477,9 +1383,7 @@
     },
     "/api/organizations/current/settings": {
       "get": {
-        "tags": [
-          "Organizations"
-        ],
+        "tags": ["Organizations"],
         "summary": "GET /api/organizations/current/settings",
         "security": [
           {
@@ -1498,9 +1402,7 @@
     },
     "/api/organizations/settings": {
       "get": {
-        "tags": [
-          "Organizations"
-        ],
+        "tags": ["Organizations"],
         "summary": "GET /api/organizations/settings",
         "security": [
           {
@@ -1519,9 +1421,7 @@
     },
     "/api/organizations/paginated": {
       "get": {
-        "tags": [
-          "Organizations"
-        ],
+        "tags": ["Organizations"],
         "summary": "GET /api/organizations/paginated",
         "security": [
           {
@@ -1540,9 +1440,7 @@
     },
     "/api/organizations/{idOrSlug}": {
       "get": {
-        "tags": [
-          "Organizations"
-        ],
+        "tags": ["Organizations"],
         "summary": "GET /api/organizations/{idOrSlug}",
         "security": [
           {
@@ -1561,9 +1459,7 @@
     },
     "/api/organizations/{id}": {
       "put": {
-        "tags": [
-          "Organizations"
-        ],
+        "tags": ["Organizations"],
         "summary": "PUT /api/organizations/{id}",
         "security": [
           {
@@ -1589,9 +1485,7 @@
         }
       },
       "delete": {
-        "tags": [
-          "Organizations"
-        ],
+        "tags": ["Organizations"],
         "summary": "DELETE /api/organizations/{id}",
         "security": [
           {
@@ -1610,9 +1504,7 @@
     },
     "/api/organizations/{id}/members": {
       "get": {
-        "tags": [
-          "Organizations"
-        ],
+        "tags": ["Organizations"],
         "summary": "GET /api/organizations/{id}/members",
         "security": [
           {
@@ -1631,9 +1523,7 @@
     },
     "/api/organizations/current/leaderboard": {
       "get": {
-        "tags": [
-          "Organizations"
-        ],
+        "tags": ["Organizations"],
         "summary": "GET /api/organizations/current/leaderboard",
         "security": [
           {
@@ -1652,9 +1542,7 @@
     },
     "/api/organizations/{id}/leaderboard": {
       "get": {
-        "tags": [
-          "Organizations"
-        ],
+        "tags": ["Organizations"],
         "summary": "GET /api/organizations/{id}/leaderboard",
         "security": [
           {
@@ -1673,9 +1561,7 @@
     },
     "/api/membership": {
       "get": {
-        "tags": [
-          "Membership"
-        ],
+        "tags": ["Membership"],
         "summary": "GET /api/membership",
         "security": [
           {
@@ -1694,9 +1580,7 @@
     },
     "/api/membership/organization/{organizationId}": {
       "get": {
-        "tags": [
-          "Membership"
-        ],
+        "tags": ["Membership"],
         "summary": "GET /api/membership/organization/{organizationId}",
         "security": [
           {
@@ -1715,9 +1599,7 @@
     },
     "/api/membership/{id}/role": {
       "patch": {
-        "tags": [
-          "Membership"
-        ],
+        "tags": ["Membership"],
         "summary": "PATCH /api/membership/{id}/role",
         "security": [
           {
@@ -1745,9 +1627,7 @@
     },
     "/api/membership/{id}": {
       "delete": {
-        "tags": [
-          "Membership"
-        ],
+        "tags": ["Membership"],
         "summary": "DELETE /api/membership/{id}",
         "security": [
           {
@@ -1766,9 +1646,7 @@
     },
     "/api/membership/leave/{organizationId}": {
       "post": {
-        "tags": [
-          "Membership"
-        ],
+        "tags": ["Membership"],
         "summary": "POST /api/membership/leave/{organizationId}",
         "security": [
           {
@@ -1796,9 +1674,7 @@
     },
     "/api/memberships": {
       "get": {
-        "tags": [
-          "Memberships"
-        ],
+        "tags": ["Memberships"],
         "summary": "GET /api/memberships",
         "security": [
           {
@@ -1817,9 +1693,7 @@
     },
     "/api/memberships/organization/{organizationId}": {
       "get": {
-        "tags": [
-          "Memberships"
-        ],
+        "tags": ["Memberships"],
         "summary": "GET /api/memberships/organization/{organizationId}",
         "security": [
           {
@@ -1838,9 +1712,7 @@
     },
     "/api/memberships/{id}/role": {
       "patch": {
-        "tags": [
-          "Memberships"
-        ],
+        "tags": ["Memberships"],
         "summary": "PATCH /api/memberships/{id}/role",
         "security": [
           {
@@ -1868,9 +1740,7 @@
     },
     "/api/memberships/{id}": {
       "delete": {
-        "tags": [
-          "Memberships"
-        ],
+        "tags": ["Memberships"],
         "summary": "DELETE /api/memberships/{id}",
         "security": [
           {
@@ -1889,9 +1759,7 @@
     },
     "/api/memberships/leave/{organizationId}": {
       "post": {
-        "tags": [
-          "Memberships"
-        ],
+        "tags": ["Memberships"],
         "summary": "POST /api/memberships/leave/{organizationId}",
         "security": [
           {
@@ -1919,9 +1787,7 @@
     },
     "/api/invitation": {
       "post": {
-        "tags": [
-          "Invitation"
-        ],
+        "tags": ["Invitation"],
         "summary": "POST /api/invitation",
         "security": [
           {
@@ -1949,9 +1815,7 @@
     },
     "/api/invitation/bulk": {
       "post": {
-        "tags": [
-          "Invitation"
-        ],
+        "tags": ["Invitation"],
         "summary": "POST /api/invitation/bulk",
         "security": [
           {
@@ -1979,9 +1843,7 @@
     },
     "/api/invitation/organization/{organizationId}": {
       "get": {
-        "tags": [
-          "Invitation"
-        ],
+        "tags": ["Invitation"],
         "summary": "GET /api/invitation/organization/{organizationId}",
         "security": [
           {
@@ -2000,9 +1862,7 @@
     },
     "/api/invitation/user": {
       "get": {
-        "tags": [
-          "Invitation"
-        ],
+        "tags": ["Invitation"],
         "summary": "GET /api/invitation/user",
         "security": [
           {
@@ -2021,9 +1881,7 @@
     },
     "/api/invitation/{token}/accept": {
       "post": {
-        "tags": [
-          "Invitation"
-        ],
+        "tags": ["Invitation"],
         "summary": "POST /api/invitation/{token}/accept",
         "security": [
           {
@@ -2051,9 +1909,7 @@
     },
     "/api/invitation/{token}/reject": {
       "post": {
-        "tags": [
-          "Invitation"
-        ],
+        "tags": ["Invitation"],
         "summary": "POST /api/invitation/{token}/reject",
         "security": [
           {
@@ -2081,9 +1937,7 @@
     },
     "/api/invitation/{id}": {
       "delete": {
-        "tags": [
-          "Invitation"
-        ],
+        "tags": ["Invitation"],
         "summary": "DELETE /api/invitation/{id}",
         "security": [
           {
@@ -2102,9 +1956,7 @@
     },
     "/api/invitation/{id}/resend": {
       "post": {
-        "tags": [
-          "Invitation"
-        ],
+        "tags": ["Invitation"],
         "summary": "POST /api/invitation/{id}/resend",
         "security": [
           {
@@ -2132,9 +1984,7 @@
     },
     "/api/invitation/{id}/expire": {
       "post": {
-        "tags": [
-          "Invitation"
-        ],
+        "tags": ["Invitation"],
         "summary": "POST /api/invitation/{id}/expire",
         "security": [
           {
@@ -2162,9 +2012,7 @@
     },
     "/api/invitation/{token}": {
       "get": {
-        "tags": [
-          "Invitation"
-        ],
+        "tags": ["Invitation"],
         "summary": "GET /api/invitation/{token}",
         "security": [
           {
@@ -2183,9 +2031,7 @@
     },
     "/api/invitations": {
       "post": {
-        "tags": [
-          "Invitations"
-        ],
+        "tags": ["Invitations"],
         "summary": "POST /api/invitations",
         "security": [
           {
@@ -2213,9 +2059,7 @@
     },
     "/api/invitations/bulk": {
       "post": {
-        "tags": [
-          "Invitations"
-        ],
+        "tags": ["Invitations"],
         "summary": "POST /api/invitations/bulk",
         "security": [
           {
@@ -2243,9 +2087,7 @@
     },
     "/api/invitations/organization/{organizationId}": {
       "get": {
-        "tags": [
-          "Invitations"
-        ],
+        "tags": ["Invitations"],
         "summary": "GET /api/invitations/organization/{organizationId}",
         "security": [
           {
@@ -2264,9 +2106,7 @@
     },
     "/api/invitations/user": {
       "get": {
-        "tags": [
-          "Invitations"
-        ],
+        "tags": ["Invitations"],
         "summary": "GET /api/invitations/user",
         "security": [
           {
@@ -2285,9 +2125,7 @@
     },
     "/api/invitations/{token}/accept": {
       "post": {
-        "tags": [
-          "Invitations"
-        ],
+        "tags": ["Invitations"],
         "summary": "POST /api/invitations/{token}/accept",
         "security": [
           {
@@ -2315,9 +2153,7 @@
     },
     "/api/invitations/{token}/reject": {
       "post": {
-        "tags": [
-          "Invitations"
-        ],
+        "tags": ["Invitations"],
         "summary": "POST /api/invitations/{token}/reject",
         "security": [
           {
@@ -2345,9 +2181,7 @@
     },
     "/api/invitations/{id}": {
       "delete": {
-        "tags": [
-          "Invitations"
-        ],
+        "tags": ["Invitations"],
         "summary": "DELETE /api/invitations/{id}",
         "security": [
           {
@@ -2366,9 +2200,7 @@
     },
     "/api/invitations/{id}/resend": {
       "post": {
-        "tags": [
-          "Invitations"
-        ],
+        "tags": ["Invitations"],
         "summary": "POST /api/invitations/{id}/resend",
         "security": [
           {
@@ -2396,9 +2228,7 @@
     },
     "/api/invitations/{id}/expire": {
       "post": {
-        "tags": [
-          "Invitations"
-        ],
+        "tags": ["Invitations"],
         "summary": "POST /api/invitations/{id}/expire",
         "security": [
           {
@@ -2426,9 +2256,7 @@
     },
     "/api/invitations/{token}": {
       "get": {
-        "tags": [
-          "Invitations"
-        ],
+        "tags": ["Invitations"],
         "summary": "GET /api/invitations/{token}",
         "security": [
           {
@@ -2447,9 +2275,7 @@
     },
     "/api/meetings/timer/{meetingId}/agenda/{itemId}/start": {
       "put": {
-        "tags": [
-          "Meetings"
-        ],
+        "tags": ["Meetings"],
         "summary": "PUT /api/meetings/timer/{meetingId}/agenda/{itemId}/start",
         "security": [
           {
@@ -2477,9 +2303,7 @@
     },
     "/api/meetings/timer/{meetingId}/agenda/{itemId}/stop": {
       "put": {
-        "tags": [
-          "Meetings"
-        ],
+        "tags": ["Meetings"],
         "summary": "PUT /api/meetings/timer/{meetingId}/agenda/{itemId}/stop",
         "security": [
           {
@@ -2507,9 +2331,7 @@
     },
     "/api/meetings/timer/{meetingId}/agenda/{itemId}/skip": {
       "put": {
-        "tags": [
-          "Meetings"
-        ],
+        "tags": ["Meetings"],
         "summary": "PUT /api/meetings/timer/{meetingId}/agenda/{itemId}/skip",
         "security": [
           {
@@ -2537,9 +2359,7 @@
     },
     "/api/meetings/timer/{meetingId}/pacing": {
       "get": {
-        "tags": [
-          "Meetings"
-        ],
+        "tags": ["Meetings"],
         "summary": "GET /api/meetings/timer/{meetingId}/pacing",
         "security": [
           {
@@ -2558,9 +2378,7 @@
     },
     "/api/meetings/:meetingId/checklist": {
       "post": {
-        "tags": [
-          "Meetings"
-        ],
+        "tags": ["Meetings"],
         "summary": "POST /api/meetings/:meetingId/checklist",
         "security": [
           {
@@ -2586,9 +2404,7 @@
         }
       },
       "get": {
-        "tags": [
-          "Meetings"
-        ],
+        "tags": ["Meetings"],
         "summary": "GET /api/meetings/:meetingId/checklist",
         "security": [
           {
@@ -2605,9 +2421,7 @@
         }
       },
       "delete": {
-        "tags": [
-          "Meetings"
-        ],
+        "tags": ["Meetings"],
         "summary": "DELETE /api/meetings/:meetingId/checklist",
         "security": [
           {
@@ -2626,9 +2440,7 @@
     },
     "/api/meetings/{meetingId}/checklist/toggle": {
       "patch": {
-        "tags": [
-          "Meetings"
-        ],
+        "tags": ["Meetings"],
         "summary": "PATCH /api/meetings/{meetingId}/checklist/toggle",
         "security": [
           {
@@ -2656,9 +2468,7 @@
     },
     "/api/meetings/{meetingId}/checklist/readiness": {
       "get": {
-        "tags": [
-          "Meetings"
-        ],
+        "tags": ["Meetings"],
         "summary": "GET /api/meetings/{meetingId}/checklist/readiness",
         "security": [
           {
@@ -2677,9 +2487,7 @@
     },
     "/api/meetings/{id}/duplicates/merge": {
       "post": {
-        "tags": [
-          "Meetings"
-        ],
+        "tags": ["Meetings"],
         "summary": "POST /api/meetings/{id}/duplicates/merge",
         "security": [
           {
@@ -2707,9 +2515,7 @@
     },
     "/api/meetings/{id}/duplicates/rollback/{mergeAuditId}": {
       "post": {
-        "tags": [
-          "Meetings"
-        ],
+        "tags": ["Meetings"],
         "summary": "POST /api/meetings/{id}/duplicates/rollback/{mergeAuditId}",
         "security": [
           {
@@ -2737,9 +2543,7 @@
     },
     "/api/delegations": {
       "post": {
-        "tags": [
-          "Delegations"
-        ],
+        "tags": ["Delegations"],
         "summary": "POST /api/delegations",
         "security": [
           {
@@ -2767,9 +2571,7 @@
     },
     "/api/delegations/my-delegations": {
       "get": {
-        "tags": [
-          "Delegations"
-        ],
+        "tags": ["Delegations"],
         "summary": "GET /api/delegations/my-delegations",
         "security": [
           {
@@ -2788,9 +2590,7 @@
     },
     "/api/delegations/meeting/{meetingId}": {
       "get": {
-        "tags": [
-          "Delegations"
-        ],
+        "tags": ["Delegations"],
         "summary": "GET /api/delegations/meeting/{meetingId}",
         "security": [
           {
@@ -2809,9 +2609,7 @@
     },
     "/api/delegations/{id}/approve": {
       "post": {
-        "tags": [
-          "Delegations"
-        ],
+        "tags": ["Delegations"],
         "summary": "POST /api/delegations/{id}/approve",
         "security": [
           {
@@ -2839,9 +2637,7 @@
     },
     "/api/delegations/{id}/reject": {
       "post": {
-        "tags": [
-          "Delegations"
-        ],
+        "tags": ["Delegations"],
         "summary": "POST /api/delegations/{id}/reject",
         "security": [
           {
@@ -2869,9 +2665,7 @@
     },
     "/api/delegations/{id}/revoke": {
       "post": {
-        "tags": [
-          "Delegations"
-        ],
+        "tags": ["Delegations"],
         "summary": "POST /api/delegations/{id}/revoke",
         "security": [
           {
@@ -2899,9 +2693,7 @@
     },
     "/api/meetings/:meetingId/quiz": {
       "get": {
-        "tags": [
-          "Meetings"
-        ],
+        "tags": ["Meetings"],
         "summary": "GET /api/meetings/:meetingId/quiz",
         "security": [
           {
@@ -2920,9 +2712,7 @@
     },
     "/api/meetings/{meetingId}/quiz/submit": {
       "post": {
-        "tags": [
-          "Meetings"
-        ],
+        "tags": ["Meetings"],
         "summary": "POST /api/meetings/{meetingId}/quiz/submit",
         "security": [
           {
@@ -2950,9 +2740,7 @@
     },
     "/api/meetings/{meetingId}/quiz/analytics": {
       "get": {
-        "tags": [
-          "Meetings"
-        ],
+        "tags": ["Meetings"],
         "summary": "GET /api/meetings/{meetingId}/quiz/analytics",
         "security": [
           {
@@ -2971,9 +2759,7 @@
     },
     "/api/meetings/{meetingId}/recording/start": {
       "post": {
-        "tags": [
-          "Meetings"
-        ],
+        "tags": ["Meetings"],
         "summary": "POST /api/meetings/{meetingId}/recording/start",
         "security": [
           {
@@ -3001,9 +2787,7 @@
     },
     "/api/meetings/{meetingId}/recording/stop": {
       "post": {
-        "tags": [
-          "Meetings"
-        ],
+        "tags": ["Meetings"],
         "summary": "POST /api/meetings/{meetingId}/recording/stop",
         "security": [
           {
@@ -3031,9 +2815,7 @@
     },
     "/api/meetings/{meetingId}/transcript/upload": {
       "post": {
-        "tags": [
-          "Meetings"
-        ],
+        "tags": ["Meetings"],
         "summary": "POST /api/meetings/{meetingId}/transcript/upload",
         "security": [
           {
@@ -3061,9 +2843,7 @@
     },
     "/api/meetings/{meetingId}/transcript/chunk": {
       "post": {
-        "tags": [
-          "Meetings"
-        ],
+        "tags": ["Meetings"],
         "summary": "POST /api/meetings/{meetingId}/transcript/chunk",
         "security": [
           {
@@ -3091,9 +2871,7 @@
     },
     "/api/meetings/{meetingId}/transcript": {
       "get": {
-        "tags": [
-          "Meetings"
-        ],
+        "tags": ["Meetings"],
         "summary": "GET /api/meetings/{meetingId}/transcript",
         "security": [
           {
@@ -3112,9 +2890,7 @@
     },
     "/api/meetings/{meetingId}/transcript/encrypted": {
       "post": {
-        "tags": [
-          "Meetings"
-        ],
+        "tags": ["Meetings"],
         "summary": "POST /api/meetings/{meetingId}/transcript/encrypted",
         "security": [
           {
@@ -3142,9 +2918,7 @@
     },
     "/api/meetings/{meetingId}/transcript/retry": {
       "post": {
-        "tags": [
-          "Meetings"
-        ],
+        "tags": ["Meetings"],
         "summary": "POST /api/meetings/{meetingId}/transcript/retry",
         "security": [
           {
@@ -3172,9 +2946,7 @@
     },
     "/api/meetings/{meetingId}/roles": {
       "get": {
-        "tags": [
-          "Meetings"
-        ],
+        "tags": ["Meetings"],
         "summary": "GET /api/meetings/{meetingId}/roles",
         "security": [
           {
@@ -3193,9 +2965,7 @@
     },
     "/api/meetings/upload": {
       "post": {
-        "tags": [
-          "Meetings"
-        ],
+        "tags": ["Meetings"],
         "summary": "POST /api/meetings/upload",
         "security": [
           {
@@ -3223,9 +2993,7 @@
     },
     "/api/meetings/summarize": {
       "post": {
-        "tags": [
-          "Meetings"
-        ],
+        "tags": ["Meetings"],
         "summary": "POST /api/meetings/summarize",
         "security": [
           {
@@ -3253,9 +3021,7 @@
     },
     "/api/meetings/all": {
       "get": {
-        "tags": [
-          "Meetings"
-        ],
+        "tags": ["Meetings"],
         "summary": "GET /api/meetings/all",
         "security": [
           {
@@ -3274,9 +3040,7 @@
     },
     "/api/meetings/bookmarked": {
       "get": {
-        "tags": [
-          "Meetings"
-        ],
+        "tags": ["Meetings"],
         "summary": "GET /api/meetings/bookmarked",
         "security": [
           {
@@ -3295,9 +3059,7 @@
     },
     "/api/meetings/{id}/bookmark": {
       "post": {
-        "tags": [
-          "Meetings"
-        ],
+        "tags": ["Meetings"],
         "summary": "POST /api/meetings/{id}/bookmark",
         "security": [
           {
@@ -3323,9 +3085,7 @@
         }
       },
       "delete": {
-        "tags": [
-          "Meetings"
-        ],
+        "tags": ["Meetings"],
         "summary": "DELETE /api/meetings/{id}/bookmark",
         "security": [
           {
@@ -3342,9 +3102,7 @@
         }
       },
       "get": {
-        "tags": [
-          "Meetings"
-        ],
+        "tags": ["Meetings"],
         "summary": "GET /api/meetings/{id}/bookmark",
         "security": [
           {
@@ -3363,9 +3121,7 @@
     },
     "/api/meetings/invite/{code}": {
       "get": {
-        "tags": [
-          "Meetings"
-        ],
+        "tags": ["Meetings"],
         "summary": "GET /api/meetings/invite/{code}",
         "security": [
           {
@@ -3384,9 +3140,7 @@
     },
     "/api/meetings/{id}/invite": {
       "get": {
-        "tags": [
-          "Meetings"
-        ],
+        "tags": ["Meetings"],
         "summary": "GET /api/meetings/{id}/invite",
         "security": [
           {
@@ -3403,9 +3157,7 @@
         }
       },
       "patch": {
-        "tags": [
-          "Meetings"
-        ],
+        "tags": ["Meetings"],
         "summary": "PATCH /api/meetings/{id}/invite",
         "security": [
           {
@@ -3433,9 +3185,7 @@
     },
     "/api/meetings/{id}/invite/regenerate": {
       "post": {
-        "tags": [
-          "Meetings"
-        ],
+        "tags": ["Meetings"],
         "summary": "POST /api/meetings/{id}/invite/regenerate",
         "security": [
           {
@@ -3463,9 +3213,7 @@
     },
     "/api/meetings/trash": {
       "get": {
-        "tags": [
-          "Meetings"
-        ],
+        "tags": ["Meetings"],
         "summary": "GET /api/meetings/trash",
         "security": [
           {
@@ -3484,9 +3232,7 @@
     },
     "/api/meetings/trash/purge-preview": {
       "get": {
-        "tags": [
-          "Meetings"
-        ],
+        "tags": ["Meetings"],
         "summary": "GET /api/meetings/trash/purge-preview",
         "security": [
           {
@@ -3505,9 +3251,7 @@
     },
     "/api/meetings/trash/purge": {
       "delete": {
-        "tags": [
-          "Meetings"
-        ],
+        "tags": ["Meetings"],
         "summary": "DELETE /api/meetings/trash/purge",
         "security": [
           {
@@ -3526,9 +3270,7 @@
     },
     "/api/meetings/{id}/restore-deleted": {
       "post": {
-        "tags": [
-          "Meetings"
-        ],
+        "tags": ["Meetings"],
         "summary": "POST /api/meetings/{id}/restore-deleted",
         "security": [
           {
@@ -3556,9 +3298,7 @@
     },
     "/api/meetings/{id}/permanent": {
       "delete": {
-        "tags": [
-          "Meetings"
-        ],
+        "tags": ["Meetings"],
         "summary": "DELETE /api/meetings/{id}/permanent",
         "security": [
           {
@@ -3577,9 +3317,7 @@
     },
     "/api/meetings/{id}": {
       "get": {
-        "tags": [
-          "Meetings"
-        ],
+        "tags": ["Meetings"],
         "summary": "GET /api/meetings/{id}",
         "security": [
           {
@@ -3596,9 +3334,7 @@
         }
       },
       "patch": {
-        "tags": [
-          "Meetings"
-        ],
+        "tags": ["Meetings"],
         "summary": "PATCH /api/meetings/{id}",
         "security": [
           {
@@ -3624,9 +3360,7 @@
         }
       },
       "put": {
-        "tags": [
-          "Meetings"
-        ],
+        "tags": ["Meetings"],
         "summary": "PUT /api/meetings/{id}",
         "security": [
           {
@@ -3654,9 +3388,7 @@
     },
     "/api/meetings/{id}/export": {
       "get": {
-        "tags": [
-          "Meetings"
-        ],
+        "tags": ["Meetings"],
         "summary": "GET /api/meetings/{id}/export",
         "security": [
           {
@@ -3675,9 +3407,7 @@
     },
     "/api/meetings/{id}/archive": {
       "patch": {
-        "tags": [
-          "Meetings"
-        ],
+        "tags": ["Meetings"],
         "summary": "PATCH /api/meetings/{id}/archive",
         "security": [
           {
@@ -3705,9 +3435,7 @@
     },
     "/api/meetings/{id}/restore": {
       "patch": {
-        "tags": [
-          "Meetings"
-        ],
+        "tags": ["Meetings"],
         "summary": "PATCH /api/meetings/{id}/restore",
         "security": [
           {
@@ -3735,9 +3463,7 @@
     },
     "/api/meetings/delete/{id}": {
       "delete": {
-        "tags": [
-          "Meetings"
-        ],
+        "tags": ["Meetings"],
         "summary": "DELETE /api/meetings/delete/{id}",
         "security": [
           {
@@ -3756,9 +3482,7 @@
     },
     "/api/meetings/create": {
       "post": {
-        "tags": [
-          "Meetings"
-        ],
+        "tags": ["Meetings"],
         "summary": "POST /api/meetings/create",
         "security": [
           {
@@ -3786,9 +3510,7 @@
     },
     "/api/meetings/upload-audio": {
       "post": {
-        "tags": [
-          "Meetings"
-        ],
+        "tags": ["Meetings"],
         "summary": "POST /api/meetings/upload-audio",
         "security": [
           {
@@ -3816,9 +3538,7 @@
     },
     "/api/meetings/search": {
       "post": {
-        "tags": [
-          "Meetings"
-        ],
+        "tags": ["Meetings"],
         "summary": "POST /api/meetings/search",
         "security": [
           {
@@ -3846,9 +3566,7 @@
     },
     "/api/meetings/notify-live": {
       "post": {
-        "tags": [
-          "Meetings"
-        ],
+        "tags": ["Meetings"],
         "summary": "POST /api/meetings/notify-live",
         "security": [
           {
@@ -3876,9 +3594,7 @@
     },
     "/api/meetings/{id}/clip": {
       "post": {
-        "tags": [
-          "Meetings"
-        ],
+        "tags": ["Meetings"],
         "summary": "POST /api/meetings/{id}/clip",
         "security": [
           {
@@ -3906,9 +3622,7 @@
     },
     "/api/meetings/{id}/clip/{clipId}": {
       "get": {
-        "tags": [
-          "Meetings"
-        ],
+        "tags": ["Meetings"],
         "summary": "GET /api/meetings/{id}/clip/{clipId}",
         "security": [
           {
@@ -3927,9 +3641,7 @@
     },
     "/api/meetings/{id}/digest/resend": {
       "post": {
-        "tags": [
-          "Meetings"
-        ],
+        "tags": ["Meetings"],
         "summary": "POST /api/meetings/{id}/digest/resend",
         "security": [
           {
@@ -3957,9 +3669,7 @@
     },
     "/api/meetings/{id}/digest/preview": {
       "get": {
-        "tags": [
-          "Meetings"
-        ],
+        "tags": ["Meetings"],
         "summary": "GET /api/meetings/{id}/digest/preview",
         "security": [
           {
@@ -3978,9 +3688,7 @@
     },
     "/api/meetings/{id}/reactions/summary": {
       "get": {
-        "tags": [
-          "Meetings"
-        ],
+        "tags": ["Meetings"],
         "summary": "GET /api/meetings/{id}/reactions/summary",
         "security": [
           {
@@ -3999,9 +3707,7 @@
     },
     "/api/meetings/{id}/reactions/timeline": {
       "get": {
-        "tags": [
-          "Meetings"
-        ],
+        "tags": ["Meetings"],
         "summary": "GET /api/meetings/{id}/reactions/timeline",
         "security": [
           {
@@ -4020,9 +3726,7 @@
     },
     "/api/meetings/{id}/timeline": {
       "get": {
-        "tags": [
-          "Meetings"
-        ],
+        "tags": ["Meetings"],
         "summary": "GET /api/meetings/{id}/timeline",
         "security": [
           {
@@ -4041,9 +3745,7 @@
     },
     "/api/meetings/{meetingId}/highlight-reel/generate": {
       "post": {
-        "tags": [
-          "Meetings"
-        ],
+        "tags": ["Meetings"],
         "summary": "POST /api/meetings/{meetingId}/highlight-reel/generate",
         "security": [
           {
@@ -4071,9 +3773,7 @@
     },
     "/api/meetings/{meetingId}/highlight-reel": {
       "get": {
-        "tags": [
-          "Meetings"
-        ],
+        "tags": ["Meetings"],
         "summary": "GET /api/meetings/{meetingId}/highlight-reel",
         "security": [
           {
@@ -4092,9 +3792,7 @@
     },
     "/api/meetings/{meetingId}/highlight-reel/export": {
       "get": {
-        "tags": [
-          "Meetings"
-        ],
+        "tags": ["Meetings"],
         "summary": "GET /api/meetings/{meetingId}/highlight-reel/export",
         "security": [
           {
@@ -4113,9 +3811,7 @@
     },
     "/api/bulk/meetings/archive": {
       "post": {
-        "tags": [
-          "Bulk"
-        ],
+        "tags": ["Bulk"],
         "summary": "POST /api/bulk/meetings/archive",
         "security": [
           {
@@ -4143,9 +3839,7 @@
     },
     "/api/bulk/meetings/tag": {
       "post": {
-        "tags": [
-          "Bulk"
-        ],
+        "tags": ["Bulk"],
         "summary": "POST /api/bulk/meetings/tag",
         "security": [
           {
@@ -4173,9 +3867,7 @@
     },
     "/api/bulk/meetings/delete": {
       "post": {
-        "tags": [
-          "Bulk"
-        ],
+        "tags": ["Bulk"],
         "summary": "POST /api/bulk/meetings/delete",
         "security": [
           {
@@ -4203,9 +3895,7 @@
     },
     "/api/bulk/meetings/restore": {
       "post": {
-        "tags": [
-          "Bulk"
-        ],
+        "tags": ["Bulk"],
         "summary": "POST /api/bulk/meetings/restore",
         "security": [
           {
@@ -4233,9 +3923,7 @@
     },
     "/api/bulk/meetings/export": {
       "post": {
-        "tags": [
-          "Bulk"
-        ],
+        "tags": ["Bulk"],
         "summary": "POST /api/bulk/meetings/export",
         "security": [
           {
@@ -4263,9 +3951,7 @@
     },
     "/api/meetings/{meetingId}/agenda-votes": {
       "get": {
-        "tags": [
-          "Meetings"
-        ],
+        "tags": ["Meetings"],
         "summary": "GET /api/meetings/{meetingId}/agenda-votes",
         "security": [
           {
@@ -4284,9 +3970,7 @@
     },
     "/api/meetings/{meetingId}/agenda-votes/auto-sort": {
       "post": {
-        "tags": [
-          "Meetings"
-        ],
+        "tags": ["Meetings"],
         "summary": "POST /api/meetings/{meetingId}/agenda-votes/auto-sort",
         "security": [
           {
@@ -4314,9 +3998,7 @@
     },
     "/api/meetings/{meetingId}/agenda-votes/{agendaItemId}": {
       "post": {
-        "tags": [
-          "Meetings"
-        ],
+        "tags": ["Meetings"],
         "summary": "POST /api/meetings/{meetingId}/agenda-votes/{agendaItemId}",
         "security": [
           {
@@ -4342,9 +4024,7 @@
         }
       },
       "delete": {
-        "tags": [
-          "Meetings"
-        ],
+        "tags": ["Meetings"],
         "summary": "DELETE /api/meetings/{meetingId}/agenda-votes/{agendaItemId}",
         "security": [
           {
@@ -4363,9 +4043,7 @@
     },
     "/api/meetings/{meetingId}": {
       "get": {
-        "tags": [
-          "Meetings"
-        ],
+        "tags": ["Meetings"],
         "summary": "GET /api/meetings/{meetingId}",
         "security": [
           {
@@ -4384,9 +4062,7 @@
     },
     "/api/meetings/{meetingId}/items": {
       "post": {
-        "tags": [
-          "Meetings"
-        ],
+        "tags": ["Meetings"],
         "summary": "POST /api/meetings/{meetingId}/items",
         "security": [
           {
@@ -4414,9 +4090,7 @@
     },
     "/api/meetings/{meetingId}/items/{itemId}/vote": {
       "post": {
-        "tags": [
-          "Meetings"
-        ],
+        "tags": ["Meetings"],
         "summary": "POST /api/meetings/{meetingId}/items/{itemId}/vote",
         "security": [
           {
@@ -4444,9 +4118,7 @@
     },
     "/api/meetings/{meetingId}/reorder": {
       "put": {
-        "tags": [
-          "Meetings"
-        ],
+        "tags": ["Meetings"],
         "summary": "PUT /api/meetings/{meetingId}/reorder",
         "security": [
           {
@@ -4472,9 +4144,7 @@
         }
       },
       "post": {
-        "tags": [
-          "Meetings"
-        ],
+        "tags": ["Meetings"],
         "summary": "POST /api/meetings/{meetingId}/reorder",
         "security": [
           {
@@ -4502,9 +4172,7 @@
     },
     "/api/meetings/{meetingId}/finalize": {
       "post": {
-        "tags": [
-          "Meetings"
-        ],
+        "tags": ["Meetings"],
         "summary": "POST /api/meetings/{meetingId}/finalize",
         "security": [
           {
@@ -4532,9 +4200,7 @@
     },
     "/api/search": {
       "post": {
-        "tags": [
-          "Search"
-        ],
+        "tags": ["Search"],
         "summary": "POST /api/search",
         "security": [
           {
@@ -4562,9 +4228,7 @@
     },
     "/api/search/hybrid": {
       "post": {
-        "tags": [
-          "Search"
-        ],
+        "tags": ["Search"],
         "summary": "POST /api/search/hybrid",
         "security": [
           {
@@ -4592,9 +4256,7 @@
     },
     "/api/search/federated": {
       "post": {
-        "tags": [
-          "Search"
-        ],
+        "tags": ["Search"],
         "summary": "POST /api/search/federated",
         "security": [
           {
@@ -4622,9 +4284,7 @@
     },
     "/api/search/voice": {
       "get": {
-        "tags": [
-          "Search"
-        ],
+        "tags": ["Search"],
         "summary": "GET /api/search/voice",
         "security": [
           {
@@ -4643,9 +4303,7 @@
     },
     "/api/ai": {
       "post": {
-        "tags": [
-          "Ai"
-        ],
+        "tags": ["Ai"],
         "summary": "POST /api/ai",
         "security": [
           {
@@ -4673,9 +4331,7 @@
     },
     "/api/policies": {
       "get": {
-        "tags": [
-          "Policies"
-        ],
+        "tags": ["Policies"],
         "summary": "GET /api/policies",
         "security": [
           {
@@ -4694,9 +4350,7 @@
     },
     "/api/policies/upload": {
       "post": {
-        "tags": [
-          "Policies"
-        ],
+        "tags": ["Policies"],
         "summary": "POST /api/policies/upload",
         "security": [
           {
@@ -4724,9 +4378,7 @@
     },
     "/api/policies/{id}/analyze": {
       "post": {
-        "tags": [
-          "Policies"
-        ],
+        "tags": ["Policies"],
         "summary": "POST /api/policies/{id}/analyze",
         "security": [
           {
@@ -4754,9 +4406,7 @@
     },
     "/api/policies/download/{id}": {
       "get": {
-        "tags": [
-          "Policies"
-        ],
+        "tags": ["Policies"],
         "summary": "GET /api/policies/download/{id}",
         "security": [
           {
@@ -4775,9 +4425,7 @@
     },
     "/api/policies/{id}/diff": {
       "get": {
-        "tags": [
-          "Policies"
-        ],
+        "tags": ["Policies"],
         "summary": "GET /api/policies/{id}/diff",
         "security": [
           {
@@ -4796,9 +4444,7 @@
     },
     "/api/policies/{id}": {
       "delete": {
-        "tags": [
-          "Policies"
-        ],
+        "tags": ["Policies"],
         "summary": "DELETE /api/policies/{id}",
         "security": [
           {
@@ -4817,9 +4463,7 @@
     },
     "/api/analytics": {
       "get": {
-        "tags": [
-          "Analytics"
-        ],
+        "tags": ["Analytics"],
         "summary": "GET /api/analytics",
         "security": [
           {
@@ -4838,9 +4482,7 @@
     },
     "/api/analytics/meetings/{meetingId}": {
       "get": {
-        "tags": [
-          "Analytics"
-        ],
+        "tags": ["Analytics"],
         "summary": "GET /api/analytics/meetings/{meetingId}",
         "security": [
           {
@@ -4859,9 +4501,7 @@
     },
     "/api/analytics/analyze/{meetingId}": {
       "post": {
-        "tags": [
-          "Analytics"
-        ],
+        "tags": ["Analytics"],
         "summary": "POST /api/analytics/analyze/{meetingId}",
         "security": [
           {
@@ -4889,9 +4529,7 @@
     },
     "/api/analytics/speakers/{meetingId}": {
       "get": {
-        "tags": [
-          "Analytics"
-        ],
+        "tags": ["Analytics"],
         "summary": "GET /api/analytics/speakers/{meetingId}",
         "security": [
           {
@@ -4910,9 +4548,7 @@
     },
     "/api/analytics/meeting/{meetingId}": {
       "get": {
-        "tags": [
-          "Analytics"
-        ],
+        "tags": ["Analytics"],
         "summary": "GET /api/analytics/meeting/{meetingId}",
         "security": [
           {
@@ -4931,9 +4567,7 @@
     },
     "/api/analytics/organization/{orgId}": {
       "get": {
-        "tags": [
-          "Analytics"
-        ],
+        "tags": ["Analytics"],
         "summary": "GET /api/analytics/organization/{orgId}",
         "security": [
           {
@@ -4952,9 +4586,7 @@
     },
     "/api/analytics/trends/{orgId}": {
       "get": {
-        "tags": [
-          "Analytics"
-        ],
+        "tags": ["Analytics"],
         "summary": "GET /api/analytics/trends/{orgId}",
         "security": [
           {
@@ -4973,9 +4605,7 @@
     },
     "/api/analytics/team/{teamId}/summary": {
       "get": {
-        "tags": [
-          "Analytics"
-        ],
+        "tags": ["Analytics"],
         "summary": "GET /api/analytics/team/{teamId}/summary",
         "security": [
           {
@@ -4994,9 +4624,7 @@
     },
     "/api/analytics/team/{teamId}/recent": {
       "get": {
-        "tags": [
-          "Analytics"
-        ],
+        "tags": ["Analytics"],
         "summary": "GET /api/analytics/team/{teamId}/recent",
         "security": [
           {
@@ -5015,9 +4643,7 @@
     },
     "/api/action-item-analytics/completion-metrics": {
       "get": {
-        "tags": [
-          "Action Item Analytics"
-        ],
+        "tags": ["Action Item Analytics"],
         "summary": "GET /api/action-item-analytics/completion-metrics",
         "security": [
           {
@@ -5036,9 +4662,7 @@
     },
     "/api/action-item-analytics/assignee-leaderboards": {
       "get": {
-        "tags": [
-          "Action Item Analytics"
-        ],
+        "tags": ["Action Item Analytics"],
         "summary": "GET /api/action-item-analytics/assignee-leaderboards",
         "security": [
           {
@@ -5057,9 +4681,7 @@
     },
     "/api/action-item-analytics/priority-breakdowns": {
       "get": {
-        "tags": [
-          "Action Item Analytics"
-        ],
+        "tags": ["Action Item Analytics"],
         "summary": "GET /api/action-item-analytics/priority-breakdowns",
         "security": [
           {
@@ -5078,9 +4700,7 @@
     },
     "/api/action-item-analytics/overdue-trends": {
       "get": {
-        "tags": [
-          "Action Item Analytics"
-        ],
+        "tags": ["Action Item Analytics"],
         "summary": "GET /api/action-item-analytics/overdue-trends",
         "security": [
           {
@@ -5099,9 +4719,7 @@
     },
     "/api/action-item-analytics/meeting-effectiveness": {
       "get": {
-        "tags": [
-          "Action Item Analytics"
-        ],
+        "tags": ["Action Item Analytics"],
         "summary": "GET /api/action-item-analytics/meeting-effectiveness",
         "security": [
           {
@@ -5120,9 +4738,7 @@
     },
     "/api/gemini/insights": {
       "post": {
-        "tags": [
-          "Gemini"
-        ],
+        "tags": ["Gemini"],
         "summary": "POST /api/gemini/insights",
         "security": [
           {
@@ -5150,9 +4766,7 @@
     },
     "/api/notes/{meetingId}": {
       "get": {
-        "tags": [
-          "Notes"
-        ],
+        "tags": ["Notes"],
         "summary": "GET /api/notes/{meetingId}",
         "security": [
           {
@@ -5171,9 +4785,7 @@
     },
     "/api/notes/{meetingId}/history": {
       "get": {
-        "tags": [
-          "Notes"
-        ],
+        "tags": ["Notes"],
         "summary": "GET /api/notes/{meetingId}/history",
         "security": [
           {
@@ -5192,9 +4804,7 @@
     },
     "/api/notes/{meetingId}/snapshot": {
       "post": {
-        "tags": [
-          "Notes"
-        ],
+        "tags": ["Notes"],
         "summary": "POST /api/notes/{meetingId}/snapshot",
         "security": [
           {
@@ -5222,9 +4832,7 @@
     },
     "/api/notes/{meetingId}/snapshot/{version}": {
       "get": {
-        "tags": [
-          "Notes"
-        ],
+        "tags": ["Notes"],
         "summary": "GET /api/notes/{meetingId}/snapshot/{version}",
         "security": [
           {
@@ -5243,9 +4851,7 @@
     },
     "/api/favorites/toggle": {
       "post": {
-        "tags": [
-          "Favorites"
-        ],
+        "tags": ["Favorites"],
         "summary": "POST /api/favorites/toggle",
         "security": [
           {
@@ -5273,9 +4879,7 @@
     },
     "/api/favorites": {
       "get": {
-        "tags": [
-          "Favorites"
-        ],
+        "tags": ["Favorites"],
         "summary": "GET /api/favorites",
         "security": [
           {
@@ -5294,9 +4898,7 @@
     },
     "/api/favorites/status/{meetingId}": {
       "get": {
-        "tags": [
-          "Favorites"
-        ],
+        "tags": ["Favorites"],
         "summary": "GET /api/favorites/status/{meetingId}",
         "security": [
           {
@@ -5315,9 +4917,7 @@
     },
     "/api/knowledge/graph/snapshots": {
       "get": {
-        "tags": [
-          "Knowledge"
-        ],
+        "tags": ["Knowledge"],
         "summary": "GET /api/knowledge/graph/snapshots",
         "security": [
           {
@@ -5334,9 +4934,7 @@
         }
       },
       "post": {
-        "tags": [
-          "Knowledge"
-        ],
+        "tags": ["Knowledge"],
         "summary": "POST /api/knowledge/graph/snapshots",
         "security": [
           {
@@ -5364,9 +4962,7 @@
     },
     "/api/knowledge/graph/snapshots/diff": {
       "get": {
-        "tags": [
-          "Knowledge"
-        ],
+        "tags": ["Knowledge"],
         "summary": "GET /api/knowledge/graph/snapshots/diff",
         "security": [
           {
@@ -5385,9 +4981,7 @@
     },
     "/api/knowledge/graph/snapshots/{id}": {
       "get": {
-        "tags": [
-          "Knowledge"
-        ],
+        "tags": ["Knowledge"],
         "summary": "GET /api/knowledge/graph/snapshots/{id}",
         "security": [
           {
@@ -5406,9 +5000,7 @@
     },
     "/api/knowledge/graph/snapshots/{id}/export": {
       "get": {
-        "tags": [
-          "Knowledge"
-        ],
+        "tags": ["Knowledge"],
         "summary": "GET /api/knowledge/graph/snapshots/{id}/export",
         "security": [
           {
@@ -5427,9 +5019,7 @@
     },
     "/api/knowledge/decisions": {
       "get": {
-        "tags": [
-          "Knowledge"
-        ],
+        "tags": ["Knowledge"],
         "summary": "GET /api/knowledge/decisions",
         "security": [
           {
@@ -5448,9 +5038,7 @@
     },
     "/api/knowledge/archive": {
       "get": {
-        "tags": [
-          "Knowledge"
-        ],
+        "tags": ["Knowledge"],
         "summary": "GET /api/knowledge/archive",
         "security": [
           {
@@ -5469,9 +5057,7 @@
     },
     "/api/knowledge/archive/restore": {
       "post": {
-        "tags": [
-          "Knowledge"
-        ],
+        "tags": ["Knowledge"],
         "summary": "POST /api/knowledge/archive/restore",
         "security": [
           {
@@ -5499,9 +5085,7 @@
     },
     "/api/knowledge/decisions/{id}/lineage": {
       "get": {
-        "tags": [
-          "Knowledge"
-        ],
+        "tags": ["Knowledge"],
         "summary": "GET /api/knowledge/decisions/{id}/lineage",
         "security": [
           {
@@ -5520,9 +5104,7 @@
     },
     "/api/knowledge/action-items": {
       "get": {
-        "tags": [
-          "Knowledge"
-        ],
+        "tags": ["Knowledge"],
         "summary": "GET /api/knowledge/action-items",
         "security": [
           {
@@ -5541,9 +5123,7 @@
     },
     "/api/knowledge/action-items/{id}": {
       "patch": {
-        "tags": [
-          "Knowledge"
-        ],
+        "tags": ["Knowledge"],
         "summary": "PATCH /api/knowledge/action-items/{id}",
         "security": [
           {
@@ -5571,9 +5151,7 @@
     },
     "/api/knowledge/action-items/{id}/reminders": {
       "patch": {
-        "tags": [
-          "Knowledge"
-        ],
+        "tags": ["Knowledge"],
         "summary": "PATCH /api/knowledge/action-items/{id}/reminders",
         "security": [
           {
@@ -5601,9 +5179,7 @@
     },
     "/api/knowledge/{type}/{id}/feedback": {
       "patch": {
-        "tags": [
-          "Knowledge"
-        ],
+        "tags": ["Knowledge"],
         "summary": "PATCH /api/knowledge/{type}/{id}/feedback",
         "security": [
           {
@@ -5631,9 +5207,7 @@
     },
     "/api/knowledge/importance/recalculate": {
       "post": {
-        "tags": [
-          "Knowledge"
-        ],
+        "tags": ["Knowledge"],
         "summary": "POST /api/knowledge/importance/recalculate",
         "security": [
           {
@@ -5661,9 +5235,7 @@
     },
     "/api/knowledge/lifecycle": {
       "get": {
-        "tags": [
-          "Knowledge"
-        ],
+        "tags": ["Knowledge"],
         "summary": "GET /api/knowledge/lifecycle",
         "security": [
           {
@@ -5682,9 +5254,7 @@
     },
     "/api/knowledge/lifecycle/retention-policy": {
       "get": {
-        "tags": [
-          "Knowledge"
-        ],
+        "tags": ["Knowledge"],
         "summary": "GET /api/knowledge/lifecycle/retention-policy",
         "security": [
           {
@@ -5701,9 +5271,7 @@
         }
       },
       "patch": {
-        "tags": [
-          "Knowledge"
-        ],
+        "tags": ["Knowledge"],
         "summary": "PATCH /api/knowledge/lifecycle/retention-policy",
         "security": [
           {
@@ -5731,9 +5299,7 @@
     },
     "/api/knowledge/lifecycle/bulk": {
       "post": {
-        "tags": [
-          "Knowledge"
-        ],
+        "tags": ["Knowledge"],
         "summary": "POST /api/knowledge/lifecycle/bulk",
         "security": [
           {
@@ -5761,9 +5327,7 @@
     },
     "/api/knowledge/lifecycle/run": {
       "post": {
-        "tags": [
-          "Knowledge"
-        ],
+        "tags": ["Knowledge"],
         "summary": "POST /api/knowledge/lifecycle/run",
         "security": [
           {
@@ -5791,9 +5355,7 @@
     },
     "/api/knowledge/{type}/{id}/lifecycle": {
       "patch": {
-        "tags": [
-          "Knowledge"
-        ],
+        "tags": ["Knowledge"],
         "summary": "PATCH /api/knowledge/{type}/{id}/lifecycle",
         "security": [
           {
@@ -5821,9 +5383,7 @@
     },
     "/api/knowledge/consolidate": {
       "post": {
-        "tags": [
-          "Knowledge"
-        ],
+        "tags": ["Knowledge"],
         "summary": "POST /api/knowledge/consolidate",
         "security": [
           {
@@ -5851,9 +5411,7 @@
     },
     "/api/knowledge/consolidation/history": {
       "get": {
-        "tags": [
-          "Knowledge"
-        ],
+        "tags": ["Knowledge"],
         "summary": "GET /api/knowledge/consolidation/history",
         "security": [
           {
@@ -5872,9 +5430,7 @@
     },
     "/api/knowledge/conflicts/scan": {
       "post": {
-        "tags": [
-          "Knowledge"
-        ],
+        "tags": ["Knowledge"],
         "summary": "POST /api/knowledge/conflicts/scan",
         "security": [
           {
@@ -5902,9 +5458,7 @@
     },
     "/api/knowledge/conflicts": {
       "get": {
-        "tags": [
-          "Knowledge"
-        ],
+        "tags": ["Knowledge"],
         "summary": "GET /api/knowledge/conflicts",
         "security": [
           {
@@ -5923,9 +5477,7 @@
     },
     "/api/knowledge/conflicts/{id}": {
       "get": {
-        "tags": [
-          "Knowledge"
-        ],
+        "tags": ["Knowledge"],
         "summary": "GET /api/knowledge/conflicts/{id}",
         "security": [
           {
@@ -5944,9 +5496,7 @@
     },
     "/api/knowledge/conflicts/{id}/resolve": {
       "post": {
-        "tags": [
-          "Knowledge"
-        ],
+        "tags": ["Knowledge"],
         "summary": "POST /api/knowledge/conflicts/{id}/resolve",
         "security": [
           {
@@ -5974,9 +5524,7 @@
     },
     "/api/graph/organization/{orgId}": {
       "get": {
-        "tags": [
-          "Graph"
-        ],
+        "tags": ["Graph"],
         "summary": "GET /api/graph/organization/{orgId}",
         "security": [
           {
@@ -5995,9 +5543,7 @@
     },
     "/api/graph/analytics/{orgId}": {
       "get": {
-        "tags": [
-          "Graph"
-        ],
+        "tags": ["Graph"],
         "summary": "GET /api/graph/analytics/{orgId}",
         "security": [
           {
@@ -6016,9 +5562,7 @@
     },
     "/api/graph/meeting/{meetingId}": {
       "get": {
-        "tags": [
-          "Graph"
-        ],
+        "tags": ["Graph"],
         "summary": "GET /api/graph/meeting/{meetingId}",
         "security": [
           {
@@ -6037,9 +5581,7 @@
     },
     "/api/graph/entity/{type}/{id}": {
       "get": {
-        "tags": [
-          "Graph"
-        ],
+        "tags": ["Graph"],
         "summary": "GET /api/graph/entity/{type}/{id}",
         "security": [
           {
@@ -6058,9 +5600,7 @@
     },
     "/api/graph/path": {
       "get": {
-        "tags": [
-          "Graph"
-        ],
+        "tags": ["Graph"],
         "summary": "GET /api/graph/path",
         "security": [
           {
@@ -6079,9 +5619,7 @@
     },
     "/api/graph/search": {
       "get": {
-        "tags": [
-          "Graph"
-        ],
+        "tags": ["Graph"],
         "summary": "GET /api/graph/search",
         "security": [
           {
@@ -6100,9 +5638,7 @@
     },
     "/api/graph/export": {
       "post": {
-        "tags": [
-          "Graph"
-        ],
+        "tags": ["Graph"],
         "summary": "POST /api/graph/export",
         "security": [
           {
@@ -6130,9 +5666,7 @@
     },
     "/api/calendar/status": {
       "get": {
-        "tags": [
-          "Calendar"
-        ],
+        "tags": ["Calendar"],
         "summary": "GET /api/calendar/status",
         "security": [
           {
@@ -6151,9 +5685,7 @@
     },
     "/api/calendar/google/callback": {
       "get": {
-        "tags": [
-          "Calendar"
-        ],
+        "tags": ["Calendar"],
         "summary": "GET /api/calendar/google/callback",
         "security": [
           {
@@ -6170,9 +5702,7 @@
         }
       },
       "post": {
-        "tags": [
-          "Calendar"
-        ],
+        "tags": ["Calendar"],
         "summary": "POST /api/calendar/google/callback",
         "security": [
           {
@@ -6200,9 +5730,7 @@
     },
     "/api/calendar/disconnect/{provider}": {
       "post": {
-        "tags": [
-          "Calendar"
-        ],
+        "tags": ["Calendar"],
         "summary": "POST /api/calendar/disconnect/{provider}",
         "security": [
           {
@@ -6228,9 +5756,7 @@
         }
       },
       "delete": {
-        "tags": [
-          "Calendar"
-        ],
+        "tags": ["Calendar"],
         "summary": "DELETE /api/calendar/disconnect/{provider}",
         "security": [
           {
@@ -6249,9 +5775,7 @@
     },
     "/api/calendar/{provider}/disconnect": {
       "delete": {
-        "tags": [
-          "Calendar"
-        ],
+        "tags": ["Calendar"],
         "summary": "DELETE /api/calendar/{provider}/disconnect",
         "security": [
           {
@@ -6270,9 +5794,7 @@
     },
     "/api/calendar/resync/{provider}": {
       "post": {
-        "tags": [
-          "Calendar"
-        ],
+        "tags": ["Calendar"],
         "summary": "POST /api/calendar/resync/{provider}",
         "security": [
           {
@@ -6300,9 +5822,7 @@
     },
     "/api/calendar/{provider}/resync": {
       "post": {
-        "tags": [
-          "Calendar"
-        ],
+        "tags": ["Calendar"],
         "summary": "POST /api/calendar/{provider}/resync",
         "security": [
           {
@@ -6330,9 +5850,7 @@
     },
     "/api/calendar/freebusy": {
       "post": {
-        "tags": [
-          "Calendar"
-        ],
+        "tags": ["Calendar"],
         "summary": "POST /api/calendar/freebusy",
         "security": [
           {
@@ -6360,9 +5878,7 @@
     },
     "/api/calendar/suggest-slot": {
       "post": {
-        "tags": [
-          "Calendar"
-        ],
+        "tags": ["Calendar"],
         "summary": "POST /api/calendar/suggest-slot",
         "security": [
           {
@@ -6390,9 +5906,7 @@
     },
     "/api/policy-compliance/decisions/{decisionId}": {
       "get": {
-        "tags": [
-          "Policy Compliance"
-        ],
+        "tags": ["Policy Compliance"],
         "summary": "GET /api/policy-compliance/decisions/{decisionId}",
         "security": [
           {
@@ -6411,9 +5925,7 @@
     },
     "/api/policy-compliance/policies/{policyId}/related-decisions": {
       "get": {
-        "tags": [
-          "Policy Compliance"
-        ],
+        "tags": ["Policy Compliance"],
         "summary": "GET /api/policy-compliance/policies/{policyId}/related-decisions",
         "security": [
           {
@@ -6432,9 +5944,7 @@
     },
     "/api/policy-compliance/policies/{policyId}/versions/{version}": {
       "get": {
-        "tags": [
-          "Policy Compliance"
-        ],
+        "tags": ["Policy Compliance"],
         "summary": "GET /api/policy-compliance/policies/{policyId}/versions/{version}",
         "security": [
           {
@@ -6453,9 +5963,7 @@
     },
     "/api/policy-compliance/flags/{id}/export": {
       "get": {
-        "tags": [
-          "Policy Compliance"
-        ],
+        "tags": ["Policy Compliance"],
         "summary": "GET /api/policy-compliance/flags/{id}/export",
         "security": [
           {
@@ -6474,9 +5982,7 @@
     },
     "/api/policy-compliance/flags": {
       "get": {
-        "tags": [
-          "Policy Compliance"
-        ],
+        "tags": ["Policy Compliance"],
         "summary": "GET /api/policy-compliance/flags",
         "security": [
           {
@@ -6495,9 +6001,7 @@
     },
     "/api/policy-compliance/flags/{id}": {
       "patch": {
-        "tags": [
-          "Policy Compliance"
-        ],
+        "tags": ["Policy Compliance"],
         "summary": "PATCH /api/policy-compliance/flags/{id}",
         "security": [
           {
@@ -6525,9 +6029,7 @@
     },
     "/api/policy-compliance/re-evaluate": {
       "post": {
-        "tags": [
-          "Policy Compliance"
-        ],
+        "tags": ["Policy Compliance"],
         "summary": "POST /api/policy-compliance/re-evaluate",
         "security": [
           {
@@ -6555,9 +6057,7 @@
     },
     "/api/sessions/generate": {
       "post": {
-        "tags": [
-          "Sessions"
-        ],
+        "tags": ["Sessions"],
         "summary": "POST /api/sessions/generate",
         "security": [
           {
@@ -6585,9 +6085,7 @@
     },
     "/api/recording-sessions/start": {
       "post": {
-        "tags": [
-          "Recording Sessions"
-        ],
+        "tags": ["Recording Sessions"],
         "summary": "POST /api/recording-sessions/start",
         "security": [
           {
@@ -6615,9 +6113,7 @@
     },
     "/api/recording-sessions/{sessionId}/chunk": {
       "post": {
-        "tags": [
-          "Recording Sessions"
-        ],
+        "tags": ["Recording Sessions"],
         "summary": "POST /api/recording-sessions/{sessionId}/chunk",
         "security": [
           {
@@ -6645,9 +6141,7 @@
     },
     "/api/recording-sessions/{sessionId}/status": {
       "post": {
-        "tags": [
-          "Recording Sessions"
-        ],
+        "tags": ["Recording Sessions"],
         "summary": "POST /api/recording-sessions/{sessionId}/status",
         "security": [
           {
@@ -6675,9 +6169,7 @@
     },
     "/api/recording-sessions/metrics": {
       "get": {
-        "tags": [
-          "Recording Sessions"
-        ],
+        "tags": ["Recording Sessions"],
         "summary": "GET /api/recording-sessions/metrics",
         "security": [
           {
@@ -6696,9 +6188,7 @@
     },
     "/api/recording-sessions/stuck": {
       "get": {
-        "tags": [
-          "Recording Sessions"
-        ],
+        "tags": ["Recording Sessions"],
         "summary": "GET /api/recording-sessions/stuck",
         "security": [
           {
@@ -6717,9 +6207,7 @@
     },
     "/api/recording-sessions/{sessionId}/resolve-stuck": {
       "patch": {
-        "tags": [
-          "Recording Sessions"
-        ],
+        "tags": ["Recording Sessions"],
         "summary": "PATCH /api/recording-sessions/{sessionId}/resolve-stuck",
         "security": [
           {
@@ -6747,9 +6235,7 @@
     },
     "/api/assistant/sessions": {
       "post": {
-        "tags": [
-          "Assistant"
-        ],
+        "tags": ["Assistant"],
         "summary": "POST /api/assistant/sessions",
         "security": [
           {
@@ -6775,9 +6261,7 @@
         }
       },
       "get": {
-        "tags": [
-          "Assistant"
-        ],
+        "tags": ["Assistant"],
         "summary": "GET /api/assistant/sessions",
         "security": [
           {
@@ -6796,9 +6280,7 @@
     },
     "/api/assistant/sessions/{id}": {
       "get": {
-        "tags": [
-          "Assistant"
-        ],
+        "tags": ["Assistant"],
         "summary": "GET /api/assistant/sessions/{id}",
         "security": [
           {
@@ -6815,9 +6297,7 @@
         }
       },
       "delete": {
-        "tags": [
-          "Assistant"
-        ],
+        "tags": ["Assistant"],
         "summary": "DELETE /api/assistant/sessions/{id}",
         "security": [
           {
@@ -6834,9 +6314,7 @@
         }
       },
       "patch": {
-        "tags": [
-          "Assistant"
-        ],
+        "tags": ["Assistant"],
         "summary": "PATCH /api/assistant/sessions/{id}",
         "security": [
           {
@@ -6864,9 +6342,7 @@
     },
     "/api/assistant/sessions/{id}/pinned-context": {
       "put": {
-        "tags": [
-          "Assistant"
-        ],
+        "tags": ["Assistant"],
         "summary": "PUT /api/assistant/sessions/{id}/pinned-context",
         "security": [
           {
@@ -6892,9 +6368,7 @@
         }
       },
       "delete": {
-        "tags": [
-          "Assistant"
-        ],
+        "tags": ["Assistant"],
         "summary": "DELETE /api/assistant/sessions/{id}/pinned-context",
         "security": [
           {
@@ -6913,9 +6387,7 @@
     },
     "/api/assistant/sessions/{id}/message": {
       "post": {
-        "tags": [
-          "Assistant"
-        ],
+        "tags": ["Assistant"],
         "summary": "POST /api/assistant/sessions/{id}/message",
         "security": [
           {
@@ -6943,9 +6415,7 @@
     },
     "/api/transcripts/meeting/{meetingId}": {
       "get": {
-        "tags": [
-          "Transcripts"
-        ],
+        "tags": ["Transcripts"],
         "summary": "GET /api/transcripts/meeting/{meetingId}",
         "security": [
           {
@@ -6964,9 +6434,7 @@
     },
     "/api/transcripts/meeting/{meetingId}/search": {
       "post": {
-        "tags": [
-          "Transcripts"
-        ],
+        "tags": ["Transcripts"],
         "summary": "POST /api/transcripts/meeting/{meetingId}/search",
         "security": [
           {
@@ -6994,9 +6462,7 @@
     },
     "/api/transcripts/meeting/{meetingId}/export/text": {
       "get": {
-        "tags": [
-          "Transcripts"
-        ],
+        "tags": ["Transcripts"],
         "summary": "GET /api/transcripts/meeting/{meetingId}/export/text",
         "security": [
           {
@@ -7015,9 +6481,7 @@
     },
     "/api/transcripts/meeting/{meetingId}/export/pdf": {
       "get": {
-        "tags": [
-          "Transcripts"
-        ],
+        "tags": ["Transcripts"],
         "summary": "GET /api/transcripts/meeting/{meetingId}/export/pdf",
         "security": [
           {
@@ -7036,9 +6500,7 @@
     },
     "/api/transcripts/meeting/{meetingId}/finalize": {
       "post": {
-        "tags": [
-          "Transcripts"
-        ],
+        "tags": ["Transcripts"],
         "summary": "POST /api/transcripts/meeting/{meetingId}/finalize",
         "security": [
           {
@@ -7066,9 +6528,7 @@
     },
     "/api/transcripts/meeting/{meetingId}/translate": {
       "post": {
-        "tags": [
-          "Transcripts"
-        ],
+        "tags": ["Transcripts"],
         "summary": "POST /api/transcripts/meeting/{meetingId}/translate",
         "security": [
           {
@@ -7096,9 +6556,7 @@
     },
     "/api/transcripts/{id}/speakers": {
       "put": {
-        "tags": [
-          "Transcripts"
-        ],
+        "tags": ["Transcripts"],
         "summary": "PUT /api/transcripts/{id}/speakers",
         "security": [
           {
@@ -7126,9 +6584,7 @@
     },
     "/api/transcripts/{id}/segments/{segmentIndex}": {
       "patch": {
-        "tags": [
-          "Transcripts"
-        ],
+        "tags": ["Transcripts"],
         "summary": "PATCH /api/transcripts/{id}/segments/{segmentIndex}",
         "security": [
           {
@@ -7156,9 +6612,7 @@
     },
     "/api/transcripts/meeting/{meetingId}/segments/{segmentIndex}": {
       "patch": {
-        "tags": [
-          "Transcripts"
-        ],
+        "tags": ["Transcripts"],
         "summary": "PATCH /api/transcripts/meeting/{meetingId}/segments/{segmentIndex}",
         "security": [
           {
@@ -7186,9 +6640,7 @@
     },
     "/api/shared-links": {
       "post": {
-        "tags": [
-          "Shared Links"
-        ],
+        "tags": ["Shared Links"],
         "summary": "POST /api/shared-links",
         "security": [
           {
@@ -7216,9 +6668,7 @@
     },
     "/api/shared-links/{resourceType}/{resourceId}": {
       "get": {
-        "tags": [
-          "Shared Links"
-        ],
+        "tags": ["Shared Links"],
         "summary": "GET /api/shared-links/{resourceType}/{resourceId}",
         "security": [
           {
@@ -7237,9 +6687,7 @@
     },
     "/api/shared-links/{id}": {
       "delete": {
-        "tags": [
-          "Shared Links"
-        ],
+        "tags": ["Shared Links"],
         "summary": "DELETE /api/shared-links/{id}",
         "security": [
           {
@@ -7258,9 +6706,7 @@
     },
     "/api/templates": {
       "post": {
-        "tags": [
-          "Templates"
-        ],
+        "tags": ["Templates"],
         "summary": "POST /api/templates",
         "security": [
           {
@@ -7286,9 +6732,7 @@
         }
       },
       "get": {
-        "tags": [
-          "Templates"
-        ],
+        "tags": ["Templates"],
         "summary": "GET /api/templates",
         "security": [
           {
@@ -7307,9 +6751,7 @@
     },
     "/api/templates/{id}": {
       "get": {
-        "tags": [
-          "Templates"
-        ],
+        "tags": ["Templates"],
         "summary": "GET /api/templates/{id}",
         "security": [
           {
@@ -7326,9 +6768,7 @@
         }
       },
       "put": {
-        "tags": [
-          "Templates"
-        ],
+        "tags": ["Templates"],
         "summary": "PUT /api/templates/{id}",
         "security": [
           {
@@ -7354,9 +6794,7 @@
         }
       },
       "delete": {
-        "tags": [
-          "Templates"
-        ],
+        "tags": ["Templates"],
         "summary": "DELETE /api/templates/{id}",
         "security": [
           {
@@ -7375,9 +6813,7 @@
     },
     "/api/bookmarks/toggle": {
       "post": {
-        "tags": [
-          "Bookmarks"
-        ],
+        "tags": ["Bookmarks"],
         "summary": "POST /api/bookmarks/toggle",
         "security": [
           {
@@ -7405,9 +6841,7 @@
     },
     "/api/bookmarks": {
       "get": {
-        "tags": [
-          "Bookmarks"
-        ],
+        "tags": ["Bookmarks"],
         "summary": "GET /api/bookmarks",
         "security": [
           {
@@ -7426,9 +6860,7 @@
     },
     "/api/bookmarks/collections": {
       "get": {
-        "tags": [
-          "Bookmarks"
-        ],
+        "tags": ["Bookmarks"],
         "summary": "GET /api/bookmarks/collections",
         "security": [
           {
@@ -7447,9 +6879,7 @@
     },
     "/api/bookmarks/collections/{name}": {
       "put": {
-        "tags": [
-          "Bookmarks"
-        ],
+        "tags": ["Bookmarks"],
         "summary": "PUT /api/bookmarks/collections/{name}",
         "security": [
           {
@@ -7475,9 +6905,7 @@
         }
       },
       "delete": {
-        "tags": [
-          "Bookmarks"
-        ],
+        "tags": ["Bookmarks"],
         "summary": "DELETE /api/bookmarks/collections/{name}",
         "security": [
           {
@@ -7496,9 +6924,7 @@
     },
     "/api/bookmarks/{id}": {
       "put": {
-        "tags": [
-          "Bookmarks"
-        ],
+        "tags": ["Bookmarks"],
         "summary": "PUT /api/bookmarks/{id}",
         "security": [
           {
@@ -7526,9 +6952,7 @@
     },
     "/api/bookmarks/status/{meetingId}": {
       "get": {
-        "tags": [
-          "Bookmarks"
-        ],
+        "tags": ["Bookmarks"],
         "summary": "GET /api/bookmarks/status/{meetingId}",
         "security": [
           {
@@ -7547,9 +6971,7 @@
     },
     "/api/comments": {
       "post": {
-        "tags": [
-          "Comments"
-        ],
+        "tags": ["Comments"],
         "summary": "POST /api/comments",
         "security": [
           {
@@ -7577,9 +6999,7 @@
     },
     "/api/comments/meeting/{meetingId}": {
       "get": {
-        "tags": [
-          "Comments"
-        ],
+        "tags": ["Comments"],
         "summary": "GET /api/comments/meeting/{meetingId}",
         "security": [
           {
@@ -7598,9 +7018,7 @@
     },
     "/api/comments/{id}": {
       "patch": {
-        "tags": [
-          "Comments"
-        ],
+        "tags": ["Comments"],
         "summary": "PATCH /api/comments/{id}",
         "security": [
           {
@@ -7626,9 +7044,7 @@
         }
       },
       "delete": {
-        "tags": [
-          "Comments"
-        ],
+        "tags": ["Comments"],
         "summary": "DELETE /api/comments/{id}",
         "security": [
           {
@@ -7647,9 +7063,7 @@
     },
     "/api/comments/{id}/reactions": {
       "post": {
-        "tags": [
-          "Comments"
-        ],
+        "tags": ["Comments"],
         "summary": "POST /api/comments/{id}/reactions",
         "security": [
           {
@@ -7677,9 +7091,7 @@
     },
     "/api/activities": {
       "get": {
-        "tags": [
-          "Activities"
-        ],
+        "tags": ["Activities"],
         "summary": "GET /api/activities",
         "security": [
           {
@@ -7698,9 +7110,7 @@
     },
     "/api/activities/stats": {
       "get": {
-        "tags": [
-          "Activities"
-        ],
+        "tags": ["Activities"],
         "summary": "GET /api/activities/stats",
         "security": [
           {
@@ -7719,9 +7129,7 @@
     },
     "/api/tags/autocomplete": {
       "get": {
-        "tags": [
-          "Tags"
-        ],
+        "tags": ["Tags"],
         "summary": "GET /api/tags/autocomplete",
         "security": [
           {
@@ -7740,9 +7148,7 @@
     },
     "/api/tags/stats": {
       "get": {
-        "tags": [
-          "Tags"
-        ],
+        "tags": ["Tags"],
         "summary": "GET /api/tags/stats",
         "security": [
           {
@@ -7761,9 +7167,7 @@
     },
     "/api/tags": {
       "get": {
-        "tags": [
-          "Tags"
-        ],
+        "tags": ["Tags"],
         "summary": "GET /api/tags",
         "security": [
           {
@@ -7780,9 +7184,7 @@
         }
       },
       "post": {
-        "tags": [
-          "Tags"
-        ],
+        "tags": ["Tags"],
         "summary": "POST /api/tags",
         "security": [
           {
@@ -7810,9 +7212,7 @@
     },
     "/api/tags/{name}/meetings": {
       "get": {
-        "tags": [
-          "Tags"
-        ],
+        "tags": ["Tags"],
         "summary": "GET /api/tags/{name}/meetings",
         "security": [
           {
@@ -7831,9 +7231,7 @@
     },
     "/api/tags/{id}": {
       "put": {
-        "tags": [
-          "Tags"
-        ],
+        "tags": ["Tags"],
         "summary": "PUT /api/tags/{id}",
         "security": [
           {
@@ -7859,9 +7257,7 @@
         }
       },
       "delete": {
-        "tags": [
-          "Tags"
-        ],
+        "tags": ["Tags"],
         "summary": "DELETE /api/tags/{id}",
         "security": [
           {
@@ -7880,9 +7276,7 @@
     },
     "/api/polls": {
       "post": {
-        "tags": [
-          "Polls"
-        ],
+        "tags": ["Polls"],
         "summary": "POST /api/polls",
         "security": [
           {
@@ -7910,9 +7304,7 @@
     },
     "/api/polls/meeting/{meetingId}": {
       "get": {
-        "tags": [
-          "Polls"
-        ],
+        "tags": ["Polls"],
         "summary": "GET /api/polls/meeting/{meetingId}",
         "security": [
           {
@@ -7931,9 +7323,7 @@
     },
     "/api/polls/{id}/vote": {
       "post": {
-        "tags": [
-          "Polls"
-        ],
+        "tags": ["Polls"],
         "summary": "POST /api/polls/{id}/vote",
         "security": [
           {
@@ -7961,9 +7351,7 @@
     },
     "/api/polls/{id}/close": {
       "patch": {
-        "tags": [
-          "Polls"
-        ],
+        "tags": ["Polls"],
         "summary": "PATCH /api/polls/{id}/close",
         "security": [
           {
@@ -7991,9 +7379,7 @@
     },
     "/api/polls/{id}": {
       "delete": {
-        "tags": [
-          "Polls"
-        ],
+        "tags": ["Polls"],
         "summary": "DELETE /api/polls/{id}",
         "security": [
           {
@@ -8012,9 +7398,7 @@
     },
     "/api/meetings/{meetingId}/topics/extract/{meetingId}": {
       "post": {
-        "tags": [
-          "Meetings"
-        ],
+        "tags": ["Meetings"],
         "summary": "POST /api/meetings/{meetingId}/topics/extract/{meetingId}",
         "security": [
           {
@@ -8042,9 +7426,7 @@
     },
     "/api/meetings/{meetingId}/topics/meeting/{meetingId}": {
       "get": {
-        "tags": [
-          "Meetings"
-        ],
+        "tags": ["Meetings"],
         "summary": "GET /api/meetings/{meetingId}/topics/meeting/{meetingId}",
         "security": [
           {
@@ -8063,9 +7445,7 @@
     },
     "/api/meetings/{meetingId}/topics/clusters/org/{orgId}": {
       "get": {
-        "tags": [
-          "Meetings"
-        ],
+        "tags": ["Meetings"],
         "summary": "GET /api/meetings/{meetingId}/topics/clusters/org/{orgId}",
         "security": [
           {
@@ -8084,9 +7464,7 @@
     },
     "/api/meetings/{meetingId}/topics/clusters/org/{orgId}/cluster": {
       "post": {
-        "tags": [
-          "Meetings"
-        ],
+        "tags": ["Meetings"],
         "summary": "POST /api/meetings/{meetingId}/topics/clusters/org/{orgId}/cluster",
         "security": [
           {
@@ -8114,9 +7492,7 @@
     },
     "/api/meetings/{meetingId}/topics/extract/org/{orgId}": {
       "post": {
-        "tags": [
-          "Meetings"
-        ],
+        "tags": ["Meetings"],
         "summary": "POST /api/meetings/{meetingId}/topics/extract/org/{orgId}",
         "security": [
           {
@@ -8144,9 +7520,7 @@
     },
     "/api/meetings/{meetingId}/topics/clusters/{clusterId}": {
       "put": {
-        "tags": [
-          "Meetings"
-        ],
+        "tags": ["Meetings"],
         "summary": "PUT /api/meetings/{meetingId}/topics/clusters/{clusterId}",
         "security": [
           {
@@ -8172,9 +7546,7 @@
         }
       },
       "delete": {
-        "tags": [
-          "Meetings"
-        ],
+        "tags": ["Meetings"],
         "summary": "DELETE /api/meetings/{meetingId}/topics/clusters/{clusterId}",
         "security": [
           {
@@ -8193,9 +7565,7 @@
     },
     "/api/meetings/{meetingId}/topics/clusters/{clusterId}/merge": {
       "post": {
-        "tags": [
-          "Meetings"
-        ],
+        "tags": ["Meetings"],
         "summary": "POST /api/meetings/{meetingId}/topics/clusters/{clusterId}/merge",
         "security": [
           {
@@ -8223,9 +7593,7 @@
     },
     "/api/meetings/:meetingId/breakout-rooms": {
       "post": {
-        "tags": [
-          "Meetings"
-        ],
+        "tags": ["Meetings"],
         "summary": "POST /api/meetings/:meetingId/breakout-rooms",
         "security": [
           {
@@ -8251,9 +7619,7 @@
         }
       },
       "get": {
-        "tags": [
-          "Meetings"
-        ],
+        "tags": ["Meetings"],
         "summary": "GET /api/meetings/:meetingId/breakout-rooms",
         "security": [
           {
@@ -8272,9 +7638,7 @@
     },
     "/api/meetings/{meetingId}/breakout-rooms/{roomId}/participants": {
       "put": {
-        "tags": [
-          "Meetings"
-        ],
+        "tags": ["Meetings"],
         "summary": "PUT /api/meetings/{meetingId}/breakout-rooms/{roomId}/participants",
         "security": [
           {
@@ -8302,9 +7666,7 @@
     },
     "/api/meetings/{meetingId}/breakout-rooms/{roomId}/start": {
       "post": {
-        "tags": [
-          "Meetings"
-        ],
+        "tags": ["Meetings"],
         "summary": "POST /api/meetings/{meetingId}/breakout-rooms/{roomId}/start",
         "security": [
           {
@@ -8332,9 +7694,7 @@
     },
     "/api/meetings/{meetingId}/breakout-rooms/{roomId}/close": {
       "post": {
-        "tags": [
-          "Meetings"
-        ],
+        "tags": ["Meetings"],
         "summary": "POST /api/meetings/{meetingId}/breakout-rooms/{roomId}/close",
         "security": [
           {
@@ -8362,9 +7722,7 @@
     },
     "/api/workload": {
       "get": {
-        "tags": [
-          "Workload"
-        ],
+        "tags": ["Workload"],
         "summary": "GET /api/workload",
         "security": [
           {
@@ -8383,9 +7741,7 @@
     },
     "/api/workload/suggest": {
       "get": {
-        "tags": [
-          "Workload"
-        ],
+        "tags": ["Workload"],
         "summary": "GET /api/workload/suggest",
         "security": [
           {
@@ -8404,9 +7760,7 @@
     },
     "/api/workload/rebalance": {
       "post": {
-        "tags": [
-          "Workload"
-        ],
+        "tags": ["Workload"],
         "summary": "POST /api/workload/rebalance",
         "security": [
           {
@@ -8434,9 +7788,7 @@
     },
     "/api/meetings/:meetingId/attachments": {
       "post": {
-        "tags": [
-          "Meetings"
-        ],
+        "tags": ["Meetings"],
         "summary": "POST /api/meetings/:meetingId/attachments",
         "security": [
           {
@@ -8462,9 +7814,7 @@
         }
       },
       "get": {
-        "tags": [
-          "Meetings"
-        ],
+        "tags": ["Meetings"],
         "summary": "GET /api/meetings/:meetingId/attachments",
         "security": [
           {
@@ -8483,9 +7833,7 @@
     },
     "/api/meetings/{meetingId}/attachments/{id}/download": {
       "get": {
-        "tags": [
-          "Meetings"
-        ],
+        "tags": ["Meetings"],
         "summary": "GET /api/meetings/{meetingId}/attachments/{id}/download",
         "security": [
           {
@@ -8504,9 +7852,7 @@
     },
     "/api/meetings/{meetingId}/attachments/{id}": {
       "delete": {
-        "tags": [
-          "Meetings"
-        ],
+        "tags": ["Meetings"],
         "summary": "DELETE /api/meetings/{meetingId}/attachments/{id}",
         "security": [
           {
@@ -8525,9 +7871,7 @@
     },
     "/api/icebreakers/generate": {
       "post": {
-        "tags": [
-          "Icebreakers"
-        ],
+        "tags": ["Icebreakers"],
         "summary": "POST /api/icebreakers/generate",
         "security": [
           {
@@ -8555,9 +7899,7 @@
     },
     "/api/icebreakers/select": {
       "post": {
-        "tags": [
-          "Icebreakers"
-        ],
+        "tags": ["Icebreakers"],
         "summary": "POST /api/icebreakers/select",
         "security": [
           {
@@ -8585,9 +7927,7 @@
     },
     "/api/icebreakers/meeting/{meetingId}": {
       "get": {
-        "tags": [
-          "Icebreakers"
-        ],
+        "tags": ["Icebreakers"],
         "summary": "GET /api/icebreakers/meeting/{meetingId}",
         "security": [
           {
@@ -8606,9 +7946,7 @@
     },
     "/api/physical-resources/organization/{organizationId}": {
       "get": {
-        "tags": [
-          "Physical Resources"
-        ],
+        "tags": ["Physical Resources"],
         "summary": "GET /api/physical-resources/organization/{organizationId}",
         "security": [
           {
@@ -8625,9 +7963,7 @@
         }
       },
       "post": {
-        "tags": [
-          "Physical Resources"
-        ],
+        "tags": ["Physical Resources"],
         "summary": "POST /api/physical-resources/organization/{organizationId}",
         "security": [
           {
@@ -8655,9 +7991,7 @@
     },
     "/api/physical-resources/organization/{organizationId}/available": {
       "get": {
-        "tags": [
-          "Physical Resources"
-        ],
+        "tags": ["Physical Resources"],
         "summary": "GET /api/physical-resources/organization/{organizationId}/available",
         "security": [
           {
@@ -8676,9 +8010,7 @@
     },
     "/api/physical-resources/organization/{organizationId}/bookings": {
       "post": {
-        "tags": [
-          "Physical Resources"
-        ],
+        "tags": ["Physical Resources"],
         "summary": "POST /api/physical-resources/organization/{organizationId}/bookings",
         "security": [
           {
@@ -8706,9 +8038,7 @@
     },
     "/api/physical-resources/bookings/{bookingId}": {
       "delete": {
-        "tags": [
-          "Physical Resources"
-        ],
+        "tags": ["Physical Resources"],
         "summary": "DELETE /api/physical-resources/bookings/{bookingId}",
         "security": [
           {
@@ -8727,9 +8057,7 @@
     },
     "/api/physical-resources/meetings/{meetingId}/bookings": {
       "get": {
-        "tags": [
-          "Physical Resources"
-        ],
+        "tags": ["Physical Resources"],
         "summary": "GET /api/physical-resources/meetings/{meetingId}/bookings",
         "security": [
           {
@@ -8748,9 +8076,7 @@
     },
     "/api/meetings/:meetingId/minutes-approval": {
       "get": {
-        "tags": [
-          "Meetings"
-        ],
+        "tags": ["Meetings"],
         "summary": "GET /api/meetings/:meetingId/minutes-approval",
         "security": [
           {
@@ -8769,9 +8095,7 @@
     },
     "/api/meetings/{meetingId}/minutes-approval/submit": {
       "post": {
-        "tags": [
-          "Meetings"
-        ],
+        "tags": ["Meetings"],
         "summary": "POST /api/meetings/{meetingId}/minutes-approval/submit",
         "security": [
           {
@@ -8799,9 +8123,7 @@
     },
     "/api/meetings/{meetingId}/minutes-approval/respond": {
       "put": {
-        "tags": [
-          "Meetings"
-        ],
+        "tags": ["Meetings"],
         "summary": "PUT /api/meetings/{meetingId}/minutes-approval/respond",
         "security": [
           {
@@ -8829,9 +8151,7 @@
     },
     "/api/meeting-series": {
       "post": {
-        "tags": [
-          "Meeting Series"
-        ],
+        "tags": ["Meeting Series"],
         "summary": "POST /api/meeting-series",
         "security": [
           {
@@ -8857,9 +8177,7 @@
         }
       },
       "get": {
-        "tags": [
-          "Meeting Series"
-        ],
+        "tags": ["Meeting Series"],
         "summary": "GET /api/meeting-series",
         "security": [
           {
@@ -8878,9 +8196,7 @@
     },
     "/api/meeting-series/{id}": {
       "get": {
-        "tags": [
-          "Meeting Series"
-        ],
+        "tags": ["Meeting Series"],
         "summary": "GET /api/meeting-series/{id}",
         "security": [
           {
@@ -8899,9 +8215,7 @@
     },
     "/api/meeting-series/{id}/meetings": {
       "get": {
-        "tags": [
-          "Meeting Series"
-        ],
+        "tags": ["Meeting Series"],
         "summary": "GET /api/meeting-series/{id}/meetings",
         "security": [
           {
@@ -8920,9 +8234,7 @@
     },
     "/api/meeting-series/{id}/cancel": {
       "patch": {
-        "tags": [
-          "Meeting Series"
-        ],
+        "tags": ["Meeting Series"],
         "summary": "PATCH /api/meeting-series/{id}/cancel",
         "security": [
           {
@@ -8950,9 +8262,7 @@
     },
     "/api/meeting-series/{id}/pause": {
       "patch": {
-        "tags": [
-          "Meeting Series"
-        ],
+        "tags": ["Meeting Series"],
         "summary": "PATCH /api/meeting-series/{id}/pause",
         "security": [
           {
@@ -8980,9 +8290,7 @@
     },
     "/api/meeting-series/{id}/resume": {
       "patch": {
-        "tags": [
-          "Meeting Series"
-        ],
+        "tags": ["Meeting Series"],
         "summary": "PATCH /api/meeting-series/{id}/resume",
         "security": [
           {
@@ -9010,9 +8318,7 @@
     },
     "/api/meeting-series/{id}/roles/config": {
       "get": {
-        "tags": [
-          "Meeting Series"
-        ],
+        "tags": ["Meeting Series"],
         "summary": "GET /api/meeting-series/{id}/roles/config",
         "security": [
           {
@@ -9029,9 +8335,7 @@
         }
       },
       "put": {
-        "tags": [
-          "Meeting Series"
-        ],
+        "tags": ["Meeting Series"],
         "summary": "PUT /api/meeting-series/{id}/roles/config",
         "security": [
           {
@@ -9059,9 +8363,7 @@
     },
     "/api/meeting-series/{id}/roles/override": {
       "post": {
-        "tags": [
-          "Meeting Series"
-        ],
+        "tags": ["Meeting Series"],
         "summary": "POST /api/meeting-series/{id}/roles/override",
         "security": [
           {
@@ -9089,9 +8391,7 @@
     },
     "/api/meeting-series/{seriesId}/carry-forward/config": {
       "get": {
-        "tags": [
-          "Meeting Series"
-        ],
+        "tags": ["Meeting Series"],
         "summary": "GET /api/meeting-series/{seriesId}/carry-forward/config",
         "security": [
           {
@@ -9108,9 +8408,7 @@
         }
       },
       "put": {
-        "tags": [
-          "Meeting Series"
-        ],
+        "tags": ["Meeting Series"],
         "summary": "PUT /api/meeting-series/{seriesId}/carry-forward/config",
         "security": [
           {
@@ -9138,9 +8436,7 @@
     },
     "/api/meeting-series/{seriesId}/carry-forward/preview": {
       "get": {
-        "tags": [
-          "Meeting Series"
-        ],
+        "tags": ["Meeting Series"],
         "summary": "GET /api/meeting-series/{seriesId}/carry-forward/preview",
         "security": [
           {
@@ -9159,9 +8455,7 @@
     },
     "/api/meeting-series/{seriesId}/carry-forward/apply": {
       "post": {
-        "tags": [
-          "Meeting Series"
-        ],
+        "tags": ["Meeting Series"],
         "summary": "POST /api/meeting-series/{seriesId}/carry-forward/apply",
         "security": [
           {
@@ -9189,9 +8483,7 @@
     },
     "/api/meeting-series/meetings/{meetingId}/carry-forward/preview": {
       "get": {
-        "tags": [
-          "Meeting Series"
-        ],
+        "tags": ["Meeting Series"],
         "summary": "GET /api/meeting-series/meetings/{meetingId}/carry-forward/preview",
         "security": [
           {
@@ -9210,9 +8502,7 @@
     },
     "/api/meeting-series/meetings/{meetingId}/carry-forward/apply": {
       "post": {
-        "tags": [
-          "Meeting Series"
-        ],
+        "tags": ["Meeting Series"],
         "summary": "POST /api/meeting-series/meetings/{meetingId}/carry-forward/apply",
         "security": [
           {
@@ -9240,9 +8530,7 @@
     },
     "/api/meeting-series/series/{seriesId}/carry-forward/history": {
       "get": {
-        "tags": [
-          "Meeting Series"
-        ],
+        "tags": ["Meeting Series"],
         "summary": "GET /api/meeting-series/series/{seriesId}/carry-forward/history",
         "security": [
           {
@@ -9261,9 +8549,7 @@
     },
     "/api/{seriesId}/carry-forward/config": {
       "get": {
-        "tags": [
-          "{SeriesId}"
-        ],
+        "tags": ["{SeriesId}"],
         "summary": "GET /api/{seriesId}/carry-forward/config",
         "security": [
           {
@@ -9280,9 +8566,7 @@
         }
       },
       "put": {
-        "tags": [
-          "{SeriesId}"
-        ],
+        "tags": ["{SeriesId}"],
         "summary": "PUT /api/{seriesId}/carry-forward/config",
         "security": [
           {
@@ -9310,9 +8594,7 @@
     },
     "/api/{seriesId}/carry-forward/preview": {
       "get": {
-        "tags": [
-          "{SeriesId}"
-        ],
+        "tags": ["{SeriesId}"],
         "summary": "GET /api/{seriesId}/carry-forward/preview",
         "security": [
           {
@@ -9331,9 +8613,7 @@
     },
     "/api/{seriesId}/carry-forward/apply": {
       "post": {
-        "tags": [
-          "{SeriesId}"
-        ],
+        "tags": ["{SeriesId}"],
         "summary": "POST /api/{seriesId}/carry-forward/apply",
         "security": [
           {
@@ -9361,9 +8641,7 @@
     },
     "/api/meetings/{meetingId}/carry-forward/preview": {
       "get": {
-        "tags": [
-          "Meetings"
-        ],
+        "tags": ["Meetings"],
         "summary": "GET /api/meetings/{meetingId}/carry-forward/preview",
         "security": [
           {
@@ -9382,9 +8660,7 @@
     },
     "/api/meetings/{meetingId}/carry-forward/apply": {
       "post": {
-        "tags": [
-          "Meetings"
-        ],
+        "tags": ["Meetings"],
         "summary": "POST /api/meetings/{meetingId}/carry-forward/apply",
         "security": [
           {
@@ -9412,9 +8688,7 @@
     },
     "/api/series/{seriesId}/carry-forward/history": {
       "get": {
-        "tags": [
-          "Series"
-        ],
+        "tags": ["Series"],
         "summary": "GET /api/series/{seriesId}/carry-forward/history",
         "security": [
           {
@@ -9433,9 +8707,7 @@
     },
     "/api/comparison/compare": {
       "post": {
-        "tags": [
-          "Comparison"
-        ],
+        "tags": ["Comparison"],
         "summary": "POST /api/comparison/compare",
         "security": [
           {
@@ -9463,9 +8735,7 @@
     },
     "/api/comparison/comparable/{meetingId}": {
       "get": {
-        "tags": [
-          "Comparison"
-        ],
+        "tags": ["Comparison"],
         "summary": "GET /api/comparison/comparable/{meetingId}",
         "security": [
           {
@@ -9484,9 +8754,7 @@
     },
     "/api/dashboard/metrics": {
       "get": {
-        "tags": [
-          "Dashboard"
-        ],
+        "tags": ["Dashboard"],
         "summary": "GET /api/dashboard/metrics",
         "security": [
           {
@@ -9505,9 +8773,7 @@
     },
     "/api/digest-preferences/preview": {
       "post": {
-        "tags": [
-          "Digest Preferences"
-        ],
+        "tags": ["Digest Preferences"],
         "summary": "POST /api/digest-preferences/preview",
         "security": [
           {
@@ -9535,9 +8801,7 @@
     },
     "/api/digest-preferences/test": {
       "post": {
-        "tags": [
-          "Digest Preferences"
-        ],
+        "tags": ["Digest Preferences"],
         "summary": "POST /api/digest-preferences/test",
         "security": [
           {
@@ -9565,9 +8829,7 @@
     },
     "/api/decision-graph": {
       "get": {
-        "tags": [
-          "Decision Graph"
-        ],
+        "tags": ["Decision Graph"],
         "summary": "GET /api/decision-graph",
         "security": [
           {
@@ -9586,9 +8848,7 @@
     },
     "/api/decision-graph/{id}/neighbors": {
       "get": {
-        "tags": [
-          "Decision Graph"
-        ],
+        "tags": ["Decision Graph"],
         "summary": "GET /api/decision-graph/{id}/neighbors",
         "security": [
           {
@@ -9607,9 +8867,7 @@
     },
     "/api/decision-log": {
       "get": {
-        "tags": [
-          "Decision Log"
-        ],
+        "tags": ["Decision Log"],
         "summary": "GET /api/decision-log",
         "security": [
           {
@@ -9626,9 +8884,7 @@
         }
       },
       "post": {
-        "tags": [
-          "Decision Log"
-        ],
+        "tags": ["Decision Log"],
         "summary": "POST /api/decision-log",
         "security": [
           {
@@ -9656,9 +8912,7 @@
     },
     "/api/decision-log/timeline": {
       "get": {
-        "tags": [
-          "Decision Log"
-        ],
+        "tags": ["Decision Log"],
         "summary": "GET /api/decision-log/timeline",
         "security": [
           {
@@ -9677,9 +8931,7 @@
     },
     "/api/decision-log/overdue": {
       "get": {
-        "tags": [
-          "Decision Log"
-        ],
+        "tags": ["Decision Log"],
         "summary": "GET /api/decision-log/overdue",
         "security": [
           {
@@ -9698,9 +8950,7 @@
     },
     "/api/decision-log/{id}/outcome": {
       "put": {
-        "tags": [
-          "Decision Log"
-        ],
+        "tags": ["Decision Log"],
         "summary": "PUT /api/decision-log/{id}/outcome",
         "security": [
           {
@@ -9728,9 +8978,7 @@
     },
     "/api/decision-log/{id}/link-action-items": {
       "put": {
-        "tags": [
-          "Decision Log"
-        ],
+        "tags": ["Decision Log"],
         "summary": "PUT /api/decision-log/{id}/link-action-items",
         "security": [
           {
@@ -9758,9 +9006,7 @@
     },
     "/api/attendance-analytics/stats": {
       "get": {
-        "tags": [
-          "Attendance Analytics"
-        ],
+        "tags": ["Attendance Analytics"],
         "summary": "GET /api/attendance-analytics/stats",
         "security": [
           {
@@ -9779,9 +9025,7 @@
     },
     "/api/attendance-analytics/heatmap": {
       "get": {
-        "tags": [
-          "Attendance Analytics"
-        ],
+        "tags": ["Attendance Analytics"],
         "summary": "GET /api/attendance-analytics/heatmap",
         "security": [
           {
@@ -9800,9 +9044,7 @@
     },
     "/api/attendance-analytics/trends": {
       "get": {
-        "tags": [
-          "Attendance Analytics"
-        ],
+        "tags": ["Attendance Analytics"],
         "summary": "GET /api/attendance-analytics/trends",
         "security": [
           {
@@ -9821,9 +9063,7 @@
     },
     "/api/attendance-analytics/types": {
       "get": {
-        "tags": [
-          "Attendance Analytics"
-        ],
+        "tags": ["Attendance Analytics"],
         "summary": "GET /api/attendance-analytics/types",
         "security": [
           {
@@ -9842,9 +9082,7 @@
     },
     "/api/attendance-analytics/export": {
       "get": {
-        "tags": [
-          "Attendance Analytics"
-        ],
+        "tags": ["Attendance Analytics"],
         "summary": "GET /api/attendance-analytics/export",
         "security": [
           {
@@ -9863,9 +9101,7 @@
     },
     "/api/feedback": {
       "post": {
-        "tags": [
-          "Feedback"
-        ],
+        "tags": ["Feedback"],
         "summary": "POST /api/feedback",
         "security": [
           {
@@ -9893,9 +9129,7 @@
     },
     "/api/feedback/meeting/{meetingId}": {
       "get": {
-        "tags": [
-          "Feedback"
-        ],
+        "tags": ["Feedback"],
         "summary": "GET /api/feedback/meeting/{meetingId}",
         "security": [
           {
@@ -9914,9 +9148,7 @@
     },
     "/api/feedback/meeting/{meetingId}/user": {
       "get": {
-        "tags": [
-          "Feedback"
-        ],
+        "tags": ["Feedback"],
         "summary": "GET /api/feedback/meeting/{meetingId}/user",
         "security": [
           {
@@ -9935,9 +9167,7 @@
     },
     "/api/feedback/aggregate/{orgId}": {
       "get": {
-        "tags": [
-          "Feedback"
-        ],
+        "tags": ["Feedback"],
         "summary": "GET /api/feedback/aggregate/{orgId}",
         "security": [
           {
@@ -9956,9 +9186,7 @@
     },
     "/api/feedback/{id}": {
       "delete": {
-        "tags": [
-          "Feedback"
-        ],
+        "tags": ["Feedback"],
         "summary": "DELETE /api/feedback/{id}",
         "security": [
           {
@@ -9977,9 +9205,7 @@
     },
     "/api/meeting-cost/analytics/org": {
       "get": {
-        "tags": [
-          "Meeting Cost"
-        ],
+        "tags": ["Meeting Cost"],
         "summary": "GET /api/meeting-cost/analytics/org",
         "security": [
           {
@@ -9998,9 +9224,7 @@
     },
     "/api/meeting-cost/analytics/members": {
       "get": {
-        "tags": [
-          "Meeting Cost"
-        ],
+        "tags": ["Meeting Cost"],
         "summary": "GET /api/meeting-cost/analytics/members",
         "security": [
           {
@@ -10019,9 +9243,7 @@
     },
     "/api/meeting-cost/analytics/export": {
       "get": {
-        "tags": [
-          "Meeting Cost"
-        ],
+        "tags": ["Meeting Cost"],
         "summary": "GET /api/meeting-cost/analytics/export",
         "security": [
           {
@@ -10040,9 +9262,7 @@
     },
     "/api/follow-up-threads/meeting/{meetingId}": {
       "post": {
-        "tags": [
-          "Follow Up Threads"
-        ],
+        "tags": ["Follow Up Threads"],
         "summary": "POST /api/follow-up-threads/meeting/{meetingId}",
         "security": [
           {
@@ -10068,9 +9288,7 @@
         }
       },
       "get": {
-        "tags": [
-          "Follow Up Threads"
-        ],
+        "tags": ["Follow Up Threads"],
         "summary": "GET /api/follow-up-threads/meeting/{meetingId}",
         "security": [
           {
@@ -10089,9 +9307,7 @@
     },
     "/api/follow-up-threads/{threadId}/replies": {
       "post": {
-        "tags": [
-          "Follow Up Threads"
-        ],
+        "tags": ["Follow Up Threads"],
         "summary": "POST /api/follow-up-threads/{threadId}/replies",
         "security": [
           {
@@ -10119,9 +9335,7 @@
     },
     "/api/follow-up-threads/replies/{replyId}": {
       "put": {
-        "tags": [
-          "Follow Up Threads"
-        ],
+        "tags": ["Follow Up Threads"],
         "summary": "PUT /api/follow-up-threads/replies/{replyId}",
         "security": [
           {
@@ -10147,9 +9361,7 @@
         }
       },
       "delete": {
-        "tags": [
-          "Follow Up Threads"
-        ],
+        "tags": ["Follow Up Threads"],
         "summary": "DELETE /api/follow-up-threads/replies/{replyId}",
         "security": [
           {
@@ -10168,9 +9380,7 @@
     },
     "/api/follow-up-threads/{threadId}/resolve": {
       "put": {
-        "tags": [
-          "Follow Up Threads"
-        ],
+        "tags": ["Follow Up Threads"],
         "summary": "PUT /api/follow-up-threads/{threadId}/resolve",
         "security": [
           {
@@ -10198,9 +9408,7 @@
     },
     "/api/followup/tasks": {
       "get": {
-        "tags": [
-          "Followup"
-        ],
+        "tags": ["Followup"],
         "summary": "GET /api/followup/tasks",
         "security": [
           {
@@ -10219,9 +9427,7 @@
     },
     "/api/followup/tasks/{id}": {
       "get": {
-        "tags": [
-          "Followup"
-        ],
+        "tags": ["Followup"],
         "summary": "GET /api/followup/tasks/{id}",
         "security": [
           {
@@ -10240,9 +9446,7 @@
     },
     "/api/followup/tasks/{id}/status": {
       "patch": {
-        "tags": [
-          "Followup"
-        ],
+        "tags": ["Followup"],
         "summary": "PATCH /api/followup/tasks/{id}/status",
         "security": [
           {
@@ -10270,9 +9474,7 @@
     },
     "/api/followup/tasks/{id}/acknowledge": {
       "post": {
-        "tags": [
-          "Followup"
-        ],
+        "tags": ["Followup"],
         "summary": "POST /api/followup/tasks/{id}/acknowledge",
         "security": [
           {
@@ -10300,9 +9502,7 @@
     },
     "/api/followup/reminders": {
       "get": {
-        "tags": [
-          "Followup"
-        ],
+        "tags": ["Followup"],
         "summary": "GET /api/followup/reminders",
         "security": [
           {
@@ -10319,9 +9519,7 @@
         }
       },
       "put": {
-        "tags": [
-          "Followup"
-        ],
+        "tags": ["Followup"],
         "summary": "PUT /api/followup/reminders",
         "security": [
           {
@@ -10349,9 +9547,7 @@
     },
     "/api/followup/analytics": {
       "get": {
-        "tags": [
-          "Followup"
-        ],
+        "tags": ["Followup"],
         "summary": "GET /api/followup/analytics",
         "security": [
           {
@@ -10370,9 +9566,7 @@
     },
     "/api/followup/escalate/{id}": {
       "post": {
-        "tags": [
-          "Followup"
-        ],
+        "tags": ["Followup"],
         "summary": "POST /api/followup/escalate/{id}",
         "security": [
           {
@@ -10400,9 +9594,7 @@
     },
     "/api/followup/process-reminders": {
       "post": {
-        "tags": [
-          "Followup"
-        ],
+        "tags": ["Followup"],
         "summary": "POST /api/followup/process-reminders",
         "security": [
           {
@@ -10430,9 +9622,7 @@
     },
     "/api/scheduler/propose": {
       "post": {
-        "tags": [
-          "Scheduler"
-        ],
+        "tags": ["Scheduler"],
         "summary": "POST /api/scheduler/propose",
         "security": [
           {
@@ -10460,9 +9650,7 @@
     },
     "/api/scheduler/propose/{id}": {
       "get": {
-        "tags": [
-          "Scheduler"
-        ],
+        "tags": ["Scheduler"],
         "summary": "GET /api/scheduler/propose/{id}",
         "security": [
           {
@@ -10481,9 +9669,7 @@
     },
     "/api/scheduler/propose/{id}/confirm": {
       "put": {
-        "tags": [
-          "Scheduler"
-        ],
+        "tags": ["Scheduler"],
         "summary": "PUT /api/scheduler/propose/{id}/confirm",
         "security": [
           {
@@ -10511,9 +9697,7 @@
     },
     "/api/recap-schedule/history/deliveries": {
       "get": {
-        "tags": [
-          "Recap Schedule"
-        ],
+        "tags": ["Recap Schedule"],
         "summary": "GET /api/recap-schedule/history/deliveries",
         "security": [
           {
@@ -10532,9 +9716,7 @@
     },
     "/api/recap-schedule/history/failed": {
       "get": {
-        "tags": [
-          "Recap Schedule"
-        ],
+        "tags": ["Recap Schedule"],
         "summary": "GET /api/recap-schedule/history/failed",
         "security": [
           {
@@ -10553,9 +9735,7 @@
     },
     "/api/recap-schedule/retry/{deliveryId}": {
       "post": {
-        "tags": [
-          "Recap Schedule"
-        ],
+        "tags": ["Recap Schedule"],
         "summary": "POST /api/recap-schedule/retry/{deliveryId}",
         "security": [
           {
@@ -10583,9 +9763,7 @@
     },
     "/api/recap-schedule/{organizationId}/dry-run": {
       "post": {
-        "tags": [
-          "Recap Schedule"
-        ],
+        "tags": ["Recap Schedule"],
         "summary": "POST /api/recap-schedule/{organizationId}/dry-run",
         "security": [
           {
@@ -10613,9 +9791,7 @@
     },
     "/api/recap-schedule/{organizationId}": {
       "get": {
-        "tags": [
-          "Recap Schedule"
-        ],
+        "tags": ["Recap Schedule"],
         "summary": "GET /api/recap-schedule/{organizationId}",
         "security": [
           {
@@ -10632,9 +9808,7 @@
         }
       },
       "put": {
-        "tags": [
-          "Recap Schedule"
-        ],
+        "tags": ["Recap Schedule"],
         "summary": "PUT /api/recap-schedule/{organizationId}",
         "security": [
           {
@@ -10662,9 +9836,7 @@
     },
     "/api/clips": {
       "post": {
-        "tags": [
-          "Clips"
-        ],
+        "tags": ["Clips"],
         "summary": "POST /api/clips",
         "security": [
           {
@@ -10692,9 +9864,7 @@
     },
     "/api/clips/meeting/{meetingId}": {
       "get": {
-        "tags": [
-          "Clips"
-        ],
+        "tags": ["Clips"],
         "summary": "GET /api/clips/meeting/{meetingId}",
         "security": [
           {
@@ -10713,9 +9883,7 @@
     },
     "/api/clips/{clipId}": {
       "put": {
-        "tags": [
-          "Clips"
-        ],
+        "tags": ["Clips"],
         "summary": "PUT /api/clips/{clipId}",
         "security": [
           {
@@ -10741,9 +9909,7 @@
         }
       },
       "delete": {
-        "tags": [
-          "Clips"
-        ],
+        "tags": ["Clips"],
         "summary": "DELETE /api/clips/{clipId}",
         "security": [
           {
@@ -10762,9 +9928,7 @@
     },
     "/api/clips/{clipId}/annotations": {
       "post": {
-        "tags": [
-          "Clips"
-        ],
+        "tags": ["Clips"],
         "summary": "POST /api/clips/{clipId}/annotations",
         "security": [
           {
@@ -10792,9 +9956,7 @@
     },
     "/api/note-versions/{meetingId}/{field}/history": {
       "get": {
-        "tags": [
-          "Note Versions"
-        ],
+        "tags": ["Note Versions"],
         "summary": "GET /api/note-versions/{meetingId}/{field}/history",
         "security": [
           {
@@ -10813,9 +9975,7 @@
     },
     "/api/note-versions/version/{versionId}": {
       "get": {
-        "tags": [
-          "Note Versions"
-        ],
+        "tags": ["Note Versions"],
         "summary": "GET /api/note-versions/version/{versionId}",
         "security": [
           {
@@ -10834,9 +9994,7 @@
     },
     "/api/note-versions/version/{versionId}/diff": {
       "get": {
-        "tags": [
-          "Note Versions"
-        ],
+        "tags": ["Note Versions"],
         "summary": "GET /api/note-versions/version/{versionId}/diff",
         "security": [
           {
@@ -10855,9 +10013,7 @@
     },
     "/api/note-versions/version/{versionId}/diff/{compareVersionId}": {
       "get": {
-        "tags": [
-          "Note Versions"
-        ],
+        "tags": ["Note Versions"],
         "summary": "GET /api/note-versions/version/{versionId}/diff/{compareVersionId}",
         "security": [
           {
@@ -10876,9 +10032,7 @@
     },
     "/api/note-versions/version/{versionId}/restore": {
       "post": {
-        "tags": [
-          "Note Versions"
-        ],
+        "tags": ["Note Versions"],
         "summary": "POST /api/note-versions/version/{versionId}/restore",
         "security": [
           {
@@ -10906,9 +10060,7 @@
     },
     "/api/reports/generate/{id}": {
       "post": {
-        "tags": [
-          "Reports"
-        ],
+        "tags": ["Reports"],
         "summary": "POST /api/reports/generate/{id}",
         "security": [
           {
@@ -10936,9 +10088,7 @@
     },
     "/api/reports/export/{id}": {
       "post": {
-        "tags": [
-          "Reports"
-        ],
+        "tags": ["Reports"],
         "summary": "POST /api/reports/export/{id}",
         "security": [
           {
@@ -10966,9 +10116,7 @@
     },
     "/api/agenda-suggestions/generate": {
       "post": {
-        "tags": [
-          "Agenda Suggestions"
-        ],
+        "tags": ["Agenda Suggestions"],
         "summary": "POST /api/agenda-suggestions/generate",
         "security": [
           {
@@ -10996,9 +10144,7 @@
     },
     "/api/agenda-suggestions/{id}/item/{itemId}": {
       "put": {
-        "tags": [
-          "Agenda Suggestions"
-        ],
+        "tags": ["Agenda Suggestions"],
         "summary": "PUT /api/agenda-suggestions/{id}/item/{itemId}",
         "security": [
           {
@@ -11026,9 +10172,7 @@
     },
     "/api/agenda-suggestions/{id}/apply": {
       "post": {
-        "tags": [
-          "Agenda Suggestions"
-        ],
+        "tags": ["Agenda Suggestions"],
         "summary": "POST /api/agenda-suggestions/{id}/apply",
         "security": [
           {
@@ -11056,9 +10200,7 @@
     },
     "/api/agenda-suggestions/meeting/{meetingId}": {
       "get": {
-        "tags": [
-          "Agenda Suggestions"
-        ],
+        "tags": ["Agenda Suggestions"],
         "summary": "GET /api/agenda-suggestions/meeting/{meetingId}",
         "security": [
           {
@@ -11077,9 +10219,7 @@
     },
     "/api/translation/translate": {
       "post": {
-        "tags": [
-          "Translation"
-        ],
+        "tags": ["Translation"],
         "summary": "POST /api/translation/translate",
         "security": [
           {
@@ -11107,9 +10247,7 @@
     },
     "/api/translation/correct": {
       "post": {
-        "tags": [
-          "Translation"
-        ],
+        "tags": ["Translation"],
         "summary": "POST /api/translation/correct",
         "security": [
           {
@@ -11137,9 +10275,7 @@
     },
     "/api/translation/languages": {
       "get": {
-        "tags": [
-          "Translation"
-        ],
+        "tags": ["Translation"],
         "summary": "GET /api/translation/languages",
         "security": [
           {
@@ -11158,9 +10294,7 @@
     },
     "/api/translation/preferences": {
       "get": {
-        "tags": [
-          "Translation"
-        ],
+        "tags": ["Translation"],
         "summary": "GET /api/translation/preferences",
         "security": [
           {
@@ -11177,9 +10311,7 @@
         }
       },
       "put": {
-        "tags": [
-          "Translation"
-        ],
+        "tags": ["Translation"],
         "summary": "PUT /api/translation/preferences",
         "security": [
           {
@@ -11207,9 +10339,7 @@
     },
     "/api/translation/cache/{meetingId}": {
       "get": {
-        "tags": [
-          "Translation"
-        ],
+        "tags": ["Translation"],
         "summary": "GET /api/translation/cache/{meetingId}",
         "security": [
           {
@@ -11226,9 +10356,7 @@
         }
       },
       "delete": {
-        "tags": [
-          "Translation"
-        ],
+        "tags": ["Translation"],
         "summary": "DELETE /api/translation/cache/{meetingId}",
         "security": [
           {
@@ -11247,9 +10375,7 @@
     },
     "/api/translation/export/{meetingId}": {
       "post": {
-        "tags": [
-          "Translation"
-        ],
+        "tags": ["Translation"],
         "summary": "POST /api/translation/export/{meetingId}",
         "security": [
           {
@@ -11277,9 +10403,7 @@
     },
     "/api/translation/quality/{segmentId}": {
       "get": {
-        "tags": [
-          "Translation"
-        ],
+        "tags": ["Translation"],
         "summary": "GET /api/translation/quality/{segmentId}",
         "security": [
           {
@@ -11298,9 +10422,7 @@
     },
     "/api/translation/request": {
       "post": {
-        "tags": [
-          "Translation"
-        ],
+        "tags": ["Translation"],
         "summary": "POST /api/translation/request",
         "security": [
           {
@@ -11328,9 +10450,7 @@
     },
     "/api/translations/translate": {
       "post": {
-        "tags": [
-          "Translations"
-        ],
+        "tags": ["Translations"],
         "summary": "POST /api/translations/translate",
         "security": [
           {
@@ -11358,9 +10478,7 @@
     },
     "/api/translations/correct": {
       "post": {
-        "tags": [
-          "Translations"
-        ],
+        "tags": ["Translations"],
         "summary": "POST /api/translations/correct",
         "security": [
           {
@@ -11388,9 +10506,7 @@
     },
     "/api/translations/languages": {
       "get": {
-        "tags": [
-          "Translations"
-        ],
+        "tags": ["Translations"],
         "summary": "GET /api/translations/languages",
         "security": [
           {
@@ -11409,9 +10525,7 @@
     },
     "/api/translations/preferences": {
       "get": {
-        "tags": [
-          "Translations"
-        ],
+        "tags": ["Translations"],
         "summary": "GET /api/translations/preferences",
         "security": [
           {
@@ -11428,9 +10542,7 @@
         }
       },
       "put": {
-        "tags": [
-          "Translations"
-        ],
+        "tags": ["Translations"],
         "summary": "PUT /api/translations/preferences",
         "security": [
           {
@@ -11458,9 +10570,7 @@
     },
     "/api/translations/cache/{meetingId}": {
       "get": {
-        "tags": [
-          "Translations"
-        ],
+        "tags": ["Translations"],
         "summary": "GET /api/translations/cache/{meetingId}",
         "security": [
           {
@@ -11477,9 +10587,7 @@
         }
       },
       "delete": {
-        "tags": [
-          "Translations"
-        ],
+        "tags": ["Translations"],
         "summary": "DELETE /api/translations/cache/{meetingId}",
         "security": [
           {
@@ -11498,9 +10606,7 @@
     },
     "/api/translations/export/{meetingId}": {
       "post": {
-        "tags": [
-          "Translations"
-        ],
+        "tags": ["Translations"],
         "summary": "POST /api/translations/export/{meetingId}",
         "security": [
           {
@@ -11528,9 +10634,7 @@
     },
     "/api/translations/quality/{segmentId}": {
       "get": {
-        "tags": [
-          "Translations"
-        ],
+        "tags": ["Translations"],
         "summary": "GET /api/translations/quality/{segmentId}",
         "security": [
           {
@@ -11549,9 +10653,7 @@
     },
     "/api/translations/request": {
       "post": {
-        "tags": [
-          "Translations"
-        ],
+        "tags": ["Translations"],
         "summary": "POST /api/translations/request",
         "security": [
           {
@@ -11579,9 +10681,7 @@
     },
     "/api/personal-notes/pinned": {
       "get": {
-        "tags": [
-          "Personal Notes"
-        ],
+        "tags": ["Personal Notes"],
         "summary": "GET /api/personal-notes/pinned",
         "security": [
           {
@@ -11600,9 +10700,7 @@
     },
     "/api/personal-notes/search": {
       "get": {
-        "tags": [
-          "Personal Notes"
-        ],
+        "tags": ["Personal Notes"],
         "summary": "GET /api/personal-notes/search",
         "security": [
           {
@@ -11621,9 +10719,7 @@
     },
     "/api/personal-notes/{meetingId}": {
       "get": {
-        "tags": [
-          "Personal Notes"
-        ],
+        "tags": ["Personal Notes"],
         "summary": "GET /api/personal-notes/{meetingId}",
         "security": [
           {
@@ -11640,9 +10736,7 @@
         }
       },
       "post": {
-        "tags": [
-          "Personal Notes"
-        ],
+        "tags": ["Personal Notes"],
         "summary": "POST /api/personal-notes/{meetingId}",
         "security": [
           {
@@ -11668,9 +10762,7 @@
         }
       },
       "delete": {
-        "tags": [
-          "Personal Notes"
-        ],
+        "tags": ["Personal Notes"],
         "summary": "DELETE /api/personal-notes/{meetingId}",
         "security": [
           {
@@ -11689,9 +10781,7 @@
     },
     "/api/personal-notes/{meetingId}/annotations": {
       "post": {
-        "tags": [
-          "Personal Notes"
-        ],
+        "tags": ["Personal Notes"],
         "summary": "POST /api/personal-notes/{meetingId}/annotations",
         "security": [
           {
@@ -11719,9 +10809,7 @@
     },
     "/api/personal-notes/{meetingId}/annotations/{annotationId}": {
       "delete": {
-        "tags": [
-          "Personal Notes"
-        ],
+        "tags": ["Personal Notes"],
         "summary": "DELETE /api/personal-notes/{meetingId}/annotations/{annotationId}",
         "security": [
           {
@@ -11740,9 +10828,7 @@
     },
     "/api/personal-notes/{meetingId}/pin": {
       "patch": {
-        "tags": [
-          "Personal Notes"
-        ],
+        "tags": ["Personal Notes"],
         "summary": "PATCH /api/personal-notes/{meetingId}/pin",
         "security": [
           {
@@ -11770,9 +10856,7 @@
     },
     "/api/personal-notes/{meetingId}/clear": {
       "put": {
-        "tags": [
-          "Personal Notes"
-        ],
+        "tags": ["Personal Notes"],
         "summary": "PUT /api/personal-notes/{meetingId}/clear",
         "security": [
           {
@@ -11800,9 +10884,7 @@
     },
     "/api/template-library": {
       "post": {
-        "tags": [
-          "Template Library"
-        ],
+        "tags": ["Template Library"],
         "summary": "POST /api/template-library",
         "security": [
           {
@@ -11828,9 +10910,7 @@
         }
       },
       "get": {
-        "tags": [
-          "Template Library"
-        ],
+        "tags": ["Template Library"],
         "summary": "GET /api/template-library",
         "security": [
           {
@@ -11849,9 +10929,7 @@
     },
     "/api/template-library/{id}/clone": {
       "post": {
-        "tags": [
-          "Template Library"
-        ],
+        "tags": ["Template Library"],
         "summary": "POST /api/template-library/{id}/clone",
         "security": [
           {
@@ -11879,9 +10957,7 @@
     },
     "/api/template-library/{id}/rate": {
       "post": {
-        "tags": [
-          "Template Library"
-        ],
+        "tags": ["Template Library"],
         "summary": "POST /api/template-library/{id}/rate",
         "security": [
           {
@@ -11909,9 +10985,7 @@
     },
     "/api/transcript-annotations": {
       "post": {
-        "tags": [
-          "Transcript Annotations"
-        ],
+        "tags": ["Transcript Annotations"],
         "summary": "POST /api/transcript-annotations",
         "security": [
           {
@@ -11939,9 +11013,7 @@
     },
     "/api/transcript-annotations/meeting/{meetingId}": {
       "get": {
-        "tags": [
-          "Transcript Annotations"
-        ],
+        "tags": ["Transcript Annotations"],
         "summary": "GET /api/transcript-annotations/meeting/{meetingId}",
         "security": [
           {
@@ -11960,9 +11032,7 @@
     },
     "/api/transcript-annotations/{id}": {
       "put": {
-        "tags": [
-          "Transcript Annotations"
-        ],
+        "tags": ["Transcript Annotations"],
         "summary": "PUT /api/transcript-annotations/{id}",
         "security": [
           {
@@ -11988,9 +11058,7 @@
         }
       },
       "delete": {
-        "tags": [
-          "Transcript Annotations"
-        ],
+        "tags": ["Transcript Annotations"],
         "summary": "DELETE /api/transcript-annotations/{id}",
         "security": [
           {
@@ -12009,9 +11077,7 @@
     },
     "/api/transcript-annotations/{id}/resolve": {
       "patch": {
-        "tags": [
-          "Transcript Annotations"
-        ],
+        "tags": ["Transcript Annotations"],
         "summary": "PATCH /api/transcript-annotations/{id}/resolve",
         "security": [
           {
@@ -12039,9 +11105,7 @@
     },
     "/api/glossary": {
       "get": {
-        "tags": [
-          "Glossary"
-        ],
+        "tags": ["Glossary"],
         "summary": "GET /api/glossary",
         "security": [
           {
@@ -12058,9 +11122,7 @@
         }
       },
       "post": {
-        "tags": [
-          "Glossary"
-        ],
+        "tags": ["Glossary"],
         "summary": "POST /api/glossary",
         "security": [
           {
@@ -12088,9 +11150,7 @@
     },
     "/api/glossary/{id}": {
       "put": {
-        "tags": [
-          "Glossary"
-        ],
+        "tags": ["Glossary"],
         "summary": "PUT /api/glossary/{id}",
         "security": [
           {
@@ -12116,9 +11176,7 @@
         }
       },
       "delete": {
-        "tags": [
-          "Glossary"
-        ],
+        "tags": ["Glossary"],
         "summary": "DELETE /api/glossary/{id}",
         "security": [
           {
@@ -12137,9 +11195,7 @@
     },
     "/api/glossary/{id}/approve": {
       "post": {
-        "tags": [
-          "Glossary"
-        ],
+        "tags": ["Glossary"],
         "summary": "POST /api/glossary/{id}/approve",
         "security": [
           {
@@ -12167,9 +11223,7 @@
     },
     "/api/glossary/detect": {
       "post": {
-        "tags": [
-          "Glossary"
-        ],
+        "tags": ["Glossary"],
         "summary": "POST /api/glossary/detect",
         "security": [
           {
@@ -12197,9 +11251,7 @@
     },
     "/api/glossary/extract": {
       "post": {
-        "tags": [
-          "Glossary"
-        ],
+        "tags": ["Glossary"],
         "summary": "POST /api/glossary/extract",
         "security": [
           {
@@ -12227,9 +11279,7 @@
     },
     "/api/ai-summary-templates/test": {
       "post": {
-        "tags": [
-          "Ai Summary Templates"
-        ],
+        "tags": ["Ai Summary Templates"],
         "summary": "POST /api/ai-summary-templates/test",
         "security": [
           {
@@ -12257,9 +11307,7 @@
     },
     "/api/ai-summary-templates/{id}/default": {
       "put": {
-        "tags": [
-          "Ai Summary Templates"
-        ],
+        "tags": ["Ai Summary Templates"],
         "summary": "PUT /api/ai-summary-templates/{id}/default",
         "security": [
           {
@@ -12287,9 +11335,7 @@
     },
     "/api/topics/extract/{meetingId}": {
       "post": {
-        "tags": [
-          "Topics"
-        ],
+        "tags": ["Topics"],
         "summary": "POST /api/topics/extract/{meetingId}",
         "security": [
           {
@@ -12317,9 +11363,7 @@
     },
     "/api/topics/meeting/{meetingId}": {
       "get": {
-        "tags": [
-          "Topics"
-        ],
+        "tags": ["Topics"],
         "summary": "GET /api/topics/meeting/{meetingId}",
         "security": [
           {
@@ -12338,9 +11382,7 @@
     },
     "/api/topics/clusters/org/{orgId}": {
       "get": {
-        "tags": [
-          "Topics"
-        ],
+        "tags": ["Topics"],
         "summary": "GET /api/topics/clusters/org/{orgId}",
         "security": [
           {
@@ -12359,9 +11401,7 @@
     },
     "/api/topics/clusters/org/{orgId}/cluster": {
       "post": {
-        "tags": [
-          "Topics"
-        ],
+        "tags": ["Topics"],
         "summary": "POST /api/topics/clusters/org/{orgId}/cluster",
         "security": [
           {
@@ -12389,9 +11429,7 @@
     },
     "/api/topics/extract/org/{orgId}": {
       "post": {
-        "tags": [
-          "Topics"
-        ],
+        "tags": ["Topics"],
         "summary": "POST /api/topics/extract/org/{orgId}",
         "security": [
           {
@@ -12419,9 +11457,7 @@
     },
     "/api/topics/clusters/{clusterId}": {
       "put": {
-        "tags": [
-          "Topics"
-        ],
+        "tags": ["Topics"],
         "summary": "PUT /api/topics/clusters/{clusterId}",
         "security": [
           {
@@ -12447,9 +11483,7 @@
         }
       },
       "delete": {
-        "tags": [
-          "Topics"
-        ],
+        "tags": ["Topics"],
         "summary": "DELETE /api/topics/clusters/{clusterId}",
         "security": [
           {
@@ -12468,9 +11502,7 @@
     },
     "/api/topics/clusters/{clusterId}/merge": {
       "post": {
-        "tags": [
-          "Topics"
-        ],
+        "tags": ["Topics"],
         "summary": "POST /api/topics/clusters/{clusterId}/merge",
         "security": [
           {
@@ -12498,9 +11530,7 @@
     },
     "/api/automation-rules": {
       "post": {
-        "tags": [
-          "Automation Rules"
-        ],
+        "tags": ["Automation Rules"],
         "summary": "POST /api/automation-rules",
         "security": [
           {
@@ -12526,9 +11556,7 @@
         }
       },
       "get": {
-        "tags": [
-          "Automation Rules"
-        ],
+        "tags": ["Automation Rules"],
         "summary": "GET /api/automation-rules",
         "security": [
           {
@@ -12547,9 +11575,7 @@
     },
     "/api/automation-rules/{id}": {
       "get": {
-        "tags": [
-          "Automation Rules"
-        ],
+        "tags": ["Automation Rules"],
         "summary": "GET /api/automation-rules/{id}",
         "security": [
           {
@@ -12566,9 +11592,7 @@
         }
       },
       "put": {
-        "tags": [
-          "Automation Rules"
-        ],
+        "tags": ["Automation Rules"],
         "summary": "PUT /api/automation-rules/{id}",
         "security": [
           {
@@ -12594,9 +11618,7 @@
         }
       },
       "delete": {
-        "tags": [
-          "Automation Rules"
-        ],
+        "tags": ["Automation Rules"],
         "summary": "DELETE /api/automation-rules/{id}",
         "security": [
           {
@@ -12615,9 +11637,7 @@
     },
     "/api/automation-rules/{id}/toggle": {
       "patch": {
-        "tags": [
-          "Automation Rules"
-        ],
+        "tags": ["Automation Rules"],
         "summary": "PATCH /api/automation-rules/{id}/toggle",
         "security": [
           {
@@ -12645,9 +11665,7 @@
     },
     "/api/meeting-health/trends/{organizationId}": {
       "get": {
-        "tags": [
-          "Meeting Health"
-        ],
+        "tags": ["Meeting Health"],
         "summary": "GET /api/meeting-health/trends/{organizationId}",
         "security": [
           {
@@ -12666,9 +11684,7 @@
     },
     "/api/meeting-health/{meetingId}": {
       "get": {
-        "tags": [
-          "Meeting Health"
-        ],
+        "tags": ["Meeting Health"],
         "summary": "GET /api/meeting-health/{meetingId}",
         "security": [
           {
@@ -12687,9 +11703,7 @@
     },
     "/api/workspace/{meetingId}/state": {
       "get": {
-        "tags": [
-          "Workspace"
-        ],
+        "tags": ["Workspace"],
         "summary": "GET /api/workspace/{meetingId}/state",
         "security": [
           {
@@ -12708,9 +11722,7 @@
     },
     "/api/workspace/{meetingId}/action": {
       "post": {
-        "tags": [
-          "Workspace"
-        ],
+        "tags": ["Workspace"],
         "summary": "POST /api/workspace/{meetingId}/action",
         "security": [
           {
@@ -12738,9 +11750,7 @@
     },
     "/api/recap/preferences": {
       "get": {
-        "tags": [
-          "Recap"
-        ],
+        "tags": ["Recap"],
         "summary": "GET /api/recap/preferences",
         "security": [
           {
@@ -12757,9 +11767,7 @@
         }
       },
       "put": {
-        "tags": [
-          "Recap"
-        ],
+        "tags": ["Recap"],
         "summary": "PUT /api/recap/preferences",
         "security": [
           {
@@ -12787,9 +11795,7 @@
     },
     "/api/recap/preview": {
       "post": {
-        "tags": [
-          "Recap"
-        ],
+        "tags": ["Recap"],
         "summary": "POST /api/recap/preview",
         "security": [
           {
@@ -12817,9 +11823,7 @@
     },
     "/api/meetings": {
       "get": {
-        "tags": [
-          "Meetings"
-        ],
+        "tags": ["Meetings"],
         "summary": "GET /api/meetings",
         "security": [
           {
@@ -12838,9 +11842,7 @@
     },
     "/api/quality/calculate/{meetingId}": {
       "post": {
-        "tags": [
-          "Quality"
-        ],
+        "tags": ["Quality"],
         "summary": "POST /api/quality/calculate/{meetingId}",
         "security": [
           {
@@ -12868,9 +11870,7 @@
     },
     "/api/quality/meeting/{meetingId}": {
       "get": {
-        "tags": [
-          "Quality"
-        ],
+        "tags": ["Quality"],
         "summary": "GET /api/quality/meeting/{meetingId}",
         "security": [
           {
@@ -12889,9 +11889,7 @@
     },
     "/api/quality/organization/{orgId}": {
       "get": {
-        "tags": [
-          "Quality"
-        ],
+        "tags": ["Quality"],
         "summary": "GET /api/quality/organization/{orgId}",
         "security": [
           {
@@ -12910,9 +11908,7 @@
     },
     "/api/quality/benchmarks/{orgId}": {
       "get": {
-        "tags": [
-          "Quality"
-        ],
+        "tags": ["Quality"],
         "summary": "GET /api/quality/benchmarks/{orgId}",
         "security": [
           {
@@ -12931,9 +11927,7 @@
     },
     "/api/quality/trends/{orgId}": {
       "get": {
-        "tags": [
-          "Quality"
-        ],
+        "tags": ["Quality"],
         "summary": "GET /api/quality/trends/{orgId}",
         "security": [
           {
@@ -12952,9 +11946,7 @@
     },
     "/api/quality/recommendations/{userId}": {
       "get": {
-        "tags": [
-          "Quality"
-        ],
+        "tags": ["Quality"],
         "summary": "GET /api/quality/recommendations/{userId}",
         "security": [
           {
@@ -12973,9 +11965,7 @@
     },
     "/api/quality/leaderboard/{orgId}": {
       "get": {
-        "tags": [
-          "Quality"
-        ],
+        "tags": ["Quality"],
         "summary": "GET /api/quality/leaderboard/{orgId}",
         "security": [
           {
@@ -12994,9 +11984,7 @@
     },
     "/api/quality/best-practices/{orgId}": {
       "get": {
-        "tags": [
-          "Quality"
-        ],
+        "tags": ["Quality"],
         "summary": "GET /api/quality/best-practices/{orgId}",
         "security": [
           {
@@ -13015,9 +12003,7 @@
     },
     "/api/quality/export/{orgId}": {
       "post": {
-        "tags": [
-          "Quality"
-        ],
+        "tags": ["Quality"],
         "summary": "POST /api/quality/export/{orgId}",
         "security": [
           {
@@ -13045,9 +12031,7 @@
     },
     "/api/effectiveness/calculate/{meetingId}": {
       "post": {
-        "tags": [
-          "Effectiveness"
-        ],
+        "tags": ["Effectiveness"],
         "summary": "POST /api/effectiveness/calculate/{meetingId}",
         "security": [
           {
@@ -13075,9 +12059,7 @@
     },
     "/api/effectiveness/meeting/{meetingId}": {
       "get": {
-        "tags": [
-          "Effectiveness"
-        ],
+        "tags": ["Effectiveness"],
         "summary": "GET /api/effectiveness/meeting/{meetingId}",
         "security": [
           {
@@ -13096,9 +12078,7 @@
     },
     "/api/effectiveness/organization/{organizationId}": {
       "get": {
-        "tags": [
-          "Effectiveness"
-        ],
+        "tags": ["Effectiveness"],
         "summary": "GET /api/effectiveness/organization/{organizationId}",
         "security": [
           {
@@ -13117,9 +12097,7 @@
     },
     "/api/effectiveness/series/{seriesId}": {
       "get": {
-        "tags": [
-          "Effectiveness"
-        ],
+        "tags": ["Effectiveness"],
         "summary": "GET /api/effectiveness/series/{seriesId}",
         "security": [
           {
@@ -13138,9 +12116,7 @@
     },
     "/api/export-templates/templates": {
       "get": {
-        "tags": [
-          "Export Templates"
-        ],
+        "tags": ["Export Templates"],
         "summary": "GET /api/export-templates/templates",
         "security": [
           {
@@ -13157,9 +12133,7 @@
         }
       },
       "post": {
-        "tags": [
-          "Export Templates"
-        ],
+        "tags": ["Export Templates"],
         "summary": "POST /api/export-templates/templates",
         "security": [
           {
@@ -13187,9 +12161,7 @@
     },
     "/api/export-templates": {
       "get": {
-        "tags": [
-          "Export Templates"
-        ],
+        "tags": ["Export Templates"],
         "summary": "GET /api/export-templates",
         "security": [
           {
@@ -13206,9 +12178,7 @@
         }
       },
       "post": {
-        "tags": [
-          "Export Templates"
-        ],
+        "tags": ["Export Templates"],
         "summary": "POST /api/export-templates",
         "security": [
           {
@@ -13236,9 +12206,7 @@
     },
     "/api/export-templates/templates/{id}": {
       "get": {
-        "tags": [
-          "Export Templates"
-        ],
+        "tags": ["Export Templates"],
         "summary": "GET /api/export-templates/templates/{id}",
         "security": [
           {
@@ -13255,9 +12223,7 @@
         }
       },
       "put": {
-        "tags": [
-          "Export Templates"
-        ],
+        "tags": ["Export Templates"],
         "summary": "PUT /api/export-templates/templates/{id}",
         "security": [
           {
@@ -13283,9 +12249,7 @@
         }
       },
       "delete": {
-        "tags": [
-          "Export Templates"
-        ],
+        "tags": ["Export Templates"],
         "summary": "DELETE /api/export-templates/templates/{id}",
         "security": [
           {
@@ -13304,9 +12268,7 @@
     },
     "/api/export-templates/{id}": {
       "get": {
-        "tags": [
-          "Export Templates"
-        ],
+        "tags": ["Export Templates"],
         "summary": "GET /api/export-templates/{id}",
         "security": [
           {
@@ -13323,9 +12285,7 @@
         }
       },
       "put": {
-        "tags": [
-          "Export Templates"
-        ],
+        "tags": ["Export Templates"],
         "summary": "PUT /api/export-templates/{id}",
         "security": [
           {
@@ -13351,9 +12311,7 @@
         }
       },
       "delete": {
-        "tags": [
-          "Export Templates"
-        ],
+        "tags": ["Export Templates"],
         "summary": "DELETE /api/export-templates/{id}",
         "security": [
           {
@@ -13372,9 +12330,7 @@
     },
     "/api/export-templates/meeting/{meetingId}": {
       "post": {
-        "tags": [
-          "Export Templates"
-        ],
+        "tags": ["Export Templates"],
         "summary": "POST /api/export-templates/meeting/{meetingId}",
         "security": [
           {
@@ -13402,9 +12358,7 @@
     },
     "/api/export-templates/templates/preview": {
       "post": {
-        "tags": [
-          "Export Templates"
-        ],
+        "tags": ["Export Templates"],
         "summary": "POST /api/export-templates/templates/preview",
         "security": [
           {
@@ -13432,9 +12386,7 @@
     },
     "/api/export-templates/preview": {
       "post": {
-        "tags": [
-          "Export Templates"
-        ],
+        "tags": ["Export Templates"],
         "summary": "POST /api/export-templates/preview",
         "security": [
           {
@@ -13462,9 +12414,7 @@
     },
     "/api/exports/templates": {
       "get": {
-        "tags": [
-          "Exports"
-        ],
+        "tags": ["Exports"],
         "summary": "GET /api/exports/templates",
         "security": [
           {
@@ -13481,9 +12431,7 @@
         }
       },
       "post": {
-        "tags": [
-          "Exports"
-        ],
+        "tags": ["Exports"],
         "summary": "POST /api/exports/templates",
         "security": [
           {
@@ -13511,9 +12459,7 @@
     },
     "/api/exports": {
       "get": {
-        "tags": [
-          "Exports"
-        ],
+        "tags": ["Exports"],
         "summary": "GET /api/exports",
         "security": [
           {
@@ -13530,9 +12476,7 @@
         }
       },
       "post": {
-        "tags": [
-          "Exports"
-        ],
+        "tags": ["Exports"],
         "summary": "POST /api/exports",
         "security": [
           {
@@ -13560,9 +12504,7 @@
     },
     "/api/exports/templates/{id}": {
       "get": {
-        "tags": [
-          "Exports"
-        ],
+        "tags": ["Exports"],
         "summary": "GET /api/exports/templates/{id}",
         "security": [
           {
@@ -13579,9 +12521,7 @@
         }
       },
       "put": {
-        "tags": [
-          "Exports"
-        ],
+        "tags": ["Exports"],
         "summary": "PUT /api/exports/templates/{id}",
         "security": [
           {
@@ -13607,9 +12547,7 @@
         }
       },
       "delete": {
-        "tags": [
-          "Exports"
-        ],
+        "tags": ["Exports"],
         "summary": "DELETE /api/exports/templates/{id}",
         "security": [
           {
@@ -13628,9 +12566,7 @@
     },
     "/api/exports/{id}": {
       "get": {
-        "tags": [
-          "Exports"
-        ],
+        "tags": ["Exports"],
         "summary": "GET /api/exports/{id}",
         "security": [
           {
@@ -13647,9 +12583,7 @@
         }
       },
       "put": {
-        "tags": [
-          "Exports"
-        ],
+        "tags": ["Exports"],
         "summary": "PUT /api/exports/{id}",
         "security": [
           {
@@ -13675,9 +12609,7 @@
         }
       },
       "delete": {
-        "tags": [
-          "Exports"
-        ],
+        "tags": ["Exports"],
         "summary": "DELETE /api/exports/{id}",
         "security": [
           {
@@ -13696,9 +12628,7 @@
     },
     "/api/exports/meeting/{meetingId}": {
       "post": {
-        "tags": [
-          "Exports"
-        ],
+        "tags": ["Exports"],
         "summary": "POST /api/exports/meeting/{meetingId}",
         "security": [
           {
@@ -13726,9 +12656,7 @@
     },
     "/api/exports/templates/preview": {
       "post": {
-        "tags": [
-          "Exports"
-        ],
+        "tags": ["Exports"],
         "summary": "POST /api/exports/templates/preview",
         "security": [
           {
@@ -13756,9 +12684,7 @@
     },
     "/api/exports/preview": {
       "post": {
-        "tags": [
-          "Exports"
-        ],
+        "tags": ["Exports"],
         "summary": "POST /api/exports/preview",
         "security": [
           {
@@ -13786,9 +12712,7 @@
     },
     "/api/saved-filters/{id}/pin": {
       "put": {
-        "tags": [
-          "Saved Filters"
-        ],
+        "tags": ["Saved Filters"],
         "summary": "PUT /api/saved-filters/{id}/pin",
         "security": [
           {
@@ -13816,9 +12740,7 @@
     },
     "/api/key-moments": {
       "post": {
-        "tags": [
-          "Key Moments"
-        ],
+        "tags": ["Key Moments"],
         "summary": "POST /api/key-moments",
         "security": [
           {
@@ -13846,9 +12768,7 @@
     },
     "/api/key-moments/meeting/{meetingId}": {
       "get": {
-        "tags": [
-          "Key Moments"
-        ],
+        "tags": ["Key Moments"],
         "summary": "GET /api/key-moments/meeting/{meetingId}",
         "security": [
           {
@@ -13867,9 +12787,7 @@
     },
     "/api/key-moments/{id}": {
       "patch": {
-        "tags": [
-          "Key Moments"
-        ],
+        "tags": ["Key Moments"],
         "summary": "PATCH /api/key-moments/{id}",
         "security": [
           {
@@ -13895,9 +12813,7 @@
         }
       },
       "delete": {
-        "tags": [
-          "Key Moments"
-        ],
+        "tags": ["Key Moments"],
         "summary": "DELETE /api/key-moments/{id}",
         "security": [
           {
@@ -13916,9 +12832,7 @@
     },
     "/api/speaking-time/trends": {
       "get": {
-        "tags": [
-          "Speaking Time"
-        ],
+        "tags": ["Speaking Time"],
         "summary": "GET /api/speaking-time/trends",
         "security": [
           {
@@ -13937,9 +12851,7 @@
     },
     "/api/speaking-time/org-compare": {
       "get": {
-        "tags": [
-          "Speaking Time"
-        ],
+        "tags": ["Speaking Time"],
         "summary": "GET /api/speaking-time/org-compare",
         "security": [
           {
@@ -13958,9 +12870,7 @@
     },
     "/api/speaking-time/{meetingId}/breakdown": {
       "get": {
-        "tags": [
-          "Speaking Time"
-        ],
+        "tags": ["Speaking Time"],
         "summary": "GET /api/speaking-time/{meetingId}/breakdown",
         "security": [
           {
@@ -13979,9 +12889,7 @@
     },
     "/api/meeting-goals/meeting/{meetingId}": {
       "post": {
-        "tags": [
-          "Meeting Goals"
-        ],
+        "tags": ["Meeting Goals"],
         "summary": "POST /api/meeting-goals/meeting/{meetingId}",
         "security": [
           {
@@ -14007,9 +12915,7 @@
         }
       },
       "get": {
-        "tags": [
-          "Meeting Goals"
-        ],
+        "tags": ["Meeting Goals"],
         "summary": "GET /api/meeting-goals/meeting/{meetingId}",
         "security": [
           {
@@ -14028,9 +12934,7 @@
     },
     "/api/meeting-goals/meeting/{meetingId}/goal/{goalId}": {
       "patch": {
-        "tags": [
-          "Meeting Goals"
-        ],
+        "tags": ["Meeting Goals"],
         "summary": "PATCH /api/meeting-goals/meeting/{meetingId}/goal/{goalId}",
         "security": [
           {
@@ -14058,9 +12962,7 @@
     },
     "/api/meeting-goals/org/{orgId}/stats": {
       "get": {
-        "tags": [
-          "Meeting Goals"
-        ],
+        "tags": ["Meeting Goals"],
         "summary": "GET /api/meeting-goals/org/{orgId}/stats",
         "security": [
           {
@@ -14079,9 +12981,7 @@
     },
     "/api/action-item-dependencies": {
       "post": {
-        "tags": [
-          "Action Item Dependencies"
-        ],
+        "tags": ["Action Item Dependencies"],
         "summary": "POST /api/action-item-dependencies",
         "security": [
           {
@@ -14109,9 +13009,7 @@
     },
     "/api/action-item-dependencies/{dependentId}/{blockerId}": {
       "delete": {
-        "tags": [
-          "Action Item Dependencies"
-        ],
+        "tags": ["Action Item Dependencies"],
         "summary": "DELETE /api/action-item-dependencies/{dependentId}/{blockerId}",
         "security": [
           {
@@ -14130,9 +13028,7 @@
     },
     "/api/action-item-dependencies/{itemId}": {
       "get": {
-        "tags": [
-          "Action Item Dependencies"
-        ],
+        "tags": ["Action Item Dependencies"],
         "summary": "GET /api/action-item-dependencies/{itemId}",
         "security": [
           {
@@ -14151,9 +13047,7 @@
     },
     "/api/parking-lot": {
       "post": {
-        "tags": [
-          "Parking Lot"
-        ],
+        "tags": ["Parking Lot"],
         "summary": "POST /api/parking-lot",
         "security": [
           {
@@ -14181,9 +13075,7 @@
     },
     "/api/parking-lot/assign": {
       "post": {
-        "tags": [
-          "Parking Lot"
-        ],
+        "tags": ["Parking Lot"],
         "summary": "POST /api/parking-lot/assign",
         "security": [
           {
@@ -14211,9 +13103,7 @@
     },
     "/api/parking-lot/organization/{orgId}": {
       "get": {
-        "tags": [
-          "Parking Lot"
-        ],
+        "tags": ["Parking Lot"],
         "summary": "GET /api/parking-lot/organization/{orgId}",
         "security": [
           {
@@ -14232,9 +13122,7 @@
     },
     "/api/parking-lot/{id}/status": {
       "patch": {
-        "tags": [
-          "Parking Lot"
-        ],
+        "tags": ["Parking Lot"],
         "summary": "PATCH /api/parking-lot/{id}/status",
         "security": [
           {
@@ -14262,9 +13150,7 @@
     },
     "/api/sentiment-timeline/{meetingId}": {
       "get": {
-        "tags": [
-          "Sentiment Timeline"
-        ],
+        "tags": ["Sentiment Timeline"],
         "summary": "GET /api/sentiment-timeline/{meetingId}",
         "security": [
           {
@@ -14283,9 +13169,7 @@
     },
     "/api/sentiment-timeline/{meetingId}/generate": {
       "post": {
-        "tags": [
-          "Sentiment Timeline"
-        ],
+        "tags": ["Sentiment Timeline"],
         "summary": "POST /api/sentiment-timeline/{meetingId}/generate",
         "security": [
           {
@@ -14313,9 +13197,7 @@
     },
     "/api/rsvps": {
       "get": {
-        "tags": [
-          "Rsvps"
-        ],
+        "tags": ["Rsvps"],
         "summary": "GET /api/rsvps",
         "security": [
           {
@@ -14334,9 +13216,7 @@
     },
     "/api/rsvps/pending": {
       "get": {
-        "tags": [
-          "Rsvps"
-        ],
+        "tags": ["Rsvps"],
         "summary": "GET /api/rsvps/pending",
         "security": [
           {
@@ -14355,9 +13235,7 @@
     },
     "/api/rsvps/meeting/{meetingId}": {
       "get": {
-        "tags": [
-          "Rsvps"
-        ],
+        "tags": ["Rsvps"],
         "summary": "GET /api/rsvps/meeting/{meetingId}",
         "security": [
           {
@@ -14376,9 +13254,7 @@
     },
     "/api/rsvps/send/{meetingId}": {
       "post": {
-        "tags": [
-          "Rsvps"
-        ],
+        "tags": ["Rsvps"],
         "summary": "POST /api/rsvps/send/{meetingId}",
         "security": [
           {
@@ -14406,9 +13282,7 @@
     },
     "/api/rsvps/{meetingId}/respond": {
       "put": {
-        "tags": [
-          "Rsvps"
-        ],
+        "tags": ["Rsvps"],
         "summary": "PUT /api/rsvps/{meetingId}/respond",
         "security": [
           {
@@ -14436,9 +13310,7 @@
     },
     "/api/testimonials": {
       "get": {
-        "tags": [
-          "Testimonials"
-        ],
+        "tags": ["Testimonials"],
         "summary": "GET /api/testimonials",
         "security": [
           {
@@ -14455,9 +13327,7 @@
         }
       },
       "post": {
-        "tags": [
-          "Testimonials"
-        ],
+        "tags": ["Testimonials"],
         "summary": "POST /api/testimonials",
         "security": [
           {
@@ -14485,9 +13355,7 @@
     },
     "/api/testimonials/stats": {
       "get": {
-        "tags": [
-          "Testimonials"
-        ],
+        "tags": ["Testimonials"],
         "summary": "GET /api/testimonials/stats",
         "security": [
           {
@@ -14506,9 +13374,7 @@
     },
     "/api/testimonials/me": {
       "get": {
-        "tags": [
-          "Testimonials"
-        ],
+        "tags": ["Testimonials"],
         "summary": "GET /api/testimonials/me",
         "security": [
           {
@@ -14527,9 +13393,7 @@
     },
     "/api/testimonials/{id}": {
       "put": {
-        "tags": [
-          "Testimonials"
-        ],
+        "tags": ["Testimonials"],
         "summary": "PUT /api/testimonials/{id}",
         "security": [
           {
@@ -14555,9 +13419,7 @@
         }
       },
       "delete": {
-        "tags": [
-          "Testimonials"
-        ],
+        "tags": ["Testimonials"],
         "summary": "DELETE /api/testimonials/{id}",
         "security": [
           {
@@ -14576,9 +13438,7 @@
     },
     "/api/admin/jobs": {
       "get": {
-        "tags": [
-          "Admin"
-        ],
+        "tags": ["Admin"],
         "summary": "GET /api/admin/jobs",
         "security": [
           {
@@ -14597,9 +13457,7 @@
     },
     "/api/admin/jobs/{queueName}/{jobId}/retry": {
       "post": {
-        "tags": [
-          "Admin"
-        ],
+        "tags": ["Admin"],
         "summary": "POST /api/admin/jobs/{queueName}/{jobId}/retry",
         "security": [
           {
@@ -14627,9 +13485,7 @@
     },
     "/api/admin/jobs/{queueName}/{jobId}": {
       "delete": {
-        "tags": [
-          "Admin"
-        ],
+        "tags": ["Admin"],
         "summary": "DELETE /api/admin/jobs/{queueName}/{jobId}",
         "security": [
           {
@@ -14648,9 +13504,7 @@
     },
     "/api/admin/embeddings": {
       "get": {
-        "tags": [
-          "Admin"
-        ],
+        "tags": ["Admin"],
         "summary": "GET /api/admin/embeddings",
         "security": [
           {
@@ -14669,9 +13523,7 @@
     },
     "/api/admin/embeddings/jobs/{jobId}": {
       "get": {
-        "tags": [
-          "Admin"
-        ],
+        "tags": ["Admin"],
         "summary": "GET /api/admin/embeddings/jobs/{jobId}",
         "security": [
           {
@@ -14690,9 +13542,7 @@
     },
     "/api/admin/embeddings/reindex/meeting/{meetingId}": {
       "post": {
-        "tags": [
-          "Admin"
-        ],
+        "tags": ["Admin"],
         "summary": "POST /api/admin/embeddings/reindex/meeting/{meetingId}",
         "security": [
           {
@@ -14720,9 +13570,7 @@
     },
     "/api/admin/embeddings/reindex/org": {
       "post": {
-        "tags": [
-          "Admin"
-        ],
+        "tags": ["Admin"],
         "summary": "POST /api/admin/embeddings/reindex/org",
         "security": [
           {
@@ -14750,9 +13598,7 @@
     },
     "/api/admin/importance/status": {
       "get": {
-        "tags": [
-          "Admin"
-        ],
+        "tags": ["Admin"],
         "summary": "GET /api/admin/importance/status",
         "security": [
           {
@@ -14771,9 +13617,7 @@
     },
     "/api/admin/importance/recalculate": {
       "post": {
-        "tags": [
-          "Admin"
-        ],
+        "tags": ["Admin"],
         "summary": "POST /api/admin/importance/recalculate",
         "security": [
           {
@@ -14801,9 +13645,7 @@
     },
     "/api/admin/health": {
       "get": {
-        "tags": [
-          "Admin"
-        ],
+        "tags": ["Admin"],
         "summary": "GET /api/admin/health",
         "security": [
           {
@@ -14822,9 +13664,7 @@
     },
     "/api/admin/rbac/matrix": {
       "get": {
-        "tags": [
-          "Admin"
-        ],
+        "tags": ["Admin"],
         "summary": "GET /api/admin/rbac/matrix",
         "security": [
           {
@@ -14843,9 +13683,7 @@
     },
     "/api/admin/ai-usage": {
       "get": {
-        "tags": [
-          "Admin"
-        ],
+        "tags": ["Admin"],
         "summary": "GET /api/admin/ai-usage",
         "security": [
           {
@@ -14864,9 +13702,7 @@
     },
     "/api/alerts/keywords/toggle": {
       "patch": {
-        "tags": [
-          "Alerts"
-        ],
+        "tags": ["Alerts"],
         "summary": "PATCH /api/alerts/keywords/toggle",
         "security": [
           {
@@ -14894,9 +13730,7 @@
     },
     "/api/alerts/keywords/test-send": {
       "post": {
-        "tags": [
-          "Alerts"
-        ],
+        "tags": ["Alerts"],
         "summary": "POST /api/alerts/keywords/test-send",
         "security": [
           {
@@ -14924,9 +13758,7 @@
     },
     "/api/integrations/marketplace": {
       "get": {
-        "tags": [
-          "Integrations"
-        ],
+        "tags": ["Integrations"],
         "summary": "GET /api/integrations/marketplace",
         "security": [
           {
@@ -14945,9 +13777,7 @@
     },
     "/api/integrations/notion/callback": {
       "get": {
-        "tags": [
-          "Integrations"
-        ],
+        "tags": ["Integrations"],
         "summary": "GET /api/integrations/notion/callback",
         "security": [
           {
@@ -14966,9 +13796,7 @@
     },
     "/api/integrations/notion/auth": {
       "get": {
-        "tags": [
-          "Integrations"
-        ],
+        "tags": ["Integrations"],
         "summary": "GET /api/integrations/notion/auth",
         "security": [
           {
@@ -14987,9 +13815,7 @@
     },
     "/api/integrations/notion/status": {
       "get": {
-        "tags": [
-          "Integrations"
-        ],
+        "tags": ["Integrations"],
         "summary": "GET /api/integrations/notion/status",
         "security": [
           {
@@ -15008,9 +13834,7 @@
     },
     "/api/integrations/notion/databases": {
       "get": {
-        "tags": [
-          "Integrations"
-        ],
+        "tags": ["Integrations"],
         "summary": "GET /api/integrations/notion/databases",
         "security": [
           {
@@ -15029,9 +13853,7 @@
     },
     "/api/integrations/notion/mapping": {
       "post": {
-        "tags": [
-          "Integrations"
-        ],
+        "tags": ["Integrations"],
         "summary": "POST /api/integrations/notion/mapping",
         "security": [
           {
@@ -15059,9 +13881,7 @@
     },
     "/api/integrations/notion/sync": {
       "post": {
-        "tags": [
-          "Integrations"
-        ],
+        "tags": ["Integrations"],
         "summary": "POST /api/integrations/notion/sync",
         "security": [
           {
@@ -15089,9 +13909,7 @@
     },
     "/api/integrations/notion/disconnect": {
       "delete": {
-        "tags": [
-          "Integrations"
-        ],
+        "tags": ["Integrations"],
         "summary": "DELETE /api/integrations/notion/disconnect",
         "security": [
           {
@@ -15110,9 +13928,7 @@
     },
     "/api/github/oauth_redirect": {
       "get": {
-        "tags": [
-          "Github"
-        ],
+        "tags": ["Github"],
         "summary": "GET /api/github/oauth_redirect",
         "security": [
           {
@@ -15131,9 +13947,7 @@
     },
     "/api/github/auth": {
       "get": {
-        "tags": [
-          "Github"
-        ],
+        "tags": ["Github"],
         "summary": "GET /api/github/auth",
         "security": [
           {
@@ -15152,9 +13966,7 @@
     },
     "/api/github/connect": {
       "get": {
-        "tags": [
-          "Github"
-        ],
+        "tags": ["Github"],
         "summary": "GET /api/github/connect",
         "security": [
           {
@@ -15173,9 +13985,7 @@
     },
     "/api/github/status/{organizationId}": {
       "get": {
-        "tags": [
-          "Github"
-        ],
+        "tags": ["Github"],
         "summary": "GET /api/github/status/{organizationId}",
         "security": [
           {
@@ -15194,9 +14004,7 @@
     },
     "/api/github/status": {
       "get": {
-        "tags": [
-          "Github"
-        ],
+        "tags": ["Github"],
         "summary": "GET /api/github/status",
         "security": [
           {
@@ -15215,9 +14023,7 @@
     },
     "/api/github/disconnect/{organizationId}": {
       "delete": {
-        "tags": [
-          "Github"
-        ],
+        "tags": ["Github"],
         "summary": "DELETE /api/github/disconnect/{organizationId}",
         "security": [
           {
@@ -15236,9 +14042,7 @@
     },
     "/api/github/disconnect": {
       "post": {
-        "tags": [
-          "Github"
-        ],
+        "tags": ["Github"],
         "summary": "POST /api/github/disconnect",
         "security": [
           {
@@ -15266,9 +14070,7 @@
     },
     "/api/github/repository/{organizationId}": {
       "post": {
-        "tags": [
-          "Github"
-        ],
+        "tags": ["Github"],
         "summary": "POST /api/github/repository/{organizationId}",
         "security": [
           {
@@ -15296,9 +14098,7 @@
     },
     "/api/github/repository": {
       "post": {
-        "tags": [
-          "Github"
-        ],
+        "tags": ["Github"],
         "summary": "POST /api/github/repository",
         "security": [
           {
@@ -15326,9 +14126,7 @@
     },
     "/api/github/repos": {
       "get": {
-        "tags": [
-          "Github"
-        ],
+        "tags": ["Github"],
         "summary": "GET /api/github/repos",
         "security": [
           {
@@ -15347,9 +14145,7 @@
     },
     "/api/github/sync": {
       "post": {
-        "tags": [
-          "Github"
-        ],
+        "tags": ["Github"],
         "summary": "POST /api/github/sync",
         "security": [
           {
@@ -15377,9 +14173,7 @@
     },
     "/api/issue-tracker/{provider}/config": {
       "get": {
-        "tags": [
-          "Issue Tracker"
-        ],
+        "tags": ["Issue Tracker"],
         "summary": "GET /api/issue-tracker/{provider}/config",
         "security": [
           {
@@ -15396,9 +14190,7 @@
         }
       },
       "post": {
-        "tags": [
-          "Issue Tracker"
-        ],
+        "tags": ["Issue Tracker"],
         "summary": "POST /api/issue-tracker/{provider}/config",
         "security": [
           {
@@ -15426,9 +14218,7 @@
     },
     "/api/issue-tracker/{provider}/disconnect": {
       "delete": {
-        "tags": [
-          "Issue Tracker"
-        ],
+        "tags": ["Issue Tracker"],
         "summary": "DELETE /api/issue-tracker/{provider}/disconnect",
         "security": [
           {
@@ -15447,9 +14237,7 @@
     },
     "/api/webhooks/jira": {
       "post": {
-        "tags": [
-          "Webhooks"
-        ],
+        "tags": ["Webhooks"],
         "summary": "POST /api/webhooks/jira",
         "security": [
           {
@@ -15477,9 +14265,7 @@
     },
     "/api/webhooks/linear": {
       "post": {
-        "tags": [
-          "Webhooks"
-        ],
+        "tags": ["Webhooks"],
         "summary": "POST /api/webhooks/linear",
         "security": [
           {
@@ -15507,9 +14293,7 @@
     },
     "/api/gamification/leaderboard": {
       "get": {
-        "tags": [
-          "Gamification"
-        ],
+        "tags": ["Gamification"],
         "summary": "GET /api/gamification/leaderboard",
         "security": [
           {
@@ -15528,9 +14312,7 @@
     },
     "/api/gamification/score": {
       "get": {
-        "tags": [
-          "Gamification"
-        ],
+        "tags": ["Gamification"],
         "summary": "GET /api/gamification/score",
         "security": [
           {
@@ -15549,9 +14331,7 @@
     },
     "/api/gamification/badges": {
       "get": {
-        "tags": [
-          "Gamification"
-        ],
+        "tags": ["Gamification"],
         "summary": "GET /api/gamification/badges",
         "security": [
           {
@@ -15570,9 +14350,7 @@
     },
     "/api/action-items/meetings/{meetingId}/extract-actions": {
       "post": {
-        "tags": [
-          "Action Items"
-        ],
+        "tags": ["Action Items"],
         "summary": "POST /api/action-items/meetings/{meetingId}/extract-actions",
         "security": [
           {
@@ -15600,9 +14378,7 @@
     },
     "/api/action-items": {
       "get": {
-        "tags": [
-          "Action Items"
-        ],
+        "tags": ["Action Items"],
         "summary": "GET /api/action-items",
         "security": [
           {
@@ -15621,9 +14397,7 @@
     },
     "/api/action-items/meeting/{meetingId}": {
       "get": {
-        "tags": [
-          "Action Items"
-        ],
+        "tags": ["Action Items"],
         "summary": "GET /api/action-items/meeting/{meetingId}",
         "security": [
           {
@@ -15642,9 +14416,7 @@
     },
     "/api/action-items/meetings/{meetingId}": {
       "post": {
-        "tags": [
-          "Action Items"
-        ],
+        "tags": ["Action Items"],
         "summary": "POST /api/action-items/meetings/{meetingId}",
         "security": [
           {
@@ -15672,9 +14444,7 @@
     },
     "/api/action-items/{id}": {
       "patch": {
-        "tags": [
-          "Action Items"
-        ],
+        "tags": ["Action Items"],
         "summary": "PATCH /api/action-items/{id}",
         "security": [
           {
@@ -15700,9 +14470,7 @@
         }
       },
       "delete": {
-        "tags": [
-          "Action Items"
-        ],
+        "tags": ["Action Items"],
         "summary": "DELETE /api/action-items/{id}",
         "security": [
           {
@@ -15721,9 +14489,7 @@
     },
     "/api/briefings/{meetingId}/generate": {
       "post": {
-        "tags": [
-          "Briefings"
-        ],
+        "tags": ["Briefings"],
         "summary": "POST /api/briefings/{meetingId}/generate",
         "security": [
           {
@@ -15751,9 +14517,7 @@
     },
     "/api/briefings/{meetingId}": {
       "get": {
-        "tags": [
-          "Briefings"
-        ],
+        "tags": ["Briefings"],
         "summary": "GET /api/briefings/{meetingId}",
         "security": [
           {
@@ -15772,9 +14536,7 @@
     },
     "/api/escalations/dashboard": {
       "get": {
-        "tags": [
-          "Escalations"
-        ],
+        "tags": ["Escalations"],
         "summary": "GET /api/escalations/dashboard",
         "security": [
           {
@@ -15793,9 +14555,7 @@
     },
     "/api/escalations": {
       "get": {
-        "tags": [
-          "Escalations"
-        ],
+        "tags": ["Escalations"],
         "summary": "GET /api/escalations",
         "security": [
           {
@@ -15812,9 +14572,7 @@
         }
       },
       "post": {
-        "tags": [
-          "Escalations"
-        ],
+        "tags": ["Escalations"],
         "summary": "POST /api/escalations",
         "security": [
           {
@@ -15842,9 +14600,7 @@
     },
     "/api/escalations/{id}": {
       "get": {
-        "tags": [
-          "Escalations"
-        ],
+        "tags": ["Escalations"],
         "summary": "GET /api/escalations/{id}",
         "security": [
           {
@@ -15861,9 +14617,7 @@
         }
       },
       "put": {
-        "tags": [
-          "Escalations"
-        ],
+        "tags": ["Escalations"],
         "summary": "PUT /api/escalations/{id}",
         "security": [
           {
@@ -15889,9 +14643,7 @@
         }
       },
       "delete": {
-        "tags": [
-          "Escalations"
-        ],
+        "tags": ["Escalations"],
         "summary": "DELETE /api/escalations/{id}",
         "security": [
           {
@@ -15910,9 +14662,7 @@
     },
     "/api/engagement/organization/rankings": {
       "get": {
-        "tags": [
-          "Engagement"
-        ],
+        "tags": ["Engagement"],
         "summary": "GET /api/engagement/organization/rankings",
         "security": [
           {
@@ -15931,9 +14681,7 @@
     },
     "/api/engagement/organization/recompute": {
       "post": {
-        "tags": [
-          "Engagement"
-        ],
+        "tags": ["Engagement"],
         "summary": "POST /api/engagement/organization/recompute",
         "security": [
           {
@@ -15961,9 +14709,7 @@
     },
     "/api/engagement/participant/{userId}": {
       "get": {
-        "tags": [
-          "Engagement"
-        ],
+        "tags": ["Engagement"],
         "summary": "GET /api/engagement/participant/{userId}",
         "security": [
           {
@@ -15982,9 +14728,7 @@
     },
     "/api/engagement/participant/{userId}/recalculate": {
       "post": {
-        "tags": [
-          "Engagement"
-        ],
+        "tags": ["Engagement"],
         "summary": "POST /api/engagement/participant/{userId}/recalculate",
         "security": [
           {
@@ -16012,9 +14756,7 @@
     },
     "/api/patterns": {
       "get": {
-        "tags": [
-          "Patterns"
-        ],
+        "tags": ["Patterns"],
         "summary": "GET /api/patterns",
         "security": [
           {
@@ -16033,9 +14775,7 @@
     },
     "/api/patterns/{id}/acknowledge": {
       "patch": {
-        "tags": [
-          "Patterns"
-        ],
+        "tags": ["Patterns"],
         "summary": "PATCH /api/patterns/{id}/acknowledge",
         "security": [
           {
@@ -16063,9 +14803,7 @@
     },
     "/api/patterns/{id}/dismiss": {
       "patch": {
-        "tags": [
-          "Patterns"
-        ],
+        "tags": ["Patterns"],
         "summary": "PATCH /api/patterns/{id}/dismiss",
         "security": [
           {
@@ -16093,9 +14831,7 @@
     },
     "/api/patterns/{id}/create-task": {
       "post": {
-        "tags": [
-          "Patterns"
-        ],
+        "tags": ["Patterns"],
         "summary": "POST /api/patterns/{id}/create-task",
         "security": [
           {
@@ -16123,9 +14859,7 @@
     },
     "/api/patterns/{id}/configure-automation": {
       "post": {
-        "tags": [
-          "Patterns"
-        ],
+        "tags": ["Patterns"],
         "summary": "POST /api/patterns/{id}/configure-automation",
         "security": [
           {
@@ -16153,9 +14887,7 @@
     },
     "/api/patterns/scan": {
       "post": {
-        "tags": [
-          "Patterns"
-        ],
+        "tags": ["Patterns"],
         "summary": "POST /api/patterns/scan",
         "security": [
           {
@@ -16183,9 +14915,7 @@
     },
     "/api/meetings/{meetingId}/guest-tokens": {
       "post": {
-        "tags": [
-          "Meetings"
-        ],
+        "tags": ["Meetings"],
         "summary": "POST /api/meetings/{meetingId}/guest-tokens",
         "security": [
           {
@@ -16211,9 +14941,7 @@
         }
       },
       "get": {
-        "tags": [
-          "Meetings"
-        ],
+        "tags": ["Meetings"],
         "summary": "GET /api/meetings/{meetingId}/guest-tokens",
         "security": [
           {
@@ -16232,9 +14960,7 @@
     },
     "/api/guest-tokens/{tokenId}/revoke": {
       "post": {
-        "tags": [
-          "Guest Tokens"
-        ],
+        "tags": ["Guest Tokens"],
         "summary": "POST /api/guest-tokens/{tokenId}/revoke",
         "security": [
           {
@@ -16262,9 +14988,7 @@
     },
     "/api/guest/meeting/{token}": {
       "get": {
-        "tags": [
-          "Guest"
-        ],
+        "tags": ["Guest"],
         "summary": "GET /api/guest/meeting/{token}",
         "security": [
           {
@@ -16283,9 +15007,7 @@
     },
     "/api/guest/meeting/{token}/comments": {
       "post": {
-        "tags": [
-          "Guest"
-        ],
+        "tags": ["Guest"],
         "summary": "POST /api/guest/meeting/{token}/comments",
         "security": [
           {
@@ -16313,9 +15035,7 @@
     },
     "/api/custom-fields/org/{orgId}": {
       "get": {
-        "tags": [
-          "Custom Fields"
-        ],
+        "tags": ["Custom Fields"],
         "summary": "GET /api/custom-fields/org/{orgId}",
         "security": [
           {
@@ -16332,9 +15052,7 @@
         }
       },
       "post": {
-        "tags": [
-          "Custom Fields"
-        ],
+        "tags": ["Custom Fields"],
         "summary": "POST /api/custom-fields/org/{orgId}",
         "security": [
           {
@@ -16362,9 +15080,7 @@
     },
     "/api/custom-fields/org/{orgId}/{definitionId}": {
       "patch": {
-        "tags": [
-          "Custom Fields"
-        ],
+        "tags": ["Custom Fields"],
         "summary": "PATCH /api/custom-fields/org/{orgId}/{definitionId}",
         "security": [
           {
@@ -16390,9 +15106,7 @@
         }
       },
       "delete": {
-        "tags": [
-          "Custom Fields"
-        ],
+        "tags": ["Custom Fields"],
         "summary": "DELETE /api/custom-fields/org/{orgId}/{definitionId}",
         "security": [
           {
@@ -16411,9 +15125,7 @@
     },
     "/api/custom-fields/meeting/{meetingId}": {
       "post": {
-        "tags": [
-          "Custom Fields"
-        ],
+        "tags": ["Custom Fields"],
         "summary": "POST /api/custom-fields/meeting/{meetingId}",
         "security": [
           {
@@ -16439,9 +15151,7 @@
         }
       },
       "get": {
-        "tags": [
-          "Custom Fields"
-        ],
+        "tags": ["Custom Fields"],
         "summary": "GET /api/custom-fields/meeting/{meetingId}",
         "security": [
           {
@@ -16460,9 +15170,7 @@
     },
     "/api/nudges": {
       "get": {
-        "tags": [
-          "Nudges"
-        ],
+        "tags": ["Nudges"],
         "summary": "GET /api/nudges",
         "security": [
           {
@@ -16481,9 +15189,7 @@
     },
     "/api/nudges/{id}/status": {
       "patch": {
-        "tags": [
-          "Nudges"
-        ],
+        "tags": ["Nudges"],
         "summary": "PATCH /api/nudges/{id}/status",
         "security": [
           {
@@ -16511,9 +15217,7 @@
     },
     "/api/nudges/meeting/{meetingId}/readiness": {
       "get": {
-        "tags": [
-          "Nudges"
-        ],
+        "tags": ["Nudges"],
         "summary": "GET /api/nudges/meeting/{meetingId}/readiness",
         "security": [
           {
@@ -16532,9 +15236,7 @@
     },
     "/api/data-retention/{organizationId}": {
       "get": {
-        "tags": [
-          "Data Retention"
-        ],
+        "tags": ["Data Retention"],
         "summary": "GET /api/data-retention/{organizationId}",
         "security": [
           {
@@ -16551,9 +15253,7 @@
         }
       },
       "put": {
-        "tags": [
-          "Data Retention"
-        ],
+        "tags": ["Data Retention"],
         "summary": "PUT /api/data-retention/{organizationId}",
         "security": [
           {
@@ -16581,9 +15281,7 @@
     },
     "/api/data-retention/{organizationId}/preview": {
       "get": {
-        "tags": [
-          "Data Retention"
-        ],
+        "tags": ["Data Retention"],
         "summary": "GET /api/data-retention/{organizationId}/preview",
         "security": [
           {
@@ -16602,9 +15300,7 @@
     },
     "/api/data-retention/{organizationId}/trigger": {
       "post": {
-        "tags": [
-          "Data Retention"
-        ],
+        "tags": ["Data Retention"],
         "summary": "POST /api/data-retention/{organizationId}/trigger",
         "security": [
           {
@@ -16632,9 +15328,7 @@
     },
     "/api/weekly-insights/{orgId}/latest": {
       "get": {
-        "tags": [
-          "Weekly Insights"
-        ],
+        "tags": ["Weekly Insights"],
         "summary": "GET /api/weekly-insights/{orgId}/latest",
         "security": [
           {
@@ -16653,9 +15347,7 @@
     },
     "/api/weekly-insights/{orgId}": {
       "get": {
-        "tags": [
-          "Weekly Insights"
-        ],
+        "tags": ["Weekly Insights"],
         "summary": "GET /api/weekly-insights/{orgId}",
         "security": [
           {
@@ -16674,9 +15366,7 @@
     },
     "/api/weekly-insights/{orgId}/generate": {
       "post": {
-        "tags": [
-          "Weekly Insights"
-        ],
+        "tags": ["Weekly Insights"],
         "summary": "POST /api/weekly-insights/{orgId}/generate",
         "security": [
           {
@@ -16704,9 +15394,7 @@
     },
     "/api/standups/my": {
       "get": {
-        "tags": [
-          "Standups"
-        ],
+        "tags": ["Standups"],
         "summary": "GET /api/standups/my",
         "security": [
           {
@@ -16725,9 +15413,7 @@
     },
     "/api/standups/team": {
       "get": {
-        "tags": [
-          "Standups"
-        ],
+        "tags": ["Standups"],
         "summary": "GET /api/standups/team",
         "security": [
           {
@@ -16746,9 +15432,7 @@
     },
     "/api/standups/generate": {
       "post": {
-        "tags": [
-          "Standups"
-        ],
+        "tags": ["Standups"],
         "summary": "POST /api/standups/generate",
         "security": [
           {
@@ -16776,9 +15460,7 @@
     },
     "/api/standups/preferences": {
       "get": {
-        "tags": [
-          "Standups"
-        ],
+        "tags": ["Standups"],
         "summary": "GET /api/standups/preferences",
         "security": [
           {
@@ -16795,9 +15477,7 @@
         }
       },
       "put": {
-        "tags": [
-          "Standups"
-        ],
+        "tags": ["Standups"],
         "summary": "PUT /api/standups/preferences",
         "security": [
           {
@@ -16825,9 +15505,7 @@
     },
     "/api/meeting-risks": {
       "post": {
-        "tags": [
-          "Meeting Risks"
-        ],
+        "tags": ["Meeting Risks"],
         "summary": "POST /api/meeting-risks",
         "security": [
           {
@@ -16855,9 +15533,7 @@
     },
     "/api/meeting-risks/organization/{organizationId}": {
       "get": {
-        "tags": [
-          "Meeting Risks"
-        ],
+        "tags": ["Meeting Risks"],
         "summary": "GET /api/meeting-risks/organization/{organizationId}",
         "security": [
           {
@@ -16876,9 +15552,7 @@
     },
     "/api/meeting-risks/meeting/{meetingId}": {
       "get": {
-        "tags": [
-          "Meeting Risks"
-        ],
+        "tags": ["Meeting Risks"],
         "summary": "GET /api/meeting-risks/meeting/{meetingId}",
         "security": [
           {
@@ -16897,9 +15571,7 @@
     },
     "/api/meeting-risks/{riskId}": {
       "put": {
-        "tags": [
-          "Meeting Risks"
-        ],
+        "tags": ["Meeting Risks"],
         "summary": "PUT /api/meeting-risks/{riskId}",
         "security": [
           {
@@ -16925,9 +15597,7 @@
         }
       },
       "delete": {
-        "tags": [
-          "Meeting Risks"
-        ],
+        "tags": ["Meeting Risks"],
         "summary": "DELETE /api/meeting-risks/{riskId}",
         "security": [
           {
@@ -16946,9 +15616,7 @@
     },
     "/api/meeting-risks/{riskId}/action-items": {
       "post": {
-        "tags": [
-          "Meeting Risks"
-        ],
+        "tags": ["Meeting Risks"],
         "summary": "POST /api/meeting-risks/{riskId}/action-items",
         "security": [
           {
@@ -16976,9 +15644,7 @@
     },
     "/api/action-item-sla/config/{organizationId}": {
       "get": {
-        "tags": [
-          "Action Item Sla"
-        ],
+        "tags": ["Action Item Sla"],
         "summary": "GET /api/action-item-sla/config/{organizationId}",
         "security": [
           {
@@ -16995,9 +15661,7 @@
         }
       },
       "put": {
-        "tags": [
-          "Action Item Sla"
-        ],
+        "tags": ["Action Item Sla"],
         "summary": "PUT /api/action-item-sla/config/{organizationId}",
         "security": [
           {
@@ -17025,9 +15689,7 @@
     },
     "/api/action-item-sla/breaches/{organizationId}": {
       "get": {
-        "tags": [
-          "Action Item Sla"
-        ],
+        "tags": ["Action Item Sla"],
         "summary": "GET /api/action-item-sla/breaches/{organizationId}",
         "security": [
           {
@@ -17046,9 +15708,7 @@
     },
     "/api/action-item-sla/stats/{organizationId}": {
       "get": {
-        "tags": [
-          "Action Item Sla"
-        ],
+        "tags": ["Action Item Sla"],
         "summary": "GET /api/action-item-sla/stats/{organizationId}",
         "security": [
           {
@@ -17067,9 +15727,7 @@
     },
     "/api/action-item-sla/breach/{breachId}/acknowledge": {
       "post": {
-        "tags": [
-          "Action Item Sla"
-        ],
+        "tags": ["Action Item Sla"],
         "summary": "POST /api/action-item-sla/breach/{breachId}/acknowledge",
         "security": [
           {
@@ -17097,9 +15755,7 @@
     },
     "/api/team-availability/preferences": {
       "get": {
-        "tags": [
-          "Team Availability"
-        ],
+        "tags": ["Team Availability"],
         "summary": "GET /api/team-availability/preferences",
         "security": [
           {
@@ -17116,9 +15772,7 @@
         }
       },
       "put": {
-        "tags": [
-          "Team Availability"
-        ],
+        "tags": ["Team Availability"],
         "summary": "PUT /api/team-availability/preferences",
         "security": [
           {
@@ -17146,9 +15800,7 @@
     },
     "/api/team-availability/heatmap": {
       "get": {
-        "tags": [
-          "Team Availability"
-        ],
+        "tags": ["Team Availability"],
         "summary": "GET /api/team-availability/heatmap",
         "security": [
           {
@@ -17167,9 +15819,7 @@
     },
     "/api/team-availability/free-slots": {
       "post": {
-        "tags": [
-          "Team Availability"
-        ],
+        "tags": ["Team Availability"],
         "summary": "POST /api/team-availability/free-slots",
         "security": [
           {
@@ -17197,9 +15847,7 @@
     },
     "/api/team-availability/load-distribution": {
       "get": {
-        "tags": [
-          "Team Availability"
-        ],
+        "tags": ["Team Availability"],
         "summary": "GET /api/team-availability/load-distribution",
         "security": [
           {
@@ -17218,9 +15866,7 @@
     },
     "/api/action-item-templates": {
       "post": {
-        "tags": [
-          "Action Item Templates"
-        ],
+        "tags": ["Action Item Templates"],
         "summary": "POST /api/action-item-templates",
         "security": [
           {
@@ -17246,9 +15892,7 @@
         }
       },
       "get": {
-        "tags": [
-          "Action Item Templates"
-        ],
+        "tags": ["Action Item Templates"],
         "summary": "GET /api/action-item-templates",
         "security": [
           {
@@ -17267,9 +15911,7 @@
     },
     "/api/action-item-templates/{id}": {
       "get": {
-        "tags": [
-          "Action Item Templates"
-        ],
+        "tags": ["Action Item Templates"],
         "summary": "GET /api/action-item-templates/{id}",
         "security": [
           {
@@ -17286,9 +15928,7 @@
         }
       },
       "put": {
-        "tags": [
-          "Action Item Templates"
-        ],
+        "tags": ["Action Item Templates"],
         "summary": "PUT /api/action-item-templates/{id}",
         "security": [
           {
@@ -17314,9 +15954,7 @@
         }
       },
       "delete": {
-        "tags": [
-          "Action Item Templates"
-        ],
+        "tags": ["Action Item Templates"],
         "summary": "DELETE /api/action-item-templates/{id}",
         "security": [
           {
@@ -17335,9 +15973,7 @@
     },
     "/api/action-item-templates/apply": {
       "post": {
-        "tags": [
-          "Action Item Templates"
-        ],
+        "tags": ["Action Item Templates"],
         "summary": "POST /api/action-item-templates/apply",
         "security": [
           {
@@ -17365,9 +16001,7 @@
     },
     "/api/observers/{meetingId}/request": {
       "post": {
-        "tags": [
-          "Observers"
-        ],
+        "tags": ["Observers"],
         "summary": "POST /api/observers/{meetingId}/request",
         "security": [
           {
@@ -17395,9 +16029,7 @@
     },
     "/api/observers/{meetingId}/approve/{userId}": {
       "put": {
-        "tags": [
-          "Observers"
-        ],
+        "tags": ["Observers"],
         "summary": "PUT /api/observers/{meetingId}/approve/{userId}",
         "security": [
           {
@@ -17425,9 +16057,7 @@
     },
     "/api/observers/{meetingId}/deny/{userId}": {
       "put": {
-        "tags": [
-          "Observers"
-        ],
+        "tags": ["Observers"],
         "summary": "PUT /api/observers/{meetingId}/deny/{userId}",
         "security": [
           {
@@ -17455,9 +16085,7 @@
     },
     "/api/skill-endorsements": {
       "post": {
-        "tags": [
-          "Skill Endorsements"
-        ],
+        "tags": ["Skill Endorsements"],
         "summary": "POST /api/skill-endorsements",
         "security": [
           {
@@ -17485,9 +16113,7 @@
     },
     "/api/skill-endorsements/meeting/{meetingId}": {
       "get": {
-        "tags": [
-          "Skill Endorsements"
-        ],
+        "tags": ["Skill Endorsements"],
         "summary": "GET /api/skill-endorsements/meeting/{meetingId}",
         "security": [
           {
@@ -17506,9 +16132,7 @@
     },
     "/api/skill-endorsements/user/{userId}": {
       "get": {
-        "tags": [
-          "Skill Endorsements"
-        ],
+        "tags": ["Skill Endorsements"],
         "summary": "GET /api/skill-endorsements/user/{userId}",
         "security": [
           {
@@ -17527,9 +16151,7 @@
     },
     "/api/semantic-graph/meeting/{meetingId}": {
       "get": {
-        "tags": [
-          "Semantic Graph"
-        ],
+        "tags": ["Semantic Graph"],
         "summary": "GET /api/semantic-graph/meeting/{meetingId}",
         "security": [
           {
@@ -17548,9 +16170,7 @@
     },
     "/api/semantic-graph/neighborhood": {
       "get": {
-        "tags": [
-          "Semantic Graph"
-        ],
+        "tags": ["Semantic Graph"],
         "summary": "GET /api/semantic-graph/neighborhood",
         "security": [
           {
@@ -17569,9 +16189,7 @@
     },
     "/api/calendar-sync/conflicts": {
       "get": {
-        "tags": [
-          "Calendar Sync"
-        ],
+        "tags": ["Calendar Sync"],
         "summary": "GET /api/calendar-sync/conflicts",
         "security": [
           {
@@ -17590,9 +16208,7 @@
     },
     "/api/calendar-sync/conflicts/{conflictId}/resolve": {
       "post": {
-        "tags": [
-          "Calendar Sync"
-        ],
+        "tags": ["Calendar Sync"],
         "summary": "POST /api/calendar-sync/conflicts/{conflictId}/resolve",
         "security": [
           {
@@ -17620,9 +16236,7 @@
     },
     "/api/compliance/scan": {
       "post": {
-        "tags": [
-          "Compliance"
-        ],
+        "tags": ["Compliance"],
         "summary": "POST /api/compliance/scan",
         "security": [
           {
@@ -17650,9 +16264,7 @@
     },
     "/api/compliance/audit-logs": {
       "get": {
-        "tags": [
-          "Compliance"
-        ],
+        "tags": ["Compliance"],
         "summary": "GET /api/compliance/audit-logs",
         "security": [
           {
@@ -17671,9 +16283,7 @@
     },
     "/api/compliance/unmask-request/{auditId}": {
       "post": {
-        "tags": [
-          "Compliance"
-        ],
+        "tags": ["Compliance"],
         "summary": "POST /api/compliance/unmask-request/{auditId}",
         "security": [
           {
@@ -17701,9 +16311,7 @@
     },
     "/api/action-item-graph/dependencies": {
       "post": {
-        "tags": [
-          "Action Item Graph"
-        ],
+        "tags": ["Action Item Graph"],
         "summary": "POST /api/action-item-graph/dependencies",
         "security": [
           {
@@ -17731,9 +16339,7 @@
     },
     "/api/action-item-graph/topology": {
       "get": {
-        "tags": [
-          "Action Item Graph"
-        ],
+        "tags": ["Action Item Graph"],
         "summary": "GET /api/action-item-graph/topology",
         "security": [
           {
@@ -17752,9 +16358,7 @@
     },
     "/api/action-item-graph/resolve/{actionItemId}": {
       "patch": {
-        "tags": [
-          "Action Item Graph"
-        ],
+        "tags": ["Action Item Graph"],
         "summary": "PATCH /api/action-item-graph/resolve/{actionItemId}",
         "security": [
           {
@@ -17782,9 +16386,7 @@
     },
     "/api/action-item-graph/dependencies/{id}": {
       "delete": {
-        "tags": [
-          "Action Item Graph"
-        ],
+        "tags": ["Action Item Graph"],
         "summary": "DELETE /api/action-item-graph/dependencies/{id}",
         "security": [
           {
@@ -17803,9 +16405,7 @@
     },
     "/api/webhooks/github": {
       "post": {
-        "tags": [
-          "Webhooks"
-        ],
+        "tags": ["Webhooks"],
         "summary": "POST /api/webhooks/github",
         "security": [
           {
