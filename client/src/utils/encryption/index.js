@@ -102,3 +102,15 @@ export {
   clearMeetingKey,
   meetingKeyStorageKey,
 } from "./meetingKeyStore.js";
+
+export {
+  exportMeetingKeyBundle,
+  importMeetingKeyBundle,
+  isMeetingKeyBundle,
+  serializeMeetingKeyBundle,
+  parseMeetingKeyBundle,
+  meetingKeyBundleFilename,
+  MEETING_KEY_BUNDLE_VERSION,
+  MEETING_KEY_BUNDLE_TYPE,
+  MEETING_KEY_FILE_EXTENSION,
+} from "./meetingKeyExport.js";
