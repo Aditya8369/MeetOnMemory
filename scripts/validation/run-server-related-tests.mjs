@@ -26,6 +26,7 @@ const VITEST_TEST_FILES = new Set([
   "server/tests/realtimeClerkAuthPhase4.test.js",
   "server/tests/sharedLinkAnalytics.test.js",
   "server/tests/meetingValidation.test.js",
+  "server/tests/e2eeFeatureFlag.test.js",
   "server/tests/sessionController.test.js",
 ]);
 const JEST_RELATED_IGNORE = [
@@ -69,8 +70,14 @@ const vitestOwnedSources = new Set([
   "server/services/MeetingService.js",
   "server/services/MeetingStorageService.js",
   "server/utils/imageUrl.js",
+  "server/models/organizationModel.js",
+  "server/utils/transcriptEncryption.js",
 ]);
 const VITEST_SOURCE_TEST_MAP = {
+  "server/models/organizationModel.js":
+    "server/tests/OrganizationService.test.js",
+  "server/utils/transcriptEncryption.js":
+    "server/tests/e2eeFeatureFlag.test.js",
   "server/controllers/transcriptController.js":
     "server/tests/transcriptController.test.js",
   "server/models/transcriptModel.js":
