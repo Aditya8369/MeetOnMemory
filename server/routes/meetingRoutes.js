@@ -63,6 +63,7 @@ import {
   retryTranscription,
   uploadTranscriptChunk,
   storeEncryptedTranscript,
+  persistCaptionSegments,
 } from "../controllers/transcriptController.js";
 import { getMeetingRoles } from "../controllers/roleRotationController.js";
 
@@ -205,6 +206,16 @@ router.post(
   requireOrgMembership,
   requirePermission("meetings", "edit"),
   storeEncryptedTranscript,
+);
+
+// POST /api/meetings/:meetingId/transcript/captions (Issue #2246)
+router.post(
+  "/:meetingId/transcript/captions",
+  userAuth,
+  writeLimiter,
+  requireOrgMembership,
+  requirePermission("meetings", "edit"),
+  persistCaptionSegments,
 );
 
 // POST /api/meetings/:meetingId/transcript/retry

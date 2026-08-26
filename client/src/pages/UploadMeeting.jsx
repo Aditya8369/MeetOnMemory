@@ -29,6 +29,8 @@ import { meetingApi } from "../services";
 import useMeetingUpload from "../hooks/useMeetingUpload";
 import Dropzone from "../components/meetings/Dropzone.jsx";
 import MeetingRecorder from "../components/meetings/MeetingRecorder.jsx";
+import DeviceSetupModal from "../components/meetings/DeviceSetupModal.jsx";
+import useDevicePermission from "../hooks/useDevicePermission";
 import TagAutocomplete from "../components/meetings/TagAutocomplete.jsx";
 import RecordingSessionAnalyticsPanel from "../components/analytics/RecordingSessionAnalyticsPanel.jsx";
 import { createClerkSocketOptions } from "../services/apiClient.js";
@@ -101,6 +103,47 @@ const UploadMeeting = () => {
   const [activeTab, setActiveTab] = useState("upload");
   const [liveTranscript, setLiveTranscript] = useState("");
   const [isRecordingActive, setIsRecordingActive] = useState(false);
+  const [showDeviceSetup, setShowDeviceSetup] = useState(false);
+  const [deviceStream, setDeviceStream] = useState(null);
+  const [autoStartRecording, setAutoStartRecording] = useState(false);
+  const [bypassDeviceSetup, setBypassDeviceSetup] = useState(false);
+  const permission = useDevicePermission();
+
+  const stopDeviceStream = () => {
+    deviceStream?.getTracks?.().forEach((track) => track.stop());
+    setDeviceStream(null);
+  };
+
+  const openRecordTab = () => {
+    setActiveTab("record");
+    setBypassDeviceSetup(false);
+    setShowDeviceSetup(true);
+  };
+
+  const handleDeviceReady = (stream) => {
+    permission.releaseStream();
+    setDeviceStream(stream);
+    setShowDeviceSetup(false);
+    setBypassDeviceSetup(false);
+    setAutoStartRecording(true);
+    setTimeout(() => setAutoStartRecording(false), 0);
+  };
+
+  const handleContinueWithoutDevices = () => {
+    permission.releaseStream();
+    stopDeviceStream();
+    setBypassDeviceSetup(true);
+    setShowDeviceSetup(false);
+    setAutoStartRecording(true);
+    setTimeout(() => setAutoStartRecording(false), 0);
+  };
+
+  useEffect(
+    () => () => {
+      deviceStream?.getTracks?.().forEach((track) => track.stop());
+    },
+    [deviceStream],
+  );
 
   // Warn on browser unload if recording or uploading in progress
   useEffect(() => {
@@ -397,7 +440,7 @@ const UploadMeeting = () => {
                 Upload File
               </button>
               <button
-                onClick={() => setActiveTab("record")}
+                onClick={openRecordTab}
                 className={`px-6 py-2.5 rounded-lg text-sm font-bold transition-all ${
                   activeTab === "record"
                     ? "bg-white dark:bg-gray-700 text-red-600 dark:text-red-400 shadow-sm"
@@ -418,6 +461,16 @@ const UploadMeeting = () => {
               </button>
             </div>
           </div>
+
+          {showDeviceSetup && activeTab === "record" && (
+            <div className="fixed inset-0 z-[100] overflow-y-auto">
+              <DeviceSetupModal
+                permission={permission}
+                onJoin={handleDeviceReady}
+                onContinueWithout={handleContinueWithoutDevices}
+              />
+            </div>
+          )}
 
           {/* Active Tab Content */}
           {activeTab === "analytics" ? (
@@ -516,6 +569,16 @@ const UploadMeeting = () => {
                         title={title}
                         date={meetingDate}
                         tags={tags}
+                        deviceStream={deviceStream}
+                        autoStart={autoStartRecording}
+                        onDeviceSetupNeeded={
+                          bypassDeviceSetup
+                            ? undefined
+                            : () => {
+                                setBypassDeviceSetup(false);
+                                setShowDeviceSetup(true);
+                              }
+                        }
                       />
                     </>
                   )}

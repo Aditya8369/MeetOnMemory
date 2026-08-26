@@ -35,6 +35,7 @@ import ReactionSummaryCard from "../components/meeting-details/ReactionSummaryCa
 import { useUser } from "@clerk/clerk-react";
 import Navbar from "../components/Navbar.jsx";
 import BriefingBanner from "../components/meeting-details/BriefingBanner";
+import CompareButton from "../components/meeting-details/CompareButton";
 import AgendaBuilder from "../components/meetings/AgendaBuilder";
 import IcebreakerSection from "../components/meetings/IcebreakerSection";
 import { getBriefing } from "../services/briefingApi";
@@ -64,6 +65,10 @@ import RetentionQuizSection from "../components/meetings/RetentionQuizSection";
 import ResourceConflictsPanel from "../components/meeting-details/ResourceConflictsPanel";
 import SkillEndorsementModal from "../components/meetings/SkillEndorsementModal";
 import DebriefQAPanel from "../components/meetings/DebriefQAPanel";
+ feature/i18n-rtl-parity-2242
+ main
+
+import DelegationPanel from "../components/meetings/DelegationPanel";
  main
 
 const MeetingDetails = () => {
@@ -92,6 +97,17 @@ const MeetingDetails = () => {
       p.user?.toString() === dbUserId || p.user?._id?.toString() === dbUserId,
   );
   const userRole = participant?.role || null;
+  const isOrganizer =
+    userData?.role === "admin" ||
+    userData?.role === "owner" ||
+    userRole === "host" ||
+    userRole === "organizer" ||
+    (dbUserId &&
+      (meeting?.uploadedBy?._id?.toString() === dbUserId ||
+        meeting?.uploadedBy?.toString() === dbUserId)) ||
+    (userData?._id &&
+      (meeting?.uploadedBy?._id?.toString() === userData._id.toString() ||
+        meeting?.uploadedBy?.toString() === userData._id.toString()));
 
   const handleCitationClick = (citation) => {
     if (citation.type === "transcript" && citation.timestamp !== null) {
@@ -340,6 +356,7 @@ const MeetingDetails = () => {
           )}
 
           <div className="mb-4 flex justify-end gap-3">
+            <CompareButton meetingId={meeting._id} />
             <button
               onClick={() => setIsExportDialogOpen(true)}
               className="flex items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg font-medium shadow-sm transition-colors text-sm"
@@ -687,6 +704,12 @@ const MeetingDetails = () => {
           )}
           {currentUser?.publicMetadata?.dbUserId === meeting.uploadedBy && (
             <GuestAccessManager meetingId={meeting._id} />
+          )}
+          {isOrganizer && (
+            <DelegationPanel
+              meetingId={meeting._id}
+              participants={meeting.participants}
+            />
           )}
           <MeetingActions
             meeting={meeting}
