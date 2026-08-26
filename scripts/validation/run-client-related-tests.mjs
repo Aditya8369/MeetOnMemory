@@ -22,6 +22,26 @@ const ROOT_CLIENT_MAP = {
     "client/src/components/__tests__/OfflineBanner.test.jsx",
   "client/src/components/OfflineQueueInspector.jsx":
     "client/src/components/__tests__/OfflineQueueInspector.test.jsx",
+  "client/src/services/index.js":
+    "client/src/pages/__tests__/SessionGallery.test.jsx",
+  "client/src/services/meetingApi.js":
+    "client/src/pages/__tests__/SessionGallery.test.jsx",
+  "client/src/services/sessionCardApi.js":
+    "client/src/pages/__tests__/SessionGallery.test.jsx",
+  "client/src/routes/ProtectedRoutes.jsx":
+    "client/src/pages/__tests__/SessionGallery.test.jsx",
+  "client/src/components/Navbar.jsx":
+    "client/src/pages/__tests__/SessionGallery.test.jsx",
+  "client/src/pages/CreateMeeting.jsx":
+    "client/src/pages/__tests__/SessionGallery.test.jsx",
+  "client/src/pages/CreateMeeting/components/SessionCards/GeneratedSessionCards.jsx":
+    "client/src/pages/__tests__/SessionGallery.test.jsx",
+  "client/src/pages/CreateMeeting/components/SessionCards/SessionCards.jsx":
+    "client/src/pages/__tests__/SessionGallery.test.jsx",
+  "client/src/pages/CreateMeeting/hooks/useSessionCards.js":
+    "client/src/pages/CreateMeeting/hooks/__tests__/useSessionCards.persistence.test.jsx",
+  "client/src/pages/SessionGallery.jsx":
+    "client/src/pages/__tests__/SessionGallery.test.jsx",
 };
 
 const directTests = [
