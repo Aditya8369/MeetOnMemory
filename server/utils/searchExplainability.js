@@ -211,6 +211,9 @@ export function buildSearchExplainability({
   const matchingDecisions = decisions.filter((item) =>
     firstMatchingToken(item, tokens),
   );
+  const matchingActionItems = actionItems.filter((item) =>
+    firstMatchingToken(item, tokens),
+  );
 
   if (matchingTopics.length) {
     metadataMatches.push({
@@ -237,6 +240,20 @@ export function buildSearchExplainability({
       field: "decisions",
       label: "Matching decisions",
       values: matchingDecisions.slice(0, MAX_LIST_ITEMS),
+    });
+  }
+
+  if (matchingActionItems.length) {
+    metadataMatches.push({
+      field: "actionItems",
+      label: "Matching action items",
+      values: matchingActionItems.slice(0, MAX_LIST_ITEMS),
+    });
+    evidence.push({
+      kind: "metadata",
+      field: "actionItems",
+      label: "Matching action items",
+      values: matchingActionItems.slice(0, MAX_LIST_ITEMS),
     });
   }
 
