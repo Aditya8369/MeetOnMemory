@@ -250,5 +250,16 @@ describe("TemplateLibrary duplicate-submission protection (#1525)", () => {
       fireEvent.keyDown(window, { key: "Escape" });
       expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
     });
+
+    it("displays error banner when browseTemplates fails", async () => {
+      browseTemplates.mockRejectedValueOnce(new Error("Network Error"));
+      render(<TemplateLibrary />);
+
+      await waitFor(() => {
+        expect(
+          screen.getByText("Failed to load templates"),
+        ).toBeInTheDocument();
+      });
+    });
   });
 });

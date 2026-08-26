@@ -4,6 +4,7 @@ import Notification from "../models/notificationModel.js";
 import { hasPermission } from "../utils/rbacPermissions.js";
 import mongoose from "mongoose";
 import { buildPaginationMeta, parsePagination } from "../utils/pagination.js";
+import { processMentionNotifications } from "../services/mentionNotificationService.js";
 
 /**
  * Ceiling on replies loaded alongside one page of top-level comments
@@ -203,6 +204,15 @@ export const createComment = async (req, res) => {
 
     // Create notification for meeting owner
     await createCommentNotification(savedComment, meeting, req.user);
+
+    // Create notifications for @mentioned users
+    await processMentionNotifications({
+      text: savedComment.body,
+      author: req.user,
+      organizationId: req.user.organization,
+      meeting,
+      commentId: savedComment._id,
+    });
 
     res.status(201).json(savedCommentObj);
   } catch (error) {

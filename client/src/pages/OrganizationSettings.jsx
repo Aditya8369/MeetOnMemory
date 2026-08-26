@@ -173,7 +173,9 @@ import OrganizationBanner from "../components/organization/OrganizationBanner.js
 import { validateImageUrl } from "../utils/imageUrl.js";
 import NotionConnectPanel from "../components/integrations/NotionConnectPanel.jsx";
 import GitHubConnectPanel from "../components/integrations/GitHubConnectPanel.jsx";
+import SlackConnectPanel from "../components/integrations/SlackConnectPanel.jsx";
 import IssueTrackerConfig from "../components/integrations/IssueTrackerConfig.jsx";
+
 import OrgCustomFieldsSection from "../components/organization/OrgCustomFieldsSection.jsx";
 import CostConfigSettings from "../components/organization/CostConfigSettings.jsx";
 import SlaConfigPanel from "../components/organization/SlaConfigPanel.jsx";
@@ -2199,12 +2201,17 @@ const OrganizationSettings = () => {
             <div className="space-y-4">
               <NotionConnectPanel canEdit={canEdit} />
               <GitHubConnectPanel organizationId={metadata._id} />
+              <SlackConnectPanel
+                organizationId={metadata._id}
+                canEdit={canEdit}
+              />
               <IssueTrackerConfig
                 provider="jira"
                 title="Jira Integration"
                 description="Automatically sync Action Items to Jira issues."
                 icon={<Blocks className="w-6 h-6 text-blue-600" />}
               />
+
               <IssueTrackerConfig
                 provider="linear"
                 title="Linear Integration"

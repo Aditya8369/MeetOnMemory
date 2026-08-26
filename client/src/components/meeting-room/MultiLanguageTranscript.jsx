@@ -25,11 +25,18 @@ import { toast } from "react-toastify";
 const MultiLanguageTranscript = ({ meetingId }) => {
   const { backendUrl } = useContext(AppContent) || {};
   const [transcript, setTranscript] = useState([]);
-  const [selectedLanguage, setSelectedLanguage] = useState("en");
+  const [selectedLanguage, setSelectedLanguage] = useState(() => {
+    return (
+      localStorage.getItem(`selectedLanguage-${meetingId}`) ||
+      localStorage.getItem("lastSelectedLanguage") ||
+      "en"
+    );
+  });
   const [showSettings, setShowSettings] = useState(false);
   const [editingSegment, setEditingSegment] = useState(null);
   const [editText, setEditText] = useState("");
   const [languages, setLanguages] = useState([]);
+  const [socketConnected, setSocketConnected] = useState(false);
   const socketRef = useRef(null);
   const transcriptRef = useRef(null);
 
@@ -49,12 +56,17 @@ const MultiLanguageTranscript = ({ meetingId }) => {
         data?.defaultTargetLanguages &&
         data.defaultTargetLanguages.length > 0
       ) {
-        setSelectedLanguage(data.defaultTargetLanguages[0]);
+        const savedLanguage = localStorage.getItem(
+          `selectedLanguage-${meetingId}`,
+        );
+        if (!savedLanguage) {
+          setSelectedLanguage(data.defaultTargetLanguages[0]);
+        }
       }
     } catch (error) {
       console.error("Error fetching preferences:", error);
     }
-  }, []);
+  }, [meetingId]);
 
   const fetchTranscript = useCallback(async () => {
     if (!meetingId) return;
@@ -79,7 +91,13 @@ const MultiLanguageTranscript = ({ meetingId }) => {
 
       socket.on("connect", () => {
         console.log("✓ Translation socket connected");
+        setSocketConnected(true);
         socket.emit("translation:join", { meetingId });
+      });
+
+      socket.on("disconnect", () => {
+        console.log("✗ Translation socket disconnected");
+        setSocketConnected(false);
       });
 
       socket.on("translation:result", (data) => {
@@ -173,6 +191,8 @@ const MultiLanguageTranscript = ({ meetingId }) => {
 
   const handleLanguageChange = (language) => {
     setSelectedLanguage(language);
+    localStorage.setItem(`selectedLanguage-${meetingId}`, language);
+    localStorage.setItem("lastSelectedLanguage", language);
 
     // Request translations for segments that don't have this language yet
     transcript.forEach((segment) => {
@@ -216,6 +236,23 @@ const MultiLanguageTranscript = ({ meetingId }) => {
         language: editingSegment.language,
         correctedText: editText,
       });
+
+      // Update local state immediately so user sees their correction without waiting/lagging
+      setTranscript((prev) =>
+        prev.map((t) => {
+          if (t.segmentId === editingSegment.segmentId) {
+            return {
+              ...t,
+              translations: (t.translations || []).map((tr) =>
+                tr.language === editingSegment.language
+                  ? { ...tr, text: editText, provider: "manual" }
+                  : tr,
+              ),
+            };
+          }
+          return t;
+        }),
+      );
 
       setEditingSegment(null);
       setEditText("");
@@ -295,8 +332,16 @@ const MultiLanguageTranscript = ({ meetingId }) => {
       <div className="flex items-center justify-between mb-6">
         <div className="flex items-center gap-3">
           <Languages className="w-6 h-6 text-blue-600" />
-          <h2 className="text-xl font-bold text-slate-900 dark:text-white">
+          <h2 className="text-xl font-bold text-slate-900 dark:text-white flex items-center gap-2">
             Multi-Language Transcript
+            <span
+              className={`inline-block w-2.5 h-2.5 rounded-full ${
+                socketConnected ? "bg-green-500" : "bg-red-500 animate-pulse"
+              }`}
+              title={
+                socketConnected ? "Connected" : "Disconnected - Reconnecting..."
+              }
+            />
           </h2>
         </div>
         <div className="flex items-center gap-2">
@@ -316,6 +361,26 @@ const MultiLanguageTranscript = ({ meetingId }) => {
           </button>
         </div>
       </div>
+
+      {/* Offline Status & Reconnect Alert */}
+      {!socketConnected && (
+        <div className="mb-6 p-3 bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-900/60 rounded-xl text-amber-800 dark:text-amber-400 text-sm flex items-center justify-between gap-2">
+          <div className="flex items-center gap-2">
+            <AlertCircle size={16} />
+            <span>Live translation is offline. Displaying cached history.</span>
+          </div>
+          <button
+            onClick={() => {
+              socketRef.current?.disconnect();
+              connectSocket();
+            }}
+            className="flex items-center gap-1.5 px-3 py-1 bg-amber-600 hover:bg-amber-750 text-white rounded-lg font-semibold text-xs transition-colors cursor-pointer shrink-0"
+          >
+            <RefreshCw size={12} className="animate-spin" />
+            Reconnect
+          </button>
+        </div>
+      )}
 
       {/* Language Selector */}
       <div className="mb-6">
