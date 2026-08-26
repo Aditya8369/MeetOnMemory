@@ -478,7 +478,9 @@ export const getSeriesDrift = async (req, res) => {
     const seriesId = req.params.id;
 
     if (!mongoose.isValidObjectId(seriesId)) {
-      return res.status(400).json({ success: false, message: "Invalid series ID" });
+      return res
+        .status(400)
+        .json({ success: false, message: "Invalid series ID" });
     }
 
     const query = { _id: seriesId };
@@ -488,7 +490,9 @@ export const getSeriesDrift = async (req, res) => {
 
     const series = await MeetingSeries.findOne(query);
     if (!series) {
-      return res.status(404).json({ success: false, message: "Series not found" });
+      return res
+        .status(404)
+        .json({ success: false, message: "Series not found" });
     }
 
     const meetingQuery = { series: seriesId, status: "completed" };
@@ -512,7 +516,7 @@ export const getSeriesDrift = async (req, res) => {
 
     const actionItemsCount = await ActionItem.aggregate([
       { $match: actionItemMatch },
-      { $group: { _id: "$sourceMeetingId", count: { $sum: 1 } } }
+      { $group: { _id: "$sourceMeetingId", count: { $sum: 1 } } },
     ]);
 
     // Aggregate Decisions
@@ -521,7 +525,7 @@ export const getSeriesDrift = async (req, res) => {
 
     const decisionsCount = await Decision.aggregate([
       { $match: decisionMatch },
-      { $group: { _id: "$sourceMeetingId", count: { $sum: 1 } } }
+      { $group: { _id: "$sourceMeetingId", count: { $sum: 1 } } },
     ]);
 
     const actionItemMap = {};
@@ -565,4 +569,3 @@ export const getSeriesDrift = async (req, res) => {
     });
   }
 };
-

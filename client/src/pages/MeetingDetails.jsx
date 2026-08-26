@@ -62,9 +62,11 @@ import ResourceConflictsPanel from "../components/meeting-details/ResourceConfli
 import SkillEndorsementModal from "../components/meetings/SkillEndorsementModal";
 import DebriefQAPanel from "../components/meetings/DebriefQAPanel";
 import DelegationPanel from "../components/meetings/DelegationPanel";
+import ConvertToAsyncModal from "../components/meetings/ConvertToAsyncModal";
 import ParticipantContributions from "../components/MeetingDetails/ParticipantContributions";
 import ContributionSummaryPanel from "../components/MeetingDetails/ContributionSummaryPanel";
 import MeetingCostCard from "../components/meeting-details/MeetingCostCard";
+import AbsenteeBriefingCard from "../components/meeting-details/AbsenteeBriefingCard";
 
 const MeetingDetails = () => {
   const { id } = useParams();
@@ -83,6 +85,7 @@ const MeetingDetails = () => {
   const [isStoryViewerOpen, setIsStoryViewerOpen] = useState(false);
   const [isExportDialogOpen, setIsExportDialogOpen] = useState(false);
   const [isEndorseModalOpen, setIsEndorseModalOpen] = useState(false);
+  const [isConvertToAsyncOpen, setIsConvertToAsyncOpen] = useState(false);
   const [briefingStatus, setBriefingStatus] = useState("idle");
 
   const dbUserId = currentUser?.publicMetadata?.dbUserId;
@@ -372,6 +375,14 @@ const MeetingDetails = () => {
               <Star className="w-4 h-4" />
               Recognize Peers
             </button>
+            {isOrganizer && (
+              <button
+                onClick={() => setIsConvertToAsyncOpen(true)}
+                className="flex items-center gap-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg font-medium shadow-sm transition-colors text-sm"
+              >
+                Convert to Async
+              </button>
+            )}
             <button
               onClick={() => setIsStoryViewerOpen(true)}
               className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-purple-500 to-pink-500 text-white rounded-lg font-medium shadow-sm hover:opacity-90 transition-opacity text-sm"
@@ -487,6 +498,7 @@ const MeetingDetails = () => {
           <div className="mb-6">
             <ContributionSummaryPanel meetingId={meeting._id} />
           </div>
+          <AbsenteeBriefingCard meetingId={meeting._id} />
           <MeetingSummary meeting={meeting} />
 
           <RetentionQuizSection
@@ -758,6 +770,13 @@ const MeetingDetails = () => {
         meetingId={meeting._id}
         participants={meeting.participants}
         currentUser={currentUser}
+      />
+
+      <ConvertToAsyncModal
+        isOpen={isConvertToAsyncOpen}
+        onClose={() => setIsConvertToAsyncOpen(false)}
+        meeting={meeting}
+        isSeries={false}
       />
     </div>
   );
