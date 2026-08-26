@@ -291,4 +291,7 @@ router.use("/api/compliance", complianceRoutes);
 import actionItemGraphRoutes from "./actionItemGraphRoutes.js";
 router.use("/api/action-item-graph", actionItemGraphRoutes);
 
+import apiKeyRoutes from "./apiKeyRoutes.js";
+router.use("/api/api-keys", apiKeyRoutes);
+
 export default router;
