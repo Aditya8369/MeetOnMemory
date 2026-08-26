@@ -29,7 +29,8 @@ const textDecoder = new TextDecoder();
 const bufferToBase64 = (buffer) => {
   const bytes = buffer instanceof Uint8Array ? buffer : new Uint8Array(buffer);
   let binary = "";
-  for (let i = 0; i < bytes.length; i += 1) binary += String.fromCharCode(bytes[i]);
+  for (let i = 0; i < bytes.length; i += 1)
+    binary += String.fromCharCode(bytes[i]);
   return btoa(binary);
 };
 
@@ -69,7 +70,11 @@ const deriveWrappingKey = async (passphrase, saltBytes) => {
  * @param {string} passphrase - protects the bundle; shared out-of-band
  * @param {string} meetingId
  */
-export const exportMeetingKeyBundle = async (base64Key, passphrase, meetingId) => {
+export const exportMeetingKeyBundle = async (
+  base64Key,
+  passphrase,
+  meetingId,
+) => {
   if (!base64Key || typeof base64Key !== "string") {
     throw new Error("A meeting key is required to export.");
   }
@@ -106,12 +111,12 @@ export const exportMeetingKeyBundle = async (base64Key, passphrase, meetingId) =
 export const isMeetingKeyBundle = (value) =>
   Boolean(
     value &&
-      typeof value === "object" &&
-      value.type === MEETING_KEY_BUNDLE_TYPE &&
-      value.kdf &&
-      typeof value.kdf.salt === "string" &&
-      typeof value.iv === "string" &&
-      typeof value.ct === "string",
+    typeof value === "object" &&
+    value.type === MEETING_KEY_BUNDLE_TYPE &&
+    value.kdf &&
+    typeof value.kdf.salt === "string" &&
+    typeof value.iv === "string" &&
+    typeof value.ct === "string",
   );
 
 /**
@@ -133,7 +138,11 @@ export const importMeetingKeyBundle = async (bundle, passphrase) => {
 
   let base64Key;
   try {
-    const plainBuffer = await crypto.subtle.decrypt({ name: WRAP_ALG, iv }, wrappingKey, ct);
+    const plainBuffer = await crypto.subtle.decrypt(
+      { name: WRAP_ALG, iv },
+      wrappingKey,
+      ct,
+    );
     base64Key = textDecoder.decode(plainBuffer);
   } catch {
     throw new Error("Wrong passphrase, or the key file has been modified.");
@@ -143,7 +152,8 @@ export const importMeetingKeyBundle = async (bundle, passphrase) => {
 };
 
 /** Serialize a bundle to a downloadable JSON string. */
-export const serializeMeetingKeyBundle = (bundle) => JSON.stringify(bundle, null, 2);
+export const serializeMeetingKeyBundle = (bundle) =>
+  JSON.stringify(bundle, null, 2);
 
 /** Parse a bundle file's text back into an object (throws on invalid JSON/shape). */
 export const parseMeetingKeyBundle = (text) => {

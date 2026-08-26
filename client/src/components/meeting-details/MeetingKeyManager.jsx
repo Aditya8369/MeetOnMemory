@@ -19,7 +19,12 @@ import {
  * encrypted transcript can be decrypted there. When a key is missing this also
  * renders recovery guidance instead of leaving the user at a dead end.
  */
-const MeetingKeyManager = ({ meetingId, hasLocalKey, onKeyImported, missingKey = false }) => {
+const MeetingKeyManager = ({
+  meetingId,
+  hasLocalKey,
+  onKeyImported,
+  missingKey = false,
+}) => {
   const [mode, setMode] = useState(missingKey ? "import" : null); // 'export' | 'import' | null
   const [passphrase, setPassphrase] = useState("");
   const [busy, setBusy] = useState(false);
@@ -40,8 +45,14 @@ const MeetingKeyManager = ({ meetingId, hasLocalKey, onKeyImported, missingKey =
     }
     try {
       setBusy(true);
-      const bundle = await exportMeetingKeyBundle(base64Key, passphrase, meetingId);
-      const blob = new Blob([serializeMeetingKeyBundle(bundle)], { type: "application/json" });
+      const bundle = await exportMeetingKeyBundle(
+        base64Key,
+        passphrase,
+        meetingId,
+      );
+      const blob = new Blob([serializeMeetingKeyBundle(bundle)], {
+        type: "application/json",
+      });
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
@@ -50,7 +61,9 @@ const MeetingKeyManager = ({ meetingId, hasLocalKey, onKeyImported, missingKey =
       a.click();
       a.remove();
       URL.revokeObjectURL(url);
-      toast.success("Encrypted key file downloaded. Share the passphrase separately.");
+      toast.success(
+        "Encrypted key file downloaded. Share the passphrase separately.",
+      );
       setMode(null);
       reset();
     } catch (err) {
@@ -78,7 +91,10 @@ const MeetingKeyManager = ({ meetingId, hasLocalKey, onKeyImported, missingKey =
     }
     try {
       setBusy(true);
-      const { base64Key } = await importMeetingKeyBundle(pendingBundle, passphrase);
+      const { base64Key } = await importMeetingKeyBundle(
+        pendingBundle,
+        passphrase,
+      );
       saveMeetingKey(meetingId, base64Key);
       toast.success("Meeting key imported. Decrypting transcript…");
       setMode(null);
@@ -97,10 +113,13 @@ const MeetingKeyManager = ({ meetingId, hasLocalKey, onKeyImported, missingKey =
         <div className="mb-3 flex items-start gap-2 rounded-md border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800 dark:border-amber-700 dark:bg-amber-900/30 dark:text-amber-300">
           <AlertTriangle size={16} className="mt-0.5 shrink-0" />
           <div>
-            <p className="font-medium">This transcript is encrypted and the key isn’t on this device.</p>
+            <p className="font-medium">
+              This transcript is encrypted and the key isn’t on this device.
+            </p>
             <p className="mt-1 text-xs">
-              Import the meeting key below (a <code>.momkey</code> file + its passphrase), or export it
-              from the original device under “Export key.” Without the key, the ciphertext cannot be read.
+              Import the meeting key below (a <code>.momkey</code> file + its
+              passphrase), or export it from the original device under “Export
+              key.” Without the key, the ciphertext cannot be read.
             </p>
           </div>
         </div>
@@ -134,8 +153,9 @@ const MeetingKeyManager = ({ meetingId, hasLocalKey, onKeyImported, missingKey =
       {mode === "export" && (
         <div className="mt-3 rounded-md border border-gray-200 bg-gray-50 p-3 dark:border-gray-700 dark:bg-gray-900/50">
           <p className="mb-2 flex items-center gap-1 text-xs text-gray-600 dark:text-gray-400">
-            <KeyRound size={12} /> Set a passphrase to protect the exported key. Anyone with the file{" "}
-            <strong>and</strong> the passphrase can read this meeting — share them over separate channels.
+            <KeyRound size={12} /> Set a passphrase to protect the exported key.
+            Anyone with the file <strong>and</strong> the passphrase can read
+            this meeting — share them over separate channels.
           </p>
           <div className="flex flex-wrap items-center gap-2">
             <input
