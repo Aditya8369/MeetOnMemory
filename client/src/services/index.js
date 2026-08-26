@@ -43,3 +43,4 @@ export * from "./adminImportanceApi";
 export * from "./exportTemplateApi.js";
 export * from "./skillEndorsementApi";
 export * from "./slackApi";
+export * from "./sessionCardApi";
