@@ -10,7 +10,7 @@ const mockUserAuth = jest.fn((req, res, next) => {
   next();
 });
 const mockRequirePermission = jest.fn(
-  (resource, action) => (req, res, next) => {
+  (_resource, _action) => (req, res, next) => {
     next();
   },
 );
@@ -218,7 +218,7 @@ describe("Admin Review Queue Endpoints (#2262)", () => {
 
     it("rejects unauthorized users with 403 Forbidden via permission check", async () => {
       mockRequirePermission.mockImplementationOnce(
-        (resource, action) => (req, res, next) => {
+        (_resource, _action) => (req, res, _next) => {
           return res.status(403).json({ success: false, message: "Forbidden" });
         },
       );
