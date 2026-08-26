@@ -4,11 +4,7 @@ import {
   getMeetingEndorsements,
   getUserEndorsements,
 } from "../controllers/skillEndorsementController.js";
- feature/careers-admin-queue-2262
-import requireAuth from "../middleware/userAuth.js";
-
 import userAuth from "../middleware/userAuth.js";
- main
 
 const router = express.Router();
 

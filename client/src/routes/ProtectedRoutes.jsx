@@ -58,7 +58,6 @@ import AdminPanel from "../pages/AdminPanel.jsx";
 import ResourceManagement from "../pages/Admin/ResourceManagement.jsx";
 import Bookmarks from "../pages/Bookmarks.jsx";
 import ActivityFeed from "../pages/ActivityFeed.jsx";
-import AbsenteeCatchUpInbox from "../pages/AbsenteeCatchUpInbox.jsx";
 import TagBrowser from "../pages/TagBrowser.jsx";
 import AttendanceAnalytics from "../pages/AttendanceAnalytics.jsx";
 import RsvpInbox from "../pages/RsvpInbox.jsx";
@@ -90,12 +89,10 @@ import StandupReports from "../pages/StandupReports.jsx";
 import SlaCompliance from "../pages/SlaCompliance.jsx";
 import TeamAvailability from "../pages/TeamAvailability.jsx";
 import ActionItemTemplates from "../pages/ActionItemTemplates.jsx";
- feature/careers-admin-queue-2262
 import OrgTimelineDashboard from "../pages/OrgTimelineDashboard.jsx";
-
+import AbsenteeCatchUpInbox from "../pages/AbsenteeCatchUpInbox.jsx";
 import IntegrationMarketplaceHub from "../pages/IntegrationMarketplaceHub.jsx";
 import SentimentTrends from "../pages/SentimentTrends.jsx";
- main
 
 const ProtectedRoutes = (
   <React.Fragment>

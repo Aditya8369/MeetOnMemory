@@ -4,11 +4,7 @@ import {
   submitQuizResponse,
   getQuizAnalytics,
 } from "../controllers/meetingQuizController.js";
- feature/careers-admin-queue-2262
-import requireAuth from "../middleware/userAuth.js";
-
 import userAuth from "../middleware/userAuth.js";
- main
 
 const router = express.Router({ mergeParams: true });
 

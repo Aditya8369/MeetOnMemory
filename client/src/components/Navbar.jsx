@@ -419,78 +419,6 @@ const Navbar = () => {
     }
   };
 
- feature/careers-admin-queue-2262
-  const isTabActive = (tabPath) => {
-    const currentPath = location.pathname;
-    if (tabPath === "/dashboard") {
-      return currentPath === "/dashboard";
-    }
-    if (tabPath === "/meetings") {
-      return (
-        currentPath.startsWith("/meetings") ||
-        currentPath === "/create-meeting" ||
-        currentPath === "/upload-meeting" ||
-        currentPath === "/summaries" ||
-        currentPath === "/reports" ||
-        currentPath === "/policies"
-      );
-    }
-    if (tabPath === "/meeting-series") {
-      return currentPath.startsWith("/meeting-series");
-    }
-    if (tabPath === "/organizations") {
-      return (
-        currentPath === "/organizations" ||
-        currentPath === "/create-organization" ||
-        currentPath === "/join-organization"
-      );
-    }
-    return currentPath === tabPath;
-  };
-
-  const primaryLinks = [
-    {
-      label: t("navbar.dashboard"),
-      href: "/dashboard",
-      icon: LayoutDashboard,
-      permission: null,
-    },
-    {
-      label: t("navbar.meetings"),
-      href: "/meetings",
-      icon: Calendar,
-      permission: { resource: "meetings", action: "view" },
-    },
-    {
-      label: "Meeting Series",
-      href: "/meeting-series",
-      icon: CalendarDays,
-      permission: { resource: "meetings", action: "view" },
-    },
-    {
-      label: "Org Timeline",
-      href: "/timeline",
-      icon: History,
-      permission: { resource: "meetings", action: "view" },
-    },
-    {
-      label: t("navbar.tasks"),
-      href: "/tasks",
-      icon: CheckSquare,
-      permission: { resource: "tasks", action: "view" },
-    },
-    {
-      label: t("navbar.organizations"),
-      href: "/organizations",
-      icon: Building2,
-      permission: { resource: "organizations", action: "view" },
-    },
-    {
-      label: "Focus Time",
-      href: "/focus-time",
-      icon: Clock,
-      permission: null,
-
   const isTabActive = useCallback(
     (tabPath) => {
       const currentPath = location.pathname;
@@ -521,7 +449,6 @@ const Navbar = () => {
         );
       }
       return currentPath === tabPath;
- main
     },
     [location.pathname],
   );
@@ -544,6 +471,12 @@ const Navbar = () => {
             label: t("navbar.meetingSeries"),
             href: "/meeting-series",
             icon: CalendarDays,
+            permission: { resource: "meetings", action: "view" },
+          },
+          {
+            label: t("navbar.orgTimeline", "Org Timeline"),
+            href: "/timeline",
+            icon: History,
             permission: { resource: "meetings", action: "view" },
           },
           {
