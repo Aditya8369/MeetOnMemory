@@ -64,6 +64,7 @@ import DebriefQAPanel from "../components/meetings/DebriefQAPanel";
 import DelegationPanel from "../components/meetings/DelegationPanel";
 import ParticipantContributions from "../components/MeetingDetails/ParticipantContributions";
 import ContributionSummaryPanel from "../components/MeetingDetails/ContributionSummaryPanel";
+import AbsenteeBriefingCard from "../components/meeting-details/AbsenteeBriefingCard";
 
 const MeetingDetails = () => {
   const { id } = useParams();
@@ -486,6 +487,7 @@ const MeetingDetails = () => {
           <div className="mb-6">
             <ContributionSummaryPanel meetingId={meeting._id} />
           </div>
+          <AbsenteeBriefingCard meetingId={meeting._id} />
           <MeetingSummary meeting={meeting} />
 
           <RetentionQuizSection

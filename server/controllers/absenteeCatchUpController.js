@@ -38,7 +38,7 @@ export const markCatchUpAsRead = async (req, res) => {
 };
 
 /**
- * Manually trigger delivery for a catch-up (can be used by organizer or system).
+ * Manually deliver a catch-up (can be used by organizer or system).
  */
 export const deliverCatchUp = async (req, res) => {
   try {
@@ -55,5 +55,91 @@ export const deliverCatchUp = async (req, res) => {
     res
       .status(500)
       .json({ success: false, message: "Failed to deliver catch-up" });
+  }
+};
+
+import AbsenteeCatchUp from "../models/absenteeCatchUpModel.js";
+import Meeting from "../models/meetingModel.js";
+import { generateAbsenteeCatchUpAI } from "../services/GenerativeAIService.js";
+
+/**
+ * Fetch catch-up briefing specifically for a meeting and current user.
+ */
+export const getMeetingCatchUp = async (req, res) => {
+  try {
+    const userId = req.user._id || req.user.id;
+    const { meetingId } = req.params;
+
+    const catchUp = await AbsenteeCatchUp.findOne({
+      meetingId,
+      userId,
+    }).populate("meetingId", "title date summary");
+
+    return res.status(200).json({ success: true, catchUp: catchUp || null });
+  } catch (error) {
+    console.error("Error fetching meeting catch-up:", error);
+    return res
+      .status(500)
+      .json({ success: false, message: "Failed to fetch meeting catch-up" });
+  }
+};
+
+/**
+ * Generate on-demand catch-up briefing for the authenticated user for a meeting.
+ */
+export const generateMeetingCatchUp = async (req, res) => {
+  try {
+    const userId = req.user._id || req.user.id;
+    const user = req.user;
+    const { meetingId } = req.params;
+
+    const meeting = await Meeting.findById(meetingId);
+    if (!meeting) {
+      return res
+        .status(404)
+        .json({ success: false, message: "Meeting not found" });
+    }
+
+    const userName =
+      `${user.firstName || user.name || "Participant"} ${user.lastName || ""}`.trim();
+    const meetingSummary = {
+      title: meeting.title,
+      date: meeting.date,
+      summary:
+        meeting.summary ||
+        meeting.structuredMoM?.summary ||
+        "No summary available.",
+    };
+
+    const decisions = meeting.structuredMoM?.decisions || [];
+    const actionItems = meeting.structuredMoM?.action_items || [];
+    const mentions = [];
+
+    const aiResult = await generateAbsenteeCatchUpAI(
+      meeting.title,
+      userName,
+      meetingSummary,
+      actionItems,
+      decisions,
+      mentions,
+    );
+
+    const catchUp = await AbsenteeCatchUp.findOneAndUpdate(
+      { meetingId, userId },
+      {
+        meetingId,
+        userId,
+        content: aiResult,
+        status: "pending",
+      },
+      { upsert: true, new: true },
+    ).populate("meetingId", "title date summary");
+
+    return res.status(200).json({ success: true, catchUp });
+  } catch (error) {
+    console.error("Error generating meeting catch-up:", error);
+    return res
+      .status(500)
+      .json({ success: false, message: "Failed to generate meeting catch-up" });
   }
 };
