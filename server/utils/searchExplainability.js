@@ -201,7 +201,7 @@ export function buildSearchExplainability({
   const decisions = normalizeStructuredList(
     structured?.decisions || structured?.keyDecisions,
   );
-  const actionItems = normalizeStructuredList(
+  const _actionItems = normalizeStructuredList(
     structured?.action_items || structured?.actionItems,
   );
 

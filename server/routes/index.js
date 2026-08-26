@@ -102,6 +102,7 @@ import icebreakerRoutes from "./icebreakerRoutes.js";
 import meetingQuizRoutes from "./meetingQuizRoutes.js";
 import resourceBookingRoutes from "./resourceBookingRoutes.js";
 import recordingSessionRoutes from "./recordingSessionRoutes.js";
+import meetingPlaybookRoutes from "./meetingPlaybookRoutes.js";
 
 const router = express.Router();
 
@@ -121,6 +122,7 @@ router.use("/api/meetings/:meetingId/checklist", meetingChecklistRoutes);
 router.use("/api/meetings/:id/duplicates", meetingDuplicateRoutes);
 router.use("/api/delegations", meetingDelegationRoutes);
 router.use("/api/meetings/:meetingId/quiz", meetingQuizRoutes);
+router.use("/api/playbooks", meetingPlaybookRoutes);
 router.use("/api/meetings", meetingRoutes);
 router.use("/api/meetings", meetingTimelineRoutes);
 router.use("/api/meetings", highlightReelRoutes);
