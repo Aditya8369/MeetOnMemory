@@ -3,7 +3,7 @@ import {
   getContributionsByMeeting,
   calculateContributions,
 } from "../controllers/participantContributionController.js";
-import auth from "../middleware/auth.js";
+import auth from "../middleware/userAuth.js";
 
 const router = express.Router({ mergeParams: true }); // Need mergeParams to access meetingId from parent router
 

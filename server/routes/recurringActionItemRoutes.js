@@ -6,32 +6,32 @@ import {
   updateRecurringActionItem,
   deleteRecurringActionItem,
 } from "../controllers/recurringActionItemController.js";
-import authMiddleware from "../middleware/authMiddleware.js";
-import rbacMiddleware from "../middleware/rbacMiddleware.js";
+import authMiddleware from "../middleware/userAuth.js";
+import { requirePermission } from "../middleware/rbac.js";
 
 const router = express.Router();
 
 router.use(authMiddleware);
 
-router.get("/", rbacMiddleware("read:action_items"), getRecurringActionItems);
+router.get("/", requirePermission("tasks", "view"), getRecurringActionItems);
 router.get(
   "/:id",
-  rbacMiddleware("read:action_items"),
+  requirePermission("tasks", "view"),
   getRecurringActionItemById,
 );
 router.post(
   "/",
-  rbacMiddleware("create:action_items"),
+  requirePermission("tasks", "create"),
   createRecurringActionItem,
 );
 router.put(
   "/:id",
-  rbacMiddleware("update:action_items"),
+  requirePermission("tasks", "edit"),
   updateRecurringActionItem,
 );
 router.delete(
   "/:id",
-  rbacMiddleware("delete:action_items"),
+  requirePermission("tasks", "delete"),
   deleteRecurringActionItem,
 );
 

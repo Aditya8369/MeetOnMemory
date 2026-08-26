@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import {
   Sparkles,
   CheckCircle2,
@@ -17,7 +17,8 @@ const AbsenteeBriefingCard = ({ meetingId }) => {
   const [loading, setLoading] = useState(true);
   const [isGenerating, setIsGenerating] = useState(false);
 
-  const fetchBriefing = async () => {
+  const fetchBriefing = useCallback(async () => {
+    if (!meetingId) return;
     try {
       setLoading(true);
       const data = await absenteeCatchUpApi.getMeetingCatchUp(meetingId);
@@ -31,13 +32,11 @@ const AbsenteeBriefingCard = ({ meetingId }) => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [meetingId]);
 
   useEffect(() => {
-    if (meetingId) {
-      fetchBriefing();
-    }
-  }, [meetingId]);
+    fetchBriefing();
+  }, [fetchBriefing]);
 
   const handleGenerate = async () => {
     try {

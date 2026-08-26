@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useContext } from "react";
+import React, { useState, useEffect, useCallback, useContext } from "react";
 import {
   TrendingUp,
   TrendingDown,
@@ -30,7 +30,7 @@ export const TopicAnalyticsDashboard = () => {
   const [velocityFilter, setVelocityFilter] = useState("all"); // all, accelerating, stable, decelerating
   const [selectedCluster, setSelectedCluster] = useState("all");
 
-  const fetchVelocityData = async () => {
+  const fetchVelocityData = useCallback(async () => {
     if (!orgId) return;
     try {
       setLoading(true);
@@ -43,11 +43,11 @@ export const TopicAnalyticsDashboard = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [orgId]);
 
   useEffect(() => {
     fetchVelocityData();
-  }, [orgId]);
+  }, [fetchVelocityData]);
 
   const topics = data.topics || [];
   const metrics = data.metrics || {

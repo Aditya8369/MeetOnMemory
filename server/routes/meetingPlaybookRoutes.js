@@ -7,7 +7,7 @@ import {
   deletePlaybook,
   generateAIPlaybook,
 } from "../controllers/meetingPlaybookController.js";
-import { protect } from "../middleware/auth.js"; // Assuming auth middleware exists
+import protect from "../middleware/userAuth.js";
 
 const router = express.Router();
 

@@ -1,6 +1,6 @@
 import AsyncMeeting from "../models/asyncMeetingModel.js";
 import { generateText } from "./GenerativeAIService.js";
-import NotificationService from "./notificationService.js";
+import { createNotification } from "./notificationService.js";
 
 export const createAsyncMeeting = async (data) => {
   const meeting = new AsyncMeeting({
@@ -17,13 +17,15 @@ export const createAsyncMeeting = async (data) => {
   // Notify participants
   for (const participantId of meeting.participants) {
     if (participantId.toString() !== meeting.creator.toString()) {
-      await NotificationService.sendNotification({
-        userId: participantId,
-        type: "ASYNC_MEETING_CREATED",
-        title: "New Async Meeting Request",
-        message: `You have been requested to provide an update for "${meeting.title}" before ${new Date(meeting.deadline).toLocaleString()}`,
-        referenceId: meeting._id,
-      });
+      await createNotification(
+        participantId,
+        "New Async Meeting Request",
+        `You have been requested to provide an update for "${meeting.title}" before ${new Date(meeting.deadline).toLocaleString()}`,
+        "system",
+        "",
+        "",
+        { type: "ASYNC_MEETING_CREATED", referenceId: meeting._id },
+      );
     }
   }
 
@@ -103,13 +105,15 @@ ${summaryInput}
     ]);
 
     for (const participantId of allUsers) {
-      await NotificationService.sendNotification({
-        userId: participantId,
-        type: "ASYNC_MEETING_COMPLETED",
-        title: "Async Meeting Summary Ready",
-        message: `The summary for "${meeting.title}" is now available.`,
-        referenceId: meeting._id,
-      });
+      await createNotification(
+        participantId,
+        "Async Meeting Summary Ready",
+        `The summary for "${meeting.title}" is now available.`,
+        "system",
+        "",
+        "",
+        { type: "ASYNC_MEETING_COMPLETED", referenceId: meeting._id },
+      );
     }
 
     return meeting;
