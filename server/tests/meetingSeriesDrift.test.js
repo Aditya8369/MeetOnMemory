@@ -9,18 +9,18 @@ import { getSeriesDrift } from "../controllers/meetingSeriesController.js";
 
 describe("controllers/meetingSeriesController - getSeriesDrift (Issue #2170)", () => {
   let owner;
-  
+
   beforeAll(async () => {
     await mongoose.connect(process.env.TEST_MONGODB_URI);
   });
-  
+
   beforeEach(async () => {
     await User.deleteMany({});
     await MeetingSeries.deleteMany({});
     await Meeting.deleteMany({});
     await ActionItem.deleteMany({});
     await Decision.deleteMany({});
-    
+
     owner = await User.create({
       name: "Drift Owner",
       email: `drift-${new mongoose.Types.ObjectId()}@example.com`,
@@ -106,7 +106,7 @@ describe("controllers/meetingSeriesController - getSeriesDrift (Issue #2170)", (
 
     expect(responsePayload.success).toBe(true);
     expect(responsePayload.drift.length).toBe(3);
-    
+
     // First meeting (M1)
     expect(responsePayload.drift[0].duration).toBe(60);
     expect(responsePayload.drift[0].attendanceCount).toBe(3);

@@ -7,6 +7,9 @@ import {
   getSeriesMeetings,
   cancelSeries,
   getSeriesDrift,
+  listSeries,
+  pauseSeries,
+  resumeSeries,
 } from "../controllers/meetingSeriesController.js";
 import seriesRetrospectiveRoutes from "./seriesRetrospectiveRoutes.js";
 import {
@@ -35,11 +38,7 @@ router.get(
   getSeriesMeetings,
 );
 
-router.get(
-  "/:id/drift",
-  requirePermission("meetings", "view"),
-  getSeriesDrift,
-);
+router.get("/:id/drift", requirePermission("meetings", "view"), getSeriesDrift);
 
 router.patch(
   "/:id/cancel",

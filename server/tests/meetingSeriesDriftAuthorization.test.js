@@ -50,11 +50,11 @@ describe("Meeting Series Drift Authorization", () => {
   const orgId = "org123";
   const seriesId = "6a74b2d9ce08c6d9eb0e32c0";
 
-  const missingPermissionToken = jwt.sign(
+  const _missingPermissionToken = jwt.sign(
     { id: "6a74b2d9ce08c6d9eb0e32c1", role: "member" },
     JWT_SECRET,
   );
-  
+
   const validToken = jwt.sign(
     { id: "6a74b2d9ce08c6d9eb0e32c2", role: "admin" }, // admins usually have meetings:view
     JWT_SECRET,
@@ -69,7 +69,7 @@ describe("Meeting Series Drift Authorization", () => {
           if (id === "6a74b2d9ce08c6d9eb0e32c1")
             return Promise.resolve({
               _id: id,
-              role: "member", 
+              role: "member",
               organization: orgId,
             });
           if (id === "6a74b2d9ce08c6d9eb0e32c2")
@@ -84,7 +84,10 @@ describe("Meeting Series Drift Authorization", () => {
       return mockChain;
     });
 
-    mockMeetingSeriesFindOne.mockResolvedValue({ _id: seriesId, organization: orgId });
+    mockMeetingSeriesFindOne.mockResolvedValue({
+      _id: seriesId,
+      organization: orgId,
+    });
   });
 
   it("returns 401 if no token is provided", async () => {
@@ -99,6 +102,6 @@ describe("Meeting Series Drift Authorization", () => {
       .set("Cookie", [`token=${validToken}`]);
 
     // Either 200 OK (passed RBAC) or 403 Forbidden (RBAC blocked it). Both prove route is protected properly.
-    expect([200, 403]).toContain(res.status); 
+    expect([200, 403]).toContain(res.status);
   });
 });
