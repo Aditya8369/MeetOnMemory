@@ -62,6 +62,8 @@ import ResourceConflictsPanel from "../components/meeting-details/ResourceConfli
 import SkillEndorsementModal from "../components/meetings/SkillEndorsementModal";
 import DebriefQAPanel from "../components/meetings/DebriefQAPanel";
 import DelegationPanel from "../components/meetings/DelegationPanel";
+import ParticipantContributions from "../components/MeetingDetails/ParticipantContributions";
+import ContributionSummaryPanel from "../components/MeetingDetails/ContributionSummaryPanel";
 
 const MeetingDetails = () => {
   const { id } = useParams();
@@ -481,6 +483,9 @@ const MeetingDetails = () => {
               </div>
             </div>
           </div>
+          <div className="mb-6">
+            <ContributionSummaryPanel meetingId={meeting._id} />
+          </div>
           <MeetingSummary meeting={meeting} />
 
           <RetentionQuizSection
@@ -613,6 +618,11 @@ const MeetingDetails = () => {
             {isAnalyticsExpanded && (
               <SpeakingTimeBreakdown meetingId={meeting._id} />
             )}
+          </div>
+
+          {/* Participant Contributions Profile */}
+          <div className="mb-6">
+            <ParticipantContributions meetingId={meeting._id} />
           </div>
 
           <MeetingParticipants meeting={meeting} />

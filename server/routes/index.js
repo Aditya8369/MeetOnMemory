@@ -249,7 +249,11 @@ import escalationRoutes from "./escalationRoutes.js";
 router.use("/api/escalations", escalationRoutes);
 import participantEngagementRoutes from "./participantEngagementRoutes.js";
 router.use("/api/engagement", participantEngagementRoutes);
-
+import participantContributionRoutes from "./participantContributionRoutes.js";
+router.use(
+  "/api/meetings/:meetingId/contributions",
+  participantContributionRoutes,
+);
 import meetingPatternRoutes from "./meetingPatternRoutes.js";
 router.use("/api/patterns", meetingPatternRoutes);
 
