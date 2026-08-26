@@ -62,6 +62,7 @@ import ResourceConflictsPanel from "../components/meeting-details/ResourceConfli
 import SkillEndorsementModal from "../components/meetings/SkillEndorsementModal";
 import DebriefQAPanel from "../components/meetings/DebriefQAPanel";
 import DelegationPanel from "../components/meetings/DelegationPanel";
+import MeetingNudgesTab from "../components/meeting-details/MeetingNudgesTab.jsx";
 
 const MeetingDetails = () => {
   const { id } = useParams();
@@ -482,6 +483,10 @@ const MeetingDetails = () => {
             </div>
           </div>
           <MeetingSummary meeting={meeting} />
+
+          <div className="mt-6 mb-6">
+            <MeetingNudgesTab meetingId={meeting._id} isOrganizer={isOrganizer} />
+          </div>
 
           <RetentionQuizSection
             meeting={meeting}
