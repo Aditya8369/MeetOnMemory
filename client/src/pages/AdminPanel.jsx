@@ -32,12 +32,14 @@ import {
   ShieldCheck,
   BrainCircuit,
   Cpu,
+  Briefcase,
 } from "lucide-react";
 import Navbar from "../components/Navbar.jsx";
 import TemplateBuilder from "../components/admin/TemplateBuilder.jsx";
 import TestimonialsModeration from "../components/admin/TestimonialsModeration.jsx";
 import JobsDashboard from "../components/admin/JobsDashboard.jsx";
 import EmbeddingReindexAdmin from "../components/admin/EmbeddingReindexAdmin.jsx";
+import CareersAdminQueue from "../components/admin/CareersAdminQueue.jsx";
 import RbacPermissionExplorer from "../components/admin/RbacPermissionExplorer.jsx";
 import ImportanceRecalculationAdmin from "../components/admin/ImportanceRecalculationAdmin.jsx";
 import AiUsageMetrics from "../components/admin/AiUsageMetrics.jsx";
@@ -200,6 +202,14 @@ const MODULES = [
     icon: ShieldCheck,
     iconBg: "bg-purple-50 dark:bg-purple-900/30",
     iconColor: "text-purple-600 dark:text-purple-400",
+  },
+  {
+    id: "careers",
+    labelKey: "Careers Queue",
+    descriptionKey: "Review job applications, set status, and record notes",
+    icon: Briefcase,
+    iconBg: "bg-indigo-50 dark:bg-indigo-900/30",
+    iconColor: "text-indigo-600 dark:text-indigo-400",
   },
 ];
 
@@ -672,6 +682,8 @@ const AdminPanel = () => {
             </div>
           ) : activeModule === "resources" ? (
             <ResourceManagement />
+          ) : activeModule === "careers" ? (
+            <CareersAdminQueue />
           ) : activeModule === "templates" ? (
             <TemplateBuilder />
           ) : activeModule === "testimonials" ? (

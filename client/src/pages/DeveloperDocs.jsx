@@ -1,5 +1,7 @@
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import Navbar from "../components/Navbar.jsx";
+import OpenApiExplorer from "../components/developer/OpenApiExplorer.jsx";
+import { getBackendUrl } from "../config/backendConfig.js";
 import {
   BookOpen,
   Code2,
@@ -469,6 +471,33 @@ const DeveloperDocs = () => {
   const [activeLanguage, setActiveLanguage] = useState("curl");
   const [searchQuery, setSearchQuery] = useState("");
   const [copiedId, setCopiedId] = useState(null);
+  const [openApiSpec, setOpenApiSpec] = useState(null);
+  const [openApiError, setOpenApiError] = useState(null);
+  const [openApiLoading, setOpenApiLoading] = useState(true);
+
+  useEffect(() => {
+    let cancelled = false;
+    const loadSpec = async () => {
+      try {
+        setOpenApiLoading(true);
+        setOpenApiError(null);
+        const res = await fetch(`${getBackendUrl()}/api/openapi.json`);
+        if (!res.ok) throw new Error(`OpenAPI fetch failed (${res.status})`);
+        const data = await res.json();
+        if (!cancelled) setOpenApiSpec(data);
+      } catch (err) {
+        if (!cancelled) {
+          setOpenApiError(err.message || "Failed to load OpenAPI spec");
+        }
+      } finally {
+        if (!cancelled) setOpenApiLoading(false);
+      }
+    };
+    loadSpec();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   // Copy code helper
   const handleCopy = (code, id) => {
@@ -594,6 +623,18 @@ const DeveloperDocs = () => {
               >
                 <Key className="w-4 h-4 shrink-0" />
                 Authentication
+              </button>
+
+              <button
+                onClick={() => setActiveSection("openapi")}
+                className={`w-full flex items-center gap-2.5 px-3 py-2 text-xs font-semibold rounded-xl transition-all cursor-pointer text-left ${
+                  activeSection === "openapi"
+                    ? "bg-blue-50 dark:bg-blue-950/50 text-blue-600 dark:text-blue-400 border border-blue-200 dark:border-blue-800"
+                    : "text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-white"
+                }`}
+              >
+                <Server className="w-4 h-4 shrink-0" />
+                OpenAPI Explorer
               </button>
 
               <button
@@ -881,6 +922,44 @@ const DeveloperDocs = () => {
                     </div>
                   </div>
                 </div>
+              </div>
+            </div>
+          )}
+
+          {/* SECTION: OPENAPI EXPLORER (#2240) */}
+          {activeSection === "openapi" && (
+            <div className="space-y-6 animate-fade-in">
+              <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 shadow-xs">
+                <div className="flex items-center gap-3 mb-4">
+                  <div className="p-2.5 bg-indigo-50 dark:bg-indigo-950/50 rounded-xl text-indigo-600 dark:text-indigo-400">
+                    <Server className="w-6 h-6" />
+                  </div>
+                  <div>
+                    <h2 className="text-xl font-bold text-slate-900 dark:text-white">
+                      OpenAPI Explorer
+                    </h2>
+                    <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                      Schema-backed endpoints from{" "}
+                      <code className="font-mono">/api/openapi.json</code> with
+                      authenticated Try-It requests
+                    </p>
+                  </div>
+                </div>
+
+                {openApiLoading ? (
+                  <p className="text-sm text-slate-500">
+                    Loading OpenAPI spec…
+                  </p>
+                ) : openApiError ? (
+                  <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">
+                    {openApiError}
+                  </div>
+                ) : (
+                  <OpenApiExplorer
+                    spec={openApiSpec}
+                    searchQuery={searchQuery}
+                  />
+                )}
               </div>
             </div>
           )}
