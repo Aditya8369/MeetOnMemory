@@ -97,6 +97,16 @@ import MeetingPlaybooks from "../pages/MeetingPlaybooks.jsx";
 const ProtectedRoutes = (
   <React.Fragment>
     <Route
+      path="/topic-intelligence"
+      element={
+        <ProtectedRoute>
+          <RouteErrorBoundary>
+            <TopicIntelligence />
+          </RouteErrorBoundary>
+        </ProtectedRoute>
+      }
+    />
+    <Route
       path="/sentiment-trends"
       element={
         <ProtectedRoute resource="meetings" action="view">
