@@ -16,15 +16,20 @@ export const RetentionQuizSection = ({ meetingId, isOrganizer }) => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [meetingId]);
 
-  const fetchQuestions = async () => {
+  const fetchQuestions = React.useCallback(async () => {
     // API GET request wrap logic simulation
-    setQuestions(questions || []);
-  };
+    setQuestions((q) => q || []);
+  }, []);
 
-  const fetchAnalytics = async () => {
+  const fetchAnalytics = React.useCallback(async () => {
     // API simulation payload mapping logic
     setAnalytics({ passRate: 85, totalAttempts: 20, perQuestionStats: [] });
-  };
+  }, []);
+
+  useEffect(() => {
+    fetchQuestions();
+    if (isOrganizer) fetchAnalytics();
+  }, [meetingId, isOrganizer, fetchQuestions, fetchAnalytics]);
 
   const handleAddQuestion = async () => {
     const newQuestion = {

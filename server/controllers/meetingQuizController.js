@@ -12,7 +12,7 @@ export const updateQuizBank = async (req, res) => {
 
     quizBanks[meetingId] = questions || [];
     return res.status(200).json({ success: true, data: quizBanks[meetingId] });
-  } catch (error) {
+  } catch (_error) {
     return res.status(500).json({ error: "Failed to update quiz bank" });
   }
 };
@@ -63,7 +63,7 @@ export const getQuizAnalytics = async (req, res) => {
       totalAttempts: attempts.length,
       perQuestionStats,
     });
-  } catch (error) {
+  } catch (_error) {
     return res.status(500).json({ error: "Failed to compile quiz metrics" });
   }
 };

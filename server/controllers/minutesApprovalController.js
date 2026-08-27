@@ -53,7 +53,7 @@ export const handleApprovalAction = async (req, res) => {
     }
 
     return res.status(200).json({ success: true, data: meetingMinutes });
-  } catch (error) {
+  } catch (_error) {
     return res
       .status(500)
       .json({ error: "Internal approval processing fault" });
@@ -73,7 +73,7 @@ export const exportAuditTrail = async (req, res) => {
     );
 
     return res.status(200).send(JSON.stringify(record.auditTrail, null, 2));
-  } catch (error) {
+  } catch (_error) {
     return res.status(500).json({ error: "Audit export pipeline failure" });
   }
 };
