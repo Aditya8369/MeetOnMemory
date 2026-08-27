@@ -5,6 +5,7 @@ import {
   getCostAnalytics,
   getMemberAnalytics,
   exportCostReport,
+  getMeetingCostDetails,
 } from "../controllers/meetingCostController.js";
 import userAuth from "../middleware/userAuth.js";
 import {
@@ -22,6 +23,9 @@ router
   .route("/config")
   .get(requireAdminOrOwner, getConfig)
   .put(requireAdminOrOwner, updateConfig);
+
+// Meeting specific cost and ROI
+router.get("/meeting/:meetingId", getMeetingCostDetails);
 
 // Analytics endpoints
 router.get("/analytics/org", getCostAnalytics);

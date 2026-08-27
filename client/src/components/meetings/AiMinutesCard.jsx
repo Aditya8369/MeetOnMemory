@@ -7,6 +7,7 @@ import {
   File,
   Code,
   Image as ImageIcon,
+  Printer,
 } from "lucide-react";
 import MarkdownRenderer from "../MarkdownRenderer";
 
@@ -60,44 +61,55 @@ export default function AiMinutesCard({
             Structured Output
           </h3>
 
-          {/* Export Dropdown */}
+          {/* Export Dropdown & Print */}
           {summary && (
-            <div className="relative">
+            <div className="flex items-center gap-2">
               <button
-                onClick={() => setShowExportMenu(!showExportMenu)}
-                disabled={isExporting}
-                className="flex items-center gap-2 px-4 py-2 text-sm font-bold text-blue-700 dark:text-blue-300 bg-white dark:bg-gray-800 border border-blue-200 dark:border-blue-700 rounded-lg hover:bg-blue-50 dark:hover:bg-gray-700 transition-colors shadow-sm disabled:opacity-50"
+                onClick={() => window.print()}
+                className="flex items-center gap-1.5 px-3 py-2 text-sm font-bold text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors shadow-sm"
+                title="Print formatted Minutes of Meeting"
               >
-                {isExporting ? (
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                ) : (
-                  <Download className="w-4 h-4" />
-                )}
-                Export
+                <Printer className="w-4 h-4" />
+                <span>Print</span>
               </button>
 
-              {showExportMenu && (
-                <div className="absolute right-0 mt-2 w-48 bg-white dark:bg-gray-800 rounded-xl shadow-xl border border-gray-100 dark:border-gray-700 py-2 z-50">
-                  <button
-                    onClick={() => handleExport("pdf")}
-                    className="w-full text-left px-4 py-2.5 text-sm font-semibold text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 flex items-center gap-2 transition-colors"
-                  >
-                    <File className="w-4 h-4 text-red-500" /> PDF Document
-                  </button>
-                  <button
-                    onClick={() => handleExport("markdown")}
-                    className="w-full text-left px-4 py-2.5 text-sm font-semibold text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 flex items-center gap-2 transition-colors"
-                  >
-                    <Code className="w-4 h-4 text-blue-500" /> Markdown
-                  </button>
-                  <button
-                    onClick={() => handleExport("image")}
-                    className="w-full text-left px-4 py-2.5 text-sm font-semibold text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 flex items-center gap-2 transition-colors"
-                  >
-                    <ImageIcon className="w-4 h-4 text-green-500" /> Image PNG
-                  </button>
-                </div>
-              )}
+              <div className="relative">
+                <button
+                  onClick={() => setShowExportMenu(!showExportMenu)}
+                  disabled={isExporting}
+                  className="flex items-center gap-2 px-4 py-2 text-sm font-bold text-blue-700 dark:text-blue-300 bg-white dark:bg-gray-800 border border-blue-200 dark:border-blue-700 rounded-lg hover:bg-blue-50 dark:hover:bg-gray-700 transition-colors shadow-sm disabled:opacity-50"
+                >
+                  {isExporting ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <Download className="w-4 h-4" />
+                  )}
+                  Export
+                </button>
+
+                {showExportMenu && (
+                  <div className="absolute right-0 mt-2 w-48 bg-white dark:bg-gray-800 rounded-xl shadow-xl border border-gray-100 dark:border-gray-700 py-2 z-50">
+                    <button
+                      onClick={() => handleExport("pdf")}
+                      className="w-full text-left px-4 py-2.5 text-sm font-semibold text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 flex items-center gap-2 transition-colors"
+                    >
+                      <File className="w-4 h-4 text-red-500" /> PDF Document
+                    </button>
+                    <button
+                      onClick={() => handleExport("markdown")}
+                      className="w-full text-left px-4 py-2.5 text-sm font-semibold text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 flex items-center gap-2 transition-colors"
+                    >
+                      <Code className="w-4 h-4 text-blue-500" /> Markdown
+                    </button>
+                    <button
+                      onClick={() => handleExport("image")}
+                      className="w-full text-left px-4 py-2.5 text-sm font-semibold text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 flex items-center gap-2 transition-colors"
+                    >
+                      <ImageIcon className="w-4 h-4 text-green-500" /> Image PNG
+                    </button>
+                  </div>
+                )}
+              </div>
             </div>
           )}
         </div>
