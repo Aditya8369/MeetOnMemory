@@ -304,4 +304,7 @@ router.use("/api/action-item-graph", actionItemGraphRoutes);
 import recurringActionItemRoutes from "./recurringActionItemRoutes.js";
 router.use("/api/recurring-action-items", recurringActionItemRoutes);
 
+import apiKeyRoutes from "./apiKeyRoutes.js";
+router.use("/api/api-keys", apiKeyRoutes);
+
 export default router;
