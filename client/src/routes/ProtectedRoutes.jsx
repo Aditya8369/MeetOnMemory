@@ -5,96 +5,6 @@ import ProtectedRoute from "../components/ProtectedRoute.jsx";
 import RouteErrorBoundary from "../components/RouteErrorBoundary.jsx";
 import AccessDenied from "../pages/AccessDenied.jsx";
 
- feature/org-timeline-dashboard-2261
-// --- Protected Pages ---
-import MeetingListPage from "../pages/MeetingListPage.jsx";
-import OrganizationHub from "../pages/OrganizationHub.jsx";
-import JoinOrganizationPage from "../pages/JoinOrganizationPage.jsx";
-import CreateOrganizationPage from "../pages/CreateOrganizationPage.jsx";
-import BrowseOrganizations from "../pages/BrowseOrganizations/BrowseOrganizations.jsx";
-import OrganizationSettings from "../pages/OrganizationSettings.jsx";
-import Dashboard from "../pages/Dashboard.jsx";
-
-// Feature Pages
-import CompareMeetings from "../pages/MeetingComparison";
-import CreateMeeting from "../pages/CreateMeeting.jsx";
-import MeetingTemplates from "../pages/MeetingTemplates.jsx";
-import TemplateLibrary from "../pages/TemplateLibrary.jsx";
-import UploadMeeting from "../pages/UploadMeeting.jsx";
-import Policies from "../pages/Policies.jsx";
-import AiSummaryTemplates from "../pages/AiSummaryTemplates.jsx";
-import Summaries from "../pages/Summaries.jsx";
-import Reports from "../pages/Reports.jsx";
-import WeeklyInsights from "../pages/WeeklyInsights.jsx";
-import ReportBuilder from "../pages/ReportBuilder.jsx";
-import AiSearch from "../pages/AiSearch.jsx";
-import AiAssistant from "../pages/AiAssistant.jsx";
-import MeetingDetails from "../pages/MeetingDetails.jsx";
-import MeetingBriefing from "../pages/MeetingBriefing.jsx";
-import MeetingQuality from "../pages/MeetingQuality.jsx";
-import MeetingEffectiveness from "../pages/MeetingEffectiveness.jsx";
-import MeetingRecycleBin from "../pages/MeetingRecycleBin.jsx";
-import MeetingRoom from "../pages/MeetingRoom.jsx";
-import TranscriptViewer from "../pages/TranscriptViewer.jsx";
-import TeamMembers from "../pages/TeamMembers.jsx";
-import Profile from "../pages/Profile.jsx";
-import Calendar from "../pages/Calendar.jsx";
-import Notifications from "../pages/Notifications.jsx";
-import Tasks from "../pages/Tasks.jsx";
-import KnowledgeTimeline from "../pages/KnowledgeTimeline.jsx";
-import MemoryConsolidation from "../pages/MemoryConsolidation.jsx";
-import MemoryLifecycle from "../pages/MemoryLifecycle.jsx";
-import KnowledgeArchive from "../pages/KnowledgeArchive.jsx";
-import GraphSnapshots from "../pages/GraphSnapshots.jsx";
-import KnowledgeGraph from "../pages/KnowledgeGraph.jsx";
-import DecisionGraph from "../pages/DecisionGraph.jsx";
-import DecisionLog from "../pages/DecisionLog.jsx";
-import PolicyCompliance from "../pages/PolicyCompliance.jsx";
-import Settings from "../pages/Settings.jsx";
-import MembershipRequests from "../pages/MembershipRequests.jsx";
-import MembersManagement from "../pages/Admin/MembersManagement.jsx";
-import AuditLogViewer from "../pages/Admin/AuditLogViewer.jsx";
-import AdminHealth from "../pages/Admin/AdminHealth.jsx";
-import AdminPanel from "../pages/AdminPanel.jsx";
-import ResourceManagement from "../pages/Admin/ResourceManagement.jsx";
-import Bookmarks from "../pages/Bookmarks.jsx";
-import ActivityFeed from "../pages/ActivityFeed.jsx";
-import TagBrowser from "../pages/TagBrowser.jsx";
-import AttendanceAnalytics from "../pages/AttendanceAnalytics.jsx";
-import RsvpInbox from "../pages/RsvpInbox.jsx";
-import MeetingCostAnalytics from "../pages/MeetingCostAnalytics.jsx";
-import RecapScheduleDashboard from "../pages/RecapScheduleDashboard.jsx";
-import MeetingHealthDashboard from "../pages/MeetingHealthDashboard.jsx";
-import AutomationRules from "../pages/AutomationRules.jsx";
-import TopicExplorer from "../pages/TopicExplorer.jsx";
-import ParkingLotBacklogPage from "../pages/ParkingLotBacklogPage.jsx";
-import ConflictResolution from "../pages/ConflictResolution.jsx";
-import SpeakingTimeTrends from "../pages/SpeakingTimeTrends.jsx";
-import SpeakingTimeCompare from "../pages/SpeakingTimeCompare.jsx";
-import Leaderboard from "../pages/Leaderboard.jsx";
-import Badges from "../pages/Badges.jsx";
-import ParticipantEngagement from "../pages/ParticipantEngagement.jsx";
-import ActionItemAnalytics from "../pages/ActionItemAnalytics.jsx";
-import ActionItemsDashboard from "../pages/ActionItemsDashboard.jsx";
-import WorkloadDashboard from "../pages/WorkloadDashboard.jsx";
-import MyDelegations from "../pages/MyDelegations.jsx";
-import MeetingPatterns from "../pages/MeetingPatterns.jsx";
-import FocusTime from "../pages/FocusTime.jsx";
-import SeriesRetrospective from "../pages/SeriesRetrospective.jsx";
-import MeetingSeriesList from "../pages/MeetingSeriesList.jsx";
-import DataRetentionSettings from "../pages/DataRetentionSettings.jsx";
-import FollowUpDashboard from "../pages/FollowUpDashboard.jsx";
-import EscalationDashboard from "../pages/EscalationDashboard.jsx";
-import Glossary from "../pages/Glossary.jsx";
-import StandupReports from "../pages/StandupReports.jsx";
-import SlaCompliance from "../pages/SlaCompliance.jsx";
-import TeamAvailability from "../pages/TeamAvailability.jsx";
-import ActionItemTemplates from "../pages/ActionItemTemplates.jsx";
-import OrgTimelineDashboard from "../pages/OrgTimelineDashboard.jsx";
-import AbsenteeCatchUpInbox from "../pages/AbsenteeCatchUpInbox.jsx";
-import IntegrationMarketplaceHub from "../pages/IntegrationMarketplaceHub.jsx";
-import SentimentTrends from "../pages/SentimentTrends.jsx";
-
 const MeetingListPage = lazy(() => import("../pages/MeetingListPage.jsx"));
 const OrganizationHub = lazy(() => import("../pages/OrganizationHub.jsx"));
 const JoinOrganizationPage = lazy(
@@ -244,7 +154,6 @@ const AsyncMeetingsDashboard = lazy(
 );
 const MeetingPlaybooks = lazy(() => import("../pages/MeetingPlaybooks.jsx"));
 const TopicIntelligence = lazy(() => import("../pages/TopicIntelligence.jsx"));
- main
 
 const ProtectedRoutes = (
   <React.Fragment>
