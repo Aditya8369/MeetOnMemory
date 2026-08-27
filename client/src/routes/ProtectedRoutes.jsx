@@ -163,9 +163,30 @@ const AsyncMeetingsDashboard = lazy(
 );
 const MeetingPlaybooks = lazy(() => import("../pages/MeetingPlaybooks.jsx"));
 const TopicIntelligence = lazy(() => import("../pages/TopicIntelligence.jsx"));
+const SessionGallery = lazy(() => import("../pages/SessionGallery.jsx"));
 
 const ProtectedRoutes = (
   <React.Fragment>
+    <Route
+      path="/session-cards"
+      element={
+        <ProtectedRoute>
+          <RouteErrorBoundary>
+            <SessionGallery />
+          </RouteErrorBoundary>
+        </ProtectedRoute>
+      }
+    />
+    <Route
+      path="/session-gallery"
+      element={
+        <ProtectedRoute>
+          <RouteErrorBoundary>
+            <SessionGallery />
+          </RouteErrorBoundary>
+        </ProtectedRoute>
+      }
+    />
     <Route
       path="/topics/analytics"
       element={
