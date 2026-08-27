@@ -28,7 +28,11 @@ export const evaluateUpcomingMeetings = async (hoursFromNow = 24) => {
   }
 };
 
-export const generateNudgesForParticipant = async (meeting, userId, forceNotify = false) => {
+export const generateNudgesForParticipant = async (
+  meeting,
+  userId,
+  forceNotify = false,
+) => {
   // 1. Check for unresolved action items assigned to this user
   const unresolvedItems = await ActionItem.find({
     assignee: userId,
@@ -180,9 +184,8 @@ export const getMeetingReadiness = async (meetingId) => {
  * Preview nudges that will be generated for a meeting (Issue #2062)
  */
 export const previewMeetingNudges = async (meetingId) => {
-  const meeting = await Meeting.findById(meetingId).populate(
-    "participants.user",
-  );
+  const meeting =
+    await Meeting.findById(meetingId).populate("participants.user");
   if (!meeting) {
     throw new Error("Meeting not found");
   }
@@ -267,10 +270,9 @@ export const previewMeetingNudges = async (meetingId) => {
 /**
  * Manually trigger nudge test dispatch for organizer (Issue #2062)
  */
-export const triggerMeetingNudges = async (meetingId, organizerUserId) => {
-  const meeting = await Meeting.findById(meetingId).populate(
-    "participants.user",
-  );
+export const triggerMeetingNudges = async (meetingId, _organizerUserId) => {
+  const meeting =
+    await Meeting.findById(meetingId).populate("participants.user");
   if (!meeting) {
     throw new Error("Meeting not found");
   }

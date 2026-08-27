@@ -25,7 +25,9 @@ const MeetingNudgesTab = ({ meetingId, isOrganizer = false }) => {
   const fetchNudgePreview = useCallback(async () => {
     try {
       setLoading(true);
-      const res = await apiClient.get(`/api/nudges/meeting/${meetingId}/preview`);
+      const res = await apiClient.get(
+        `/api/nudges/meeting/${meetingId}/preview`,
+      );
       if (res.data && res.data.success) {
         setData(res.data);
       }
@@ -43,7 +45,9 @@ const MeetingNudgesTab = ({ meetingId, isOrganizer = false }) => {
   const handleTriggerManualNudges = async () => {
     try {
       setTriggering(true);
-      const res = await apiClient.post(`/api/nudges/meeting/${meetingId}/trigger`);
+      const res = await apiClient.post(
+        `/api/nudges/meeting/${meetingId}/trigger`,
+      );
       if (res.data?.success) {
         toast.success(
           res.data.message || "Test nudges generated and delivered!",
@@ -62,14 +66,18 @@ const MeetingNudgesTab = ({ meetingId, isOrganizer = false }) => {
     try {
       setToggling(true);
       const nextState = !data.nudgesEnabled;
-      const res = await apiClient.patch(`/api/nudges/meeting/${meetingId}/settings`, {
-        enabled: nextState,
-      });
+      const res = await apiClient.patch(
+        `/api/nudges/meeting/${meetingId}/settings`,
+        {
+          enabled: nextState,
+        },
+      );
       if (res.data?.success) {
         setData((prev) => ({ ...prev, nudgesEnabled: nextState }));
         toast.success(res.data.message);
       }
     } catch (err) {
+      console.error("Failed to update nudge automation settings", err);
       toast.error("Failed to update nudge automation settings");
     } finally {
       setToggling(false);
@@ -111,41 +119,44 @@ const MeetingNudgesTab = ({ meetingId, isOrganizer = false }) => {
                 </span>
               </h3>
               <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
-                Preview automated reminders sent to participants before meeting kick-off.
+                Preview automated reminders sent to participants before meeting
+                kick-off.
               </p>
             </div>
           </div>
         </div>
 
         {/* Organizer Actions */}
-        <div className="flex items-center gap-2.5 flex-wrap">
-          <button
-            type="button"
-            onClick={handleToggleAutomation}
-            disabled={toggling}
-            className={`px-3 py-1.5 rounded-lg text-xs font-semibold border transition ${
-              isEnabled
-                ? "border-amber-300 bg-amber-50 text-amber-800 hover:bg-amber-100 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-300"
-                : "border-emerald-300 bg-emerald-50 text-emerald-800 hover:bg-emerald-100 dark:border-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-300"
-            }`}
-          >
-            {isEnabled ? "Pause Nudges" : "Enable Nudges"}
-          </button>
+        {isOrganizer && (
+          <div className="flex items-center gap-2.5 flex-wrap">
+            <button
+              type="button"
+              onClick={handleToggleAutomation}
+              disabled={toggling}
+              className={`px-3 py-1.5 rounded-lg text-xs font-semibold border transition ${
+                isEnabled
+                  ? "border-amber-300 bg-amber-50 text-amber-800 hover:bg-amber-100 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-300"
+                  : "border-emerald-300 bg-emerald-50 text-emerald-800 hover:bg-emerald-100 dark:border-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-300"
+              }`}
+            >
+              {isEnabled ? "Pause Nudges" : "Enable Nudges"}
+            </button>
 
-          <button
-            type="button"
-            onClick={handleTriggerManualNudges}
-            disabled={triggering}
-            className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-semibold bg-indigo-600 hover:bg-indigo-700 text-white shadow-sm transition disabled:opacity-50"
-          >
-            {triggering ? (
-              <RefreshCw className="w-3.5 h-3.5 animate-spin" />
-            ) : (
-              <Send className="w-3.5 h-3.5" />
-            )}
-            <span>Test Dispatch</span>
-          </button>
-        </div>
+            <button
+              type="button"
+              onClick={handleTriggerManualNudges}
+              disabled={triggering}
+              className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-semibold bg-indigo-600 hover:bg-indigo-700 text-white shadow-sm transition disabled:opacity-50"
+            >
+              {triggering ? (
+                <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+              ) : (
+                <Send className="w-3.5 h-3.5" />
+              )}
+              <span>Test Dispatch</span>
+            </button>
+          </div>
+        )}
       </div>
 
       {/* Readiness Overview Scorecard */}
@@ -234,7 +245,9 @@ const MeetingNudgesTab = ({ meetingId, isOrganizer = false }) => {
                           {score}% Ready
                         </span>
                       </div>
-                      <p className="text-xs text-gray-400">{p.user?.email || "—"}</p>
+                      <p className="text-xs text-gray-400">
+                        {p.user?.email || "—"}
+                      </p>
 
                       {/* Planned nudges list */}
                       <div className="mt-2 flex flex-wrap gap-1.5">
@@ -255,9 +268,13 @@ const MeetingNudgesTab = ({ meetingId, isOrganizer = false }) => {
                     <div>
                       Agenda:{" "}
                       {p.hasViewedAgenda ? (
-                        <span className="text-emerald-600 font-semibold">Viewed</span>
+                        <span className="text-emerald-600 font-semibold">
+                          Viewed
+                        </span>
                       ) : (
-                        <span className="text-amber-600 font-semibold">Unviewed</span>
+                        <span className="text-amber-600 font-semibold">
+                          Unviewed
+                        </span>
                       )}
                     </div>
                     <div>

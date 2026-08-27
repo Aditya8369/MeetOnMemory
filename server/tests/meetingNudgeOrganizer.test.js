@@ -2,7 +2,6 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import {
   previewMeetingNudges,
   triggerMeetingNudges,
-  generateNudgesForParticipant,
 } from "../services/meetingNudgeService.js";
 import MeetingNudge from "../models/meetingNudgeModel.js";
 import Meeting from "../models/meetingModel.js";
