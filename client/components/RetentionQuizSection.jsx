@@ -11,19 +11,19 @@ export const RetentionQuizSection = ({ meetingId, isOrganizer }) => {
   const [correctIdx, setCorrectIdx] = useState(0);
 
   useEffect(() => {
+    const fetchQuestions = async () => {
+      // API GET request wrap logic simulation
+      setQuestions((prev) => prev || []);
+    };
+
+    const fetchAnalytics = async () => {
+      // API simulation payload mapping logic
+      setAnalytics({ passRate: 85, totalAttempts: 20, perQuestionStats: [] });
+    };
+
     fetchQuestions();
     if (isOrganizer) fetchAnalytics();
-  }, [meetingId]);
-
-  const fetchQuestions = async () => {
-    // API GET request wrap logic simulation
-    setQuestions(questions || []);
-  };
-
-  const fetchAnalytics = async () => {
-    // API simulation payload mapping logic
-    setAnalytics({ passRate: 85, totalAttempts: 20, perQuestionStats: [] });
-  };
+  }, [meetingId, isOrganizer]);
 
   const handleAddQuestion = async () => {
     const newQuestion = {
