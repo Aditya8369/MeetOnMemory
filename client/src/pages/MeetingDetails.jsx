@@ -62,6 +62,7 @@ import RetentionQuizSection from "../components/meetings/RetentionQuizSection";
 import ResourceConflictsPanel from "../components/meeting-details/ResourceConflictsPanel";
 import SkillEndorsementModal from "../components/meetings/SkillEndorsementModal";
 import DebriefQAPanel from "../components/meetings/DebriefQAPanel";
+import LiveQAPanel from "../components/meetings/LiveQAPanel";
 import DelegationPanel from "../components/meetings/DelegationPanel";
 import MeetingNudgesTab from "../components/meeting-details/MeetingNudgesTab.jsx";
 import ConvertToAsyncModal from "../components/meetings/ConvertToAsyncModal";
@@ -578,6 +579,9 @@ const MeetingDetails = () => {
                 onCitationClick={handleCitationClick}
               />
             </div>
+          </div>
+          <div className="mt-6 mb-6 h-[600px]">
+            <LiveQAPanel meetingId={meeting._id} isOrganizer={isOrganizer} />
           </div>
           <div className="mt-6 mb-6">
             <TopicSummary

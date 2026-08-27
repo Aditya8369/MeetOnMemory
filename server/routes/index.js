@@ -316,4 +316,7 @@ router.use("/api/api-keys", apiKeyRoutes);
 import meetingRetrospectiveRoutes from "./meetingRetrospectiveRoutes.js";
 router.use("/api/meeting-retrospectives", meetingRetrospectiveRoutes);
 
+import meetingQuestionRoutes from "./meetingQuestionRoutes.js";
+router.use("/api", meetingQuestionRoutes);
+
 export default router;

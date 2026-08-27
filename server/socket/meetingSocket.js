@@ -531,6 +531,27 @@ export default (io) => {
     });
 
     /**
+     * Q&A Board Events
+     */
+    socket.on("qa:submit-question", (payload) => {
+      io.to(payload.roomId).emit("qa:question-added", payload.question);
+    });
+
+    socket.on("qa:upvote-question", (payload) => {
+      io.to(payload.roomId).emit("qa:question-upvoted", {
+        questionId: payload.questionId,
+        upvotes: payload.upvotes,
+      });
+    });
+
+    socket.on("qa:status-changed", (payload) => {
+      io.to(payload.roomId).emit("qa:question-status-changed", {
+        questionId: payload.questionId,
+        status: payload.status,
+      });
+    });
+
+    /**
      * Request current room presence (for debugging/sync)
      */
     socket.on("get-room-presence", async ({ roomId }) => {
