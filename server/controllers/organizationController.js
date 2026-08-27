@@ -512,7 +512,7 @@ export const updateMemberRole = async (req, res) => {
     const actorId = req.user.id || req.user._id;
     const orgId = req.params.id;
     const targetUserId = req.params.userId;
-    const { role } = req.body;
+    const { role, reason } = req.body;
 
     if (!role) {
       return sendError(res, 400, "Role is required.");
@@ -523,11 +523,123 @@ export const updateMemberRole = async (req, res) => {
       orgId,
       targetUserId,
       role,
+      reason,
     );
 
     sendSuccess(res, result);
   } catch (error) {
     console.error("❌ Error updating member role:", error);
+    sendError(res, error.statusCode || 500, error.message || "Server error");
+  }
+};
+
+/**
+ * ✅ Deactivate Member
+ * PATCH /api/organizations/:id/members/:userId/deactivate
+ */
+export const deactivateMember = async (req, res) => {
+  try {
+    if (!req.user || (!req.user.id && !req.user._id)) {
+      return sendError(res, 401, "Authentication failed.");
+    }
+
+    const actorId = req.user.id || req.user._id;
+    const orgId = req.params.id;
+    const targetUserId = req.params.userId;
+    const { reason } = req.body;
+
+    const result = await OrganizationService.deactivateMemberInOrganization(
+      actorId,
+      orgId,
+      targetUserId,
+      reason,
+    );
+
+    sendSuccess(res, result);
+  } catch (error) {
+    console.error("❌ Error deactivating member:", error);
+    sendError(res, error.statusCode || 500, error.message || "Server error");
+  }
+};
+
+/**
+ * ✅ Reactivate Member
+ * PATCH /api/organizations/:id/members/:userId/reactivate
+ */
+export const reactivateMember = async (req, res) => {
+  try {
+    if (!req.user || (!req.user.id && !req.user._id)) {
+      return sendError(res, 401, "Authentication failed.");
+    }
+
+    const actorId = req.user.id || req.user._id;
+    const orgId = req.params.id;
+    const targetUserId = req.params.userId;
+
+    const result = await OrganizationService.reactivateMemberInOrganization(
+      actorId,
+      orgId,
+      targetUserId,
+    );
+
+    sendSuccess(res, result);
+  } catch (error) {
+    console.error("❌ Error reactivating member:", error);
+    sendError(res, error.statusCode || 500, error.message || "Server error");
+  }
+};
+
+/**
+ * ✅ Update Member Capacity
+ * PATCH /api/organizations/:id/members/:userId/capacity
+ */
+export const updateMemberCapacity = async (req, res) => {
+  try {
+    if (!req.user || (!req.user.id && !req.user._id)) {
+      return sendError(res, 401, "Authentication failed.");
+    }
+
+    const actorId = req.user.id || req.user._id;
+    const orgId = req.params.id;
+    const targetUserId = req.params.userId;
+
+    const result = await OrganizationService.updateMemberCapacity(
+      actorId,
+      orgId,
+      targetUserId,
+      req.body,
+    );
+
+    sendSuccess(res, result);
+  } catch (error) {
+    console.error("❌ Error updating member capacity:", error);
+    sendError(res, error.statusCode || 500, error.message || "Server error");
+  }
+};
+
+/**
+ * ✅ Get Member Role History
+ * GET /api/organizations/:id/members/:userId/role-history
+ */
+export const getMemberRoleHistory = async (req, res) => {
+  try {
+    if (!req.user || (!req.user.id && !req.user._id)) {
+      return sendError(res, 401, "Authentication failed.");
+    }
+
+    const actorId = req.user.id || req.user._id;
+    const orgId = req.params.id;
+    const targetUserId = req.params.userId;
+
+    const result = await OrganizationService.getMemberRoleHistory(
+      actorId,
+      orgId,
+      targetUserId,
+    );
+
+    sendSuccess(res, result);
+  } catch (error) {
+    console.error("❌ Error fetching role history:", error);
     sendError(res, error.statusCode || 500, error.message || "Server error");
   }
 };
