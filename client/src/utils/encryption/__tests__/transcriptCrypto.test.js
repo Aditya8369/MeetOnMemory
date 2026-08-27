@@ -202,9 +202,9 @@ describe("transcriptCrypto & meetingKeyStore (Issue #1335 & #2030)", () => {
     expect(parsed.key).toBe(rawKey);
 
     // Mismatched meetingId detection
-    expect(() => parseImportedKeyInput(payload, "different_meeting_id")).toThrow(
-      /belongs to meeting/i,
-    );
+    expect(() =>
+      parseImportedKeyInput(payload, "different_meeting_id"),
+    ).toThrow(/belongs to meeting/i);
 
     // Parsing raw base64 string
     const parsedRaw = parseImportedKeyInput(rawKey, meetingId);

@@ -80,7 +80,11 @@ export const listStoredMeetingKeyIds = () => {
 /**
  * Export a shareable formatted key package for an authorized participant.
  */
-export const createShareableKeyPayload = (meetingId, rawBase64Key, meetingTitle = "") => {
+export const createShareableKeyPayload = (
+  meetingId,
+  rawBase64Key,
+  meetingTitle = "",
+) => {
   if (!meetingId || !rawBase64Key) {
     throw new Error("Meeting ID and key are required");
   }
@@ -115,7 +119,11 @@ export const parseImportedKeyInput = (input, expectedMeetingId = null) => {
     try {
       const parsed = JSON.parse(trimmed);
       if (parsed.type === "E2EE_MEETING_KEY" && parsed.key) {
-        if (expectedMeetingId && parsed.meetingId && String(parsed.meetingId) !== String(expectedMeetingId)) {
+        if (
+          expectedMeetingId &&
+          parsed.meetingId &&
+          String(parsed.meetingId) !== String(expectedMeetingId)
+        ) {
           throw new Error(
             `Key belongs to meeting "${parsed.meetingId}", not "${expectedMeetingId}".`,
           );
@@ -128,7 +136,11 @@ export const parseImportedKeyInput = (input, expectedMeetingId = null) => {
         };
       }
       if (parsed.magic === "MOM_E2EE_KEY_BUNDLE_V1") {
-        if (expectedMeetingId && parsed.meetingId && String(parsed.meetingId) !== String(expectedMeetingId)) {
+        if (
+          expectedMeetingId &&
+          parsed.meetingId &&
+          String(parsed.meetingId) !== String(expectedMeetingId)
+        ) {
           throw new Error(
             `Backup bundle belongs to meeting "${parsed.meetingId}", not "${expectedMeetingId}".`,
           );
