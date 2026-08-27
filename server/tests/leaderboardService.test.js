@@ -20,11 +20,13 @@ describe("LeaderboardEngine", () => {
       const mockAggregatedData = [
         {
           _id: "score1",
+          user: "user1",
           userDetails: { _id: "user1", name: "Alice", team: "Engineering" },
           calculatedPoints: 100
         },
         {
           _id: "score2",
+          user: "user2",
           userDetails: { _id: "user2", name: "Bob", team: "Sales" },
           calculatedPoints: 50
         }
