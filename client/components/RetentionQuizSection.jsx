@@ -15,10 +15,6 @@ export const RetentionQuizSection = ({ meetingId, isOrganizer }) => {
       // API GET request wrap logic simulation
       setQuestions((prev) => prev || []);
     };
-    fetchQuestions();
-    if (isOrganizer) fetchAnalytics();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [meetingId]);
 
     const fetchAnalytics = async () => {
       // API simulation payload mapping logic
