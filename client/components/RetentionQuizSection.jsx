@@ -10,12 +10,6 @@ export const RetentionQuizSection = ({ meetingId, isOrganizer }) => {
   const [opts, setOpts] = useState(["", "", "", ""]);
   const [correctIdx, setCorrectIdx] = useState(0);
 
-  useEffect(() => {
-    fetchQuestions();
-    if (isOrganizer) fetchAnalytics();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [meetingId]);
-
   const fetchQuestions = React.useCallback(async () => {
     // API GET request wrap logic simulation
     setQuestions((q) => q || []);
