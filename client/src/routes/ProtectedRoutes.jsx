@@ -58,6 +58,9 @@ const KnowledgeArchive = lazy(() => import("../pages/KnowledgeArchive.jsx"));
 const GraphSnapshots = lazy(() => import("../pages/GraphSnapshots.jsx"));
 const KnowledgeGraph = lazy(() => import("../pages/KnowledgeGraph.jsx"));
 const DecisionGraph = lazy(() => import("../pages/DecisionGraph.jsx"));
+const DecisionDependencyMatrix = lazy(
+  () => import("../pages/DecisionDependencyMatrix.jsx"),
+);
 const DecisionLog = lazy(() => import("../pages/DecisionLog.jsx"));
 const PolicyCompliance = lazy(() => import("../pages/PolicyCompliance.jsx"));
 const Settings = lazy(() => import("../pages/Settings.jsx"));
@@ -329,6 +332,14 @@ const ProtectedRoutes = (
       element={
         <ProtectedRoute resource="knowledge" action="view">
           <DecisionGraph />
+        </ProtectedRoute>
+      }
+    />
+    <Route
+      path="/decision-matrix"
+      element={
+        <ProtectedRoute resource="knowledge" action="view">
+          <DecisionDependencyMatrix />
         </ProtectedRoute>
       }
     />
