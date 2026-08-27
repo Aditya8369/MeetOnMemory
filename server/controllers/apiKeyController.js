@@ -51,7 +51,9 @@ export const createOrgApiKey = async (req, res) => {
 
     let expiresAt = null;
     if (expiresInDays && Number(expiresInDays) > 0) {
-      expiresAt = new Date(Date.now() + Number(expiresInDays) * 24 * 60 * 60 * 1000);
+      expiresAt = new Date(
+        Date.now() + Number(expiresInDays) * 24 * 60 * 60 * 1000,
+      );
     }
 
     const newKey = await ApiKey.create({
@@ -66,7 +68,8 @@ export const createOrgApiKey = async (req, res) => {
 
     res.status(201).json({
       success: true,
-      message: "API key generated successfully. Copy the secret key now; it will not be shown again.",
+      message:
+        "API key generated successfully. Copy the secret key now; it will not be shown again.",
       apiKey: {
         _id: newKey._id,
         name: newKey.name,
@@ -95,7 +98,9 @@ export const revokeOrgApiKey = async (req, res) => {
     const key = await ApiKey.findById(keyId);
 
     if (!key) {
-      return res.status(404).json({ success: false, message: "API key not found." });
+      return res
+        .status(404)
+        .json({ success: false, message: "API key not found." });
     }
 
     key.status = "revoked";
@@ -127,7 +132,9 @@ export const rotateOrgApiKey = async (req, res) => {
     const key = await ApiKey.findById(keyId);
 
     if (!key) {
-      return res.status(404).json({ success: false, message: "API key not found." });
+      return res
+        .status(404)
+        .json({ success: false, message: "API key not found." });
     }
 
     const { secretKey, hashedKey, keyPreview } = generateApiKeySecret();
@@ -140,7 +147,8 @@ export const rotateOrgApiKey = async (req, res) => {
 
     res.json({
       success: true,
-      message: "API key rotated successfully. Store your new secret key securely.",
+      message:
+        "API key rotated successfully. Store your new secret key securely.",
       apiKey: {
         _id: key._id,
         name: key.name,

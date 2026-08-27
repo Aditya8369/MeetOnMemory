@@ -32,7 +32,8 @@ export const authenticateApiKey = async (req, res, next) => {
   try {
     const rawKey =
       req.headers["x-api-key"] ||
-      (req.headers.authorization && req.headers.authorization.startsWith("Bearer mom_")
+      (req.headers.authorization &&
+      req.headers.authorization.startsWith("Bearer mom_")
         ? req.headers.authorization.split(" ")[1]
         : null);
 
@@ -84,7 +85,9 @@ export const authenticateApiKey = async (req, res, next) => {
 export const requireApiKeyScope = (requiredScope) => {
   return (req, res, next) => {
     if (!req.apiKey) {
-      return res.status(401).json({ success: false, message: "Unauthenticated API request." });
+      return res
+        .status(401)
+        .json({ success: false, message: "Unauthenticated API request." });
     }
 
     if (!req.apiKey.scopes.includes(requiredScope)) {

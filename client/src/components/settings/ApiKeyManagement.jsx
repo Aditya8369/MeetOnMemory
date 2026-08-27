@@ -16,13 +16,41 @@ import { toast } from "react-toastify";
 import apiClient from "../../services/apiClient.js";
 
 const SCOPE_OPTIONS = [
-  { id: "meetings:read", label: "Read Meetings", desc: "List and view meeting metadata" },
-  { id: "meetings:write", label: "Write Meetings", desc: "Create, edit, and organize meetings" },
-  { id: "transcripts:read", label: "Read Transcripts", desc: "Access full meeting transcripts" },
-  { id: "summaries:read", label: "Read Summaries", desc: "Fetch AI-generated summaries and MoMs" },
-  { id: "action_items:read", label: "Read Action Items", desc: "List assigned tasks and owners" },
-  { id: "action_items:write", label: "Write Action Items", desc: "Update task statuses and owners" },
-  { id: "webhooks:manage", label: "Manage Webhooks", desc: "Register endpoints for meeting events" },
+  {
+    id: "meetings:read",
+    label: "Read Meetings",
+    desc: "List and view meeting metadata",
+  },
+  {
+    id: "meetings:write",
+    label: "Write Meetings",
+    desc: "Create, edit, and organize meetings",
+  },
+  {
+    id: "transcripts:read",
+    label: "Read Transcripts",
+    desc: "Access full meeting transcripts",
+  },
+  {
+    id: "summaries:read",
+    label: "Read Summaries",
+    desc: "Fetch AI-generated summaries and MoMs",
+  },
+  {
+    id: "action_items:read",
+    label: "Read Action Items",
+    desc: "List assigned tasks and owners",
+  },
+  {
+    id: "action_items:write",
+    label: "Write Action Items",
+    desc: "Update task statuses and owners",
+  },
+  {
+    id: "webhooks:manage",
+    label: "Manage Webhooks",
+    desc: "Register endpoints for meeting events",
+  },
 ];
 
 const ApiKeyManagement = ({ organizationId }) => {
@@ -85,7 +113,11 @@ const ApiKeyManagement = ({ organizationId }) => {
   };
 
   const handleRevokeKey = async (keyId) => {
-    if (!window.confirm("Are you sure you want to revoke this API key? Applications using it will immediately lose access.")) {
+    if (
+      !window.confirm(
+        "Are you sure you want to revoke this API key? Applications using it will immediately lose access.",
+      )
+    ) {
       return;
     }
 
@@ -96,12 +128,16 @@ const ApiKeyManagement = ({ organizationId }) => {
         fetchKeys();
       }
     } catch (err) {
-      toast.error("Failed to revoke API key");
+      toast.error(err.response?.data?.message || "Failed to revoke API key");
     }
   };
 
   const handleRotateKey = async (keyId) => {
-    if (!window.confirm("Rotating this key will invalidate the old secret immediately. Continue?")) {
+    if (
+      !window.confirm(
+        "Rotating this key will invalidate the old secret immediately. Continue?",
+      )
+    ) {
       return;
     }
 
@@ -113,13 +149,15 @@ const ApiKeyManagement = ({ organizationId }) => {
         fetchKeys();
       }
     } catch (err) {
-      toast.error("Failed to rotate API key");
+      toast.error(err.response?.data?.message || "Failed to rotate API key");
     }
   };
 
   const toggleScope = (scopeId) => {
     setSelectedScopes((prev) =>
-      prev.includes(scopeId) ? prev.filter((s) => s !== scopeId) : [...prev, scopeId],
+      prev.includes(scopeId)
+        ? prev.filter((s) => s !== scopeId)
+        : [...prev, scopeId],
     );
   };
 
@@ -137,7 +175,8 @@ const ApiKeyManagement = ({ organizationId }) => {
                 Organization API Keys & Personal Access Tokens
               </h3>
               <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-                Authenticate developer tools, CI pipelines, and custom agents with scoped tokens.
+                Authenticate developer tools, CI pipelines, and custom agents
+                with scoped tokens.
               </p>
             </div>
           </div>
@@ -179,9 +218,14 @@ const ApiKeyManagement = ({ organizationId }) => {
               {keys.map((k) => {
                 const isRevoked = k.status === "revoked";
                 return (
-                  <tr key={k._id} className="hover:bg-slate-50/50 dark:hover:bg-slate-850/50 transition">
+                  <tr
+                    key={k._id}
+                    className="hover:bg-slate-50/50 dark:hover:bg-slate-850/50 transition"
+                  >
                     <td className="py-3.5">
-                      <div className="font-bold text-slate-900 dark:text-white">{k.name}</div>
+                      <div className="font-bold text-slate-900 dark:text-white">
+                        {k.name}
+                      </div>
                       <code className="font-mono text-[11px] text-slate-400 mt-0.5 inline-block bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 rounded">
                         {k.keyPreview}
                       </code>
@@ -213,7 +257,9 @@ const ApiKeyManagement = ({ organizationId }) => {
                       </span>
                     </td>
                     <td className="py-3.5 text-slate-500">
-                      {k.expiresAt ? new Date(k.expiresAt).toLocaleDateString() : "Never"}
+                      {k.expiresAt
+                        ? new Date(k.expiresAt).toLocaleDateString()
+                        : "Never"}
                     </td>
                     <td className="py-3.5 text-right space-x-2">
                       {!isRevoked && (
@@ -255,7 +301,9 @@ const ApiKeyManagement = ({ organizationId }) => {
           <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden flex flex-col">
             <div className="px-6 py-4 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between">
               <h4 className="text-base font-bold text-slate-900 dark:text-white">
-                {generatedSecret ? "Save Your Secret API Key" : "Generate API Key"}
+                {generatedSecret
+                  ? "Save Your Secret API Key"
+                  : "Generate API Key"}
               </h4>
               <button
                 type="button"
@@ -271,7 +319,8 @@ const ApiKeyManagement = ({ organizationId }) => {
                 <div className="p-3 bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-900/60 rounded-xl text-amber-800 dark:text-amber-200 flex items-start gap-2.5">
                   <AlertTriangle className="w-4 h-4 shrink-0 text-amber-600 mt-0.5" />
                   <span>
-                    Make sure to copy your API key now. You will not be able to see it again!
+                    Make sure to copy your API key now. You will not be able to
+                    see it again!
                   </span>
                 </div>
 
@@ -293,7 +342,11 @@ const ApiKeyManagement = ({ organizationId }) => {
                       }}
                       className="p-1.5 bg-white dark:bg-slate-700 rounded-lg text-slate-700 dark:text-slate-200 shadow-xs hover:bg-slate-50 transition"
                     >
-                      {copiedKey ? <Check className="w-4 h-4 text-emerald-500" /> : <Copy className="w-4 h-4" />}
+                      {copiedKey ? (
+                        <Check className="w-4 h-4 text-emerald-500" />
+                      ) : (
+                        <Copy className="w-4 h-4" />
+                      )}
                     </button>
                   </div>
                 </div>
@@ -309,7 +362,10 @@ const ApiKeyManagement = ({ organizationId }) => {
                 </div>
               </div>
             ) : (
-              <form onSubmit={handleCreateKey} className="p-6 space-y-4 text-xs">
+              <form
+                onSubmit={handleCreateKey}
+                className="p-6 space-y-4 text-xs"
+              >
                 <div className="space-y-1">
                   <label className="font-semibold text-slate-700 dark:text-slate-300">
                     Key Name / Identifier
@@ -360,7 +416,9 @@ const ApiKeyManagement = ({ organizationId }) => {
                           <div className="font-semibold text-slate-900 dark:text-white">
                             {scope.label}
                           </div>
-                          <div className="text-[11px] text-slate-400">{scope.desc}</div>
+                          <div className="text-[11px] text-slate-400">
+                            {scope.desc}
+                          </div>
                         </div>
                       </label>
                     ))}
@@ -380,7 +438,9 @@ const ApiKeyManagement = ({ organizationId }) => {
                     disabled={creating || !newKeyName.trim()}
                     className="px-4 py-2 bg-violet-600 hover:bg-violet-700 text-white rounded-xl font-semibold shadow-sm transition disabled:opacity-50 flex items-center gap-1.5"
                   >
-                    {creating && <RefreshCw className="w-3.5 h-3.5 animate-spin" />}
+                    {creating && (
+                      <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                    )}
                     <span>Create Secret Key</span>
                   </button>
                 </div>
