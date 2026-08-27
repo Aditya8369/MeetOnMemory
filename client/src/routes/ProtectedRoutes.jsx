@@ -1,10 +1,11 @@
-import React from "react";
+import React, { lazy } from "react";
 import { Route } from "react-router-dom";
 
 import ProtectedRoute from "../components/ProtectedRoute.jsx";
 import RouteErrorBoundary from "../components/RouteErrorBoundary.jsx";
 import AccessDenied from "../pages/AccessDenied.jsx";
 
+ feature/org-timeline-dashboard-2261
 // --- Protected Pages ---
 import MeetingListPage from "../pages/MeetingListPage.jsx";
 import OrganizationHub from "../pages/OrganizationHub.jsx";
@@ -94,8 +95,189 @@ import AbsenteeCatchUpInbox from "../pages/AbsenteeCatchUpInbox.jsx";
 import IntegrationMarketplaceHub from "../pages/IntegrationMarketplaceHub.jsx";
 import SentimentTrends from "../pages/SentimentTrends.jsx";
 
+const MeetingListPage = lazy(() => import("../pages/MeetingListPage.jsx"));
+const OrganizationHub = lazy(() => import("../pages/OrganizationHub.jsx"));
+const JoinOrganizationPage = lazy(
+  () => import("../pages/JoinOrganizationPage.jsx"),
+);
+const CreateOrganizationPage = lazy(
+  () => import("../pages/CreateOrganizationPage.jsx"),
+);
+const BrowseOrganizations = lazy(
+  () => import("../pages/BrowseOrganizations/BrowseOrganizations.jsx"),
+);
+const OrganizationSettings = lazy(
+  () => import("../pages/OrganizationSettings.jsx"),
+);
+const Dashboard = lazy(() => import("../pages/Dashboard.jsx"));
+const CompareMeetings = lazy(() => import("../pages/MeetingComparison.jsx"));
+const CreateMeeting = lazy(() => import("../pages/CreateMeeting.jsx"));
+const MeetingTemplates = lazy(() => import("../pages/MeetingTemplates.jsx"));
+const TemplateLibrary = lazy(() => import("../pages/TemplateLibrary.jsx"));
+const UploadMeeting = lazy(() => import("../pages/UploadMeeting.jsx"));
+const Policies = lazy(() => import("../pages/Policies.jsx"));
+const AiSummaryTemplates = lazy(
+  () => import("../pages/AiSummaryTemplates.jsx"),
+);
+const Summaries = lazy(() => import("../pages/Summaries.jsx"));
+const Reports = lazy(() => import("../pages/Reports.jsx"));
+const WeeklyInsights = lazy(() => import("../pages/WeeklyInsights.jsx"));
+const ReportBuilder = lazy(() => import("../pages/ReportBuilder.jsx"));
+const AiSearch = lazy(() => import("../pages/AiSearch.jsx"));
+const AiAssistant = lazy(() => import("../pages/AiAssistant.jsx"));
+const MeetingDetails = lazy(() => import("../pages/MeetingDetails.jsx"));
+const MeetingBriefing = lazy(() => import("../pages/MeetingBriefing.jsx"));
+const MeetingQuality = lazy(() => import("../pages/MeetingQuality.jsx"));
+const MeetingEffectiveness = lazy(
+  () => import("../pages/MeetingEffectiveness.jsx"),
+);
+const MeetingRecycleBin = lazy(() => import("../pages/MeetingRecycleBin.jsx"));
+const MeetingRoom = lazy(() => import("../pages/MeetingRoom.jsx"));
+const TranscriptViewer = lazy(() => import("../pages/TranscriptViewer.jsx"));
+const TeamMembers = lazy(() => import("../pages/TeamMembers.jsx"));
+const Profile = lazy(() => import("../pages/Profile.jsx"));
+const Calendar = lazy(() => import("../pages/Calendar.jsx"));
+const Notifications = lazy(() => import("../pages/Notifications.jsx"));
+const Tasks = lazy(() => import("../pages/Tasks.jsx"));
+const KnowledgeTimeline = lazy(() => import("../pages/KnowledgeTimeline.jsx"));
+const MemoryConsolidation = lazy(
+  () => import("../pages/MemoryConsolidation.jsx"),
+);
+const MemoryLifecycle = lazy(() => import("../pages/MemoryLifecycle.jsx"));
+const KnowledgeArchive = lazy(() => import("../pages/KnowledgeArchive.jsx"));
+const GraphSnapshots = lazy(() => import("../pages/GraphSnapshots.jsx"));
+const KnowledgeGraph = lazy(() => import("../pages/KnowledgeGraph.jsx"));
+const DecisionGraph = lazy(() => import("../pages/DecisionGraph.jsx"));
+const DecisionLog = lazy(() => import("../pages/DecisionLog.jsx"));
+const PolicyCompliance = lazy(() => import("../pages/PolicyCompliance.jsx"));
+const Settings = lazy(() => import("../pages/Settings.jsx"));
+const MembershipRequests = lazy(
+  () => import("../pages/MembershipRequests.jsx"),
+);
+const MembersManagement = lazy(
+  () => import("../pages/Admin/MembersManagement.jsx"),
+);
+const AuditLogViewer = lazy(() => import("../pages/Admin/AuditLogViewer.jsx"));
+const AdminHealth = lazy(() => import("../pages/Admin/AdminHealth.jsx"));
+const AdminPanel = lazy(() => import("../pages/AdminPanel.jsx"));
+const ResourceManagement = lazy(
+  () => import("../pages/Admin/ResourceManagement.jsx"),
+);
+const Bookmarks = lazy(() => import("../pages/Bookmarks.jsx"));
+const ActivityFeed = lazy(() => import("../pages/ActivityFeed.jsx"));
+const TagBrowser = lazy(() => import("../pages/TagBrowser.jsx"));
+const AttendanceAnalytics = lazy(
+  () => import("../pages/AttendanceAnalytics.jsx"),
+);
+const RsvpInbox = lazy(() => import("../pages/RsvpInbox.jsx"));
+const MeetingCostAnalytics = lazy(
+  () => import("../pages/MeetingCostAnalytics.jsx"),
+);
+const RecapScheduleDashboard = lazy(
+  () => import("../pages/RecapScheduleDashboard.jsx"),
+);
+const MeetingHealthDashboard = lazy(
+  () => import("../pages/MeetingHealthDashboard.jsx"),
+);
+const AutomationRules = lazy(() => import("../pages/AutomationRules.jsx"));
+const TopicExplorer = lazy(() => import("../pages/TopicExplorer.jsx"));
+const TopicAnalyticsDashboard = lazy(
+  () => import("../pages/TopicAnalyticsDashboard.jsx"),
+);
+const ParkingLotBacklogPage = lazy(
+  () => import("../pages/ParkingLotBacklogPage.jsx"),
+);
+const ConflictResolution = lazy(
+  () => import("../pages/ConflictResolution.jsx"),
+);
+const SpeakingTimeTrends = lazy(
+  () => import("../pages/SpeakingTimeTrends.jsx"),
+);
+const SpeakingTimeCompare = lazy(
+  () => import("../pages/SpeakingTimeCompare.jsx"),
+);
+const Leaderboard = lazy(() => import("../pages/Leaderboard.jsx"));
+const Badges = lazy(() => import("../pages/Badges.jsx"));
+const ParticipantEngagement = lazy(
+  () => import("../pages/ParticipantEngagement.jsx"),
+);
+const ActionItemAnalytics = lazy(
+  () => import("../pages/ActionItemAnalytics.jsx"),
+);
+const ActionItemsDashboard = lazy(
+  () => import("../pages/ActionItemsDashboard.jsx"),
+);
+const WorkloadDashboard = lazy(() => import("../pages/WorkloadDashboard.jsx"));
+const MyDelegations = lazy(() => import("../pages/MyDelegations.jsx"));
+const MeetingPatterns = lazy(() => import("../pages/MeetingPatterns.jsx"));
+const FocusTime = lazy(() => import("../pages/FocusTime.jsx"));
+const SeriesRetrospective = lazy(
+  () => import("../pages/SeriesRetrospective.jsx"),
+);
+const MeetingSeriesList = lazy(() => import("../pages/MeetingSeriesList.jsx"));
+const DataRetentionSettings = lazy(
+  () => import("../pages/DataRetentionSettings.jsx"),
+);
+const FollowUpDashboard = lazy(() => import("../pages/FollowUpDashboard.jsx"));
+const EscalationDashboard = lazy(
+  () => import("../pages/EscalationDashboard.jsx"),
+);
+const Glossary = lazy(() => import("../pages/Glossary.jsx"));
+const StandupReports = lazy(() => import("../pages/StandupReports.jsx"));
+const SlaCompliance = lazy(() => import("../pages/SlaCompliance.jsx"));
+const TeamAvailability = lazy(() => import("../pages/TeamAvailability.jsx"));
+const ActionItemTemplates = lazy(
+  () => import("../pages/ActionItemTemplates.jsx"),
+);
+const OrgTimelineDashboard = lazy(
+  () => import("../pages/OrgTimelineDashboard.jsx"),
+);
+const AbsenteeCatchUpInbox = lazy(
+  () => import("../pages/AbsenteeCatchUpInbox.jsx"),
+);
+const IntegrationMarketplaceHub = lazy(
+  () => import("../pages/IntegrationMarketplaceHub.jsx"),
+);
+const SentimentTrends = lazy(() => import("../pages/SentimentTrends.jsx"));
+const AsyncMeetingsDashboard = lazy(
+  () => import("../pages/AsyncMeetingsDashboard.jsx"),
+);
+const MeetingPlaybooks = lazy(() => import("../pages/MeetingPlaybooks.jsx"));
+const TopicIntelligence = lazy(() => import("../pages/TopicIntelligence.jsx"));
+ main
+
 const ProtectedRoutes = (
   <React.Fragment>
+    <Route
+      path="/topics/analytics"
+      element={
+        <ProtectedRoute>
+          <RouteErrorBoundary>
+            <TopicAnalyticsDashboard />
+          </RouteErrorBoundary>
+        </ProtectedRoute>
+      }
+    />
+    <Route
+      path="/analytics/topics"
+      element={
+        <ProtectedRoute>
+          <RouteErrorBoundary>
+            <TopicAnalyticsDashboard />
+          </RouteErrorBoundary>
+        </ProtectedRoute>
+      }
+    />
+    <Route
+      path="/topic-intelligence"
+      element={
+        <ProtectedRoute>
+          <RouteErrorBoundary>
+            <TopicIntelligence />
+          </RouteErrorBoundary>
+        </ProtectedRoute>
+      }
+    />
     <Route
       path="/sentiment-trends"
       element={
@@ -126,6 +308,14 @@ const ProtectedRoutes = (
       element={
         <ProtectedRoute resource="meetings" action="view">
           <MeetingListPage />
+        </ProtectedRoute>
+      }
+    />
+    <Route
+      path="/playbooks"
+      element={
+        <ProtectedRoute resource="meetings" action="view">
+          <MeetingPlaybooks />
         </ProtectedRoute>
       }
     />
@@ -864,6 +1054,14 @@ const ProtectedRoutes = (
           <RouteErrorBoundary section="Admin">
             <AdminPanel />
           </RouteErrorBoundary>
+        </ProtectedRoute>
+      }
+    />
+    <Route
+      path="/async-meetings"
+      element={
+        <ProtectedRoute>
+          <AsyncMeetingsDashboard />
         </ProtectedRoute>
       }
     />

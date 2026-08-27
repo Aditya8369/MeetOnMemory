@@ -35,6 +35,7 @@ import ReactionSummaryCard from "../components/meeting-details/ReactionSummaryCa
 import { useUser } from "@clerk/clerk-react";
 import Navbar from "../components/Navbar.jsx";
 import BriefingBanner from "../components/meeting-details/BriefingBanner";
+import CompareButton from "../components/meeting-details/CompareButton";
 import AgendaBuilder from "../components/meetings/AgendaBuilder";
 import IcebreakerSection from "../components/meetings/IcebreakerSection";
 import { getBriefing } from "../services/briefingApi";
@@ -54,16 +55,24 @@ import HealthScoreCard from "../components/meeting-details/HealthScoreCard";
 import { isMeetingEnded } from "../utils/meetingLifecycle";
 import { canManageMeetingDigest } from "../utils/digestAccess";
 import MeetingRisksPanel from "../components/meetings/MeetingRisksPanel";
+import { useTranslation } from "react-i18next";
 import { Award, ShieldAlert, FileText, Star } from "lucide-react";
 import ExportDialog from "../components/export/ExportDialog";
 import RetentionQuizSection from "../components/meetings/RetentionQuizSection";
 import ResourceConflictsPanel from "../components/meeting-details/ResourceConflictsPanel";
 import SkillEndorsementModal from "../components/meetings/SkillEndorsementModal";
 import DebriefQAPanel from "../components/meetings/DebriefQAPanel";
+import DelegationPanel from "../components/meetings/DelegationPanel";
+import ConvertToAsyncModal from "../components/meetings/ConvertToAsyncModal";
+import ParticipantContributions from "../components/MeetingDetails/ParticipantContributions";
+import ContributionSummaryPanel from "../components/MeetingDetails/ContributionSummaryPanel";
+import MeetingCostCard from "../components/meeting-details/MeetingCostCard";
+import AbsenteeBriefingCard from "../components/meeting-details/AbsenteeBriefingCard";
 
 const MeetingDetails = () => {
   const { id } = useParams();
   const navigate = useNavigate();
+  const { t } = useTranslation();
   const { user: currentUser } = useUser();
   const { userData } = useContext(AppContent) || {};
   const isViewerOrGuest =
@@ -78,6 +87,7 @@ const MeetingDetails = () => {
   const [isStoryViewerOpen, setIsStoryViewerOpen] = useState(false);
   const [isExportDialogOpen, setIsExportDialogOpen] = useState(false);
   const [isEndorseModalOpen, setIsEndorseModalOpen] = useState(false);
+  const [isConvertToAsyncOpen, setIsConvertToAsyncOpen] = useState(false);
   const [briefingStatus, setBriefingStatus] = useState("idle");
 
   const dbUserId = currentUser?.publicMetadata?.dbUserId;
@@ -86,6 +96,17 @@ const MeetingDetails = () => {
       p.user?.toString() === dbUserId || p.user?._id?.toString() === dbUserId,
   );
   const userRole = participant?.role || null;
+  const isOrganizer =
+    userData?.role === "admin" ||
+    userData?.role === "owner" ||
+    userRole === "host" ||
+    userRole === "organizer" ||
+    (dbUserId &&
+      (meeting?.uploadedBy?._id?.toString() === dbUserId ||
+        meeting?.uploadedBy?.toString() === dbUserId)) ||
+    (userData?._id &&
+      (meeting?.uploadedBy?._id?.toString() === userData._id.toString() ||
+        meeting?.uploadedBy?.toString() === userData._id.toString()));
 
   const handleCitationClick = (citation) => {
     if (citation.type === "transcript" && citation.timestamp !== null) {
@@ -269,14 +290,14 @@ const MeetingDetails = () => {
                   />
                 </svg>
                 <h2 className="text-xl font-semibold text-gray-900 dark:text-gray-100 mb-2">
-                  Error Loading Meeting
+                  {t("meetingDetails.errorLoading")}
                 </h2>
                 <p className="text-gray-600 dark:text-gray-400 mb-6">{error}</p>
                 <button
                   onClick={handleBack}
                   className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors"
                 >
-                  Back to Meetings
+                  {t("meetingDetails.backToMeetings")}
                 </button>
               </div>
             </div>
@@ -295,16 +316,16 @@ const MeetingDetails = () => {
             <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6">
               <div className="text-center py-12">
                 <h2 className="text-xl font-semibold text-gray-900 dark:text-gray-100 mb-2">
-                  Meeting Not Found
+                  {t("meetingDetails.notFound")}
                 </h2>
                 <p className="text-gray-600 dark:text-gray-400 mb-6">
-                  The meeting you're looking for doesn't exist.
+                  {t("meetingDetails.notFoundDesc")}
                 </p>
                 <button
                   onClick={handleBack}
                   className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors"
                 >
-                  Back to Meetings
+                  {t("meetingDetails.backToMeetings")}
                 </button>
               </div>
             </div>
@@ -334,6 +355,7 @@ const MeetingDetails = () => {
           )}
 
           <div className="mb-4 flex justify-end gap-3">
+            <CompareButton meetingId={meeting._id} />
             <button
               onClick={() => setIsExportDialogOpen(true)}
               className="flex items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg font-medium shadow-sm transition-colors text-sm"
@@ -355,6 +377,14 @@ const MeetingDetails = () => {
               <Star className="w-4 h-4" />
               Recognize Peers
             </button>
+            {isOrganizer && (
+              <button
+                onClick={() => setIsConvertToAsyncOpen(true)}
+                className="flex items-center gap-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg font-medium shadow-sm transition-colors text-sm"
+              >
+                Convert to Async
+              </button>
+            )}
             <button
               onClick={() => setIsStoryViewerOpen(true)}
               className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-purple-500 to-pink-500 text-white rounded-lg font-medium shadow-sm hover:opacity-90 transition-opacity text-sm"
@@ -378,7 +408,7 @@ const MeetingDetails = () => {
                   d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
                 ></path>
               </svg>
-              Play Recap Story
+              {t("meetingDetails.playRecapStory")}
             </button>
           </div>
 
@@ -415,11 +445,10 @@ const MeetingDetails = () => {
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
               <div>
                 <h3 className="text-base font-bold text-gray-900 dark:text-gray-100">
-                  AI Intelligence Core
+                  {t("meetingDetails.aiIntelligenceCore")}
                 </h3>
                 <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
-                  Parse discussion timelines, profile histories, and open action
-                  paths.
+                  {t("meetingDetails.aiIntelligenceCoreDesc")}
                 </p>
               </div>
 
@@ -427,13 +456,13 @@ const MeetingDetails = () => {
                 {briefingStatus === "generating" && (
                   <div className="flex items-center gap-2 text-xs font-semibold text-amber-600 bg-amber-50 dark:bg-amber-950/30 px-3 py-1.5 rounded-xl border border-amber-200 dark:border-amber-900/40">
                     <span className="w-3 h-3 border-2 border-amber-600/30 border-t-amber-600 rounded-full animate-spin" />
-                    Synthesizing Briefing...
+                    {t("meetingDetails.generating")}
                   </div>
                 )}
 
                 {briefingStatus === "failed" && (
                   <span className="text-xs font-semibold text-red-600 bg-red-50 dark:bg-red-950/30 px-3 py-1.5 rounded-xl border border-red-200 dark:border-red-900/40">
-                    ⚠️ Generation Failed
+                    {t("meetingDetails.generationFailed")}
                   </span>
                 )}
 
@@ -442,7 +471,7 @@ const MeetingDetails = () => {
                     onClick={() => navigate(`/meeting/${id}/briefing`)}
                     className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-black uppercase tracking-wider rounded-xl shadow transition"
                   >
-                    📖 Open Pre-Meeting Briefing
+                    {t("meetingDetails.openBriefing")}
                   </button>
                 )}
 
@@ -451,7 +480,7 @@ const MeetingDetails = () => {
                   className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-xs font-black uppercase tracking-wider rounded-xl shadow transition"
                 >
                   <Award className="w-4 h-4" />
-                  Meeting Quality
+                  {t("meetingDetails.meetingQuality")}
                 </button>
 
                 {(briefingStatus === "idle" ||
@@ -461,12 +490,16 @@ const MeetingDetails = () => {
                     onClick={handleGenerateBriefing}
                     className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-black uppercase tracking-wider rounded-xl shadow transition"
                   >
-                    ⚡ Generate Intelligent Brief
+                    {t("meetingDetails.generateBrief")}
                   </button>
                 )}
               </div>
             </div>
           </div>
+          <div className="mb-6">
+            <ContributionSummaryPanel meetingId={meeting._id} />
+          </div>
+          <AbsenteeBriefingCard meetingId={meeting._id} />
           <MeetingSummary meeting={meeting} />
 
           <RetentionQuizSection
@@ -477,6 +510,7 @@ const MeetingDetails = () => {
           />
 
           <div className="mt-6 mb-6">
+            <MeetingCostCard meetingId={meeting._id} />
             <HealthScoreCard
               meetingId={meeting._id}
               organizationId={
@@ -601,6 +635,11 @@ const MeetingDetails = () => {
             )}
           </div>
 
+          {/* Participant Contributions Profile */}
+          <div className="mb-6">
+            <ParticipantContributions meetingId={meeting._id} />
+          </div>
+
           <MeetingParticipants meeting={meeting} />
           <RsvpPanel
             meetingId={meeting._id}
@@ -683,6 +722,12 @@ const MeetingDetails = () => {
           {currentUser?.publicMetadata?.dbUserId === meeting.uploadedBy && (
             <GuestAccessManager meetingId={meeting._id} />
           )}
+          {isOrganizer && (
+            <DelegationPanel
+              meetingId={meeting._id}
+              participants={meeting.participants}
+            />
+          )}
           <MeetingActions
             meeting={meeting}
             onDelete={handleDelete}
@@ -726,6 +771,13 @@ const MeetingDetails = () => {
         meetingId={meeting._id}
         participants={meeting.participants}
         currentUser={currentUser}
+      />
+
+      <ConvertToAsyncModal
+        isOpen={isConvertToAsyncOpen}
+        onClose={() => setIsConvertToAsyncOpen(false)}
+        meeting={meeting}
+        isSeries={false}
       />
     </div>
   );

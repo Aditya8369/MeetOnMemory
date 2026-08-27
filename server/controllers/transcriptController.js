@@ -2,6 +2,7 @@ import Transcript from "../models/transcriptModel.js";
 import RecordingSession from "../models/RecordingSession.js";
 import { translateContent } from "../services/translationService.js";
 import Meeting from "../models/meetingModel.js";
+import Organization from "../models/organizationModel.js";
 import AuditLog from "../models/auditLogModel.js";
 import { transcribeFileWithSegments } from "../services/TranscriptionService.js";
 import {
@@ -14,6 +15,8 @@ import { getContentDispositionHeader } from "../utils/fileUtils.js";
 import { sendSuccess, sendError } from "../utils/responseHandler.js";
 import {
   isE2eeEnabled,
+  isOrgE2eeEnabled,
+  isOrgE2eeEnforced,
   normalizeEncryptedTranscriptPayload,
   isMeetingTranscriptEncrypted,
 } from "../utils/transcriptEncryption.js";
@@ -550,13 +553,6 @@ export const getTranscript = async (req, res) => {
  */
 export const storeEncryptedTranscript = async (req, res) => {
   try {
-    if (!isE2eeEnabled()) {
-      return res.status(403).json({
-        success: false,
-        message: "E2EE is not enabled on this server (E2EE_ENABLED)",
-      });
-    }
-
     const { meetingId } = req.params;
     const meeting = await Meeting.findById(meetingId);
     if (!meeting) {
@@ -570,6 +566,36 @@ export const storeEncryptedTranscript = async (req, res) => {
       return res.status(403).json({
         success: false,
         message: "Forbidden: You don't have access to this meeting",
+      });
+    }
+
+    // Check E2EE flag at organization or server level (#2263)
+    let org = null;
+    if (meeting.organization) {
+      if (
+        typeof meeting.organization === "object" &&
+        meeting.organization !== null
+      ) {
+        org = meeting.organization;
+      } else if (
+        typeof meeting.organization === "string" &&
+        meeting.organization.length === 24 &&
+        /^[0-9a-fA-F]{24}$/.test(meeting.organization)
+      ) {
+        try {
+          org = await Organization.findById(meeting.organization).lean();
+        } catch {
+          org = null;
+        }
+      }
+    }
+    const e2eeAllowed = org ? isOrgE2eeEnabled(org) : isE2eeEnabled();
+
+    if (!e2eeAllowed) {
+      return res.status(403).json({
+        success: false,
+        message:
+          "End-to-End Encryption is not enabled for this organization or server.",
       });
     }
 
@@ -1423,5 +1449,184 @@ export const updateTranscriptSegment = async (req, res) => {
   } catch (error) {
     console.error("Error updating transcript segment:", error);
     return sendError(res, 500, "Failed to update transcript segment");
+  }
+};
+
+/**
+ * @desc  Persist live caption chunks into transcript segments (Issue #2246)
+ * @route POST /api/meetings/:meetingId/transcript/captions
+ *        POST /api/transcripts/meeting/:meetingId/captions
+ * @access Private (requires auth + org access)
+ */
+export const persistCaptionSegments = async (req, res) => {
+  try {
+    const { meetingId } = req.params;
+    const user = req.user;
+
+    if (!meetingId) {
+      return sendError(res, 400, "Meeting ID is required");
+    }
+
+    const meeting = await Meeting.findById(meetingId);
+    if (!meeting) {
+      return sendError(res, 404, "Meeting not found");
+    }
+
+    if (!assertMeetingAccess(meeting, user)) {
+      return sendError(
+        res,
+        403,
+        "Forbidden: You don't have access to this meeting",
+      );
+    }
+
+    // Check E2EE: If meeting transcript is encrypted, plaintext captions cannot be saved
+    if (isMeetingTranscriptEncrypted(meeting)) {
+      return sendError(
+        res,
+        400,
+        "Cannot persist plaintext captions for an end-to-end encrypted meeting. Use the encrypted transcript endpoint.",
+      );
+    }
+
+    // Check if organization enforces E2EE org-wide (#2263)
+    if (meeting.organization) {
+      let org = null;
+      if (
+        typeof meeting.organization === "object" &&
+        meeting.organization !== null
+      ) {
+        org = meeting.organization;
+      } else if (
+        typeof meeting.organization === "string" &&
+        meeting.organization.length === 24 &&
+        /^[0-9a-fA-F]{24}$/.test(meeting.organization)
+      ) {
+        try {
+          org = await Organization.findById(meeting.organization).lean();
+        } catch {
+          org = null;
+        }
+      }
+      if (org && isOrgE2eeEnforced(org)) {
+        return sendError(
+          res,
+          400,
+          "Organization enforces End-to-End Encryption for all transcripts. Plaintext caption data is not permitted.",
+        );
+      }
+    }
+
+    let rawSegments = [];
+    if (Array.isArray(req.body?.segments)) {
+      rawSegments = req.body.segments;
+    } else if (req.body?.text && typeof req.body.text === "string") {
+      rawSegments = [req.body];
+    } else if (Array.isArray(req.body?.captions)) {
+      rawSegments = req.body.captions;
+    }
+
+    if (!rawSegments || rawSegments.length === 0) {
+      return sendError(res, 400, "No caption segments provided");
+    }
+
+    // Find existing transcript or create a new one
+    let transcript = await Transcript.findOne({ meeting: meetingId });
+    if (!transcript) {
+      transcript = new Transcript({
+        meeting: meetingId,
+        organizationId: meeting.organization || null,
+        status: "active",
+        language: "en",
+        recordingTimestamps: {
+          recordingStartedAt: new Date(),
+        },
+        segments: [],
+        fullText: "",
+        duration: 0,
+      });
+    }
+
+    let addedCount = 0;
+    const existingSegments = transcript.segments || [];
+
+    for (const raw of rawSegments) {
+      const text = (raw.text || "").trim();
+      if (!text) continue;
+
+      const speaker = raw.speaker || "Speaker";
+      const speakerId = raw.speakerId || null;
+      const startTime =
+        typeof raw.startTime === "number"
+          ? raw.startTime
+          : transcript.duration || 0;
+      const endTime =
+        typeof raw.endTime === "number" ? raw.endTime : startTime + 5;
+      const confidence =
+        typeof raw.confidence === "number" ? raw.confidence : 1.0;
+      const isFinal = raw.isFinal !== undefined ? Boolean(raw.isFinal) : true;
+
+      // Check for exact duplicate segment
+      const isDuplicate = existingSegments.some((seg) => {
+        const textMatch = seg.text?.trim().toLowerCase() === text.toLowerCase();
+        const speakerMatch = seg.speaker === speaker;
+        const timeMatch = Math.abs((seg.startTime || 0) - startTime) < 0.5;
+        return textMatch && speakerMatch && timeMatch;
+      });
+
+      if (!isDuplicate) {
+        existingSegments.push({
+          text,
+          speaker,
+          speakerId,
+          startTime,
+          endTime,
+          confidence,
+          isFinal,
+        });
+        addedCount += 1;
+      }
+    }
+
+    transcript.segments = existingSegments;
+    transcript.fullText = existingSegments
+      .map((s) => s.text)
+      .join(" ")
+      .trim();
+    const maxEndTime = existingSegments.reduce(
+      (max, s) => Math.max(max, s.endTime || 0),
+      0,
+    );
+    transcript.duration = Math.max(transcript.duration || 0, maxEndTime);
+    transcript.wordCount =
+      transcript.fullText.length > 0
+        ? transcript.fullText.split(/\s+/).length
+        : 0;
+
+    await transcript.save();
+
+    // Sync meeting.transcript
+    meeting.transcript = transcript.fullText;
+    await meeting.save();
+
+    return sendSuccess(
+      res,
+      {
+        transcriptId: transcript._id,
+        meetingId,
+        segments: transcript.segments,
+        addedCount,
+        totalSegments: transcript.segments.length,
+        fullText: transcript.fullText,
+      },
+      "Caption segments persisted successfully",
+    );
+  } catch (error) {
+    console.error("Error persisting caption segments:", error);
+    return sendError(
+      res,
+      500,
+      error.message || "Failed to persist caption segments",
+    );
   }
 };

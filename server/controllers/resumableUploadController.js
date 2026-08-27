@@ -2,7 +2,7 @@ import fs from "fs";
 import path from "path";
 import crypto from "crypto";
 import UploadSession from "../models/uploadSessionModel.js";
-import MeetingService from "../services/meetingService.js";
+import * as MeetingService from "../services/MeetingService.js";
 import {
   ValidationError,
   NotFoundError,

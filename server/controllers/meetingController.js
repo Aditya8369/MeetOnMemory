@@ -42,6 +42,13 @@ const createMeetingSchema = z.object({
   duration: z.number().nullable().optional(),
   location: z.string().optional().default(""),
   venue: z.string().optional().default(""),
+  venueCoordinates: z
+    .object({
+      lat: z.number().finite().nullable().optional(),
+      lng: z.number().finite().nullable().optional(),
+    })
+    .nullable()
+    .optional(),
   participants: z.array(z.record(z.unknown())).optional().default([]),
   agendaItems: z.array(z.record(z.unknown())).optional().default([]),
   policyDetails: z.record(z.unknown()).nullable().optional(),
@@ -76,6 +83,13 @@ const updateMeetingSchema = z.object({
   duration: z.number().nullable().optional(),
   location: z.string().optional(),
   venue: z.string().optional(),
+  venueCoordinates: z
+    .object({
+      lat: z.number().finite().nullable().optional(),
+      lng: z.number().finite().nullable().optional(),
+    })
+    .nullable()
+    .optional(),
   tags: z.array(z.string()).optional(),
   agendaItems: z.array(z.record(z.unknown())).optional(),
 });

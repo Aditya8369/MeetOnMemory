@@ -10,6 +10,13 @@ export const updateCostConfig = async (configData) => {
   return response.data;
 };
 
+export const getMeetingCostDetails = async (meetingId) => {
+  const response = await apiClient.get(
+    `/api/meeting-cost/meeting/${meetingId}`,
+  );
+  return response.data;
+};
+
 export const getOrgCostAnalytics = async (params) => {
   const response = await apiClient.get("/api/meeting-cost/analytics/org", {
     params,
