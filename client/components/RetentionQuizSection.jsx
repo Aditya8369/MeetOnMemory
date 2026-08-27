@@ -16,7 +16,7 @@ export const RetentionQuizSection = ({ meetingId, isOrganizer }) => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [meetingId]);
 
-  const fetchQuestions = async () => {
+  const fetchQuestions = React.useCallback(async () => {
     // API GET request wrap logic simulation
     setQuestions((q) => q || []);
   }, []);
