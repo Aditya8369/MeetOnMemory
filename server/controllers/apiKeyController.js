@@ -1,12 +1,23 @@
 import ApiKey from "../models/apiKeyModel.js";
 import { generateApiKeySecret } from "../middleware/apiKeyAuth.js";
 
+const resolveUserOrgId = (req) => {
+  return (
+    req.user?.organization?._id?.toString() ||
+    req.user?.organization?.toString() ||
+    req.user?.organizationId?.toString() ||
+    req.headers["x-organization-id"] ||
+    req.query?.organizationId ||
+    req.body?.organizationId
+  );
+};
+
 /**
  * List API keys for the current organization
  */
 export const getOrgApiKeys = async (req, res) => {
   try {
-    const orgId = req.query.organizationId || req.user.organization;
+    const orgId = resolveUserOrgId(req);
     if (!orgId) {
       return res.status(400).json({
         success: false,
@@ -37,8 +48,8 @@ export const getOrgApiKeys = async (req, res) => {
  */
 export const createOrgApiKey = async (req, res) => {
   try {
-    const { name, organizationId, scopes, expiresInDays } = req.body;
-    const orgId = organizationId || req.user.organization;
+    const { name, scopes, expiresInDays } = req.body;
+    const orgId = resolveUserOrgId(req);
 
     if (!name || !orgId) {
       return res.status(400).json({
@@ -61,7 +72,7 @@ export const createOrgApiKey = async (req, res) => {
       keyPreview,
       hashedKey,
       organization: orgId,
-      createdBy: req.user._id,
+      createdBy: req.user?._id || req.user?.id,
       scopes: Array.isArray(scopes) && scopes.length > 0 ? scopes : undefined,
       expiresAt,
     });
@@ -95,7 +106,13 @@ export const createOrgApiKey = async (req, res) => {
 export const revokeOrgApiKey = async (req, res) => {
   try {
     const { keyId } = req.params;
-    const key = await ApiKey.findById(keyId);
+    const orgId = resolveUserOrgId(req);
+    const query = { _id: keyId };
+    if (orgId) {
+      query.organization = orgId;
+    }
+
+    const key = await ApiKey.findOne(query);
 
     if (!key) {
       return res
@@ -129,7 +146,13 @@ export const revokeOrgApiKey = async (req, res) => {
 export const rotateOrgApiKey = async (req, res) => {
   try {
     const { keyId } = req.params;
-    const key = await ApiKey.findById(keyId);
+    const orgId = resolveUserOrgId(req);
+    const query = { _id: keyId };
+    if (orgId) {
+      query.organization = orgId;
+    }
+
+    const key = await ApiKey.findOne(query);
 
     if (!key) {
       return res
