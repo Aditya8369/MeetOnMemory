@@ -56,7 +56,7 @@ import { isMeetingEnded } from "../utils/meetingLifecycle";
 import { canManageMeetingDigest } from "../utils/digestAccess";
 import MeetingRisksPanel from "../components/meetings/MeetingRisksPanel";
 import { useTranslation } from "react-i18next";
-import { Award, ShieldAlert, FileText, Star } from "lucide-react";
+import { Award, ShieldAlert, FileText, Star, ListTodo } from "lucide-react";
 import ExportDialog from "../components/export/ExportDialog";
 import RetentionQuizSection from "../components/meetings/RetentionQuizSection";
 import ResourceConflictsPanel from "../components/meeting-details/ResourceConflictsPanel";
@@ -69,6 +69,7 @@ import ContributionSummaryPanel from "../components/MeetingDetails/ContributionS
 import MeetingCostCard from "../components/meeting-details/MeetingCostCard";
 import AbsenteeBriefingCard from "../components/meeting-details/AbsenteeBriefingCard";
 import PrintMomModal from "../components/meetings/PrintMomModal.jsx";
+import ActionItemsList from "../components/actionItems/ActionItemsList";
 import { Printer } from "lucide-react";
 
 const MeetingDetails = () => {
@@ -513,6 +514,14 @@ const MeetingDetails = () => {
           </div>
           <AbsenteeBriefingCard meetingId={meeting._id} />
           <MeetingSummary meeting={meeting} />
+
+          <div className="p-6 bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 shadow-sm mt-6 mb-6">
+            <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
+              <ListTodo className="w-5 h-5 text-indigo-600" />
+              Tasks & Action Items
+            </h2>
+            <ActionItemsList meetingId={meeting._id} />
+          </div>
 
           <RetentionQuizSection
             meeting={meeting}
