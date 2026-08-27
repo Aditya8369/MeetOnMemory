@@ -26,6 +26,7 @@ import LiveCaptions from "../components/meetings/LiveCaptions.jsx";
 import AttendanceTracker from "../components/meetings/AttendanceTracker.jsx";
 import LiveIcebreakerBanner from "../components/meeting-room/LiveIcebreakerBanner.jsx";
 import CollaborativeCanvas from "../components/meeting-room/CollaborativeCanvas.jsx";
+import MeetingRoomPlaybookPanel from "../components/meeting-room/MeetingRoomPlaybookPanel.jsx";
 
 import DeviceSetupModal from "../components/meetings/DeviceSetupModal.jsx";
 import axios from "../services/apiClient.js";
@@ -70,6 +71,7 @@ const MEETING_ROOM_PANELS = {
   AGENDA: "agenda",
   CANVAS: "canvas",
   ATTENDANCE: "attendance",
+  PLAYBOOK: "playbook",
 };
 
 const MeetingRoom = () => {
@@ -127,6 +129,7 @@ const MeetingRoom = () => {
   const showAgenda = activePanel === MEETING_ROOM_PANELS.AGENDA;
   const showCanvas = activePanel === MEETING_ROOM_PANELS.CANVAS;
   const showAttendance = activePanel === MEETING_ROOM_PANELS.ATTENDANCE;
+  const showPlaybook = activePanel === MEETING_ROOM_PANELS.PLAYBOOK;
 
   // Canvas color assignment based on user identity for remote cursor distinction
   const canvasColor = useMemo(() => {
@@ -973,6 +976,21 @@ const MeetingRoom = () => {
                 className="w-full md:w-[360px] lg:w-[400px] shrink-0 p-4 bg-gray-950 border-l border-gray-800 overflow-y-auto flex flex-col transition-all duration-300"
               >
                 <AttendanceTracker meetingId={roomId} isHost={isHost} />
+              </div>
+            )}
+
+            {showPlaybook && (
+              <div
+                data-testid="meeting-room-playbook-panel"
+                className="w-full md:w-[360px] lg:w-[400px] shrink-0 p-4 bg-gray-950 border-l border-gray-800 overflow-y-auto flex flex-col transition-all duration-300"
+              >
+                <MeetingRoomPlaybookPanel
+                  socket={socketRef?.current || socket}
+                  meetingId={roomId}
+                  isFacilitator={
+                    userRole === "facilitator" || userRole === "host" || isHost
+                  }
+                />
               </div>
             )}
 

@@ -14,6 +14,7 @@ import {
   Timer,
   ShieldAlert,
   PenTool,
+  BookOpen,
 } from "lucide-react";
 
 export default function MeetingHeader({
@@ -46,6 +47,7 @@ export default function MeetingHeader({
   const isAgendaOpen = activePanel === "agenda";
   const isCanvasOpen = activePanel === "canvas";
   const isAttendanceOpen = activePanel === "attendance";
+  const isPlaybookOpen = activePanel === "playbook";
 
   return (
     <header
@@ -180,6 +182,26 @@ export default function MeetingHeader({
           <Timer size={16} />
           <span className="hidden sm:inline">
             {isAgendaOpen ? "Hide Agenda" : "Agenda"}
+          </span>
+        </button>
+
+        {/* Playbook Guidance Toggle */}
+        <button
+          type="button"
+          onClick={() => onTogglePanel("playbook")}
+          aria-pressed={isPlaybookOpen}
+          className={`flex items-center gap-1.5 text-sm font-semibold px-4 py-2 rounded-xl transition-all cursor-pointer ${
+            isPlaybookOpen
+              ? "bg-indigo-600 text-white hover:bg-indigo-700"
+              : "bg-gray-800 text-gray-300 hover:text-white hover:bg-gray-700"
+          }`}
+          title={
+            isPlaybookOpen ? "Hide playbook guidance" : "Open playbook guidance"
+          }
+        >
+          <BookOpen size={16} />
+          <span className="hidden sm:inline">
+            {isPlaybookOpen ? "Hide Playbook" : "Playbook"}
           </span>
         </button>
 
