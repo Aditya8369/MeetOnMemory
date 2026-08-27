@@ -63,6 +63,11 @@ import ResourceConflictsPanel from "../components/meeting-details/ResourceConfli
 import SkillEndorsementModal from "../components/meetings/SkillEndorsementModal";
 import DebriefQAPanel from "../components/meetings/DebriefQAPanel";
 import DelegationPanel from "../components/meetings/DelegationPanel";
+import ConvertToAsyncModal from "../components/meetings/ConvertToAsyncModal";
+import ParticipantContributions from "../components/MeetingDetails/ParticipantContributions";
+import ContributionSummaryPanel from "../components/MeetingDetails/ContributionSummaryPanel";
+import MeetingCostCard from "../components/meeting-details/MeetingCostCard";
+import AbsenteeBriefingCard from "../components/meeting-details/AbsenteeBriefingCard";
 import PrintMomModal from "../components/meetings/PrintMomModal.jsx";
 import { Printer } from "lucide-react";
 
@@ -84,6 +89,7 @@ const MeetingDetails = () => {
   const [isStoryViewerOpen, setIsStoryViewerOpen] = useState(false);
   const [isExportDialogOpen, setIsExportDialogOpen] = useState(false);
   const [isEndorseModalOpen, setIsEndorseModalOpen] = useState(false);
+  const [isConvertToAsyncOpen, setIsConvertToAsyncOpen] = useState(false);
   const [isPrintModalOpen, setIsPrintModalOpen] = useState(false);
   const [briefingStatus, setBriefingStatus] = useState("idle");
 
@@ -777,6 +783,13 @@ const MeetingDetails = () => {
         meetingId={meeting._id}
         participants={meeting.participants}
         currentUser={currentUser}
+      />
+
+      <ConvertToAsyncModal
+        isOpen={isConvertToAsyncOpen}
+        onClose={() => setIsConvertToAsyncOpen(false)}
+        meeting={meeting}
+        isSeries={false}
       />
 
       <PrintMomModal

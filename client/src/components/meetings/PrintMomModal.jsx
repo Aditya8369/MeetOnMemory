@@ -59,7 +59,8 @@ const PrintMomModal = ({ isOpen, onClose, meeting, summary }) => {
               {title}
             </h4>
             <p className="text-xs text-slate-500 dark:text-slate-400">
-              Date: {dateStr} • ID: {(meeting._id || meeting.id || "").slice(-6)}
+              Date: {dateStr} • ID:{" "}
+              {(meeting._id || meeting.id || "").slice(-6)}
             </p>
           </div>
 
