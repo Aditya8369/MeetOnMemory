@@ -42,7 +42,6 @@ export * from "./adminRbacApi";
 export * from "./adminImportanceApi";
 export * from "./exportTemplateApi.js";
 export * from "./skillEndorsementApi";
-export * from "./careersApi";
-
 export * from "./slackApi";
 export * from "./sessionCardApi";
+export { default as complianceApi } from "./complianceApi";

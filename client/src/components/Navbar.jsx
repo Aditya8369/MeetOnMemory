@@ -762,6 +762,12 @@ const Navbar = () => {
             permission: { resource: "settings", action: "view" },
           },
           {
+            label: t("navbar.dlpCompliance", "DLP Compliance"),
+            href: "/compliance/dlp",
+            icon: Shield,
+            permission: { resource: "admin_panel", action: "view" },
+          },
+          {
             label: t("navbar.adminPanel"),
             href: "/admin-panel",
             icon: Sparkles,

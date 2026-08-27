@@ -60,6 +60,9 @@ const KnowledgeGraph = lazy(() => import("../pages/KnowledgeGraph.jsx"));
 const DecisionGraph = lazy(() => import("../pages/DecisionGraph.jsx"));
 const DecisionLog = lazy(() => import("../pages/DecisionLog.jsx"));
 const PolicyCompliance = lazy(() => import("../pages/PolicyCompliance.jsx"));
+const DlpComplianceConsole = lazy(
+  () => import("../pages/DlpComplianceConsole.jsx"),
+);
 const Settings = lazy(() => import("../pages/Settings.jsx"));
 const MembershipRequests = lazy(
   () => import("../pages/MembershipRequests.jsx"),
@@ -759,6 +762,30 @@ const ProtectedRoutes = (
       element={
         <ProtectedRoute resource="policies" action="view">
           <PolicyCompliance />
+        </ProtectedRoute>
+      }
+    />
+    <Route
+      path="/compliance/dlp"
+      element={
+        <ProtectedRoute
+          resource="admin_panel"
+          action="view"
+          forbiddenFallback={<AccessDenied />}
+        >
+          <DlpComplianceConsole />
+        </ProtectedRoute>
+      }
+    />
+    <Route
+      path="/dlp-compliance"
+      element={
+        <ProtectedRoute
+          resource="admin_panel"
+          action="view"
+          forbiddenFallback={<AccessDenied />}
+        >
+          <DlpComplianceConsole />
         </ProtectedRoute>
       }
     />
