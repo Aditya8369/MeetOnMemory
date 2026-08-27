@@ -984,7 +984,12 @@ const TranscriptViewer = () => {
         <E2EEKeyManagementModal
           isOpen={showKeyModal}
           onClose={() => setShowKeyModal(false)}
-          meeting={meeting || { _id: meetingId }}
+          meeting={{
+            _id: meetingId,
+            title: transcript?.meetingId?.title || "Meeting",
+            encryptedTranscript: transcript?.encryption?.encryptedTranscript,
+            encryption: transcript?.encryption,
+          }}
           onKeyImported={() => {
             fetchTranscript();
           }}

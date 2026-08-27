@@ -154,8 +154,10 @@ const E2EEKeyManagementModal = ({
 
       // Verify key by importing to CryptoKey and attempting decryption if ciphertext is available
       const cryptoKey = await importKey(rawKeyToSave);
-      if (meeting.encryptedTranscript) {
-        await decryptTranscript(meeting.encryptedTranscript, cryptoKey);
+      const cipherPayload =
+        meeting.encryptedTranscript || meeting.encryption?.encryptedTranscript;
+      if (cipherPayload) {
+        await decryptTranscript(cipherPayload, cryptoKey);
       }
 
       saveMeetingKey(meetingId, rawKeyToSave, {
@@ -451,10 +453,12 @@ const E2EEKeyManagementModal = ({
                   {showQr && (
                     <div className="p-4 bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-700 flex flex-col items-center justify-center text-center space-y-2">
                       <div className="p-3 bg-white rounded-lg shadow-sm border border-gray-200">
-                        {/* Compact visual QR container */}
-                        <div className="font-mono text-[10px] break-all max-w-[280px] p-2 bg-gray-50 text-gray-800 border rounded">
-                          E2EE:{meetingId}:{currentKeyBase64}
-                        </div>
+                        <img
+                          src={`https://api.qrserver.com/v1/create-qr-code/?size=160x160&data=${encodeURIComponent(sharePayload)}`}
+                          alt="E2EE Share Payload QR Code"
+                          className="w-40 h-40 object-contain mx-auto"
+                          loading="lazy"
+                        />
                       </div>
                       <p className="text-[11px] text-gray-500">
                         Scan from mobile camera or another MeetOnMemory

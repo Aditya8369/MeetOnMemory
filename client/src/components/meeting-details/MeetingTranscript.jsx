@@ -1,14 +1,26 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { FileText, ExternalLink, Lock, Shield, Key, Download, RefreshCw, AlertCircle } from "lucide-react";
+import {
+  FileText,
+  ExternalLink,
+  Lock,
+  Shield,
+  Key,
+  Download,
+  RefreshCw,
+  AlertCircle,
+} from "lucide-react";
 import { toast } from "react-toastify";
 import GlossaryHighlighter from "./GlossaryHighlighter";
+import MeetingKeyManager from "./MeetingKeyManager";
 import { useMeetingTranscriptText } from "../../hooks/useMeetingTranscriptText.js";
+import { loadMeetingKey } from "../../utils/encryption/index.js";
 import E2EEKeyManagementModal from "../E2EEKeyManagementModal.jsx";
 
 const MeetingTranscript = ({ meeting }) => {
   const [isExpanded, setIsExpanded] = useState(false);
   const [encrypting, setEncrypting] = useState(false);
+  const [keyVersion, setKeyVersion] = useState(0);
   const [showKeyModal, setShowKeyModal] = useState(false);
   const navigate = useNavigate();
   const {
@@ -18,7 +30,7 @@ const MeetingTranscript = ({ meeting }) => {
     loading,
     e2eeEnabled,
     encryptAndStore,
-  } = useMeetingTranscriptText(meeting);
+  } = useMeetingTranscriptText(meeting, keyVersion);
 
   if (!meeting) return null;
 
@@ -27,6 +39,8 @@ const MeetingTranscript = ({ meeting }) => {
   const hasEncrypted = Boolean(
     meeting.isTranscriptEncrypted || meeting.encryptedTranscript,
   );
+  const hasLocalKey = Boolean(meeting._id && loadMeetingKey(meeting._id));
+  const missingKey = hasEncrypted && !hasLocalKey;
 
   const handleCopy = async () => {
     try {
@@ -58,13 +72,12 @@ const MeetingTranscript = ({ meeting }) => {
   };
 
   const handleKeyImported = () => {
+    setKeyVersion((v) => v + 1);
     window.dispatchEvent(
       new CustomEvent("meetonmemory:transcript-encrypted", {
         detail: { meetingId: meeting._id },
       }),
     );
-    // Soft reload or re-evaluate
-    window.location.reload();
   };
 
   const shouldShowExpandButton = transcript.length > 1000;
@@ -151,8 +164,13 @@ const MeetingTranscript = ({ meeting }) => {
           Decrypting transcript…
         </p>
       )}
+      {error && !missingKey && (
+        <div className="mb-3 text-sm text-amber-800 dark:text-amber-300 bg-amber-50 dark:bg-amber-900/30 border border-amber-200 dark:border-amber-700 rounded-md p-3">
+          {error}
+        </div>
+      )}
 
-      {error && (
+      {error && missingKey && (
         <div className="mb-4 p-4 rounded-xl bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-900/50 text-amber-900 dark:text-amber-200 text-sm">
           <div className="flex items-start justify-between gap-3">
             <div className="flex items-start gap-2.5">
@@ -160,19 +178,29 @@ const MeetingTranscript = ({ meeting }) => {
               <div>
                 <p className="font-semibold">{error}</p>
                 <p className="text-xs text-amber-800 dark:text-amber-300 mt-1">
-                  Because this transcript is encrypted end-to-end, your browser requires the meeting's secret key.
-                  Ask a meeting attendee or import your backup key to view it.
+                  Because this transcript is encrypted end-to-end, your browser
+                  requires the meeting&apos;s secret key. Ask a meeting attendee
+                  or import your backup key to view it.
                 </p>
               </div>
             </div>
             <button
               onClick={() => setShowKeyModal(true)}
-              className="shrink-0 px-3 py-1.5 bg-amber-600 hover:bg-amber-700 text-white rounded-lg text-xs font-semibold shadow transition"
+              className="shrink-0 px-3 py-1.5 bg-amber-600 hover:bg-amber-700 text-white rounded-lg text-xs font-semibold shadow transition cursor-pointer"
             >
               Import Key
             </button>
           </div>
         </div>
+      )}
+
+      {hasEncrypted && (
+        <MeetingKeyManager
+          meetingId={meeting._id}
+          hasLocalKey={hasLocalKey}
+          missingKey={missingKey}
+          onKeyImported={() => setKeyVersion((v) => v + 1)}
+        />
       )}
 
       {transcript ? (
