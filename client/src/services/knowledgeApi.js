@@ -141,8 +141,4 @@ export const knowledgeApi = {
     }),
   getMemoryTelemetry: (timeframe = "30d") =>
     apiClient.get(`/api/knowledge/analytics/telemetry?timeframe=${timeframe}`),
-  getOkrAlignmentTelemetry: (timeframe = "30d") =>
-    apiClient.get(
-      `/api/knowledge/analytics/okr-alignment?timeframe=${timeframe}`,
-    ),
 };
