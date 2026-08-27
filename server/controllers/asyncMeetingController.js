@@ -27,7 +27,7 @@ export const submitAsyncResponse = async (req, res) => {
     return res
       .status(200)
       .json({ success: true, message: "Response submitted successfully" });
-  } catch (error) {
+  } catch (_error) {
     return res.status(500).json({ error: "Internal submission failure" });
   }
 };
@@ -40,19 +40,15 @@ export const convertToAsync = async (req, res) => {
 
     // Harden validation: ensure deadlines reside in the future and participants exist
     if (!deadline || new Date(deadline) <= new Date()) {
-      return res
-        .status(400)
-        .json({
-          error: "INVALID_DEADLINE: Target deadline must be a future date.",
-        });
+      return res.status(400).json({
+        error: "INVALID_DEADLINE: Target deadline must be a future date.",
+      });
     }
     if (!attendees || attendees.length === 0) {
-      return res
-        .status(400)
-        .json({
-          error:
-            "ELIGIBILITY_FAILED: Cannot convert an empty meeting without participants.",
-        });
+      return res.status(400).json({
+        error:
+          "ELIGIBILITY_FAILED: Cannot convert an empty meeting without participants.",
+      });
     }
 
     asyncMeetings[meetingId] = {
@@ -69,7 +65,7 @@ export const convertToAsync = async (req, res) => {
     return res
       .status(201)
       .json({ success: true, data: asyncMeetings[meetingId] });
-  } catch (error) {
+  } catch (_error) {
     return res
       .status(500)
       .json({ error: "Internal processing conversion fault" });

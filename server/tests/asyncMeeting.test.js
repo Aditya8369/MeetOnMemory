@@ -4,7 +4,6 @@ import {
   convertToAsync,
   asyncMeetings,
   reminderJobsLog,
-  triggerScheduledReminders,
 } from "../controllers/asyncMeetingController";
 
 describe("Asynchronous Meeting Lifecycle Engine", () => {
