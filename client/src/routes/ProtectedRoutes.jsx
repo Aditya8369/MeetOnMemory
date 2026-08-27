@@ -89,6 +89,9 @@ const RsvpInbox = lazy(() => import("../pages/RsvpInbox.jsx"));
 const MeetingCostAnalytics = lazy(
   () => import("../pages/MeetingCostAnalytics.jsx"),
 );
+const MeetingInsightsDashboard = lazy(
+  () => import("../pages/MeetingInsightsDashboard.jsx"),
+);
 const EnterpriseMeetingCostEngine = lazy(
   () => import("../pages/EnterpriseMeetingCostEngine.jsx"),
 );
@@ -869,6 +872,14 @@ const ProtectedRoutes = (
       element={
         <ProtectedRoute resource="reports" action="view">
           <MeetingCostAnalytics />
+        </ProtectedRoute>
+      }
+    />
+    <Route
+      path="/meeting-insights"
+      element={
+        <ProtectedRoute resource="reports" action="view">
+          <MeetingInsightsDashboard />
         </ProtectedRoute>
       }
     />
