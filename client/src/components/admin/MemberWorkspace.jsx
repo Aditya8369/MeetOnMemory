@@ -42,7 +42,8 @@ const MemberWorkspace = ({
         !search ||
         name.includes(search.toLowerCase()) ||
         email.includes(search.toLowerCase());
-      const matchesRole = roleFilter === "all" || role === roleFilter.toLowerCase();
+      const matchesRole =
+        roleFilter === "all" || role === roleFilter.toLowerCase();
       return matchesSearch && matchesRole;
     });
   }, [members, search, roleFilter]);
@@ -61,7 +62,9 @@ const MemberWorkspace = ({
       toast.success(`Role updated to ${newRole}`);
       if (onRefresh) onRefresh();
     } catch (err) {
-      toast.error(err.response?.data?.message || "Failed to update member role");
+      toast.error(
+        err.response?.data?.message || "Failed to update member role",
+      );
     } finally {
       setActionUserId(null);
     }
@@ -118,7 +121,8 @@ const MemberWorkspace = ({
             Members & Roles Directory
           </h3>
           <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-            Manage organization members, assign administrative roles, and invite collaborators.
+            Manage organization members, assign administrative roles, and invite
+            collaborators.
           </p>
         </div>
 
@@ -217,7 +221,9 @@ const MemberWorkspace = ({
                         <select
                           value={role}
                           disabled={actionUserId === uid}
-                          onChange={(e) => handleRoleChange(uid, e.target.value)}
+                          onChange={(e) =>
+                            handleRoleChange(uid, e.target.value)
+                          }
                           className="text-xs font-semibold py-1 px-2 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700 focus:outline-none"
                         >
                           <option value="member">Member</option>

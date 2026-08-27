@@ -39,7 +39,8 @@ const MeetingWorkspace = ({
       const matchesStatus =
         statusFilter === "all" ||
         status === statusFilter.toLowerCase() ||
-        (statusFilter === "encrypted" && (m.isTranscriptEncrypted || m.encryptedTranscript));
+        (statusFilter === "encrypted" &&
+          (m.isTranscriptEncrypted || m.encryptedTranscript));
       return matchesSearch && matchesStatus;
     });
   }, [meetings, search, statusFilter]);
@@ -82,7 +83,8 @@ const MeetingWorkspace = ({
             Meeting Records & Intelligence Workspace
           </h3>
           <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-            Audit organization meeting records, verify E2EE encryption status, and inspect AI embeddings.
+            Audit organization meeting records, verify E2EE encryption status,
+            and inspect AI embeddings.
           </p>
         </div>
 
@@ -187,7 +189,9 @@ const MeetingWorkspace = ({
                     <td className="py-3 px-4 text-xs text-slate-600 dark:text-slate-400">
                       <div className="flex items-center gap-1.5">
                         <Clock className="w-3.5 h-3.5 text-slate-400" />
-                        {m.date ? new Date(m.date).toLocaleDateString() : "No date"}
+                        {m.date
+                          ? new Date(m.date).toLocaleDateString()
+                          : "No date"}
                       </div>
                     </td>
                     <td className="py-3 px-4">

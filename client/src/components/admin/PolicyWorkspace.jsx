@@ -99,7 +99,8 @@ const PolicyWorkspace = ({
             Compliance & Policy Repository Workspace
           </h3>
           <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-            Maintain organizational policies, manage versions, and enforce compliance guidelines.
+            Maintain organizational policies, manage versions, and enforce
+            compliance guidelines.
           </p>
         </div>
 
