@@ -307,4 +307,7 @@ router.use("/api/recurring-action-items", recurringActionItemRoutes);
 import apiKeyRoutes from "./apiKeyRoutes.js";
 router.use("/api/api-keys", apiKeyRoutes);
 
+import meetingRetrospectiveRoutes from "./meetingRetrospectiveRoutes.js";
+router.use("/api/meeting-retrospectives", meetingRetrospectiveRoutes);
+
 export default router;

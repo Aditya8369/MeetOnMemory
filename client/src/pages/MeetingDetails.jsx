@@ -72,6 +72,7 @@ import AbsenteeBriefingCard from "../components/meeting-details/AbsenteeBriefing
 import PrintMomModal from "../components/meetings/PrintMomModal.jsx";
 import ActionItemsList from "../components/actionItems/ActionItemsList";
 import { Printer } from "lucide-react";
+import RetrospectiveBoard from "../components/meeting-details/RetrospectiveBoard";
 
 const MeetingDetails = () => {
   const { id } = useParams();
@@ -613,6 +614,8 @@ const MeetingDetails = () => {
               }
             />
           </div>
+
+          <RetrospectiveBoard meetingId={meeting._id} />
 
           <div className="mt-6 mb-6">
             <SentimentTimeline meetingId={meeting._id} />

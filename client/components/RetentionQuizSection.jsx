@@ -13,6 +13,7 @@ export const RetentionQuizSection = ({ meetingId, isOrganizer }) => {
   useEffect(() => {
     fetchQuestions();
     if (isOrganizer) fetchAnalytics();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [meetingId]);
 
   const fetchQuestions = async () => {
