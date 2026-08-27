@@ -19,27 +19,42 @@ const Leaderboard = () => {
   const [period, setPeriod] = useState("all");
   const [team, setTeam] = useState("");
 
-  const fetchLeaderboard = async () => {
-    setLoading(true);
-    try {
-      const params = new URLSearchParams();
-      if (period !== "all") params.append("period", period);
-      if (team.trim()) params.append("team", team.trim());
-
-      const response = await apiClient.get(`/api/gamification/leaderboard?${params.toString()}`);
-      if (response.data.success) {
-        setLeaderboard(response.data.data);
-      }
-    } catch (error) {
-      console.error("Failed to load leaderboard", error);
-      toast.error("Failed to load leaderboard.");
-    } finally {
-      setLoading(false);
-    }
-  };
-
   useEffect(() => {
+    const controller = new AbortController();
+
+    const fetchLeaderboard = async () => {
+      setLoading(true);
+      try {
+        const params = new URLSearchParams();
+        if (period !== "all") params.append("period", period);
+        if (team.trim()) params.append("team", team.trim());
+
+        const response = await apiClient.get(
+          `/api/gamification/leaderboard?${params.toString()}`,
+          {
+            signal: controller.signal,
+          },
+        );
+        if (response.data.success) {
+          setLeaderboard(response.data.data);
+        }
+      } catch (error) {
+        if (error.name !== "CanceledError" && error.code !== "ERR_CANCELED") {
+          console.error("Failed to load leaderboard", error);
+          toast.error("Failed to load leaderboard.");
+        }
+      } finally {
+        if (!controller.signal.aborted) {
+          setLoading(false);
+        }
+      }
+    };
+
     fetchLeaderboard();
+
+    return () => {
+      controller.abort();
+    };
   }, [period, team]);
 
   if (loading && !leaderboard) {
@@ -116,13 +131,21 @@ const Leaderboard = () => {
                       dataKey="date"
                       stroke="#9CA3AF"
                       tickFormatter={(val) => {
-                        const d = new Date(val);
-                        return `${d.getMonth() + 1}/${d.getDate()}`;
+                        if (!val) return "";
+                        const parts = val.split("-");
+                        if (parts.length === 3) {
+                          return `${parseInt(parts[1], 10)}/${parseInt(parts[2], 10)}`;
+                        }
+                        return val;
                       }}
                     />
                     <YAxis stroke="#9CA3AF" />
                     <Tooltip
-                      contentStyle={{ backgroundColor: '#1F2937', borderColor: '#374151', color: '#F3F4F6' }}
+                      contentStyle={{
+                        backgroundColor: "#1F2937",
+                        borderColor: "#374151",
+                        color: "#F3F4F6",
+                      }}
                     />
                     <Line
                       type="monotone"
@@ -140,12 +163,13 @@ const Leaderboard = () => {
 
           <div className="bg-gray-50 dark:bg-gray-700 rounded-lg p-6">
             <h2 className="text-xl font-semibold mb-4 text-gray-800 dark:text-gray-200">
-              Top 10 Meeting Heroes {team ? `in ${team}` : ""} {period !== "all" ? `(${period})` : ""}
+              Top 10 Meeting Heroes {team ? `in ${team}` : ""}{" "}
+              {period !== "all" ? `(${period})` : ""}
             </h2>
-            
+
             {loading ? (
-               <div className="text-center py-4">Loading updates...</div>
-            ) : (!leaderboard?.top10 || leaderboard.top10.length === 0) ? (
+              <div className="text-center py-4">Loading updates...</div>
+            ) : !leaderboard?.top10 || leaderboard.top10.length === 0 ? (
               <div className="text-center text-gray-500 dark:text-gray-400 py-4">
                 No gamification scores found for this filter.
               </div>
