@@ -54,6 +54,9 @@ const MemoryConsolidation = lazy(
   () => import("../pages/MemoryConsolidation.jsx"),
 );
 const MemoryLifecycle = lazy(() => import("../pages/MemoryLifecycle.jsx"));
+const EnterpriseMemoryTelemetry = lazy(
+  () => import("../pages/EnterpriseMemoryTelemetry.jsx"),
+);
 const KnowledgeArchive = lazy(() => import("../pages/KnowledgeArchive.jsx"));
 const GraphSnapshots = lazy(() => import("../pages/GraphSnapshots.jsx"));
 const KnowledgeGraph = lazy(() => import("../pages/KnowledgeGraph.jsx"));
@@ -839,6 +842,14 @@ const ProtectedRoutes = (
       element={
         <ProtectedRoute resource="reports" action="view">
           <ActionItemAnalytics />
+        </ProtectedRoute>
+      }
+    />
+    <Route
+      path="/memory-telemetry"
+      element={
+        <ProtectedRoute resource="knowledge" action="view">
+          <EnterpriseMemoryTelemetry />
         </ProtectedRoute>
       }
     />
