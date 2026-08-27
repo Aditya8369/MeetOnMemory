@@ -239,8 +239,8 @@ class ActionItemSlaService {
     const title = "SLA Compliance Breach Alert";
     const description = `The task "${breach.actionItem.text}" has breached its SLA of ${breach.targetHours} hours (actual: ${Math.round(breach.actualHours)} hours).`;
     const category = "tasks";
-    const actionUrl = "/tasks";
-    const actionLabel = "View Tasks";
+    const actionUrl = `/followup/tasks/${breach.actionItem._id}`;
+    const actionLabel = "View Task";
 
     await createNotification(
       breach.assignee._id || breach.assignee,
