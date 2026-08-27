@@ -45,6 +45,7 @@ export default function MeetingHeader({
   const isPollsOpen = activePanel === "polls";
   const isAgendaOpen = activePanel === "agenda";
   const isCanvasOpen = activePanel === "canvas";
+  const isAttendanceOpen = activePanel === "attendance";
 
   return (
     <header
@@ -199,6 +200,24 @@ export default function MeetingHeader({
           <PenTool size={16} />
           <span className="hidden sm:inline">
             {isCanvasOpen ? "Hide Canvas" : "Canvas"}
+          </span>
+        </button>
+
+        {/* Attendance Toggle */}
+        <button
+          type="button"
+          onClick={() => onTogglePanel("attendance")}
+          aria-pressed={isAttendanceOpen}
+          className={`flex items-center gap-1.5 text-sm font-semibold px-4 py-2 rounded-xl transition-all cursor-pointer ${
+            isAttendanceOpen
+              ? "bg-indigo-600 text-white hover:bg-indigo-700"
+              : "bg-gray-800 text-gray-300 hover:text-white hover:bg-gray-700"
+          }`}
+          title={isAttendanceOpen ? "Hide attendance" : "Show attendance"}
+        >
+          <Users size={16} />
+          <span className="hidden sm:inline">
+            {isAttendanceOpen ? "Hide Attendance" : "Attendance"}
           </span>
         </button>
 

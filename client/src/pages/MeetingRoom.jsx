@@ -23,6 +23,7 @@ import MeetingControlBar from "../components/meetings/MeetingControlBar.jsx";
 import TranscriptPanel from "../components/meetings/TranscriptPanel.jsx";
 import MultiLanguageTranscript from "../components/meeting-room/MultiLanguageTranscript.jsx";
 import LiveCaptions from "../components/meetings/LiveCaptions.jsx";
+import AttendanceTracker from "../components/meetings/AttendanceTracker.jsx";
 import LiveIcebreakerBanner from "../components/meeting-room/LiveIcebreakerBanner.jsx";
 import CollaborativeCanvas from "../components/meeting-room/CollaborativeCanvas.jsx";
 
@@ -68,6 +69,7 @@ const MEETING_ROOM_PANELS = {
   POLLS: "polls",
   AGENDA: "agenda",
   CANVAS: "canvas",
+  ATTENDANCE: "attendance",
 };
 
 const MeetingRoom = () => {
@@ -124,6 +126,7 @@ const MeetingRoom = () => {
   const showPolls = activePanel === MEETING_ROOM_PANELS.POLLS;
   const showAgenda = activePanel === MEETING_ROOM_PANELS.AGENDA;
   const showCanvas = activePanel === MEETING_ROOM_PANELS.CANVAS;
+  const showAttendance = activePanel === MEETING_ROOM_PANELS.ATTENDANCE;
 
   // Canvas color assignment based on user identity for remote cursor distinction
   const canvasColor = useMemo(() => {
@@ -961,6 +964,15 @@ const MeetingRoom = () => {
                   userId={userData?._id || userId}
                   userColor={canvasColor}
                 />
+              </div>
+            )}
+
+            {showAttendance && (
+              <div
+                data-testid="meeting-room-attendance-panel"
+                className="w-full md:w-[360px] lg:w-[400px] shrink-0 p-4 bg-gray-950 border-l border-gray-800 overflow-y-auto flex flex-col transition-all duration-300"
+              >
+                <AttendanceTracker meetingId={roomId} isHost={isHost} />
               </div>
             )}
 
