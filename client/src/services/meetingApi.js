@@ -5,6 +5,9 @@ export const meetingApi = {
   notifyLive: (data) => apiClient.post("/api/meetings/notify-live", data),
   generateSession: (formData, config) =>
     apiClient.post("/api/sessions/generate", formData, config),
+  getSessionCards: (params = {}) => apiClient.get("/api/sessions", { params }),
+  getSessionCardById: (id) => apiClient.get(`/api/sessions/${id}`),
+  deleteSessionCard: (id) => apiClient.delete(`/api/sessions/${id}`),
 
   uploadMeeting: (formData, config) =>
     apiClient.post("/api/meetings/upload", formData, config),

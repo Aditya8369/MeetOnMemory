@@ -2,6 +2,7 @@ import Transcript from "../models/transcriptModel.js";
 import RecordingSession from "../models/RecordingSession.js";
 import { translateContent } from "../services/translationService.js";
 import Meeting from "../models/meetingModel.js";
+import Organization from "../models/organizationModel.js";
 import AuditLog from "../models/auditLogModel.js";
 import { transcribeFileWithSegments } from "../services/TranscriptionService.js";
 import {
@@ -14,6 +15,8 @@ import { getContentDispositionHeader } from "../utils/fileUtils.js";
 import { sendSuccess, sendError } from "../utils/responseHandler.js";
 import {
   isE2eeEnabled,
+  isOrgE2eeEnabled,
+  isOrgE2eeEnforced,
   normalizeEncryptedTranscriptPayload,
   isMeetingTranscriptEncrypted,
 } from "../utils/transcriptEncryption.js";
@@ -550,13 +553,6 @@ export const getTranscript = async (req, res) => {
  */
 export const storeEncryptedTranscript = async (req, res) => {
   try {
-    if (!isE2eeEnabled()) {
-      return res.status(403).json({
-        success: false,
-        message: "E2EE is not enabled on this server (E2EE_ENABLED)",
-      });
-    }
-
     const { meetingId } = req.params;
     const meeting = await Meeting.findById(meetingId);
     if (!meeting) {
@@ -570,6 +566,36 @@ export const storeEncryptedTranscript = async (req, res) => {
       return res.status(403).json({
         success: false,
         message: "Forbidden: You don't have access to this meeting",
+      });
+    }
+
+    // Check E2EE flag at organization or server level (#2263)
+    let org = null;
+    if (meeting.organization) {
+      if (
+        typeof meeting.organization === "object" &&
+        meeting.organization !== null
+      ) {
+        org = meeting.organization;
+      } else if (
+        typeof meeting.organization === "string" &&
+        meeting.organization.length === 24 &&
+        /^[0-9a-fA-F]{24}$/.test(meeting.organization)
+      ) {
+        try {
+          org = await Organization.findById(meeting.organization).lean();
+        } catch {
+          org = null;
+        }
+      }
+    }
+    const e2eeAllowed = org ? isOrgE2eeEnabled(org) : isE2eeEnabled();
+
+    if (!e2eeAllowed) {
+      return res.status(403).json({
+        success: false,
+        message:
+          "End-to-End Encryption is not enabled for this organization or server.",
       });
     }
 
@@ -1461,6 +1487,34 @@ export const persistCaptionSegments = async (req, res) => {
         400,
         "Cannot persist plaintext captions for an end-to-end encrypted meeting. Use the encrypted transcript endpoint.",
       );
+    }
+
+    // Check if organization enforces E2EE org-wide (#2263)
+    if (meeting.organization) {
+      let org = null;
+      if (
+        typeof meeting.organization === "object" &&
+        meeting.organization !== null
+      ) {
+        org = meeting.organization;
+      } else if (
+        typeof meeting.organization === "string" &&
+        meeting.organization.length === 24 &&
+        /^[0-9a-fA-F]{24}$/.test(meeting.organization)
+      ) {
+        try {
+          org = await Organization.findById(meeting.organization).lean();
+        } catch {
+          org = null;
+        }
+      }
+      if (org && isOrgE2eeEnforced(org)) {
+        return sendError(
+          res,
+          400,
+          "Organization enforces End-to-End Encryption for all transcripts. Plaintext caption data is not permitted.",
+        );
+      }
     }
 
     let rawSegments = [];
