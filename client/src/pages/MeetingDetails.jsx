@@ -515,7 +515,10 @@ const MeetingDetails = () => {
           <div className="mb-6">
             <ContributionSummaryPanel meetingId={meeting._id} />
           </div>
-          <AbsenteeBriefingCard meetingId={meeting._id} />
+          <AbsenteeBriefingCard
+            meetingId={meeting._id}
+            isOrganizer={isOrganizer}
+          />
           <MeetingSummary meeting={meeting} />
 
           <div className="p-6 bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 shadow-sm mt-6 mb-6">
