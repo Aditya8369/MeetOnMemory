@@ -45,3 +45,4 @@ export * from "./skillEndorsementApi";
 export * from "./slackApi";
 export * from "./sessionCardApi";
 export { default as complianceApi } from "./complianceApi";
+export * from "./aiMeetingNoteApi";

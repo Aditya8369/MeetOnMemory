@@ -4,7 +4,12 @@ import {
   updateDecisionImpact,
   getImpactReport,
 } from "../controllers/decisionImpactController.js";
-import { authMiddleware } from "../middleware/authMiddleware.js";
+import {
+  castVote,
+  getConsensus,
+  getMeetingDecisionsConsensus,
+} from "../controllers/decisionVoteController.js";
+import authMiddleware from "../middleware/userAuth.js";
 
 const router = express.Router();
 
@@ -13,6 +18,15 @@ const router = express.Router();
 
 // GET /api/decisions/impact/report
 router.get("/impact/report", authMiddleware, getImpactReport);
+
+// GET /api/decisions/meeting/:meetingId
+router.get("/meeting/:meetingId", authMiddleware, getMeetingDecisionsConsensus);
+
+// GET /api/decisions/:decisionId/consensus
+router.get("/:decisionId/consensus", authMiddleware, getConsensus);
+
+// POST /api/decisions/:decisionId/vote
+router.post("/:decisionId/vote", authMiddleware, castVote);
 
 // GET /api/decisions/:decisionId/impact
 router.get("/:decisionId/impact", authMiddleware, getDecisionImpact);

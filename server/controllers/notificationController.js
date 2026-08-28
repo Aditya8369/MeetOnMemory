@@ -247,6 +247,8 @@ export const updatePreferences = async (req, res) => {
       "quietHoursStart",
       "quietHoursEnd",
       "timezone",
+      "routingPreferences",
+      "batchThresholdMinutes",
     ];
 
     const updates = {};
