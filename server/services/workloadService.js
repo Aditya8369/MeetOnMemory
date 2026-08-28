@@ -96,7 +96,7 @@ class WorkloadService {
 
     // Calculate median load
     const loadScores = workloads.map((w) => w.loadScore).sort((a, b) => a - b);
-    const medianLoad = loadScores[Math.floor(loadScores.length / 2)] || 0;
+    const medianLoad = loadScores[Math.floor((loadScores.length - 1) / 2)] || 0;
 
     const overloaded = workloads.filter(
       (w) => w.loadScore > medianLoad * 1.2 && w.loadScore > 2,
