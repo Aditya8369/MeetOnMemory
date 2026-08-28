@@ -260,7 +260,7 @@ import preMeetingBriefingRoutes from "./preMeetingBriefingRoutes.js";
 router.use("/api/briefings", preMeetingBriefingRoutes);
 
 import escalationRoutes from "./escalationRoutes.js";
-router.use("/api/escalations", escalationRoutes);
+router.use(["/api/escalations", "/api/escalation-policies"], escalationRoutes);
 import participantEngagementRoutes from "./participantEngagementRoutes.js";
 router.use("/api/engagement", participantEngagementRoutes);
 import participantContributionRoutes from "./participantContributionRoutes.js";
