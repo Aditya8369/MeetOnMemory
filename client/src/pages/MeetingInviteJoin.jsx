@@ -236,12 +236,15 @@ const MeetingInviteJoin = () => {
                   <div className="mt-2 flex items-center justify-center gap-1.5 text-xs text-slate-500">
                     <Calendar className="h-3.5 w-3.5" />
                     <span>
-                      {new Date(result.meeting.date).toLocaleDateString(undefined, {
-                        weekday: "short",
-                        month: "short",
-                        day: "numeric",
-                        year: "numeric",
-                      })}
+                      {new Date(result.meeting.date).toLocaleDateString(
+                        undefined,
+                        {
+                          weekday: "short",
+                          month: "short",
+                          day: "numeric",
+                          year: "numeric",
+                        },
+                      )}
                       {result.meeting.time ? ` at ${result.meeting.time}` : ""}
                     </span>
                   </div>

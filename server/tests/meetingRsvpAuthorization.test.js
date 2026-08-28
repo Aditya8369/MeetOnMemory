@@ -184,7 +184,10 @@ describe("Meeting RSVP Authorization & IDOR Tests (#1673)", () => {
 
       const res = await request(app)
         .put(`/api/rsvps/${meetingA._id}/respond`)
-        .send({ status: "waitlisted", availabilityNote: "Can join if spot opens" });
+        .send({
+          status: "waitlisted",
+          availabilityNote: "Can join if spot opens",
+        });
 
       expect(res.status).toBe(200);
       expect(res.body.success).toBe(true);
@@ -192,7 +195,9 @@ describe("Meeting RSVP Authorization & IDOR Tests (#1673)", () => {
 
       const updatedMeeting = await Meeting.findById(meetingA._id);
       expect(updatedMeeting.waitlist).toHaveLength(1);
-      expect(updatedMeeting.waitlist[0].user.toString()).toBe(BOB_ORG_A._id.toString());
+      expect(updatedMeeting.waitlist[0].user.toString()).toBe(
+        BOB_ORG_A._id.toString(),
+      );
       expect(updatedMeeting.waitlist[0].note).toBe("Can join if spot opens");
     });
 
