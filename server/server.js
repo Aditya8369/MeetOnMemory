@@ -55,6 +55,7 @@ import {
   stopDataRetentionJob,
 } from "./jobs/dataRetentionJob.js";
 import { startEscalationJob, stopEscalationJob } from "./jobs/escalationJob.js";
+import { startRiskEscalationJob } from "./jobs/riskEscalationJob.js";
 import {
   startMeetingNudgeJob,
   stopMeetingNudgeJob,
@@ -200,6 +201,7 @@ if (process.env.NODE_ENV !== "test") {
 
   // Start automated escalation job
   startEscalationJob();
+  startRiskEscalationJob();
 
   // Start meeting nudge job
   startMeetingNudgeJob();
