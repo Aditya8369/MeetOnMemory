@@ -14,6 +14,8 @@ import {
   requirePermission,
 } from "../middleware/rbac.js";
 
+import { getEnterpriseCostResourceEngineController } from "../controllers/enterpriseCostResourceEngineController.js";
+
 const router = express.Router();
 
 router.use(userAuth); // All routes require authentication
@@ -26,6 +28,13 @@ router
 
 // Meeting specific cost and ROI
 router.get("/meeting/:meetingId", getMeetingCostDetails);
+
+// Enterprise Meeting Cost & Resource Engine
+router.get(
+  "/enterprise-engine",
+  requireOrgMembership,
+  getEnterpriseCostResourceEngineController,
+);
 
 // Analytics endpoints
 router.get("/analytics/org", getCostAnalytics);

@@ -1,8 +1,11 @@
-import React from "react";
+import React, { useState } from "react";
 import { useMeetingContributions } from "../../hooks/useParticipantContributions";
+
+const DIMENSIONS = ["verbal", "decisional", "task", "collaborative"];
 
 const ContributionSummaryPanel = ({ meetingId }) => {
   const { data, isLoading, isError } = useMeetingContributions(meetingId);
+  const [showDetail, setShowDetail] = useState(false);
 
   if (isLoading)
     return (
@@ -17,6 +20,7 @@ const ContributionSummaryPanel = ({ meetingId }) => {
 
   const contributions = data?.contributions || [];
   const equityScore = data?.equityScore || 0;
+  const equity = data?.equity;
 
   if (contributions.length === 0) {
     return (
@@ -65,9 +69,71 @@ const ContributionSummaryPanel = ({ meetingId }) => {
           </div>
         ))}
       </div>
+
+      {showDetail && equity && (
+        <div className="mt-4 pt-3 border-t space-y-4">
+          <div>
+            <div className="text-xs font-medium text-gray-700 mb-2">
+              Equity by dimension (100 = perfectly even)
+            </div>
+            {DIMENSIONS.map((dim) => {
+              const value = equity.perDimension?.[dim] ?? 0;
+              return (
+                <div key={dim} className="mb-1">
+                  <div className="flex justify-between text-[11px] text-gray-500 capitalize">
+                    <span>{dim}</span>
+                    <span>{value}</span>
+                  </div>
+                  <div className="h-1.5 bg-gray-200 rounded overflow-hidden">
+                    <div
+                      className="h-full bg-indigo-500"
+                      style={{ width: `${value}%` }}
+                    />
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          <div>
+            <div className="text-xs font-medium text-gray-700 mb-2">
+              Contribution share
+            </div>
+            <ul className="space-y-1">
+              {(equity.distribution || []).map((p, i) => (
+                <li
+                  key={p.participantId || i}
+                  className="flex items-center gap-2 text-[11px]"
+                >
+                  <span
+                    className="w-24 shrink-0 truncate text-gray-600"
+                    title={p.participantName}
+                  >
+                    {p.participantName}
+                  </span>
+                  <span className="flex-1 h-1.5 bg-gray-200 rounded overflow-hidden">
+                    <span
+                      className="block h-full bg-emerald-500"
+                      style={{ width: `${p.share}%` }}
+                    />
+                  </span>
+                  <span className="w-10 shrink-0 text-right text-gray-500">
+                    {p.share}%
+                  </span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        </div>
+      )}
+
       <div className="mt-4 pt-3 border-t text-center">
-        <button className="text-blue-600 hover:text-blue-800 text-sm font-medium">
-          View Detailed Profile &rarr;
+        <button
+          type="button"
+          onClick={() => setShowDetail((v) => !v)}
+          className="text-blue-600 hover:text-blue-800 text-sm font-medium"
+        >
+          {showDetail ? "Hide Details" : "View Detailed Profile"} &rarr;
         </button>
       </div>
     </div>
