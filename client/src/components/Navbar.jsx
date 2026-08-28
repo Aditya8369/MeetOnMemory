@@ -599,6 +599,12 @@ const Navbar = () => {
             permission: { resource: "reports", action: "view" },
           },
           {
+            label: t("navbar.meetingROI", "Meeting ROI Dashboard"),
+            href: "/meeting-roi-dashboard",
+            icon: TrendingUp,
+            permission: { resource: "reports", action: "view" },
+          },
+          {
             label: t("navbar.meetingInsights"),
             href: "/meeting-insights",
             icon: Brain,
