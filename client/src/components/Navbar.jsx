@@ -599,12 +599,6 @@ const Navbar = () => {
             permission: { resource: "reports", action: "view" },
           },
           {
-            label: t("navbar.aiMeetingNotes", "AI Meeting Notes"),
-            href: "/ai-notes-dashboard",
-            icon: Sparkles,
-            permission: { resource: "reports", action: "view" },
-          },
-          {
             label: t("navbar.meetingInsights"),
             href: "/meeting-insights",
             icon: Brain,
@@ -618,9 +612,9 @@ const Navbar = () => {
           },
           {
             label: t("navbar.speakingTime"),
-            href: "/speaking-time-trends",
+            href: "/speaking-time",
             icon: Mic,
-            permission: { resource: "reports", action: "view" },
+            permission: { resource: "organizations", action: "view" },
           },
           {
             label: t("navbar.speakingCompare"),

@@ -89,9 +89,6 @@ const RsvpInbox = lazy(() => import("../pages/RsvpInbox.jsx"));
 const MeetingCostAnalytics = lazy(
   () => import("../pages/MeetingCostAnalytics.jsx"),
 );
-const AiMeetingNotesDashboard = lazy(
-  () => import("../pages/AiMeetingNotesDashboard.jsx"),
-);
 const MeetingInsightsDashboard = lazy(
   () => import("../pages/MeetingInsightsDashboard.jsx"),
 );
@@ -114,6 +111,9 @@ const ParkingLotBacklogPage = lazy(
 );
 const ConflictResolution = lazy(
   () => import("../pages/ConflictResolution.jsx"),
+);
+const SpeakingTimeDashboard = lazy(
+  () => import("../pages/SpeakingTimeDashboard.jsx"),
 );
 const SpeakingTimeTrends = lazy(
   () => import("../pages/SpeakingTimeTrends.jsx"),
@@ -879,22 +879,6 @@ const ProtectedRoutes = (
       }
     />
     <Route
-      path="/ai-notes-dashboard"
-      element={
-        <ProtectedRoute resource="reports" action="view">
-          <AiMeetingNotesDashboard />
-        </ProtectedRoute>
-      }
-    />
-    <Route
-      path="/ai-notes"
-      element={
-        <ProtectedRoute resource="reports" action="view">
-          <AiMeetingNotesDashboard />
-        </ProtectedRoute>
-      }
-    />
-    <Route
       path="/meeting-insights"
       element={
         <ProtectedRoute resource="reports" action="view">
@@ -939,6 +923,14 @@ const ProtectedRoutes = (
       element={
         <ProtectedRoute resource="reports" action="view">
           <MeetingHealthDashboard />
+        </ProtectedRoute>
+      }
+    />
+    <Route
+      path="/speaking-time"
+      element={
+        <ProtectedRoute resource="organizations" action="view">
+          <SpeakingTimeDashboard />
         </ProtectedRoute>
       }
     />
