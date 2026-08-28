@@ -48,6 +48,10 @@ const ROOT_CLIENT_MAP = {
     "client/src/pages/__tests__/MeetingROIDashboard.test.jsx",
   "client/src/services/meetingROIApi.js":
     "client/src/pages/__tests__/MeetingROIDashboard.test.jsx",
+  "client/src/pages/AiMeetingNotesDashboard.jsx":
+    "client/src/pages/__tests__/AiMeetingNotesDashboard.test.jsx",
+  "client/src/services/aiMeetingNoteApi.js":
+    "client/src/pages/__tests__/AiMeetingNotesDashboard.test.jsx",
 };
 
 const directTests = [
