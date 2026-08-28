@@ -625,9 +625,9 @@ const Navbar = () => {
           },
           {
             label: t("navbar.speakingTime"),
-            href: "/speaking-time-trends",
+            href: "/speaking-time",
             icon: Mic,
-            permission: { resource: "reports", action: "view" },
+            permission: { resource: "organizations", action: "view" },
           },
           {
             label: t("navbar.speakingCompare"),

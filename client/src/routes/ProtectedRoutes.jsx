@@ -121,6 +121,9 @@ const ParkingLotBacklogPage = lazy(
 const ConflictResolution = lazy(
   () => import("../pages/ConflictResolution.jsx"),
 );
+const SpeakingTimeDashboard = lazy(
+  () => import("../pages/SpeakingTimeDashboard.jsx"),
+);
 const SpeakingTimeTrends = lazy(
   () => import("../pages/SpeakingTimeTrends.jsx"),
 );
@@ -985,6 +988,14 @@ const ProtectedRoutes = (
       element={
         <ProtectedRoute resource="reports" action="view">
           <MeetingHealthDashboard />
+        </ProtectedRoute>
+      }
+    />
+    <Route
+      path="/speaking-time"
+      element={
+        <ProtectedRoute resource="organizations" action="view">
+          <SpeakingTimeDashboard />
         </ProtectedRoute>
       }
     />
