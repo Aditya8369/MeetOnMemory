@@ -39,6 +39,8 @@ import {
   regenerateMeetingInvite,
   updateMeetingInvite,
   resolveMeetingInvite,
+  anonymizeMeeting,
+  getRawTranscript,
 } from "../controllers/meetingController.js";
 import {
   addMeetingBookmark,
@@ -66,6 +68,7 @@ import {
   persistCaptionSegments,
 } from "../controllers/transcriptController.js";
 import { getMeetingRoles } from "../controllers/roleRotationController.js";
+import { getOrgRetentionLeaderboard } from "../controllers/meetingQuizController.js";
 
 import path from "path";
 import { ValidationError } from "../utils/errors.js";
@@ -592,5 +595,19 @@ router.get(
   requirePermission("meetings", "view"),
   getReactionTimeline,
 );
+
+// ✅ Retrieve organization quiz retention leaderboard
+router.get("/quiz/leaderboard", userAuth, getOrgRetentionLeaderboard);
+// ✅ Anonymize / Scrub PII from Meeting
+router.post(
+  "/anonymize",
+  userAuth,
+  writeLimiter,
+  requireAdminOrOwner,
+  anonymizeMeeting,
+);
+
+// ✅ Retrieve unredacted original transcript
+router.get("/:id/raw", userAuth, requireAdminOrOwner, getRawTranscript);
 
 export default router;

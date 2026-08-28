@@ -139,6 +139,17 @@ export const knowledgeApi = {
       ...(customValue ? { customValue } : {}),
       ...(note ? { note } : {}),
     }),
+  getConflictAuditHistory: ({ page = 1, limit = 50 } = {}) =>
+    apiClient.get(
+      `/api/knowledge/conflicts/audit-history?page=${page}&limit=${limit}`,
+    ),
+  bulkResolveConflicts: ({ conflictIds, resolutionType, customValue, note }) =>
+    apiClient.post(`/api/knowledge/conflicts/bulk-resolve`, {
+      conflictIds,
+      resolutionType,
+      ...(customValue ? { customValue } : {}),
+      ...(note ? { note } : {}),
+    }),
   getMemoryTelemetry: (timeframe = "30d") =>
     apiClient.get(`/api/knowledge/analytics/telemetry?timeframe=${timeframe}`),
 };
