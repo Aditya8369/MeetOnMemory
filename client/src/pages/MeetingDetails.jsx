@@ -72,6 +72,7 @@ import MeetingCostCard from "../components/meeting-details/MeetingCostCard";
 import AbsenteeBriefingCard from "../components/meeting-details/AbsenteeBriefingCard";
 import PrintMomModal from "../components/meetings/PrintMomModal.jsx";
 import ActionItemsList from "../components/actionItems/ActionItemsList";
+import DecisionVotingPanel from "../components/meetings/DecisionVotingPanel";
 import { Printer } from "lucide-react";
 import RetrospectiveBoard from "../components/meeting-details/RetrospectiveBoard";
 
@@ -524,6 +525,10 @@ const MeetingDetails = () => {
               Tasks & Action Items
             </h2>
             <ActionItemsList meetingId={meeting._id} />
+          </div>
+
+          <div className="mt-6 mb-6">
+            <DecisionVotingPanel meetingId={meeting._id} />
           </div>
 
           <RetentionQuizSection
