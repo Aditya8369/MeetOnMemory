@@ -85,7 +85,7 @@ import {
   initConflictScanWorker, // eslint-disable-line no-unused-vars
   shutdownQueues,
 } from "./services/queueService.js";
-import { initWebhookWorker } from "./services/webhookDispatcherService.js"; // eslint-disable-line no-unused-vars
+import { initMembershipRequestExpirationJob } from "./jobs/membershipRequestExpirationJob.js";
 import reminderScheduler from "./services/reminderScheduler.js";
 
 const __filename = fileURLToPath(import.meta.url);
@@ -174,6 +174,9 @@ if (process.env.NODE_ENV !== "test") {
 
   // Start poll expiration background job
   startPollExpirationJob(io);
+
+  // Start membership request auto-expiration background job (#2483)
+  initMembershipRequestExpirationJob(io);
 
   // Start follow-up reminder background job
   startFollowUpReminderJob();
