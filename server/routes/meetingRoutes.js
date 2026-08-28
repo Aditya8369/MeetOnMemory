@@ -68,6 +68,7 @@ import {
   persistCaptionSegments,
 } from "../controllers/transcriptController.js";
 import { getMeetingRoles } from "../controllers/roleRotationController.js";
+import { getOrgRetentionLeaderboard } from "../controllers/meetingQuizController.js";
 
 import path from "path";
 import { ValidationError } from "../utils/errors.js";
@@ -595,6 +596,8 @@ router.get(
   getReactionTimeline,
 );
 
+// ✅ Retrieve organization quiz retention leaderboard
+router.get("/quiz/leaderboard", userAuth, getOrgRetentionLeaderboard);
 // ✅ Anonymize / Scrub PII from Meeting
 router.post(
   "/anonymize",
