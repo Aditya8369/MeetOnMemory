@@ -1,5 +1,5 @@
 /**
- * Feature flag for client-side transcript E2EE (Issue #1335, #2263).
+ * Feature flag for client-side transcript E2EE (Issue #1335, #2030, #2263).
  * Evaluates organization-level e2eeSettings first, then falls back to VITE_E2EE_ENABLED.
  */
 export const isE2eeEnabled = (organizationOrSettings) => {
@@ -92,14 +92,22 @@ export {
   encryptTranscript,
   decryptTranscript,
   isEncryptedTranscriptPayload,
+  derivePassphraseKey,
+  exportEncryptedKeyBundle,
+  importEncryptedKeyBundle,
   TRANSCRIPT_ENCRYPTION_VERSION,
   TRANSCRIPT_ENCRYPTION_ALG,
+  KEY_BUNDLE_MAGIC,
 } from "./transcriptCrypto.js";
 
 export {
   saveMeetingKey,
   loadMeetingKey,
   clearMeetingKey,
+  hasMeetingKey,
+  listStoredMeetingKeyIds,
+  createShareableKeyPayload,
+  parseImportedKeyInput,
   meetingKeyStorageKey,
 } from "./meetingKeyStore.js";
 

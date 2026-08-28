@@ -56,18 +56,24 @@ import { isMeetingEnded } from "../utils/meetingLifecycle";
 import { canManageMeetingDigest } from "../utils/digestAccess";
 import MeetingRisksPanel from "../components/meetings/MeetingRisksPanel";
 import { useTranslation } from "react-i18next";
-import { Award, ShieldAlert, FileText, Star } from "lucide-react";
+import { Award, ShieldAlert, FileText, Star, ListTodo } from "lucide-react";
 import ExportDialog from "../components/export/ExportDialog";
 import RetentionQuizSection from "../components/meetings/RetentionQuizSection";
 import ResourceConflictsPanel from "../components/meeting-details/ResourceConflictsPanel";
 import SkillEndorsementModal from "../components/meetings/SkillEndorsementModal";
 import DebriefQAPanel from "../components/meetings/DebriefQAPanel";
+import LiveQAPanel from "../components/meetings/LiveQAPanel";
 import DelegationPanel from "../components/meetings/DelegationPanel";
+import MeetingNudgesTab from "../components/meeting-details/MeetingNudgesTab.jsx";
 import ConvertToAsyncModal from "../components/meetings/ConvertToAsyncModal";
 import ParticipantContributions from "../components/MeetingDetails/ParticipantContributions";
 import ContributionSummaryPanel from "../components/MeetingDetails/ContributionSummaryPanel";
 import MeetingCostCard from "../components/meeting-details/MeetingCostCard";
 import AbsenteeBriefingCard from "../components/meeting-details/AbsenteeBriefingCard";
+import PrintMomModal from "../components/meetings/PrintMomModal.jsx";
+import ActionItemsList from "../components/actionItems/ActionItemsList";
+import { Printer } from "lucide-react";
+import RetrospectiveBoard from "../components/meeting-details/RetrospectiveBoard";
 
 const MeetingDetails = () => {
   const { id } = useParams();
@@ -88,6 +94,7 @@ const MeetingDetails = () => {
   const [isExportDialogOpen, setIsExportDialogOpen] = useState(false);
   const [isEndorseModalOpen, setIsEndorseModalOpen] = useState(false);
   const [isConvertToAsyncOpen, setIsConvertToAsyncOpen] = useState(false);
+  const [isPrintModalOpen, setIsPrintModalOpen] = useState(false);
   const [briefingStatus, setBriefingStatus] = useState("idle");
 
   const dbUserId = currentUser?.publicMetadata?.dbUserId;
@@ -357,6 +364,15 @@ const MeetingDetails = () => {
           <div className="mb-4 flex justify-end gap-3">
             <CompareButton meetingId={meeting._id} />
             <button
+              onClick={() => setIsPrintModalOpen(true)}
+              className="flex items-center gap-2 px-4 py-2 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 rounded-lg font-medium shadow-sm transition-colors text-sm"
+              title="Print formatted Minutes of Meeting"
+              data-testid="print-minutes-btn"
+            >
+              <Printer className="w-4 h-4" />
+              Print Minutes
+            </button>
+            <button
               onClick={() => setIsExportDialogOpen(true)}
               className="flex items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg font-medium shadow-sm transition-colors text-sm"
               data-testid="open-export-dialog-btn"
@@ -502,6 +518,14 @@ const MeetingDetails = () => {
           <AbsenteeBriefingCard meetingId={meeting._id} />
           <MeetingSummary meeting={meeting} />
 
+          <div className="p-6 bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 shadow-sm mt-6 mb-6">
+            <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
+              <ListTodo className="w-5 h-5 text-indigo-600" />
+              Tasks & Action Items
+            </h2>
+            <ActionItemsList meetingId={meeting._id} />
+          </div>
+
           <RetentionQuizSection
             meeting={meeting}
             isOrganizer={
@@ -556,6 +580,9 @@ const MeetingDetails = () => {
               />
             </div>
           </div>
+          <div className="mt-6 mb-6 h-[600px]">
+            <LiveQAPanel meetingId={meeting._id} isOrganizer={isOrganizer} />
+          </div>
           <div className="mt-6 mb-6">
             <TopicSummary
               meetingId={meeting._id}
@@ -591,6 +618,8 @@ const MeetingDetails = () => {
               }
             />
           </div>
+
+          <RetrospectiveBoard meetingId={meeting._id} />
 
           <div className="mt-6 mb-6">
             <SentimentTimeline meetingId={meeting._id} />
@@ -778,6 +807,13 @@ const MeetingDetails = () => {
         onClose={() => setIsConvertToAsyncOpen(false)}
         meeting={meeting}
         isSeries={false}
+      />
+
+      <PrintMomModal
+        isOpen={isPrintModalOpen}
+        onClose={() => setIsPrintModalOpen(false)}
+        meeting={meeting}
+        summary={meeting.summary || meeting.structuredMoM}
       />
     </div>
   );

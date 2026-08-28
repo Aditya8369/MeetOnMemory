@@ -38,3 +38,10 @@ export const exportCostReport = async (params) => {
   });
   return response.data;
 };
+
+export const getEnterpriseCostResourceEngine = async (timeframe = "30d") => {
+  const response = await apiClient.get(
+    `/api/meeting-cost/enterprise-engine?timeframe=${timeframe}`,
+  );
+  return response.data;
+};
