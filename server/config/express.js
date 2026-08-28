@@ -1,6 +1,7 @@
 import express from "express";
 import cors from "cors";
 import cookieParser from "cookie-parser";
+import path from "path";
 import { corsOptions } from "./corsOptions.js";
 import { configureHealthEndpoints } from "./health.js";
 import { configureSecurity } from "./security.js";
@@ -61,6 +62,9 @@ export function configureExpress(app) {
   // External/public routes use their own authentication mechanisms.
   app.use("/api/webhooks", webhookRoutes);
   app.use("/api/public/shared", publicSharedRoutes);
+
+  // Serve static uploads
+  app.use("/uploads", express.static(path.resolve("uploads")));
 
   app.use(globalLimiter);
 }
