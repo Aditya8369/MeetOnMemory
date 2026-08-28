@@ -39,6 +39,8 @@ import {
   regenerateMeetingInvite,
   updateMeetingInvite,
   resolveMeetingInvite,
+  anonymizeMeeting,
+  getRawTranscript,
 } from "../controllers/meetingController.js";
 import {
   addMeetingBookmark,
@@ -592,5 +594,17 @@ router.get(
   requirePermission("meetings", "view"),
   getReactionTimeline,
 );
+
+// ✅ Anonymize / Scrub PII from Meeting
+router.post(
+  "/anonymize",
+  userAuth,
+  writeLimiter,
+  requireAdminOrOwner,
+  anonymizeMeeting,
+);
+
+// ✅ Retrieve unredacted original transcript
+router.get("/:id/raw", userAuth, requireAdminOrOwner, getRawTranscript);
 
 export default router;
