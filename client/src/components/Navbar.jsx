@@ -39,6 +39,7 @@ import {
   Users,
   CheckSquare,
   Activity,
+  Shield,
   ShieldAlert,
   ShieldCheck,
   Moon,
@@ -779,6 +780,12 @@ const Navbar = () => {
             href: "/recap-schedule",
             icon: Clock,
             permission: { resource: "settings", action: "view" },
+          },
+          {
+            label: t("navbar.dlpCompliance", "DLP Compliance"),
+            href: "/compliance/dlp",
+            icon: Shield,
+            permission: { resource: "admin_panel", action: "view" },
           },
           {
             label: t("navbar.adminPanel"),
