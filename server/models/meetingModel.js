@@ -90,6 +90,10 @@ const meetingSchema = new mongoose.Schema(
       lat: { type: Number, default: null },
       lng: { type: Number, default: null },
     },
+    maxParticipants: {
+      type: Number,
+      default: null,
+    },
     participants: [
       {
         user: {
@@ -99,6 +103,28 @@ const meetingSchema = new mongoose.Schema(
         name: { type: String, required: true },
         email: { type: String, default: "" },
         role: { type: String, default: "" },
+        rsvpStatus: {
+          type: String,
+          enum: ["pending", "accepted", "declined", "tentative", "waitlisted"],
+          default: "pending",
+        },
+        rsvpReason: {
+          type: String,
+          default: "",
+        },
+      },
+    ],
+    waitlist: [
+      {
+        user: {
+          type: mongoose.Schema.Types.ObjectId,
+          ref: "User",
+          required: true,
+        },
+        name: { type: String, default: "" },
+        email: { type: String, default: "" },
+        joinedAt: { type: Date, default: Date.now },
+        note: { type: String, default: "" },
       },
     ],
     agendaItems: [
