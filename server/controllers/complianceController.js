@@ -107,7 +107,9 @@ export const reviewUnmaskRequest = async (req, res) => {
     const { status } = req.body; // "APPROVED" | "REJECTED"
 
     if (!["APPROVED", "REJECTED"].includes(status)) {
-      return res.status(400).json({ error: "Valid status (APPROVED or REJECTED) is required" });
+      return res
+        .status(400)
+        .json({ error: "Valid status (APPROVED or REJECTED) is required" });
     }
 
     const audit = await RedactionAudit.findOne({

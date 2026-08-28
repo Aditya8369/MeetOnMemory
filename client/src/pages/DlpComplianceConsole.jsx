@@ -34,13 +34,34 @@ const ENTITY_ICONS = {
 };
 
 const ENTITY_SEVERITY = {
-  API_KEY: { label: "Critical", bg: "bg-red-100 text-red-700 dark:bg-red-950/60 dark:text-red-300" },
-  JWT_TOKEN: { label: "High", bg: "bg-orange-100 text-orange-700 dark:bg-orange-950/60 dark:text-orange-300" },
-  PASSWORD_SECRET: { label: "Critical", bg: "bg-red-100 text-red-700 dark:bg-red-950/60 dark:text-red-300" },
-  CREDIT_CARD: { label: "Critical", bg: "bg-red-100 text-red-700 dark:bg-red-950/60 dark:text-red-300" },
-  SSN: { label: "High", bg: "bg-orange-100 text-orange-700 dark:bg-orange-950/60 dark:text-orange-300" },
-  EMAIL: { label: "Medium", bg: "bg-amber-100 text-amber-700 dark:bg-amber-950/60 dark:text-amber-300" },
-  PHONE: { label: "Medium", bg: "bg-amber-100 text-amber-700 dark:bg-amber-950/60 dark:text-amber-300" },
+  API_KEY: {
+    label: "Critical",
+    bg: "bg-red-100 text-red-700 dark:bg-red-950/60 dark:text-red-300",
+  },
+  JWT_TOKEN: {
+    label: "High",
+    bg: "bg-orange-100 text-orange-700 dark:bg-orange-950/60 dark:text-orange-300",
+  },
+  PASSWORD_SECRET: {
+    label: "Critical",
+    bg: "bg-red-100 text-red-700 dark:bg-red-950/60 dark:text-red-300",
+  },
+  CREDIT_CARD: {
+    label: "Critical",
+    bg: "bg-red-100 text-red-700 dark:bg-red-950/60 dark:text-red-300",
+  },
+  SSN: {
+    label: "High",
+    bg: "bg-orange-100 text-orange-700 dark:bg-orange-950/60 dark:text-orange-300",
+  },
+  EMAIL: {
+    label: "Medium",
+    bg: "bg-amber-100 text-amber-700 dark:bg-amber-950/60 dark:text-amber-300",
+  },
+  PHONE: {
+    label: "Medium",
+    bg: "bg-amber-100 text-amber-700 dark:bg-amber-950/60 dark:text-amber-300",
+  },
 };
 
 const DlpComplianceConsole = () => {
@@ -65,7 +86,9 @@ const DlpComplianceConsole = () => {
       const res = await complianceApi.getAuditLogs();
       setLogs(res.data?.logs || []);
     } catch (err) {
-      toast.error(err.response?.data?.error || "Failed to fetch compliance audit logs");
+      toast.error(
+        err.response?.data?.error || "Failed to fetch compliance audit logs",
+      );
     } finally {
       setLoadingLogs(false);
     }
@@ -122,11 +145,15 @@ const DlpComplianceConsole = () => {
       const res = await complianceApi.requestUnmask(selectedAudit._id, {
         reason: unmaskReason,
       });
-      toast.success(res.data?.message || "Unmask request submitted successfully");
+      toast.success(
+        res.data?.message || "Unmask request submitted successfully",
+      );
       handleCloseUnmask();
       fetchAuditLogs();
     } catch (err) {
-      toast.error(err.response?.data?.error || "Failed to submit unmask request");
+      toast.error(
+        err.response?.data?.error || "Failed to submit unmask request",
+      );
     } finally {
       setSubmittingUnmask(false);
     }
@@ -138,7 +165,9 @@ const DlpComplianceConsole = () => {
       toast.success(`Request ${status.toLowerCase()} successfully`);
       fetchAuditLogs();
     } catch (err) {
-      toast.error(err.response?.data?.error || "Failed to update review status");
+      toast.error(
+        err.response?.data?.error || "Failed to update review status",
+      );
     }
   };
 
@@ -164,7 +193,8 @@ const DlpComplianceConsole = () => {
               </h1>
             </div>
             <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
-              Inspect transcripts for sensitive PII/secrets, review redaction audits, and manage entity unmasking workflows.
+              Inspect transcripts for sensitive PII/secrets, review redaction
+              audits, and manage entity unmasking workflows.
             </p>
           </div>
 
@@ -205,7 +235,8 @@ const DlpComplianceConsole = () => {
                 PII & Secret Scanner
               </h2>
               <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
-                Paste meeting transcript segments or text to run real-time pattern detection for API keys, tokens, credentials, and PII.
+                Paste meeting transcript segments or text to run real-time
+                pattern detection for API keys, tokens, credentials, and PII.
               </p>
 
               <form onSubmit={handleRunScan} className="mt-4 space-y-4">
@@ -270,8 +301,12 @@ const DlpComplianceConsole = () => {
                       </h3>
                       <div className="max-h-56 space-y-2 overflow-y-auto pr-1">
                         {scanResult.findings.map((f, i) => {
-                          const Icon = ENTITY_ICONS[f.entityType] || ShieldAlert;
-                          const sev = ENTITY_SEVERITY[f.entityType] || { label: "Medium", bg: "bg-slate-100 text-slate-700" };
+                          const Icon =
+                            ENTITY_ICONS[f.entityType] || ShieldAlert;
+                          const sev = ENTITY_SEVERITY[f.entityType] || {
+                            label: "Medium",
+                            bg: "bg-slate-100 text-slate-700",
+                          };
                           return (
                             <div
                               key={i}
@@ -286,7 +321,9 @@ const DlpComplianceConsole = () => {
                                     <span className="text-xs font-semibold text-slate-800 dark:text-slate-200">
                                       {f.entityType}
                                     </span>
-                                    <span className={`rounded-md px-1.5 py-0.5 text-[10px] font-bold ${sev.bg}`}>
+                                    <span
+                                      className={`rounded-md px-1.5 py-0.5 text-[10px] font-bold ${sev.bg}`}
+                                    >
                                       {sev.label}
                                     </span>
                                   </div>
@@ -306,7 +343,9 @@ const DlpComplianceConsole = () => {
                   ) : (
                     <div className="flex items-center gap-2 rounded-xl bg-emerald-50 p-4 text-xs text-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-300">
                       <CheckCircle2 className="h-4 w-4 shrink-0" />
-                      <span>No PII or sensitive secrets detected in this text.</span>
+                      <span>
+                        No PII or sensitive secrets detected in this text.
+                      </span>
                     </div>
                   )}
 
@@ -323,7 +362,9 @@ const DlpComplianceConsole = () => {
               ) : (
                 <div className="mt-8 flex flex-col items-center justify-center py-12 text-center text-slate-400">
                   <Search className="h-10 w-10 text-slate-300 dark:text-slate-700 mb-2" />
-                  <p className="text-xs">Run a scan on the left to view DLP findings and masked text</p>
+                  <p className="text-xs">
+                    Run a scan on the left to view DLP findings and masked text
+                  </p>
                 </div>
               )}
             </div>
@@ -361,7 +402,9 @@ const DlpComplianceConsole = () => {
                 disabled={loadingLogs}
                 className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3.5 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300 dark:hover:bg-slate-800 cursor-pointer"
               >
-                <RefreshCw className={`h-3.5 w-3.5 ${loadingLogs ? "animate-spin" : ""}`} />
+                <RefreshCw
+                  className={`h-3.5 w-3.5 ${loadingLogs ? "animate-spin" : ""}`}
+                />
                 Refresh Logs
               </button>
             </div>
@@ -405,11 +448,17 @@ const DlpComplianceConsole = () => {
                   <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60">
                     {filteredLogs.map((log) => {
                       const Icon = ENTITY_ICONS[log.entityType] || ShieldAlert;
-                      const sev = ENTITY_SEVERITY[log.entityType] || { label: "Medium", bg: "bg-slate-100 text-slate-700" };
+                      const sev = ENTITY_SEVERITY[log.entityType] || {
+                        label: "Medium",
+                        bg: "bg-slate-100 text-slate-700",
+                      };
                       const unmaskCount = log.unmaskRequests?.length || 0;
 
                       return (
-                        <tr key={log._id} className="hover:bg-slate-50/50 dark:hover:bg-slate-850/40">
+                        <tr
+                          key={log._id}
+                          className="hover:bg-slate-50/50 dark:hover:bg-slate-850/40"
+                        >
                           <td className="px-6 py-4">
                             <div className="flex items-center gap-2.5">
                               <div className="rounded-lg bg-slate-100 p-1.5 text-slate-700 dark:bg-slate-800 dark:text-slate-300">
@@ -419,7 +468,9 @@ const DlpComplianceConsole = () => {
                                 <div className="text-xs font-semibold text-slate-900 dark:text-white">
                                   {log.entityType}
                                 </div>
-                                <span className={`rounded-md px-1.5 py-0.2 text-[10px] font-bold ${sev.bg}`}>
+                                <span
+                                  className={`rounded-md px-1.5 py-0.2 text-[10px] font-bold ${sev.bg}`}
+                                >
                                   {sev.label}
                                 </span>
                               </div>
@@ -428,7 +479,10 @@ const DlpComplianceConsole = () => {
                           <td className="px-6 py-4 font-mono text-xs text-indigo-600 dark:text-indigo-400">
                             {log.maskedToken}
                           </td>
-                          <td className="px-6 py-4 max-w-xs text-xs text-slate-500 truncate" title={log.contextSnippet}>
+                          <td
+                            className="px-6 py-4 max-w-xs text-xs text-slate-500 truncate"
+                            title={log.contextSnippet}
+                          >
                             {log.contextSnippet || "—"}
                           </td>
                           <td className="px-6 py-4 text-xs text-slate-500">
@@ -495,7 +549,8 @@ const DlpComplianceConsole = () => {
 
                 <div>
                   <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                    Business Justification / Reason <span className="text-red-500">*</span>
+                    Business Justification / Reason{" "}
+                    <span className="text-red-500">*</span>
                   </label>
                   <textarea
                     rows={3}
@@ -510,26 +565,47 @@ const DlpComplianceConsole = () => {
                 {/* Existing requests on this audit item */}
                 {selectedAudit.unmaskRequests?.length > 0 && (
                   <div className="space-y-2 border-t border-slate-100 pt-3 dark:border-slate-800">
-                    <span className="text-xs font-semibold text-slate-500">Previous Unmask Requests:</span>
+                    <span className="text-xs font-semibold text-slate-500">
+                      Previous Unmask Requests:
+                    </span>
                     <div className="max-h-28 space-y-1.5 overflow-y-auto">
                       {selectedAudit.unmaskRequests.map((req, idx) => (
-                        <div key={idx} className="flex items-center justify-between rounded-lg bg-slate-50 p-2 text-xs dark:bg-slate-800/40">
+                        <div
+                          key={idx}
+                          className="flex items-center justify-between rounded-lg bg-slate-50 p-2 text-xs dark:bg-slate-800/40"
+                        >
                           <div>
-                            <p className="text-[11px] text-slate-700 dark:text-slate-300 font-medium">"{req.reason}"</p>
-                            <span className="text-[10px] text-slate-400">Status: {req.status}</span>
+                            <p className="text-[11px] text-slate-700 dark:text-slate-300 font-medium">
+                              "{req.reason}"
+                            </p>
+                            <span className="text-[10px] text-slate-400">
+                              Status: {req.status}
+                            </span>
                           </div>
                           {req.status === "PENDING" && (
                             <div className="flex items-center gap-1">
                               <button
                                 type="button"
-                                onClick={() => handleReviewUnmask(selectedAudit._id, req._id, "APPROVED")}
+                                onClick={() =>
+                                  handleReviewUnmask(
+                                    selectedAudit._id,
+                                    req._id,
+                                    "APPROVED",
+                                  )
+                                }
                                 className="rounded px-2 py-0.5 text-[10px] font-bold bg-emerald-100 text-emerald-700 hover:bg-emerald-200 dark:bg-emerald-950/60 dark:text-emerald-300 cursor-pointer"
                               >
                                 Approve
                               </button>
                               <button
                                 type="button"
-                                onClick={() => handleReviewUnmask(selectedAudit._id, req._id, "REJECTED")}
+                                onClick={() =>
+                                  handleReviewUnmask(
+                                    selectedAudit._id,
+                                    req._id,
+                                    "REJECTED",
+                                  )
+                                }
                                 className="rounded px-2 py-0.5 text-[10px] font-bold bg-red-100 text-red-700 hover:bg-red-200 dark:bg-red-950/60 dark:text-red-300 cursor-pointer"
                               >
                                 Reject

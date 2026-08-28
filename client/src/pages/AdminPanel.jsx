@@ -160,7 +160,8 @@ const MODULES = [
   {
     id: "dlpCompliance",
     labelKey: "DLP Compliance",
-    descriptionKey: "Scan transcripts for PII, secrets, and manage unmask audits",
+    descriptionKey:
+      "Scan transcripts for PII, secrets, and manage unmask audits",
     icon: Shield,
     iconBg: "bg-indigo-50 dark:bg-indigo-900/30",
     iconColor: "text-indigo-600 dark:text-indigo-400",
@@ -831,7 +832,8 @@ const AdminPanel = () => {
                     Data Loss Prevention & Compliance
                   </h3>
                   <p className="text-xs text-slate-500 dark:text-slate-400">
-                    Scan meeting transcripts for PII/secrets, view redaction logs, and process entity unmask requests.
+                    Scan meeting transcripts for PII/secrets, view redaction
+                    logs, and process entity unmask requests.
                   </p>
                 </div>
                 <button
@@ -856,7 +858,8 @@ const AdminPanel = () => {
                     </h4>
                   </div>
                   <p className="text-xs text-slate-400 dark:text-slate-500">
-                    Test raw text or transcripts for API keys, passwords, JWT tokens, credit cards, and SSNs.
+                    Test raw text or transcripts for API keys, passwords, JWT
+                    tokens, credit cards, and SSNs.
                   </p>
                 </div>
                 <div
@@ -870,7 +873,8 @@ const AdminPanel = () => {
                     </h4>
                   </div>
                   <p className="text-xs text-slate-400 dark:text-slate-500">
-                    Review automated redactions and submit/review audited justifications for unmasking.
+                    Review automated redactions and submit/review audited
+                    justifications for unmasking.
                   </p>
                 </div>
               </div>

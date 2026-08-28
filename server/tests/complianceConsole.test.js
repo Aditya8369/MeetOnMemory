@@ -14,8 +14,10 @@ jest.unstable_mockModule("../middleware/userAuth.js", () => ({
   },
 }));
 
-const { default: complianceRoutes } = await import("../routes/complianceRoutes.js");
-const { default: RedactionAudit } = await import("../models/redactionAuditModel.js");
+const { default: complianceRoutes } =
+  await import("../routes/complianceRoutes.js");
+const { default: RedactionAudit } =
+  await import("../models/redactionAuditModel.js");
 const { default: express } = await import("express");
 
 const app = express();
@@ -39,7 +41,8 @@ describe("DLP Compliance Console API Tests (#2486)", () => {
 
   describe("POST /api/compliance/scan", () => {
     it("scans text and returns redacted entities", async () => {
-      const sampleText = "Please contact me at test.user@example.com or use key api_key = 'abcdefghijklmnopqrstuv12345'";
+      const sampleText =
+        "Please contact me at test.user@example.com or use key api_key = 'abcdefghijklmnopqrstuv12345'";
       const res = await request(app)
         .post("/api/compliance/scan")
         .send({ text: sampleText, meetingId: MEETING_ID });
@@ -93,7 +96,9 @@ describe("DLP Compliance Console API Tests (#2486)", () => {
       expect(res.status).toBe(200);
       expect(res.body.audit.unmaskRequests).toHaveLength(1);
       expect(res.body.audit.unmaskRequests[0].status).toBe("PENDING");
-      expect(res.body.audit.unmaskRequests[0].reason).toBe("Incident investigation for security review");
+      expect(res.body.audit.unmaskRequests[0].reason).toBe(
+        "Incident investigation for security review",
+      );
     });
 
     it("returns 400 when justification reason is missing", async () => {
