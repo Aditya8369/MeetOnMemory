@@ -32,6 +32,7 @@ import {
 } from "../utils/groupNotifications.js";
 import NudgeInbox from "../components/NudgeInbox";
 import KeywordWatchlistPanel from "../components/notifications/KeywordWatchlistPanel.jsx";
+import { useDebounce } from "../hooks/useDebounce.js";
 
 /**
  * Issue #977 & #1214: Category icons mapping for all notification types.
@@ -149,6 +150,8 @@ const Notifications = () => {
   const [filter, setFilter] = useState("all"); // all, read, unread
   const [categoryFilter, setCategoryFilter] = useState("all"); // all, meetings, tasks, ai_processing, organizations, policies, reports, system
   const [groupBy, setGroupBy] = useState("day"); // none, day, meeting, type
+  const [searchQuery, setSearchQuery] = useState("");
+  const debouncedSearchQuery = useDebounce(searchQuery, 400);
   const [dailyDigest, setDailyDigest] = useState(false);
   const [digestSaving, setDigestSaving] = useState(false);
 
@@ -180,6 +183,8 @@ const Notifications = () => {
       // Issue #1214: Tasks filter now properly supported
       if (categoryFilter !== "all") params.category = categoryFilter;
 
+      if (debouncedSearchQuery) params.search = debouncedSearchQuery;
+
       const { data } = await notificationApi.getNotifications(params);
 
       if (data.success) {
@@ -196,14 +201,14 @@ const Notifications = () => {
     } finally {
       setLoading(false);
     }
-  }, [filter, categoryFilter, page]);
+  }, [filter, categoryFilter, page, debouncedSearchQuery]);
 
   // Reset to page 1 when user logs in or filters change
   useEffect(() => {
     if (userData) {
       setPage(1);
     }
-  }, [userData, filter, categoryFilter]);
+  }, [userData, filter, categoryFilter, debouncedSearchQuery]);
 
   // Fetch notifications when dependencies change
   useEffect(() => {
@@ -455,7 +460,21 @@ const Notifications = () => {
                 </span>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                {/* Search */}
+                <div>
+                  <label className="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-1.5">
+                    Search
+                  </label>
+                  <input
+                    type="text"
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    placeholder="Search..."
+                    className="w-full px-3 py-2 text-sm bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                  />
+                </div>
+
                 {/* Status Filter (Read/Unread) */}
                 <div>
                   <label className="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-1.5">
