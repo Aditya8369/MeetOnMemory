@@ -66,6 +66,7 @@ import {
   persistCaptionSegments,
 } from "../controllers/transcriptController.js";
 import { getMeetingRoles } from "../controllers/roleRotationController.js";
+import { getOrgRetentionLeaderboard } from "../controllers/meetingQuizController.js";
 
 import path from "path";
 import { ValidationError } from "../utils/errors.js";
@@ -592,5 +593,8 @@ router.get(
   requirePermission("meetings", "view"),
   getReactionTimeline,
 );
+
+// ✅ Retrieve organization quiz retention leaderboard
+router.get("/quiz/leaderboard", userAuth, getOrgRetentionLeaderboard);
 
 export default router;
