@@ -28,6 +28,7 @@ const VITEST_TEST_FILES = new Set([
   "server/tests/meetingValidation.test.js",
   "server/tests/e2eeFeatureFlag.test.js",
   "server/tests/sessionController.test.js",
+  "server/tests/meetingROIController.test.js",
   "server/tests/aiMeetingNoteController.test.js",
 ]);
 const JEST_RELATED_IGNORE = [
@@ -73,6 +74,9 @@ const vitestOwnedSources = new Set([
   "server/utils/imageUrl.js",
   "server/models/organizationModel.js",
   "server/utils/transcriptEncryption.js",
+  "server/controllers/meetingROIController.js",
+  "server/models/meetingROIModel.js",
+  "server/routes/meetingROIRoutes.js",
   "server/controllers/aiMeetingNoteController.js",
   "server/models/aiMeetingNoteModel.js",
   "server/routes/aiMeetingNoteRoutes.js",
@@ -82,6 +86,12 @@ const VITEST_SOURCE_TEST_MAP = {
     "server/tests/OrganizationService.test.js",
   "server/utils/transcriptEncryption.js":
     "server/tests/e2eeFeatureFlag.test.js",
+  "server/controllers/meetingROIController.js":
+    "server/tests/meetingROIController.test.js",
+  "server/models/meetingROIModel.js":
+    "server/tests/meetingROIController.test.js",
+  "server/routes/meetingROIRoutes.js":
+    "server/tests/meetingROIController.test.js",
   "server/controllers/aiMeetingNoteController.js":
     "server/tests/aiMeetingNoteController.test.js",
   "server/models/aiMeetingNoteModel.js":

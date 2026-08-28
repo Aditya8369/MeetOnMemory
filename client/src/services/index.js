@@ -44,5 +44,6 @@ export * from "./exportTemplateApi.js";
 export * from "./skillEndorsementApi";
 export * from "./slackApi";
 export * from "./sessionCardApi";
+export * from "./meetingROIApi";
 export { default as complianceApi } from "./complianceApi";
 export * from "./aiMeetingNoteApi";
