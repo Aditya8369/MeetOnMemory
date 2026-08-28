@@ -39,6 +39,7 @@ import {
   Users,
   CheckSquare,
   Activity,
+  Shield,
   ShieldAlert,
   ShieldCheck,
   Moon,
