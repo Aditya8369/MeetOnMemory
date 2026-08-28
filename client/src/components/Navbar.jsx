@@ -599,6 +599,12 @@ const Navbar = () => {
             permission: { resource: "reports", action: "view" },
           },
           {
+            label: t("navbar.aiMeetingNotes", "AI Meeting Notes"),
+            href: "/ai-notes-dashboard",
+            icon: Sparkles,
+            permission: { resource: "reports", action: "view" },
+          },
+          {
             label: t("navbar.meetingInsights"),
             href: "/meeting-insights",
             icon: Brain,

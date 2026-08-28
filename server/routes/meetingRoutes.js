@@ -39,6 +39,8 @@ import {
   regenerateMeetingInvite,
   updateMeetingInvite,
   resolveMeetingInvite,
+  anonymizeMeeting,
+  getRawTranscript,
 } from "../controllers/meetingController.js";
 import {
   addMeetingBookmark,
@@ -596,5 +598,16 @@ router.get(
 
 // ✅ Retrieve organization quiz retention leaderboard
 router.get("/quiz/leaderboard", userAuth, getOrgRetentionLeaderboard);
+// ✅ Anonymize / Scrub PII from Meeting
+router.post(
+  "/anonymize",
+  userAuth,
+  writeLimiter,
+  requireAdminOrOwner,
+  anonymizeMeeting,
+);
+
+// ✅ Retrieve unredacted original transcript
+router.get("/:id/raw", userAuth, requireAdminOrOwner, getRawTranscript);
 
 export default router;
