@@ -213,7 +213,8 @@ const FocusTime = () => {
                             <RefreshCw size={12} /> Recurring
                           </span>
                         )}
-                        {block.policy === "block" || block.allowOverride === false ? (
+                        {block.policy === "block" ||
+                        block.allowOverride === false ? (
                           <span className="flex items-center gap-1 text-xs font-medium text-red-700 bg-red-50 dark:bg-red-950/40 dark:text-red-300 px-2.5 py-1 rounded-full">
                             Strict Block
                           </span>
@@ -392,7 +393,8 @@ const FocusTime = () => {
                         Strict Block (No Overrides)
                       </span>
                       <p className="text-xs text-gray-500">
-                        Completely prevents any meeting from being scheduled during this focus time.
+                        Completely prevents any meeting from being scheduled
+                        during this focus time.
                       </p>
                     </div>
                   </label>
