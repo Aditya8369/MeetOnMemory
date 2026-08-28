@@ -5,7 +5,7 @@ import {
   toggleUpvote,
   updateStatus,
 } from "../controllers/meetingQuestionController.js";
-import { protect } from "../middleware/authMiddleware.js";
+import protect from "../middleware/userAuth.js";
 
 const router = express.Router();
 

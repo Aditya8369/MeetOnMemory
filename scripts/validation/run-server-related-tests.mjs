@@ -125,8 +125,13 @@ const VITEST_SOURCE_TEST_MAP = {
     "server/tests/sharedLinkAnalytics.test.js",
   "server/config/express.js": "server/tests/sharedLinkAnalytics.test.js",
 };
+// Suites named `*.vitest.test.js` are Vitest-owned by convention and need no
+// entry in VITEST_TEST_FILES above (Issue #2575).
+const isVitestSuite = (file) =>
+  VITEST_TEST_FILES.has(file) || file.endsWith(".vitest.test.js");
+
 const vitestTests = [
-  ...directTests.filter((file) => VITEST_TEST_FILES.has(file)),
+  ...directTests.filter(isVitestSuite),
   ...sourceFiles
     .filter((file) => vitestOwnedSources.has(file))
     .map((file) => {
@@ -134,7 +139,7 @@ const vitestTests = [
       const base = file.split("/").pop().replace(/\.js$/, "");
       return `server/tests/${base}.test.js`;
     })
-    .filter((file) => VITEST_TEST_FILES.has(file)),
+    .filter(isVitestSuite),
 ].filter(fileExists);
 const uniqueVitestTests = [...new Set(vitestTests)];
 // Skip deleted legacy test files still present in the diff against main.
