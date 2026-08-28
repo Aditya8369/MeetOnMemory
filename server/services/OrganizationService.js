@@ -2147,12 +2147,12 @@ export const updateMemberCapacity = async (
   const weeklyHours =
     capacityData.weeklyHours !== undefined
       ? Math.max(0, Math.min(168, Number(capacityData.weeklyHours)))
-      : targetMembership.capacity?.weeklyHours ?? 40;
+      : (targetMembership.capacity?.weeklyHours ?? 40);
 
   const maxConcurrentMeetings =
     capacityData.maxConcurrentMeetings !== undefined
       ? Math.max(1, Number(capacityData.maxConcurrentMeetings))
-      : targetMembership.capacity?.maxConcurrentMeetings ?? 5;
+      : (targetMembership.capacity?.maxConcurrentMeetings ?? 5);
 
   targetMembership.capacity = {
     weeklyHours,

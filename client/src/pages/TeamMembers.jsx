@@ -75,9 +75,7 @@ const TeamMembers = () => {
 
     if (statusFilter !== "all") {
       if (statusFilter === "active") {
-        result = result.filter(
-          (m) => !m.status || m.status === "active",
-        );
+        result = result.filter((m) => !m.status || m.status === "active");
       } else if (statusFilter === "deactivated") {
         result = result.filter(
           (m) =>

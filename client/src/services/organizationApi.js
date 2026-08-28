@@ -51,9 +51,7 @@ export const organizationApi = {
       capacity,
     ),
   getMemberRoleHistory: (orgId, userId) =>
-    apiClient.get(
-      `/api/organizations/${orgId}/members/${userId}/role-history`,
-    ),
+    apiClient.get(`/api/organizations/${orgId}/members/${userId}/role-history`),
   removeMember: (orgId, userId) =>
     apiClient.delete(`/api/organizations/${orgId}/members/${userId}`),
   getAuditLogs: (orgId, params) =>

@@ -431,7 +431,10 @@ const TeamMemberTable = ({
                     </div>
 
                     {isEditingRole && (
-                      <form onSubmit={handleSaveRole} className="pt-2 border-t border-slate-200 dark:border-slate-700 space-y-3">
+                      <form
+                        onSubmit={handleSaveRole}
+                        className="pt-2 border-t border-slate-200 dark:border-slate-700 space-y-3"
+                      >
                         <div>
                           <label className="block text-xs font-semibold text-slate-600 dark:text-slate-400 mb-1">
                             Select New Role
@@ -498,7 +501,9 @@ const TeamMemberTable = ({
                       </span>
                     </div>
                     <span className="text-sm text-slate-600 dark:text-slate-400">
-                      {formatDate(selectedMember.createdAt || selectedMember.joinedAt)}
+                      {formatDate(
+                        selectedMember.createdAt || selectedMember.joinedAt,
+                      )}
                     </span>
                   </div>
 
@@ -526,7 +531,9 @@ const TeamMemberTable = ({
                           <input
                             type="text"
                             value={deactivateReason}
-                            onChange={(e) => setDeactivateReason(e.target.value)}
+                            onChange={(e) =>
+                              setDeactivateReason(e.target.value)
+                            }
                             placeholder="Reason for deactivation (optional)..."
                             className="w-full px-3 py-2 text-xs rounded-lg border border-red-200 dark:border-red-800 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100"
                           />
@@ -544,7 +551,9 @@ const TeamMemberTable = ({
                               disabled={actionLoading}
                               className="px-3 py-1.5 text-xs rounded-lg bg-red-600 text-white font-medium hover:bg-red-700 disabled:opacity-50"
                             >
-                              {actionLoading ? "Deactivating..." : "Confirm Deactivate"}
+                              {actionLoading
+                                ? "Deactivating..."
+                                : "Confirm Deactivate"}
                             </button>
                           </div>
                         </div>
@@ -567,7 +576,8 @@ const TeamMemberTable = ({
               {activeModalTab === "capacity" && (
                 <form onSubmit={handleSaveCapacity} className="space-y-4">
                   <p className="text-xs text-slate-500 dark:text-slate-400">
-                    Configure weekly working hours and maximum concurrent meeting limits.
+                    Configure weekly working hours and maximum concurrent
+                    meeting limits.
                   </p>
 
                   <div className="space-y-2">
@@ -621,7 +631,8 @@ const TeamMemberTable = ({
               {/* Role History Tab */}
               {activeModalTab === "history" && (
                 <div className="space-y-3">
-                  {selectedMember.roleHistory && selectedMember.roleHistory.length > 0 ? (
+                  {selectedMember.roleHistory &&
+                  selectedMember.roleHistory.length > 0 ? (
                     <div className="space-y-2 max-h-60 overflow-y-auto pr-1">
                       {selectedMember.roleHistory.map((item, idx) => (
                         <div
@@ -630,7 +641,9 @@ const TeamMemberTable = ({
                         >
                           <div className="flex items-center justify-between font-semibold">
                             <span className="text-slate-900 dark:text-slate-100">
-                              {item.previousRole ? `${item.previousRole} → ` : ""}
+                              {item.previousRole
+                                ? `${item.previousRole} → `
+                                : ""}
                               <span className="text-blue-600 dark:text-blue-400">
                                 {item.newRole}
                               </span>
