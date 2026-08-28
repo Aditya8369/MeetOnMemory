@@ -162,6 +162,16 @@ const meetingSchema = new mongoose.Schema(
       type: Number,
       default: null,
     },
+    isRedacted: {
+      type: Boolean,
+      default: false,
+    },
+    encryptedOriginals: {
+      transcript: { type: String, default: "" },
+      summary: { type: String, default: "" },
+      aiNotes: { type: String, default: "" },
+      transcriptSegments: { type: String, default: "" },
+    },
     summary: {
       type: String, // Human-readable MoM text
       default: "",
