@@ -44,6 +44,10 @@ const ROOT_CLIENT_MAP = {
     "client/src/pages/CreateMeeting/hooks/__tests__/useSessionCards.persistence.test.jsx",
   "client/src/pages/SessionGallery.jsx":
     "client/src/pages/__tests__/SessionGallery.test.jsx",
+  "client/src/pages/AiMeetingNotesDashboard.jsx":
+    "client/src/pages/__tests__/AiMeetingNotesDashboard.test.jsx",
+  "client/src/services/aiMeetingNoteApi.js":
+    "client/src/pages/__tests__/AiMeetingNotesDashboard.test.jsx",
 };
 
 const directTests = [
