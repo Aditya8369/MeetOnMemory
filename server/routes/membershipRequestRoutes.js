@@ -45,11 +45,7 @@ router.get(
 );
 
 // Comments on request
-router.post(
-  "/:id/comments",
-  writeLimiter,
-  addCommentToMembershipRequest,
-);
+router.post("/:id/comments", writeLimiter, addCommentToMembershipRequest);
 
 // Manage requests
 router.patch(
@@ -64,11 +60,7 @@ router.patch(
   requirePermission("team_members", "invite"),
   rejectMembershipRequest,
 );
-router.patch(
-  "/:id/cancel",
-  writeLimiter,
-  cancelMembershipRequest,
-);
+router.patch("/:id/cancel", writeLimiter, cancelMembershipRequest);
 
 // Bulk actions
 router.post(

@@ -586,8 +586,12 @@ const MembershipRequests = ({ organizationId }) => {
                     )}
                     {request.reviewNotes && (
                       <div className="w-full mt-1 p-2 rounded bg-slate-50 dark:bg-slate-800 text-xs">
-                        <span className="font-medium text-slate-700 dark:text-slate-300">Admin note:</span>{" "}
-                        <span className="text-slate-600 dark:text-slate-400">{request.reviewNotes}</span>
+                        <span className="font-medium text-slate-700 dark:text-slate-300">
+                          Admin note:
+                        </span>{" "}
+                        <span className="text-slate-600 dark:text-slate-400">
+                          {request.reviewNotes}
+                        </span>
                       </div>
                     )}
                   </div>
@@ -600,9 +604,7 @@ const MembershipRequests = ({ organizationId }) => {
                       className="inline-flex items-center gap-1.5 text-xs font-medium text-blue-600 dark:text-blue-400 hover:underline cursor-pointer"
                     >
                       <MessageSquare className="h-3.5 w-3.5" />
-                      <span>
-                        Comments ({request.comments?.length || 0})
-                      </span>
+                      <span>Comments ({request.comments?.length || 0})</span>
                     </button>
 
                     {expandedComments[request._id] && (
@@ -675,7 +677,9 @@ const MembershipRequests = ({ organizationId }) => {
                   )}
                   {request.status === "rejected" && <X className="h-3 w-3" />}
                   {request.status === "cancelled" && <X className="h-3 w-3" />}
-                  {request.status === "expired" && <Timer className="h-3 w-3" />}
+                  {request.status === "expired" && (
+                    <Timer className="h-3 w-3" />
+                  )}
                   {STATUS_LABELS[request.status]}
                 </span>
 

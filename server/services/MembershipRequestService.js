@@ -64,7 +64,10 @@ class MembershipRequestService {
             html: emailHtml,
           })
           .catch((err) =>
-            console.error("⚠️ Background email transmission failed:", err.message),
+            console.error(
+              "⚠️ Background email transmission failed:",
+              err.message,
+            ),
           );
       }
     } catch (err) {
@@ -91,14 +94,16 @@ class MembershipRequestService {
     }
 
     const cleanRequestId = new mongoose.Types.ObjectId(String(requestId));
-    const request = await MembershipRequest.findById(cleanRequestId).populate("organization");
+    const request =
+      await MembershipRequest.findById(cleanRequestId).populate("organization");
 
     if (!request) {
       throw new NotFoundError("Membership request not found.");
     }
 
     const isRequester = request.user.toString() === userId.toString();
-    const isOwner = request.organization?.owner?.toString() === userId.toString();
+    const isOwner =
+      request.organization?.owner?.toString() === userId.toString();
 
     let isAdmin = false;
     if (request.organization?._id) {

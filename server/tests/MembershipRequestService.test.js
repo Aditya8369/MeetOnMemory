@@ -43,7 +43,9 @@ describe("MembershipRequestService", () => {
     });
 
     it("should throw ValidationError if user is already a member", async () => {
-      vi.spyOn(Organization, "findById").mockResolvedValue({ _id: organizationId });
+      vi.spyOn(Organization, "findById").mockResolvedValue({
+        _id: organizationId,
+      });
       vi.spyOn(Membership, "findOne").mockReturnValue({
         lean: vi.fn().mockResolvedValue({ _id: "membership-id" }),
       });
@@ -54,7 +56,9 @@ describe("MembershipRequestService", () => {
     });
 
     it("should throw AppError if a pending request already exists", async () => {
-      vi.spyOn(Organization, "findById").mockResolvedValue({ _id: organizationId });
+      vi.spyOn(Organization, "findById").mockResolvedValue({
+        _id: organizationId,
+      });
       vi.spyOn(Membership, "findOne").mockReturnValue({
         lean: vi.fn().mockResolvedValue(null),
       });
@@ -70,7 +74,9 @@ describe("MembershipRequestService", () => {
     });
 
     it("should successfully create a membership request", async () => {
-      vi.spyOn(Organization, "findById").mockResolvedValue({ _id: organizationId });
+      vi.spyOn(Organization, "findById").mockResolvedValue({
+        _id: organizationId,
+      });
       vi.spyOn(Membership, "findOne").mockReturnValue({
         lean: vi.fn().mockResolvedValue(null),
       });
@@ -146,10 +152,19 @@ describe("MembershipRequestService", () => {
       };
       vi.spyOn(mongoose, "startSession").mockResolvedValue(mockSession);
       vi.spyOn(Membership, "create").mockResolvedValue([{ _id: "m1" }]);
-      vi.spyOn(mongoose.models.user || userModel, "findByIdAndUpdate").mockResolvedValue({});
-      vi.spyOn(MembershipRequestService, "_notifyDecision").mockImplementation(() => {});
+      vi.spyOn(
+        mongoose.models.user || userModel,
+        "findByIdAndUpdate",
+      ).mockResolvedValue({});
+      vi.spyOn(MembershipRequestService, "_notifyDecision").mockImplementation(
+        () => {},
+      );
 
-      const res = await MembershipRequestService.approveRequest(userId, requestId, "Welcome!");
+      const res = await MembershipRequestService.approveRequest(
+        userId,
+        requestId,
+        "Welcome!",
+      );
 
       expect(mockReqDoc.status).toBe("approved");
       expect(mockReqDoc.reviewNotes).toBe("Welcome!");
@@ -177,9 +192,15 @@ describe("MembershipRequestService", () => {
       vi.spyOn(Membership, "findOne").mockReturnValue({
         lean: vi.fn().mockResolvedValue({ role: "admin" }),
       });
-      vi.spyOn(MembershipRequestService, "_notifyDecision").mockImplementation(() => {});
+      vi.spyOn(MembershipRequestService, "_notifyDecision").mockImplementation(
+        () => {},
+      );
 
-      const res = await MembershipRequestService.rejectRequest(userId, requestId, "Not eligible");
+      const res = await MembershipRequestService.rejectRequest(
+        userId,
+        requestId,
+        "Not eligible",
+      );
 
       expect(mockReqDoc.status).toBe("rejected");
       expect(mockReqDoc.reviewNotes).toBe("Not eligible");

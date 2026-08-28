@@ -297,9 +297,7 @@ const MembershipRequests = () => {
                       className="inline-flex items-center gap-1.5 text-xs font-medium text-blue-600 dark:text-blue-400 hover:underline cursor-pointer"
                     >
                       <MessageSquare className="h-3.5 w-3.5" />
-                      <span>
-                        Comments ({request.comments?.length || 0})
-                      </span>
+                      <span>Comments ({request.comments?.length || 0})</span>
                     </button>
 
                     {expandedComments[request._id] && (
@@ -372,7 +370,9 @@ const MembershipRequests = () => {
                   )}
                   {request.status === "rejected" && <X className="h-3 w-3" />}
                   {request.status === "cancelled" && <X className="h-3 w-3" />}
-                  {request.status === "expired" && <Timer className="h-3 w-3" />}
+                  {request.status === "expired" && (
+                    <Timer className="h-3 w-3" />
+                  )}
                   {STATUS_LABELS[request.status]}
                 </span>
 
