@@ -39,6 +39,7 @@ import {
   Users,
   CheckSquare,
   Activity,
+  Shield,
   ShieldAlert,
   ShieldCheck,
   Moon,
@@ -599,6 +600,18 @@ const Navbar = () => {
             permission: { resource: "reports", action: "view" },
           },
           {
+            label: t("navbar.meetingROI", "Meeting ROI Dashboard"),
+            href: "/meeting-roi-dashboard",
+            icon: TrendingUp,
+            permission: { resource: "reports", action: "view" },
+          },
+          {
+            label: t("navbar.aiMeetingNotes", "AI Meeting Notes"),
+            href: "/ai-notes-dashboard",
+            icon: Sparkles,
+            permission: { resource: "reports", action: "view" },
+          },
+          {
             label: t("navbar.meetingInsights"),
             href: "/meeting-insights",
             icon: Brain,
@@ -767,6 +780,12 @@ const Navbar = () => {
             href: "/recap-schedule",
             icon: Clock,
             permission: { resource: "settings", action: "view" },
+          },
+          {
+            label: t("navbar.dlpCompliance", "DLP Compliance"),
+            href: "/compliance/dlp",
+            icon: Shield,
+            permission: { resource: "admin_panel", action: "view" },
           },
           {
             label: t("navbar.adminPanel"),

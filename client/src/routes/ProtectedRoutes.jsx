@@ -66,6 +66,9 @@ const DecisionDependencyMatrix = lazy(
 );
 const DecisionLog = lazy(() => import("../pages/DecisionLog.jsx"));
 const PolicyCompliance = lazy(() => import("../pages/PolicyCompliance.jsx"));
+const DlpComplianceConsole = lazy(
+  () => import("../pages/DlpComplianceConsole.jsx"),
+);
 const Settings = lazy(() => import("../pages/Settings.jsx"));
 const MembershipRequests = lazy(
   () => import("../pages/MembershipRequests.jsx"),
@@ -88,6 +91,12 @@ const AttendanceAnalytics = lazy(
 const RsvpInbox = lazy(() => import("../pages/RsvpInbox.jsx"));
 const MeetingCostAnalytics = lazy(
   () => import("../pages/MeetingCostAnalytics.jsx"),
+);
+const MeetingROIDashboard = lazy(
+  () => import("../pages/MeetingROIDashboard.jsx"),
+);
+const AiMeetingNotesDashboard = lazy(
+  () => import("../pages/AiMeetingNotesDashboard.jsx"),
 );
 const MeetingInsightsDashboard = lazy(
   () => import("../pages/MeetingInsightsDashboard.jsx"),
@@ -807,6 +816,30 @@ const ProtectedRoutes = (
       }
     />
     <Route
+      path="/compliance/dlp"
+      element={
+        <ProtectedRoute
+          resource="admin_panel"
+          action="view"
+          forbiddenFallback={<AccessDenied />}
+        >
+          <DlpComplianceConsole />
+        </ProtectedRoute>
+      }
+    />
+    <Route
+      path="/dlp-compliance"
+      element={
+        <ProtectedRoute
+          resource="admin_panel"
+          action="view"
+          forbiddenFallback={<AccessDenied />}
+        >
+          <DlpComplianceConsole />
+        </ProtectedRoute>
+      }
+    />
+    <Route
       path="/sla-compliance"
       element={
         <ProtectedRoute resource="reports" action="view">
@@ -875,6 +908,38 @@ const ProtectedRoutes = (
       element={
         <ProtectedRoute resource="reports" action="view">
           <MeetingCostAnalytics />
+        </ProtectedRoute>
+      }
+    />
+    <Route
+      path="/meeting-roi-dashboard"
+      element={
+        <ProtectedRoute resource="reports" action="view">
+          <MeetingROIDashboard />
+        </ProtectedRoute>
+      }
+    />
+    <Route
+      path="/analytics/meeting-roi"
+      element={
+        <ProtectedRoute resource="reports" action="view">
+          <MeetingROIDashboard />
+        </ProtectedRoute>
+      }
+    />
+    <Route
+      path="/ai-notes-dashboard"
+      element={
+        <ProtectedRoute resource="reports" action="view">
+          <AiMeetingNotesDashboard />
+        </ProtectedRoute>
+      }
+    />
+    <Route
+      path="/ai-notes"
+      element={
+        <ProtectedRoute resource="reports" action="view">
+          <AiMeetingNotesDashboard />
         </ProtectedRoute>
       }
     />
