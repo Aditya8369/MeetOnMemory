@@ -23,11 +23,16 @@ import {
   Edit2,
   Check,
   Loader2,
+  Lock,
+  Key,
+  Shield,
+  AlertTriangle,
 } from "lucide-react";
 import { toast } from "react-toastify";
 import MeetingSentimentChart from "../components/MeetingSentimentChart";
 import SpeakerAttribution from "../components/meeting-details/SpeakerAttribution";
 import TranscriptTimelineScrubber from "../components/meeting-details/TranscriptTimelineScrubber";
+import E2EEKeyManagementModal from "../components/E2EEKeyManagementModal.jsx";
 import AppContent from "../context/AppContent.js";
 
 const HighlightedText = ({ text, query }) => {
@@ -59,6 +64,10 @@ const TranscriptViewer = () => {
   const [highlightedSegment, setHighlightedSegment] = useState(null);
   const [playbackTime, setPlaybackTime] = useState(0);
   const mediaSeekRef = useRef(null);
+
+  const [isEncrypted, setIsEncrypted] = useState(false);
+  const [keyMissing, setKeyMissing] = useState(false);
+  const [showKeyModal, setShowKeyModal] = useState(false);
 
   const { userData } = useContext(AppContent) || {};
   const [editingSpeakerIndex, setEditingSpeakerIndex] = useState(null);
@@ -209,15 +218,20 @@ const TranscriptViewer = () => {
         );
       }
 
-      // Issue #1335 — decrypt ciphertext locally when E2EE payload is present
+      // Issue #1335 & #2030 — decrypt ciphertext locally when E2EE payload is present
       if (data?.encryption?.enabled && data.encryption.encryptedTranscript) {
+        setIsEncrypted(true);
         try {
           const { loadMeetingKey, importKey, decryptTranscript } =
             await import("../utils/encryption/index.js");
           const stored = loadMeetingKey(meetingId);
           if (!stored) {
-            toast.error("Meeting encryption key not found in this browser");
+            setKeyMissing(true);
+            toast.warn(
+              "E2EE Meeting key not found in this browser. Please import key to decrypt.",
+            );
           } else {
+            setKeyMissing(false);
             const key = await importKey(stored);
             const plaintext = await decryptTranscript(
               data.encryption.encryptedTranscript,
@@ -237,8 +251,12 @@ const TranscriptViewer = () => {
           }
         } catch (decryptErr) {
           console.error("E2EE decrypt failed:", decryptErr);
-          toast.error("Failed to decrypt transcript");
+          setKeyMissing(true);
+          toast.error("Failed to decrypt transcript with local key");
         }
+      } else {
+        setIsEncrypted(false);
+        setKeyMissing(false);
       }
 
       setTranscript(data);
@@ -441,9 +459,16 @@ const TranscriptViewer = () => {
                   />
                 </button>
                 <div>
-                  <h1 className="text-xl font-bold text-gray-900 dark:text-white">
-                    {meeting?.title || "Meeting Transcript"}
-                  </h1>
+                  <div className="flex items-center gap-2">
+                    <h1 className="text-xl font-bold text-gray-900 dark:text-white">
+                      {meeting?.title || "Meeting Transcript"}
+                    </h1>
+                    {isEncrypted && (
+                      <span className="inline-flex items-center gap-1 text-xs font-medium text-emerald-700 bg-emerald-50 dark:bg-emerald-900/40 dark:text-emerald-300 px-2 py-0.5 rounded">
+                        <Lock size={12} /> E2EE
+                      </span>
+                    )}
+                  </div>
                   <div className="flex items-center gap-4 mt-1 text-sm text-gray-600 dark:text-gray-400">
                     <span className="flex items-center gap-1">
                       <Calendar size={14} />
@@ -467,6 +492,15 @@ const TranscriptViewer = () => {
               </div>
 
               <div className="flex items-center gap-2">
+                {isEncrypted && (
+                  <button
+                    onClick={() => setShowKeyModal(true)}
+                    className="flex items-center gap-1.5 px-3 py-2 bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-950/40 dark:hover:bg-emerald-900/50 text-emerald-700 dark:text-emerald-300 text-xs font-semibold rounded-lg border border-emerald-200 dark:border-emerald-800/50 transition-colors"
+                  >
+                    <Key size={14} />
+                    <span>Manage Keys</span>
+                  </button>
+                )}
                 <button
                   onClick={handleExportText}
                   className="flex items-center gap-2 px-4 py-2 bg-gray-100 dark:bg-slate-700 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-200 dark:hover:bg-slate-600 transition-colors"
@@ -583,6 +617,31 @@ const TranscriptViewer = () => {
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             {/* Transcript Content */}
             <div className="lg:col-span-2 space-y-4">
+              {keyMissing && (
+                <div className="p-4 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-900/50 rounded-xl text-amber-900 dark:text-amber-200 flex items-start justify-between gap-3 shadow-sm">
+                  <div className="flex items-start gap-3">
+                    <AlertTriangle className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
+                    <div>
+                      <h4 className="font-bold text-sm">
+                        Decryption Key Required
+                      </h4>
+                      <p className="text-xs text-amber-800 dark:text-amber-300 mt-0.5">
+                        This meeting is end-to-end encrypted. The server does
+                        not store the encryption key. Import the meeting key
+                        backup file or paste the key from an attendee to view
+                        plaintext.
+                      </p>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => setShowKeyModal(true)}
+                    className="shrink-0 px-3 py-1.5 bg-amber-600 hover:bg-amber-700 text-white rounded-lg text-xs font-semibold shadow transition"
+                  >
+                    Import Key
+                  </button>
+                </div>
+              )}
+
               {/* Sentiment Chart */}
               {translationStatus !== "translated" && (
                 <MeetingSentimentChart
@@ -921,6 +980,20 @@ const TranscriptViewer = () => {
             )}
           </div>
         </div>
+
+        <E2EEKeyManagementModal
+          isOpen={showKeyModal}
+          onClose={() => setShowKeyModal(false)}
+          meeting={{
+            _id: meetingId,
+            title: transcript?.meetingId?.title || "Meeting",
+            encryptedTranscript: transcript?.encryption?.encryptedTranscript,
+            encryption: transcript?.encryption,
+          }}
+          onKeyImported={() => {
+            fetchTranscript();
+          }}
+        />
       </div>
     </div>
   );

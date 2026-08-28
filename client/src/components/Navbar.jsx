@@ -76,6 +76,7 @@ import {
   Smile,
   Lightbulb,
   Presentation,
+  Brain,
 } from "lucide-react";
 
 const clerkPubKey = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY;
@@ -595,6 +596,12 @@ const Navbar = () => {
             label: t("navbar.costAnalytics"),
             href: "/meeting-cost-analytics",
             icon: DollarSign,
+            permission: { resource: "reports", action: "view" },
+          },
+          {
+            label: t("navbar.meetingInsights"),
+            href: "/meeting-insights",
+            icon: Brain,
             permission: { resource: "reports", action: "view" },
           },
           {

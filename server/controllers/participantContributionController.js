@@ -1,5 +1,6 @@
 import participantContributionService from "../services/participantContributionService.js";
 import ParticipantContribution from "../models/participantContributionModel.js";
+import { computeEquityBreakdown } from "../utils/contributionEquity.js";
 
 /**
  * Get contributions for a specific meeting
@@ -22,6 +23,7 @@ export const getContributionsByMeeting = async (req, res) => {
       return res.status(200).json({
         contributions: calculated,
         equityScore,
+        equity: computeEquityBreakdown(calculated),
       });
     }
 
@@ -31,6 +33,7 @@ export const getContributionsByMeeting = async (req, res) => {
     res.status(200).json({
       contributions,
       equityScore,
+      equity: computeEquityBreakdown(contributions),
     });
   } catch (error) {
     console.error("Error fetching participant contributions:", error);
@@ -54,6 +57,7 @@ export const calculateContributions = async (req, res) => {
       message: "Contributions calculated successfully",
       contributions,
       equityScore,
+      equity: computeEquityBreakdown(contributions),
     });
   } catch (error) {
     console.error("Error calculating participant contributions:", error);

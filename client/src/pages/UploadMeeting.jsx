@@ -33,6 +33,7 @@ import DeviceSetupModal from "../components/meetings/DeviceSetupModal.jsx";
 import useDevicePermission from "../hooks/useDevicePermission";
 import TagAutocomplete from "../components/meetings/TagAutocomplete.jsx";
 import RecordingSessionAnalyticsPanel from "../components/analytics/RecordingSessionAnalyticsPanel.jsx";
+import AiMinutesCard from "../components/meetings/AiMinutesCard.jsx";
 import { createClerkSocketOptions } from "../services/apiClient.js";
 
 import { hasPermission } from "../utils/rbacPermissions.js";
@@ -760,119 +761,20 @@ const UploadMeeting = () => {
             </div>
 
             {/* AI Minutes Card */}
-            <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 shadow-xl p-6 flex flex-col min-h-[440px]">
-              <div className="flex items-center justify-between mb-4 border-b border-gray-50 dark:border-gray-700 pb-3">
-                <h3 className="text-lg font-bold text-gray-800 dark:text-gray-100 flex items-center gap-2">
-                  <Sparkles className="w-5 h-5 text-indigo-500 animate-pulse" />
-                  AI Minutes of Meeting (MoM)
-                </h3>
-                {summary && (
-                  <span className="text-[11px] font-bold text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-900/30 border border-indigo-100 dark:border-indigo-800 px-2 py-0.5 rounded-full uppercase">
-                    Compiled
-                  </span>
-                )}
-              </div>
-
-              <div className="flex-grow flex flex-col justify-between">
-                {isSummarizing ? (
-                  <div className="flex-grow flex flex-col items-center justify-center py-10 text-center animate-pulse">
-                    <div className="relative mb-4">
-                      <div className="w-16 h-16 bg-indigo-50 dark:bg-indigo-900/30 border border-indigo-100 dark:border-indigo-800 rounded-2xl flex items-center justify-center text-indigo-500">
-                        <Sparkles className="w-8 h-8 animate-spin" />
-                      </div>
-                    </div>
-                    <h4 className="text-sm font-bold text-indigo-800 dark:text-indigo-300 mb-1.5">
-                      Analyzing Meeting Content
-                    </h4>
-                    <p className="text-xs text-indigo-500 max-w-[280px] leading-relaxed mb-4">
-                      Structuring action items, key decisions, and key
-                      takeaways...
-                    </p>
-                  </div>
-                ) : summary ? (
-                  <>
-                    <div className="text-gray-700 dark:text-gray-200 whitespace-pre-wrap max-h-[280px] overflow-y-auto border border-gray-100 dark:border-gray-700 p-4 rounded-xl bg-gray-50/50 dark:bg-gray-900/50 text-sm leading-relaxed mb-4 scrollbar-thin">
-                      {summary}
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <button
-                        onClick={() => {
-                          navigator.clipboard.writeText(summary);
-                          toast.success("Minutes copied to clipboard.");
-                        }}
-                        className="px-4 py-2 text-xs font-bold rounded-xl border border-gray-200 dark:border-gray-600 text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition-all flex items-center gap-1.5"
-                      >
-                        <Copy className="w-3.5 h-3.5" />
-                        Copy
-                      </button>
-
-                      <div className="relative">
-                        <button
-                          onClick={() => setShowExportMenu(!showExportMenu)}
-                          disabled={isExporting}
-                          className="px-4 py-2 text-xs font-bold rounded-xl border border-gray-200 dark:border-gray-600 text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition-all flex items-center gap-1.5"
-                        >
-                          {isExporting ? (
-                            <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                          ) : (
-                            <Download className="w-3.5 h-3.5" />
-                          )}
-                          {isExporting ? "Exporting..." : "Export MoM"}
-                        </button>
-                        {showExportMenu && (
-                          <div className="absolute bottom-full left-0 mb-2 w-48 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded-xl shadow-xl z-20 overflow-hidden">
-                            <button
-                              onClick={() => handleExport("pdf")}
-                              className="w-full text-left px-4 py-2.5 text-xs text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors font-medium border-b border-gray-50 dark:border-gray-700"
-                            >
-                              Export as PDF
-                            </button>
-                            <button
-                              onClick={() => handleExport("docx")}
-                              className="w-full text-left px-4 py-2.5 text-xs text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors font-medium border-b border-gray-50 dark:border-gray-700"
-                            >
-                              Export as DOCX
-                            </button>
-                            <button
-                              onClick={() => handleExport("md")}
-                              className="w-full text-left px-4 py-2.5 text-xs text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors font-medium"
-                            >
-                              Export as Markdown
-                            </button>
-                          </div>
-                        )}
-                      </div>
-
-                      <button
-                        onClick={() => {
-                          toast.success("Meeting saved successfully!");
-                          navigate(
-                            meetingId ? `/meetings/${meetingId}` : "/dashboard",
-                          );
-                        }}
-                        className="ml-auto px-5 py-2.5 text-xs font-bold rounded-xl text-white bg-emerald-600 hover:bg-emerald-700 shadow-md transition-all flex items-center gap-1.5"
-                      >
-                        <CheckCircle2 className="w-3.5 h-3.5" />
-                        View Meeting
-                      </button>
-                    </div>
-                  </>
-                ) : (
-                  <div className="flex-grow flex flex-col items-center justify-center py-10 text-center">
-                    <div className="w-16 h-16 bg-gray-50 dark:bg-gray-700 border border-gray-100 dark:border-gray-600 rounded-2xl flex items-center justify-center mb-3 text-gray-400">
-                      <Sparkles className="w-8 h-8" />
-                    </div>
-                    <h4 className="text-sm font-bold text-gray-700 dark:text-gray-200 mb-1">
-                      AI Minutes Awaiting
-                    </h4>
-                    <p className="text-xs text-gray-400 max-w-[240px] leading-relaxed">
-                      Once transcript is ready, click &quot;Generate MoM&quot;
-                      to compile structured notes.
-                    </p>
-                  </div>
-                )}
-              </div>
-            </div>
+            <AiMinutesCard
+              isSummarizing={isSummarizing}
+              summary={summary}
+              setSummary={setSummary}
+              handleGenerateSummary={() => handleGenerateSummary()}
+              onRegenerate={() => handleGenerateSummary()}
+              showExportMenu={showExportMenu}
+              setShowExportMenu={setShowExportMenu}
+              isExporting={isExporting}
+              handleExport={handleExport}
+              canEdit={canCreateMeeting}
+              canGenerate={canCreateMeeting}
+              canExport={canCreateMeeting}
+            />
           </div>
 
           <div className="text-center mt-10 text-xs text-gray-400 flex items-center justify-center gap-1.5">

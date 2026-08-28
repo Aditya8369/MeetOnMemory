@@ -20,6 +20,7 @@ import {
   AlertTriangle,
   Sparkles,
 } from "lucide-react";
+import ApiKeyManagement from "../components/settings/ApiKeyManagement.jsx";
 
 // API Endpoints Catalog
 const API_ENDPOINTS = [
@@ -57,6 +58,104 @@ headers = {"Authorization": "Bearer YOUR_CLERK_SESSION_JWT"}
 
 response = requests.get(url, headers=headers)
 print(response.json())`,
+    },
+  },
+  {
+    id: "api-keys-list",
+    category: "Authentication",
+    method: "GET",
+    path: "/api/api-keys",
+    title: "List API Keys",
+    description:
+      "Retrieve all scoped Personal Access Tokens and API keys configured for the organization.",
+    authRequired: true,
+    requestBody: null,
+    response200: {
+      success: true,
+      apiKeys: [
+        {
+          _id: "66a4f912e8b23c0012345678",
+          name: "CI/CD Deployment Token",
+          keyPreview: "mom_live_9a8f...4e1b",
+          scopes: ["meetings:read", "transcripts:read", "summaries:read"],
+          status: "active",
+          expiresAt: "2026-11-26T00:00:00.000Z",
+        },
+      ],
+    },
+    snippets: {
+      curl: `curl -X GET http://localhost:4000/api/api-keys \\
+  -H "Authorization: Bearer YOUR_SESSION_JWT"`,
+      javascript: `fetch('http://localhost:4000/api/api-keys', {
+  headers: { Authorization: 'Bearer YOUR_SESSION_JWT' }
+})
+.then(res => res.json())
+.then(data => console.log(data));`,
+      nodejs: `const axios = require('axios');
+const res = await axios.get('http://localhost:4000/api/api-keys', {
+  headers: { Authorization: 'Bearer YOUR_SESSION_JWT' }
+});
+console.log(res.data);`,
+      python: `import requests
+response = requests.get('http://localhost:4000/api/api-keys', headers={'Authorization': 'Bearer YOUR_SESSION_JWT'})
+print(response.json())`,
+    },
+  },
+  {
+    id: "api-keys-create",
+    category: "Authentication",
+    method: "POST",
+    path: "/api/api-keys",
+    title: "Create Scoped API Key",
+    description:
+      "Provision a new SHA-256 hashed API token with granular permissions and expiry.",
+    authRequired: true,
+    requestBody: {
+      name: "GitHub Action Webhook",
+      scopes: ["meetings:read", "summaries:read"],
+      expiresInDays: 90,
+    },
+    response200: {
+      success: true,
+      message: "API key generated successfully",
+      apiKey: {
+        _id: "66a4f912e8b23c0012345678",
+        name: "GitHub Action Webhook",
+        keyPreview: "mom_live_9a8f...4e1b",
+        scopes: ["meetings:read", "summaries:read"],
+        expiresAt: "2026-11-26T00:00:00.000Z",
+      },
+      secretKey: "mom_live_9a8f3b204c81d8e74567890123456789abcdef014e1b",
+    },
+    snippets: {
+      curl: `curl -X POST http://localhost:4000/api/api-keys \\
+  -H "Authorization: Bearer YOUR_SESSION_JWT" \\
+  -H "Content-Type: application/json" \\
+  -d '{"name": "GitHub Action Webhook", "scopes": ["meetings:read", "summaries:read"], "expiresInDays": 90}'`,
+      javascript: `fetch('http://localhost:4000/api/api-keys', {
+  method: 'POST',
+  headers: {
+    Authorization: 'Bearer YOUR_SESSION_JWT',
+    'Content-Type': 'application/json'
+  },
+  body: JSON.stringify({ name: 'GitHub Action Webhook', scopes: ['meetings:read', 'summaries:read'], expiresInDays: 90 })
+})
+.then(res => res.json())
+.then(data => console.log(data));`,
+      nodejs: `const axios = require('axios');
+const res = await axios.post('http://localhost:4000/api/api-keys', {
+  name: 'GitHub Action Webhook',
+  scopes: ['meetings:read', 'summaries:read'],
+  expiresInDays: 90
+}, { headers: { Authorization: 'Bearer YOUR_SESSION_JWT' } });
+console.log(res.data);`,
+      python: `import requests
+res = requests.post('http://localhost:4000/api/api-keys', json={
+  'name': 'GitHub Action Webhook',
+  'scopes': ['meetings:read', 'summaries:read'],
+  'expiresInDays': 90
+}, headers={'Authorization': 'Bearer YOUR_SESSION_JWT'})
+print(res.json())`,
     },
   },
   {
@@ -626,6 +725,18 @@ const DeveloperDocs = () => {
               </button>
 
               <button
+                onClick={() => setActiveSection("api-keys")}
+                className={`w-full flex items-center gap-2.5 px-3 py-2 text-xs font-semibold rounded-xl transition-all cursor-pointer text-left ${
+                  activeSection === "api-keys"
+                    ? "bg-blue-50 dark:bg-blue-950/50 text-blue-600 dark:text-blue-400 border border-blue-200 dark:border-blue-800"
+                    : "text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-white"
+                }`}
+              >
+                <Lock className="w-4 h-4 shrink-0" />
+                API Keys & Tokens
+              </button>
+
+              <button
                 onClick={() => setActiveSection("openapi")}
                 className={`w-full flex items-center gap-2.5 px-3 py-2 text-xs font-semibold rounded-xl transition-all cursor-pointer text-left ${
                   activeSection === "openapi"
@@ -901,6 +1012,25 @@ const DeveloperDocs = () => {
                   </div>
 
                   <h3 className="font-bold text-slate-900 dark:text-white pt-2">
+                    Programmatic Authentication (API Keys & PATs)
+                  </h3>
+                  <p>
+                    For background daemons, CLI scripts, and CI/CD pipelines,
+                    generate an Organization API Key or Personal Access Token in
+                    the <strong>API Keys & Tokens</strong> section. Send the
+                    token using either the{" "}
+                    <code className="bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 rounded font-mono text-xs">
+                      X-API-Key
+                    </code>{" "}
+                    header or as a Bearer token:
+                  </p>
+                  <div className="p-3 bg-slate-900 text-slate-200 rounded-xl font-mono text-xs select-all space-y-1">
+                    <div>X-API-Key: mom_live_...</div>
+                    <div className="text-slate-400"># or</div>
+                    <div>Authorization: Bearer mom_live_...</div>
+                  </div>
+
+                  <h3 className="font-bold text-slate-900 dark:text-white pt-2">
                     OAuth Provider Scopes
                   </h3>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
@@ -923,6 +1053,13 @@ const DeveloperDocs = () => {
                   </div>
                 </div>
               </div>
+            </div>
+          )}
+
+          {/* SECTION: API KEYS & TOKENS (Issue #2264) */}
+          {activeSection === "api-keys" && (
+            <div className="space-y-6 animate-fade-in">
+              <ApiKeyManagement />
             </div>
           )}
 

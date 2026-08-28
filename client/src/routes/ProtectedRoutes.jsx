@@ -54,10 +54,16 @@ const MemoryConsolidation = lazy(
   () => import("../pages/MemoryConsolidation.jsx"),
 );
 const MemoryLifecycle = lazy(() => import("../pages/MemoryLifecycle.jsx"));
+const EnterpriseMemoryTelemetry = lazy(
+  () => import("../pages/EnterpriseMemoryTelemetry.jsx"),
+);
 const KnowledgeArchive = lazy(() => import("../pages/KnowledgeArchive.jsx"));
 const GraphSnapshots = lazy(() => import("../pages/GraphSnapshots.jsx"));
 const KnowledgeGraph = lazy(() => import("../pages/KnowledgeGraph.jsx"));
 const DecisionGraph = lazy(() => import("../pages/DecisionGraph.jsx"));
+const DecisionDependencyMatrix = lazy(
+  () => import("../pages/DecisionDependencyMatrix.jsx"),
+);
 const DecisionLog = lazy(() => import("../pages/DecisionLog.jsx"));
 const PolicyCompliance = lazy(() => import("../pages/PolicyCompliance.jsx"));
 const DlpComplianceConsole = lazy(
@@ -85,6 +91,12 @@ const AttendanceAnalytics = lazy(
 const RsvpInbox = lazy(() => import("../pages/RsvpInbox.jsx"));
 const MeetingCostAnalytics = lazy(
   () => import("../pages/MeetingCostAnalytics.jsx"),
+);
+const MeetingInsightsDashboard = lazy(
+  () => import("../pages/MeetingInsightsDashboard.jsx"),
+);
+const EnterpriseMeetingCostEngine = lazy(
+  () => import("../pages/EnterpriseMeetingCostEngine.jsx"),
 );
 const RecapScheduleDashboard = lazy(
   () => import("../pages/RecapScheduleDashboard.jsx"),
@@ -157,9 +169,30 @@ const AsyncMeetingsDashboard = lazy(
 );
 const MeetingPlaybooks = lazy(() => import("../pages/MeetingPlaybooks.jsx"));
 const TopicIntelligence = lazy(() => import("../pages/TopicIntelligence.jsx"));
+const SessionGallery = lazy(() => import("../pages/SessionGallery.jsx"));
 
 const ProtectedRoutes = (
   <React.Fragment>
+    <Route
+      path="/session-cards"
+      element={
+        <ProtectedRoute>
+          <RouteErrorBoundary>
+            <SessionGallery />
+          </RouteErrorBoundary>
+        </ProtectedRoute>
+      }
+    />
+    <Route
+      path="/session-gallery"
+      element={
+        <ProtectedRoute>
+          <RouteErrorBoundary>
+            <SessionGallery />
+          </RouteErrorBoundary>
+        </ProtectedRoute>
+      }
+    />
     <Route
       path="/topics/analytics"
       element={
@@ -332,6 +365,14 @@ const ProtectedRoutes = (
       element={
         <ProtectedRoute resource="knowledge" action="view">
           <DecisionGraph />
+        </ProtectedRoute>
+      }
+    />
+    <Route
+      path="/decision-matrix"
+      element={
+        <ProtectedRoute resource="knowledge" action="view">
+          <DecisionDependencyMatrix />
         </ProtectedRoute>
       }
     />
@@ -862,10 +903,34 @@ const ProtectedRoutes = (
       }
     />
     <Route
+      path="/meeting-insights"
+      element={
+        <ProtectedRoute resource="reports" action="view">
+          <MeetingInsightsDashboard />
+        </ProtectedRoute>
+      }
+    />
+    <Route
+      path="/meeting-cost-engine"
+      element={
+        <ProtectedRoute resource="reports" action="view">
+          <EnterpriseMeetingCostEngine />
+        </ProtectedRoute>
+      }
+    />
+    <Route
       path="/action-item-analytics"
       element={
         <ProtectedRoute resource="reports" action="view">
           <ActionItemAnalytics />
+        </ProtectedRoute>
+      }
+    />
+    <Route
+      path="/memory-telemetry"
+      element={
+        <ProtectedRoute resource="knowledge" action="view">
+          <EnterpriseMemoryTelemetry />
         </ProtectedRoute>
       }
     />
