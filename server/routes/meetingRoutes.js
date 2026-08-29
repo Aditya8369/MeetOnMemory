@@ -70,6 +70,7 @@ import {
 } from "../controllers/transcriptController.js";
 import { getMeetingRoles } from "../controllers/roleRotationController.js";
 import { getOrgRetentionLeaderboard } from "../controllers/meetingQuizController.js";
+import { initiateTransfer } from "../controllers/meetingOwnershipTransferController.js";
 
 import path from "path";
 import { ValidationError } from "../utils/errors.js";
@@ -609,6 +610,16 @@ router.get(
 
 // ✅ Retrieve organization quiz retention leaderboard
 router.get("/quiz/leaderboard", userAuth, getOrgRetentionLeaderboard);
+
+// ✅ Initiate Meeting Ownership Transfer
+router.post(
+  "/:meetingId/transfers",
+  userAuth,
+  writeLimiter,
+  requireOwner(Meeting),
+  requirePermission("meetings", "edit"),
+  initiateTransfer,
+);
 // ✅ Anonymize / Scrub PII from Meeting
 router.post(
   "/anonymize",

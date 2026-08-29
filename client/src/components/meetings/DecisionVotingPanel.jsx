@@ -19,7 +19,7 @@ const DecisionVotingPanel = ({ meetingId }) => {
   const { userData } = useContext(AppContent) || {};
   const [decisions, setDecisions] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [votingMap, setVotingMap] = useState({}); // Tracks user's own cast votes
+  const [votingMap, setVotingMap] = useState({});
 
   const loadDecisions = useCallback(async () => {
     try {

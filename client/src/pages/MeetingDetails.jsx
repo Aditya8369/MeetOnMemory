@@ -71,6 +71,7 @@ import ContributionSummaryPanel from "../components/MeetingDetails/ContributionS
 import MeetingCostCard from "../components/meeting-details/MeetingCostCard";
 import AbsenteeBriefingCard from "../components/meeting-details/AbsenteeBriefingCard";
 import PrintMomModal from "../components/meetings/PrintMomModal.jsx";
+import TransferOwnershipModal from "./meeting-details/TransferOwnershipModal";
 import ActionItemsList from "../components/actionItems/ActionItemsList";
 import DecisionVotingPanel from "../components/meetings/DecisionVotingPanel";
 import { Printer } from "lucide-react";
@@ -95,6 +96,8 @@ const MeetingDetails = () => {
   const [isExportDialogOpen, setIsExportDialogOpen] = useState(false);
   const [isEndorseModalOpen, setIsEndorseModalOpen] = useState(false);
   const [isConvertToAsyncOpen, setIsConvertToAsyncOpen] = useState(false);
+  const [isTransferOwnershipModalOpen, setIsTransferOwnershipModalOpen] =
+    useState(false);
   const [isPrintModalOpen, setIsPrintModalOpen] = useState(false);
   const [briefingStatus, setBriefingStatus] = useState("idle");
 
@@ -400,6 +403,15 @@ const MeetingDetails = () => {
                 className="flex items-center gap-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg font-medium shadow-sm transition-colors text-sm"
               >
                 Convert to Async
+              </button>
+            )}
+            {currentUser?.publicMetadata?.dbUserId === meeting.uploadedBy && (
+              <button
+                onClick={() => setIsTransferOwnershipModalOpen(true)}
+                className="flex items-center gap-2 px-4 py-2 bg-amber-600 hover:bg-amber-700 text-white rounded-lg font-medium shadow-sm transition-colors text-sm"
+              >
+                <ShieldAlert className="w-4 h-4" />
+                Transfer Ownership
               </button>
             )}
             <button
@@ -822,6 +834,13 @@ const MeetingDetails = () => {
         onClose={() => setIsPrintModalOpen(false)}
         meeting={meeting}
         summary={meeting.summary || meeting.structuredMoM}
+      />
+
+      <TransferOwnershipModal
+        isOpen={isTransferOwnershipModalOpen}
+        onClose={() => setIsTransferOwnershipModalOpen(false)}
+        meetingId={meeting._id}
+        meetingTitle={meeting.title}
       />
     </div>
   );
