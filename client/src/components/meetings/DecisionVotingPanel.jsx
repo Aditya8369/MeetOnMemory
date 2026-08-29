@@ -19,16 +19,9 @@ const DecisionVotingPanel = ({ meetingId }) => {
   const { userData } = useContext(AppContent) || {};
   const [decisions, setDecisions] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [votingMap, setVotingMap] = useState({}); // Tracks user's own cast votes
+  const [votingMap, setVotingMap] = useState({});
 
-  useEffect(() => {
-    if (meetingId) {
-      loadDecisions();
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [meetingId]);
-
-  const loadDecisions = async () => {
+  const loadDecisions = useCallback(async () => {
     try {
       setLoading(true);
       const res = await decisionVoteApi.getMeetingDecisionsConsensus(meetingId);
