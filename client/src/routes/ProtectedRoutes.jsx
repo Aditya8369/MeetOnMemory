@@ -115,6 +115,9 @@ const MeetingHealthDashboard = lazy(
 );
 const AutomationRules = lazy(() => import("../pages/AutomationRules.jsx"));
 const TopicExplorer = lazy(() => import("../pages/TopicExplorer.jsx"));
+const TopicEvolutionExplorerPage = lazy(
+  () => import("../pages/TopicEvolutionExplorer.jsx"),
+);
 const TopicAnalyticsDashboard = lazy(
   () => import("../pages/TopicAnalyticsDashboard.jsx"),
 );
@@ -231,6 +234,26 @@ const ProtectedRoutes = (
         <ProtectedRoute>
           <RouteErrorBoundary>
             <TopicIntelligence />
+          </RouteErrorBoundary>
+        </ProtectedRoute>
+      }
+    />
+    <Route
+      path="/topic-evolution"
+      element={
+        <ProtectedRoute>
+          <RouteErrorBoundary>
+            <TopicEvolutionExplorerPage />
+          </RouteErrorBoundary>
+        </ProtectedRoute>
+      }
+    />
+    <Route
+      path="/topics/evolution"
+      element={
+        <ProtectedRoute>
+          <RouteErrorBoundary>
+            <TopicEvolutionExplorerPage />
           </RouteErrorBoundary>
         </ProtectedRoute>
       }
