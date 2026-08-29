@@ -1,6 +1,8 @@
 import AuditLog from "../models/auditLogModel.js";
 import {
   detectConflicts,
+  detectMeetingConflicts,
+  getMeetingConflicts,
   listConflictSets,
   getConflictSetById,
   resolveConflictSet,
@@ -342,5 +344,52 @@ export const bulkResolveConflicts = async (req, res) => {
   } catch (error) {
     console.error("bulkResolveConflicts error:", error);
     sendError(res, 500, "Failed to bulk resolve conflicts");
+  }
+};
+
+/**
+ * POST /api/knowledge/conflicts/scan/meeting/:meetingId
+ * Scans a single meeting's decisions and action items against organizational knowledge.
+ */
+export const scanMeetingForConflicts = async (req, res) => {
+  try {
+    const { meetingId } = req.params;
+    const organization = req.user.organization || null;
+    const { dryRun = false, useAI = true, minConfidence } = req.body || {};
+
+    const report = await detectMeetingConflicts({
+      meetingId,
+      organization,
+      dryRun: dryRun !== false,
+      useAI: useAI !== false,
+      ...(minConfidence !== undefined ? { minConfidence } : {}),
+    });
+
+    sendSuccess(res, { report });
+  } catch (error) {
+    console.error("scanMeetingForConflicts error:", error);
+    sendError(res, 500, "Failed to scan meeting for knowledge contradictions");
+  }
+};
+
+/**
+ * GET /api/knowledge/conflicts/meeting/:meetingId
+ * Returns conflicts involving memories from a specific meeting.
+ */
+export const getMeetingConflictsController = async (req, res) => {
+  try {
+    const { meetingId } = req.params;
+    const organization = req.user.organization || null;
+    const { status = "open" } = req.query;
+
+    const conflicts = await getMeetingConflicts(meetingId, {
+      organization,
+      status,
+    });
+
+    sendSuccess(res, { count: conflicts.length, conflicts });
+  } catch (error) {
+    console.error("getMeetingConflictsController error:", error);
+    sendError(res, 500, "Failed to fetch meeting conflicts");
   }
 };

@@ -127,6 +127,139 @@ export async function detectConflicts({
   };
 }
 
+export async function detectMeetingConflicts({
+  meetingId,
+  organization = null,
+  dryRun = true,
+  useAI = true,
+  minConfidence = DEFAULT_MIN_CONFIDENCE,
+} = {}) {
+  if (!meetingId) {
+    throw new Error("meetingId is required for meeting conflict scan");
+  }
+
+  const results = {};
+  for (const modelType of Object.keys(MODEL_REGISTRY)) {
+    const { Model } = assertSupportedModel(modelType);
+    const meetingRecords = await Model.find({
+      $or: [
+        { sourceMeetingId: meetingId },
+        { meetingId },
+        { meeting: meetingId },
+      ],
+      status: { $ne: "superseded" },
+    }).lean();
+
+    if (!meetingRecords.length) {
+      results[modelType] = {
+        modelType,
+        recordsScanned: 0,
+        conflictsFound: 0,
+        conflicts: [],
+      };
+      continue;
+    }
+
+    const meetingRecordIds = new Set(
+      meetingRecords.map((r) => r._id.toString()),
+    );
+    const allOrgRecords = await fetchMemoriesForConflictScan(
+      Model,
+      organization,
+    );
+
+    const pairwiseConflicts = [];
+    for (const mRecord of meetingRecords) {
+      for (const otherRecord of allOrgRecords) {
+        if (mRecord._id.toString() === otherRecord._id.toString()) continue;
+
+        const analysis = await detectContradiction(mRecord, otherRecord, {
+          useAI,
+          minConfidence,
+        });
+
+        if (analysis.isContradiction) {
+          pairwiseConflicts.push({
+            members: [mRecord, otherRecord],
+            analysis,
+          });
+        }
+      }
+    }
+
+    const { clusters, pairwiseByCluster } = await buildConflictClusters(
+      allOrgRecords.filter((r) =>
+        pairwiseConflicts.some((pc) =>
+          pc.members.some((m) => m._id.toString() === r._id.toString()),
+        ),
+      ),
+      { useAI, minConfidence },
+    );
+
+    const meetingClusters = [];
+    const meetingPairwise = [];
+    for (let i = 0; i < clusters.length; i++) {
+      const cluster = clusters[i];
+      if (cluster.some((r) => meetingRecordIds.has(r._id.toString()))) {
+        meetingClusters.push(cluster);
+        meetingPairwise.push(pairwiseByCluster[i]);
+      }
+    }
+
+    const conflictSummaries = [];
+    for (let i = 0; i < meetingClusters.length; i++) {
+      const summary = await storeConflictCluster(
+        modelType,
+        meetingClusters[i],
+        meetingPairwise[i],
+        { organization, dryRun },
+      );
+      if (summary) conflictSummaries.push(summary);
+    }
+
+    results[modelType] = {
+      modelType,
+      recordsScanned: meetingRecords.length,
+      conflictsFound: meetingClusters.length,
+      conflicts: conflictSummaries,
+    };
+  }
+
+  const totalConflictsFound = Object.values(results).reduce(
+    (sum, r) => sum + r.conflictsFound,
+    0,
+  );
+
+  return {
+    meetingId: meetingId.toString(),
+    dryRun,
+    organization: organization ? organization.toString() : null,
+    totalConflictsFound,
+    results,
+  };
+}
+
+export async function getMeetingConflicts(
+  meetingId,
+  { organization = null, status = "open" } = {},
+) {
+  const allConflicts = await listConflictSets(null, {
+    organization,
+    status,
+    limit: 200,
+  });
+  const meetingIdStr = meetingId.toString();
+
+  return allConflicts.filter((cs) =>
+    (cs.memberSnapshots || []).some(
+      (m) =>
+        m.sourceMeetingId?.toString() === meetingIdStr ||
+        m.meetingId?.toString() === meetingIdStr ||
+        m.meeting?.toString() === meetingIdStr,
+    ),
+  );
+}
+
 export {
   MODEL_REGISTRY,
   DEFAULT_MIN_CONFIDENCE,

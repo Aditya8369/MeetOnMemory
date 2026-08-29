@@ -150,6 +150,19 @@ export const knowledgeApi = {
       ...(customValue ? { customValue } : {}),
       ...(note ? { note } : {}),
     }),
+  getMeetingConflicts: (meetingId, status = "open") =>
+    apiClient.get(
+      `/api/knowledge/conflicts/meeting/${meetingId}?status=${status}`,
+    ),
+  scanMeetingConflicts: (
+    meetingId,
+    { dryRun = false, useAI = true, minConfidence } = {},
+  ) =>
+    apiClient.post(`/api/knowledge/conflicts/scan/meeting/${meetingId}`, {
+      dryRun,
+      useAI,
+      ...(minConfidence !== undefined ? { minConfidence } : {}),
+    }),
   getMemoryTelemetry: (timeframe = "30d") =>
     apiClient.get(`/api/knowledge/analytics/telemetry?timeframe=${timeframe}`),
 };

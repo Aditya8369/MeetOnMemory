@@ -76,6 +76,7 @@ import ActionItemsList from "../components/actionItems/ActionItemsList";
 import DecisionVotingPanel from "../components/meetings/DecisionVotingPanel";
 import { Printer } from "lucide-react";
 import RetrospectiveBoard from "../components/meeting-details/RetrospectiveBoard";
+import MeetingContradictionInspector from "../components/knowledge/MeetingContradictionInspector";
 
 const MeetingDetails = () => {
   const { id } = useParams();
@@ -544,6 +545,10 @@ const MeetingDetails = () => {
 
           <div className="mt-6 mb-6">
             <DecisionVotingPanel meetingId={meeting._id} />
+          </div>
+
+          <div className="mt-6 mb-6">
+            <MeetingContradictionInspector meetingId={meeting._id} />
           </div>
 
           <RetentionQuizSection
