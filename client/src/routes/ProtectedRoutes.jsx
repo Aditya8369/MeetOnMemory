@@ -689,6 +689,16 @@ const ProtectedRoutes = (
       }
     />
     <Route
+      path="/meetings/:id"
+      element={
+        <ProtectedRoute resource="meetings" action="view">
+          <RouteErrorBoundary section="Meeting Details">
+            <MeetingDetails />
+          </RouteErrorBoundary>
+        </ProtectedRoute>
+      }
+    />
+    <Route
       path="/meeting/:id/briefing"
       element={
         <ProtectedRoute resource="meetings" action="view">
