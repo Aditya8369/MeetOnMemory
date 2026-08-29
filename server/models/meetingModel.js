@@ -3,6 +3,11 @@ import { normalizeAgendaItems } from "../utils/agendaOrdering.js";
 
 const meetingSchema = new mongoose.Schema(
   {
+    clonedFrom: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Meeting",
+      default: null,
+    },
     uploadedBy: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",
