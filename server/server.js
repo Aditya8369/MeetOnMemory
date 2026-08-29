@@ -42,6 +42,7 @@ import {
   startActionItemReminderJob,
   stopActionItemReminderJob,
 } from "./jobs/actionItemReminderJob.js";
+import { startMeetingWorkloadJob } from "./jobs/meetingWorkloadJob.js";
 import { startRecapBatchJob, stopRecapBatchJob } from "./jobs/recapBatchJob.js";
 import gamificationEngine from "./services/gamificationEngine.js";
 import { startLeaderboardJob } from "./jobs/leaderboardAggregationJob.js";
@@ -190,6 +191,7 @@ if (process.env.NODE_ENV !== "test") {
 
   // Start action-item reminder job (Issue #1397)
   startActionItemReminderJob();
+  startMeetingWorkloadJob();
 
   // Start meeting pattern detection job
   startMeetingPatternJob();
