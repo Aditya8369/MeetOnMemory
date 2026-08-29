@@ -95,6 +95,9 @@ const RsvpInbox = lazy(() => import("../pages/RsvpInbox.jsx"));
 const MeetingCostAnalytics = lazy(
   () => import("../pages/MeetingCostAnalytics.jsx"),
 );
+const MeetingCostCalculatorPage = lazy(
+  () => import("../pages/MeetingCostCalculator.jsx"),
+);
 const MeetingROIDashboard = lazy(
   () => import("../pages/MeetingROIDashboard.jsx"),
 );
@@ -919,6 +922,22 @@ const ProtectedRoutes = (
       element={
         <ProtectedRoute resource="reports" action="view">
           <MeetingCostAnalytics />
+        </ProtectedRoute>
+      }
+    />
+    <Route
+      path="/meeting-cost-calculator"
+      element={
+        <ProtectedRoute resource="reports" action="view">
+          <MeetingCostCalculatorPage />
+        </ProtectedRoute>
+      }
+    />
+    <Route
+      path="/analytics/meeting-cost-calculator"
+      element={
+        <ProtectedRoute resource="reports" action="view">
+          <MeetingCostCalculatorPage />
         </ProtectedRoute>
       }
     />
