@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useContext } from "react";
+import React, { useState, useEffect, useContext, useCallback } from "react";
 import decisionVoteApi from "../../services/decisionVoteApi";
 import AppContent from "../../context/AppContent";
 import { toast } from "react-toastify";
@@ -21,13 +21,7 @@ const DecisionVotingPanel = ({ meetingId }) => {
   const [loading, setLoading] = useState(true);
   const [votingMap, setVotingMap] = useState({}); // Tracks user's own cast votes
 
-  useEffect(() => {
-    if (meetingId) {
-      loadDecisions();
-    }
-  }, [meetingId]);
-
-  const loadDecisions = async () => {
+  const loadDecisions = useCallback(async () => {
     try {
       setLoading(true);
       const res = await decisionVoteApi.getMeetingDecisionsConsensus(meetingId);
@@ -51,7 +45,13 @@ const DecisionVotingPanel = ({ meetingId }) => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [meetingId, userData]);
+
+  useEffect(() => {
+    if (meetingId) {
+      loadDecisions();
+    }
+  }, [meetingId, loadDecisions]);
 
   const handleVote = async (decisionId, voteType) => {
     try {

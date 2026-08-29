@@ -5,7 +5,7 @@ import React, {
   useContext,
   useRef,
 } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams, useNavigate, useLocation } from "react-router-dom";
 import Navbar from "../components/Navbar.jsx";
 import api from "../services/apiClient.js";
 import { speakerMappingApi } from "../services/speakerMappingApi.js";
@@ -56,10 +56,15 @@ const HighlightedText = ({ text, query }) => {
 const TranscriptViewer = () => {
   const { meetingId } = useParams();
   const navigate = useNavigate();
+  const location = useLocation();
+
+  const queryParams = new URLSearchParams(location.search);
+  const searchHighlight = queryParams.get("highlight");
+  const targetSegment = queryParams.get("segment");
 
   const [transcript, setTranscript] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [searchQuery, setSearchQuery] = useState("");
+  const [searchQuery, setSearchQuery] = useState(searchHighlight || "");
   const [searchResults, setSearchResults] = useState([]);
   const [highlightedSegment, setHighlightedSegment] = useState(null);
   const [playbackTime, setPlaybackTime] = useState(0);
@@ -333,6 +338,16 @@ const TranscriptViewer = () => {
   useEffect(() => {
     fetchTranscript();
   }, [fetchTranscript]);
+
+  useEffect(() => {
+    if (!loading && transcript && targetSegment) {
+      const idx = parseInt(targetSegment, 10);
+      if (!isNaN(idx)) {
+        setTimeout(() => scrollToSegment(idx), 300);
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [loading, transcript, targetSegment]);
 
   const handleSpeakerChange = async (index, oldSpeaker) => {
     if (!newSpeakerName.trim()) return;
