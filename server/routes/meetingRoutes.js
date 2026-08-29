@@ -41,6 +41,7 @@ import {
   resolveMeetingInvite,
   anonymizeMeeting,
   getRawTranscript,
+  cloneMeeting,
 } from "../controllers/meetingController.js";
 import {
   addMeetingBookmark,
@@ -179,6 +180,16 @@ router.post(
   requirePermission("meetings", "create"),
   transcriptUpload.single("audio"),
   uploadTranscriptAudio,
+);
+
+// POST /api/meetings/:meetingId/clone
+router.post(
+  "/:meetingId/clone",
+  userAuth,
+  uploadLimiter,
+  requireOrgMembership,
+  requirePermission("meetings", "create"),
+  cloneMeeting,
 );
 
 // POST /api/meetings/:meetingId/transcript/chunk
