@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useRef, useState, useId } from "react";
 import { useTranslation } from "react-i18next";
 import { useSearchParams } from "react-router-dom";
-import { History, X, Globe, Mic } from "lucide-react";
+import { History, X, Globe, Mic, FileText } from "lucide-react";
 import Navbar from "../components/Navbar.jsx";
 import SearchBar from "../components/ai-search/SearchBar.jsx";
 import SearchFilters from "../components/ai-search/SearchFilters.jsx";
@@ -403,7 +403,14 @@ const AiSearch = () => {
         />
 
         {/* Voice Search Toggle Header Action */}
-        <div className="w-full flex justify-end mb-3">
+        <div className="w-full flex justify-end gap-2 mb-3">
+          <a
+            href="/transcript-search"
+            className="inline-flex items-center gap-1.5 px-3.5 py-1.5 bg-indigo-50 dark:bg-indigo-950/60 border border-indigo-200 dark:border-indigo-800 text-indigo-700 dark:text-indigo-300 rounded-full text-xs font-bold hover:bg-indigo-100 transition cursor-pointer"
+          >
+            <FileText className="w-4 h-4" />
+            Transcript Exact Match Search
+          </a>
           <button
             type="button"
             onClick={() => setShowVoiceBar((prev) => !prev)}

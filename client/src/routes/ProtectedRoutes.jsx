@@ -44,6 +44,9 @@ const MeetingEffectiveness = lazy(
 const MeetingRecycleBin = lazy(() => import("../pages/MeetingRecycleBin.jsx"));
 const MeetingRoom = lazy(() => import("../pages/MeetingRoom.jsx"));
 const TranscriptViewer = lazy(() => import("../pages/TranscriptViewer.jsx"));
+const TranscriptSearchPage = lazy(
+  () => import("../pages/TranscriptSearchPage.jsx"),
+);
 const TeamMembers = lazy(() => import("../pages/TeamMembers.jsx"));
 const Profile = lazy(() => import("../pages/Profile.jsx"));
 const Calendar = lazy(() => import("../pages/Calendar.jsx"));
@@ -664,6 +667,14 @@ const ProtectedRoutes = (
       element={
         <ProtectedRoute resource="meetings" action="view">
           <TranscriptViewer />
+        </ProtectedRoute>
+      }
+    />
+    <Route
+      path="/transcript-search"
+      element={
+        <ProtectedRoute resource="meetings" action="view">
+          <TranscriptSearchPage />
         </ProtectedRoute>
       }
     />
