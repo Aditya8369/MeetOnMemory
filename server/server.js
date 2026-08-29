@@ -79,6 +79,10 @@ import {
   startDecisionReviewReminderJob,
   stopDecisionReviewReminderJob,
 } from "./jobs/decisionReviewReminderJob.js";
+import {
+  startMeetingOwnershipTransferJob,
+  stopMeetingOwnershipTransferJob,
+} from "./jobs/meetingOwnershipTransferJob.js";
 import { createClient } from "redis"; // eslint-disable-line no-unused-vars
 import {
   initDataExportWorker, // eslint-disable-line no-unused-vars
@@ -229,6 +233,9 @@ if (process.env.NODE_ENV !== "test") {
 
   // Start Decision Review Reminder job
   startDecisionReviewReminderJob();
+
+  // Start Meeting Ownership Transfer job
+  startMeetingOwnershipTransferJob();
 }
 
 // (AI, Data Export, and Webhook workers are initialized inside server.listen callback)
@@ -248,6 +255,7 @@ const gracefulShutdown = createGracefulShutdown({
     stopStandupReportJob();
     stopActionItemSlaJob();
     stopDecisionReviewReminderJob();
+    stopMeetingOwnershipTransferJob();
   },
   closeQueues: shutdownQueues,
   closeDatabase: () => mongoose.connection.close(),
